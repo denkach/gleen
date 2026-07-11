@@ -1,10 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = 'http://127.0.0.1:3000';
+const baseURL = 'http://127.0.0.1:3100';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testIgnore: 'ui-production.spec.ts',
+  testMatch: 'ui-production.spec.ts',
   retries: process.env.CI ? 2 : 0,
   use: {
     baseURL,
@@ -17,11 +17,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev -- --hostname 127.0.0.1',
+    command:
+      'npm run build && npm run start -- --hostname 127.0.0.1 --port 3100',
     env: {
       NEXT_PUBLIC_APP_URL: baseURL,
     },
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     url: baseURL,
   },
 });

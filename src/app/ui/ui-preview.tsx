@@ -98,53 +98,64 @@ function MotionPreference() {
 
 function ToastExamples() {
   const { toast } = useToast();
+  const [actionResult, setActionResult] = useState('No toast action invoked');
 
   return (
-    <div className="ui-preview-row">
-      <Button
-        variant="soft"
-        onClick={() => toast({ title: 'Neutral notification' })}
+    <div>
+      <div className="ui-preview-row">
+        <Button
+          variant="soft"
+          onClick={() => toast({ title: 'Neutral notification' })}
+        >
+          Show neutral toast
+        </Button>
+        <Button
+          variant="soft"
+          onClick={() =>
+            toast({
+              title: 'Successful notification',
+              description: 'The example action completed.',
+              variant: 'success',
+            })
+          }
+        >
+          Show success toast
+        </Button>
+        <Button
+          variant="soft"
+          onClick={() =>
+            toast({
+              title: 'Error notification',
+              description: 'The example action needs attention.',
+              variant: 'error',
+              actionLabel: 'Retry',
+              onAction: () => setActionResult('Retry action invoked'),
+            })
+          }
+        >
+          Show error toast
+        </Button>
+        <Button
+          variant="soft"
+          onClick={() =>
+            toast({
+              title:
+                'Long toast title that verifies notification copy wrapping',
+              description:
+                'Long toast description remains readable when localized interface text expands across multiple lines.',
+            })
+          }
+        >
+          Show long toast
+        </Button>
+      </div>
+      <p
+        className="ui-preview-motion"
+        role="status"
+        aria-label="Toast action result"
       >
-        Show neutral toast
-      </Button>
-      <Button
-        variant="soft"
-        onClick={() =>
-          toast({
-            title: 'Successful notification',
-            description: 'The example action completed.',
-            variant: 'success',
-          })
-        }
-      >
-        Show success toast
-      </Button>
-      <Button
-        variant="soft"
-        onClick={() =>
-          toast({
-            title: 'Error notification',
-            description: 'The example action needs attention.',
-            variant: 'error',
-            actionLabel: 'Retry',
-            onAction: () => undefined,
-          })
-        }
-      >
-        Show error toast
-      </Button>
-      <Button
-        variant="soft"
-        onClick={() =>
-          toast({
-            title: 'Long toast title that verifies notification copy wrapping',
-            description:
-              'Long toast description remains readable when localized interface text expands across multiple lines.',
-          })
-        }
-      >
-        Show long toast
-      </Button>
+        {actionResult}
+      </p>
     </div>
   );
 }
