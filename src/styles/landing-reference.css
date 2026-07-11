@@ -1176,6 +1176,352 @@
   font: 10px var(--mono);
   letter-spacing: 0.06em;
 }
+.landing-reference .header-nav a {
+  position: relative;
+  padding: 10px 0;
+  transition: color 0.2s ease;
+}
+.landing-reference .header-nav a:hover {
+  color: var(--text-1);
+}
+.landing-reference .header-nav a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: 4px;
+  height: 1px;
+  background: linear-gradient(90deg, #fff, rgba(255, 255, 255, 0));
+  transition: right 0.25s var(--ease);
+}
+.landing-reference .header-nav a:hover::after {
+  right: 0;
+}
+.landing-reference .btn {
+  transition:
+    transform 0.22s var(--ease),
+    border-color 0.22s ease,
+    background 0.22s ease,
+    box-shadow 0.22s ease;
+}
+.landing-reference .btn::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  opacity: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 14%,
+    rgba(255, 180, 84, 0.16),
+    rgba(199, 125, 255, 0.16),
+    rgba(91, 233, 233, 0.16),
+    rgba(168, 224, 99, 0.16),
+    transparent 86%
+  );
+  transform: translateX(-30%);
+  transition:
+    opacity 0.25s ease,
+    transform 0.45s var(--ease);
+}
+.landing-reference .btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+}
+.landing-reference .btn:hover::before {
+  opacity: 1;
+  transform: translateX(0);
+}
+.landing-reference .btn > * {
+  position: relative;
+  z-index: 1;
+}
+.landing-reference .btn-primary:hover {
+  box-shadow:
+    -4px 0 20px rgba(255, 180, 84, 0.12),
+    0 -4px 20px rgba(199, 125, 255, 0.12),
+    4px 0 20px rgba(91, 233, 233, 0.12),
+    0 4px 20px rgba(168, 224, 99, 0.12);
+}
+.landing-reference .beam-form.is-flashing::after {
+  content: '';
+  position: absolute;
+  inset: 8px 128px 8px 8px;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.85),
+    transparent
+  );
+  animation: field-flash 0.7s var(--ease) both;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.landing-reference .beam-form.is-processing {
+  border-color: rgba(255, 255, 255, 0.28);
+  animation: beam-form-spectrum 1.2s var(--ease) both;
+}
+@keyframes field-flash {
+  from {
+    transform: translateX(-110%);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+}
+@keyframes beam-form-spectrum {
+  0%,
+  100% {
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+  }
+  45% {
+    box-shadow:
+      -18px 0 45px rgba(255, 180, 84, 0.12),
+      0 -14px 45px rgba(199, 125, 255, 0.13),
+      18px 0 45px rgba(91, 233, 233, 0.11),
+      0 14px 45px rgba(168, 224, 99, 0.1);
+  }
+}
+.landing-reference.motion-ready .spectrum .ray {
+  scale: 0.03 1;
+  opacity: 0.06;
+  transition:
+    scale 0.82s var(--ease),
+    opacity 0.7s ease,
+    filter 0.7s ease;
+}
+.landing-reference.motion-ready .prism-stage.is-awake .spectrum .ray {
+  scale: 1 1;
+  opacity: 0.9;
+}
+.landing-reference.motion-ready .prism-stage.is-transforming .spectrum .ray {
+  animation: spectrum-surge 0.9s var(--ease) both;
+}
+.landing-reference.motion-ready .prism-stage.is-transforming::after {
+  content: '';
+  position: absolute;
+  left: 49.5%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 14px #fff,
+    0 0 44px rgba(255, 255, 255, 0.65),
+    0 0 86px rgba(199, 125, 255, 0.28);
+  animation: reference-prism-flash 1.05s var(--ease) both;
+  pointer-events: none;
+}
+@keyframes spectrum-surge {
+  0% {
+    scale: 0.03 1;
+    opacity: 0.05;
+    filter: brightness(1);
+  }
+  36% {
+    scale: 1.12 2.2;
+    opacity: 1;
+    filter: brightness(1.8);
+  }
+  100% {
+    scale: 1 1;
+    opacity: 0.9;
+    filter: brightness(1);
+  }
+}
+@keyframes reference-prism-flash {
+  0% {
+    opacity: 0;
+    scale: 0.2;
+  }
+  24% {
+    opacity: 1;
+    scale: 1.35;
+  }
+  60% {
+    opacity: 0.46;
+    scale: 4.2;
+  }
+  100% {
+    opacity: 0;
+    scale: 7.5;
+  }
+}
+.landing-reference.motion-ready .artifact-float {
+  opacity: 0;
+  scale: 0.84;
+  filter: blur(11px) brightness(0.7);
+  translate: -12px 5px;
+  transition:
+    opacity 0.62s var(--ease),
+    scale 0.7s var(--ease),
+    filter 0.7s var(--ease),
+    translate 0.7s var(--ease),
+    border-color 0.45s ease,
+    box-shadow 0.45s ease;
+}
+.landing-reference.motion-ready .artifact-float.is-emitted {
+  opacity: 1;
+  scale: 1;
+  filter: blur(0) brightness(1);
+  translate: 0 0;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.landing-reference .process-scene {
+  --beam-progress: 0;
+}
+.landing-reference .process-track::after {
+  width: calc(var(--beam-progress) * 100%) !important;
+  transition: width 0.12s linear;
+}
+.landing-reference .process-track::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--beam-progress) * 100%);
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 8px #fff,
+    0 0 24px rgba(255, 255, 255, 0.72);
+  opacity: calc(0.18 + var(--beam-progress));
+  z-index: 3;
+}
+.landing-reference .process-step {
+  opacity: 0.38;
+  translate: 0 10px;
+  transition:
+    opacity 0.45s ease,
+    translate 0.45s var(--ease),
+    border-color 0.45s ease;
+}
+.landing-reference .process-step.is-lit {
+  opacity: 1;
+  translate: 0 0;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.landing-reference .facet-panel {
+  transition:
+    border-color 0.7s ease,
+    box-shadow 0.8s ease;
+}
+.landing-reference .facet-panel.is-active-facet {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 34px 110px rgba(0, 0, 0, 0.36);
+}
+.landing-reference .flashcard:first-child {
+  transition: transform 0.7s var(--ease);
+}
+.landing-reference .flashcard:first-child:hover {
+  transform: rotateY(9deg) rotateX(-3deg) translateY(-4px);
+}
+.landing-reference .export-target {
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s var(--ease),
+    box-shadow 0.2s ease;
+}
+.landing-reference .export-target:hover {
+  transform: translateX(-5px);
+  border-color: rgba(168, 224, 99, 0.3);
+  box-shadow: 0 0 30px rgba(168, 224, 99, 0.05);
+}
+.landing-reference .plan-card {
+  transition:
+    translate 0.55s var(--ease),
+    border-color 0.4s ease,
+    box-shadow 0.55s ease;
+}
+.landing-reference.motion-ready .plan-card:hover {
+  translate: 0 -6px;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 26px 76px rgba(0, 0, 0, 0.3),
+    0 0 42px rgba(199, 125, 255, 0.04);
+}
+.landing-reference .motion-cursor {
+  position: fixed;
+  inset: 0 auto auto 0;
+  z-index: 110;
+  width: 8px;
+  height: 8px;
+  translate: calc(var(--cursor-x, -40px) - 4px)
+    calc(var(--cursor-y, -40px) - 4px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.landing-reference .motion-cursor.is-visible {
+  opacity: 1;
+}
+.landing-reference .motion-cursor-core {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 10px #fff,
+    0 0 22px rgba(91, 233, 233, 0.5);
+}
+.landing-reference .motion-cursor-ring {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  left: -10px;
+  top: -10px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 50%;
+  transition:
+    scale 0.25s var(--ease),
+    border-color 0.25s ease;
+}
+.landing-reference .motion-cursor.is-interactive .motion-cursor-ring {
+  scale: 1.45;
+  border-color: rgba(199, 125, 255, 0.62);
+}
+.landing-reference.reduce-motion *,
+.landing-reference.reduce-motion *::before,
+.landing-reference.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
+}
+.landing-reference.reduce-motion .motion-cursor {
+  display: none !important;
+}
+.landing-reference.reduce-motion .artifact-float {
+  opacity: 1 !important;
+  filter: none !important;
+  scale: 1 !important;
+  translate: none !important;
+}
+.landing-reference.reduce-motion .process-step {
+  opacity: 1 !important;
+  translate: none !important;
+}
+@media (pointer: coarse) {
+  .landing-reference .motion-cursor {
+    display: none !important;
+  }
+  .landing-reference .btn:hover,
+  .landing-reference .plan-card:hover,
+  .landing-reference .export-target:hover,
+  .landing-reference .flashcard:first-child:hover {
+    transform: none;
+    translate: none;
+  }
+}
 @media (max-width: 980px) {
   .landing-reference .desktop-only {
     display: none !important;

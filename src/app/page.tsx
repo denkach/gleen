@@ -1,5 +1,6 @@
 import { ReferenceFacets } from '@/components/marketing/reference-facets';
 import { ReferenceHeaderBehavior } from '@/components/marketing/reference-header';
+import { ReferenceMotion } from '@/components/marketing/reference-motion';
 import {
   ReferenceFooter,
   ReferencePricing,
@@ -262,6 +263,7 @@ export default function HomePage() {
         <ReferencePricing />
       </main>
       <ReferenceFooter />
+      <ReferenceMotion />
     </div>
   );
 }
