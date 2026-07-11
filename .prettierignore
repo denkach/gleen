@@ -5,4 +5,5 @@ playwright-report
 test-results
 design/reference-v3/**
 design/screenshots/**
+docs/design-system.md
 package-lock.json

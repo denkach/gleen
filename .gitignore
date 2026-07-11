@@ -28,6 +28,9 @@ coverage/
 playwright-report/
 test-results/
 
+# TypeScript incremental build state
+*.tsbuildinfo
+
 # editors and OS
 .DS_Store
 Thumbs.db
