@@ -31,6 +31,32 @@ for (const viewport of viewports) {
   });
 }
 
+test('aligns the BeamInput with its action on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+
+  const form = page.locator('.beam-form');
+  const input = form.locator('input');
+  const button = form.getByRole('button', { name: 'Transform video' });
+
+  await expect(form).toHaveCSS('padding', '7px');
+  await expect(input).toHaveCSS('height', '48px');
+  await expect(input).toHaveCSS('padding-right', '12px');
+
+  const [formBox, inputBox, buttonBox] = await Promise.all([
+    form.boundingBox(),
+    input.boundingBox(),
+    button.boundingBox(),
+  ]);
+
+  expect(formBox).not.toBeNull();
+  expect(inputBox).not.toBeNull();
+  expect(buttonBox).not.toBeNull();
+  expect(inputBox?.x).toBe(buttonBox?.x);
+  expect(inputBox?.width).toBe(buttonBox?.width);
+  expect(inputBox?.x).toBe((formBox?.x ?? 0) + 8);
+});
+
 test('runs the approved BeamInput and scroll motion', async ({ page }) => {
   await page.goto('/');
   await page.waitForTimeout(1_200);
