@@ -21,4 +21,3 @@ reference files remain unchanged.
 - Verify the hero visually at 390x844.
 - Run formatting, linting, type checking, unit tests, production build, and the
   browser test suites before publishing.
-

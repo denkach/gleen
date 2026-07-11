@@ -37,23 +37,27 @@ test('aligns the BeamInput with its action on mobile', async ({ page }) => {
 
   const form = page.locator('.beam-form');
   const input = form.locator('input');
+  const icon = form.locator('.link-icon');
   const button = form.getByRole('button', { name: 'Transform video' });
 
   await expect(form).toHaveCSS('padding', '7px');
   await expect(input).toHaveCSS('height', '48px');
   await expect(input).toHaveCSS('padding-right', '12px');
+  await expect(icon).toHaveCSS('top', '31px');
 
-  const [formBox, inputBox, buttonBox] = await Promise.all([
+  const [formBox, inputBox, iconBox, buttonBox] = await Promise.all([
     form.boundingBox(),
     input.boundingBox(),
+    icon.boundingBox(),
     button.boundingBox(),
   ]);
 
   expect(formBox).not.toBeNull();
   expect(inputBox).not.toBeNull();
+  expect(iconBox).not.toBeNull();
   expect(buttonBox).not.toBeNull();
-  expect(inputBox?.x).toBe(buttonBox?.x);
-  expect(inputBox?.width).toBe(buttonBox?.width);
+  expect(buttonBox?.x).toBe((inputBox?.x ?? 0) + 6);
+  expect(buttonBox?.width).toBe((inputBox?.width ?? 0) - 12);
   expect(inputBox?.x).toBe((formBox?.x ?? 0) + 8);
 });
 

@@ -20,10 +20,12 @@
 ### Task 1: Correct the mobile BeamInput geometry
 
 **Files:**
+
 - Modify: `tests/e2e/home.spec.ts`
 - Modify: `src/styles/landing-reference.css`
 
 **Interfaces:**
+
 - Consumes: `.beam-form`, `.link-icon`, and `.btn` markup already rendered by `src/app/page.tsx`.
 - Produces: mobile-only computed geometry at viewport widths up to 720px.
 
@@ -97,4 +99,3 @@ git push
 ```
 
 Expected: the current branch and draft pull request are updated.
-
