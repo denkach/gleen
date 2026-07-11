@@ -1,12 +1,7 @@
-'use client';
-
-import { useState } from 'react';
-
-import { BeamInput, type BeamDemoState } from './beam-input';
+import { BeamInput } from './beam-input';
 import { PrismScene } from './prism-scene';
 
 export function Hero() {
-  const [demoState, setDemoState] = useState<BeamDemoState>('idle');
   return (
     <section className="hero" id="product">
       <div className="container hero-grid">
@@ -20,7 +15,7 @@ export function Hero() {
             Turn any YouTube video into a structured summary, smart flashcards,
             precise timestamps, and export-ready knowledge.
           </p>
-          <BeamInput onDemoStateChange={setDemoState} />
+          <BeamInput />
           <div className="hero-caption">
             <span className="ray" />
             <span>
@@ -28,7 +23,7 @@ export function Hero() {
             </span>
           </div>
         </div>
-        <PrismScene demoState={demoState} />
+        <PrismScene />
       </div>
       <div className="scroll-cue">Move through the spectrum</div>
     </section>
