@@ -63,5 +63,8 @@ describe('approved landing hero', () => {
       'facet-panel cyan',
       'facet-panel lime',
     ]);
+    expect(
+      document.querySelectorAll('#facets .facet-copy .btn .icon'),
+    ).toHaveLength(4);
   });
 });

@@ -1,3 +1,6 @@
+import { ReferenceFacets } from '@/components/marketing/reference-facets';
+import { ReferenceHeaderBehavior } from '@/components/marketing/reference-header';
+
 const Arrow = () => (
   <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
     <path d="M5 12h14" />
@@ -59,6 +62,7 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+      <ReferenceHeaderBehavior />
       <main>
         <section className="hero" id="product">
           <div className="container hero-grid">
@@ -255,4 +259,3 @@ export default function HomePage() {
     </div>
   );
 }
-import { ReferenceFacets } from '@/components/marketing/reference-facets';

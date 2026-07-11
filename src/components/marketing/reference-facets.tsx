@@ -5,6 +5,12 @@ const WindowDots = () => (
     <i />
   </div>
 );
+const FacetArrow = () => (
+  <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M5 12h14" />
+    <path d="m13 6 6 6-6 6" />
+  </svg>
+);
 
 export function ReferenceFacets() {
   return (
@@ -35,6 +41,7 @@ export function ReferenceFacets() {
               </p>
               <a className="btn btn-ghost" href="#product">
                 <span>Explore the summary</span>
+                <FacetArrow />
               </a>
             </div>
             <div className="facet-demo">
@@ -83,6 +90,7 @@ export function ReferenceFacets() {
               </p>
               <a className="btn btn-ghost" href="#product">
                 <span>Open study mode</span>
+                <FacetArrow />
               </a>
             </div>
             <div className="facet-demo">
@@ -112,6 +120,7 @@ export function ReferenceFacets() {
               </p>
               <a className="btn btn-ghost" href="#product">
                 <span>See the timeline</span>
+                <FacetArrow />
               </a>
             </div>
             <div className="facet-demo">
@@ -163,6 +172,7 @@ export function ReferenceFacets() {
               </p>
               <a className="btn btn-ghost" href="#product">
                 <span>Preview exports</span>
+                <FacetArrow />
               </a>
             </div>
             <div className="facet-demo">
