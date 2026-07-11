@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   DropdownMenu,
@@ -17,6 +17,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 
 const globalStyles = readFileSync('src/app/globals.css', 'utf8');
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 function TestMenu({ onSelect = vi.fn() }: { onSelect?: () => void }) {
   return (
@@ -36,6 +41,63 @@ function TestMenu({ onSelect = vi.fn() }: { onSelect?: () => void }) {
 }
 
 describe('DropdownMenu', () => {
+  it('warns once when mounted without content items', async () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { rerender } = render(
+      <DropdownMenu defaultOpen>
+        <DropdownMenuTrigger>Open empty menu</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <>
+            {false}
+            {null}
+          </>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+
+    await screen.findByRole('menu');
+    rerender(
+      <DropdownMenu defaultOpen>
+        <DropdownMenuTrigger>Open empty menu</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <>
+            {false}
+            {null}
+          </>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+    expect(consoleWarn).toHaveBeenCalledOnce();
+    expect(consoleWarn).toHaveBeenCalledWith(
+      'Gleen DropdownMenuContent must contain at least one menu part.',
+    );
+  });
+
+  it('does not warn for a menu with content', async () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(<TestMenu />);
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Open actions' }));
+    await screen.findByRole('menuitem', { name: 'Summarize' });
+    expect(consoleWarn).not.toHaveBeenCalled();
+  });
+
+  it('keeps invalid-composition diagnostics silent in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(
+      <>
+        <DropdownMenu defaultOpen>
+          <DropdownMenuContent />
+        </DropdownMenu>
+        <Tabs>
+          <TabsList />
+        </Tabs>
+      </>,
+    );
+    expect(consoleWarn).not.toHaveBeenCalled();
+  });
   it('opens, moves focus with ArrowDown, and activates an item with Enter', async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
@@ -173,6 +235,60 @@ function TestTabs() {
 }
 
 describe('Tabs', () => {
+  it('warns once for each mounted empty Tabs and TabsList composition', () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const emptyTabs = (
+      <>
+        <Tabs>
+          <>
+            {false}
+            {null}
+          </>
+        </Tabs>
+        <Tabs defaultValue="one">
+          <TabsList aria-label="Empty tabs">
+            <>
+              {false}
+              {null}
+            </>
+          </TabsList>
+        </Tabs>
+      </>
+    );
+    const { rerender } = render(emptyTabs);
+    rerender(
+      <>
+        <Tabs>
+          <>
+            {false}
+            {null}
+          </>
+        </Tabs>
+        <Tabs defaultValue="one">
+          <TabsList aria-label="Empty tabs">
+            <>
+              {false}
+              {null}
+            </>
+          </TabsList>
+        </Tabs>
+      </>,
+    );
+
+    expect(consoleWarn).toHaveBeenCalledTimes(2);
+    expect(consoleWarn).toHaveBeenCalledWith(
+      'Gleen Tabs must contain a TabsList and its associated tab content.',
+    );
+    expect(consoleWarn).toHaveBeenCalledWith(
+      'Gleen TabsList must contain at least one TabsTrigger.',
+    );
+  });
+
+  it('does not warn for a valid tabs composition', () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(<TestTabs />);
+    expect(consoleWarn).not.toHaveBeenCalled();
+  });
   it('automatically activates tabs with ArrowRight and ArrowLeft', async () => {
     const user = userEvent.setup();
     render(<TestTabs />);
@@ -235,6 +351,8 @@ describe('Tabs', () => {
 
   it('composes native props, caller classes, and forwarded refs', () => {
     const listRef = createRef<HTMLDivElement>();
+    const triggerRef = createRef<HTMLButtonElement>();
+    const contentRef = createRef<HTMLDivElement>();
     render(
       <Tabs defaultValue="one" data-testid="tabs-root">
         <TabsList
@@ -242,11 +360,11 @@ describe('Tabs', () => {
           className="caller-list"
           aria-label="Composed tabs"
         >
-          <TabsTrigger value="one" className="caller-trigger">
+          <TabsTrigger ref={triggerRef} value="one" className="caller-trigger">
             One
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="one" className="caller-panel">
+        <TabsContent ref={contentRef} value="one" className="caller-panel">
           Panel
         </TabsContent>
       </Tabs>,
@@ -259,6 +377,8 @@ describe('Tabs', () => {
     expect(listRef.current).toHaveClass('ui-tabs-list', 'caller-list');
     expect(screen.getByRole('tab')).toHaveClass('caller-trigger');
     expect(screen.getByRole('tabpanel')).toHaveClass('caller-panel');
+    expect(triggerRef.current).toBe(screen.getByRole('tab'));
+    expect(contentRef.current).toBe(screen.getByRole('tabpanel'));
   });
 });
 
@@ -287,6 +407,18 @@ describe('navigation stylesheet contracts', () => {
   it('keeps checked menu state visible with a rendered indicator', () => {
     expect(globalStyles).toMatch(
       /\.ui-dropdown-menu-item-indicator\s*\{[^}]*display:\s*inline-grid/,
+    );
+  });
+
+  it('expands dialog and dropdown targets only for coarse pointers', () => {
+    expect(globalStyles).toMatch(
+      /@media \(pointer: coarse\)[\s\S]*\.ui-dialog-close[\s\S]*min-width:\s*var\(--control-touch-target-min\)[\s\S]*min-height:\s*var\(--control-touch-target-min\)/,
+    );
+    expect(globalStyles).toMatch(
+      /@media \(pointer: coarse\)[\s\S]*\.ui-dropdown-menu-item[\s\S]*min-width:\s*var\(--control-touch-target-min\)[\s\S]*min-height:\s*var\(--control-touch-target-min\)/,
+    );
+    expect(globalStyles).toMatch(
+      /\.ui-dialog-close\s*\{[^}]*width:\s*var\(--control-height-sm\)[^}]*height:\s*var\(--control-height-sm\)/,
     );
   });
 

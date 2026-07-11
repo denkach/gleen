@@ -89,7 +89,54 @@ test.describe('coarse-pointer preview', () => {
     expect(box).not.toBeNull();
     expect(box!.width).toBeGreaterThanOrEqual(44);
     expect(box!.height).toBeGreaterThanOrEqual(44);
+
+    await page.getByRole('button', { name: 'Open example dialog' }).click();
+    const dialogClose = page.getByRole('button', { name: 'Close dialog' });
+    await expect
+      .poll(async () => (await dialogClose.boundingBox())?.width)
+      .toBeGreaterThanOrEqual(44);
+    await expect
+      .poll(async () => (await dialogClose.boundingBox())?.height)
+      .toBeGreaterThanOrEqual(44);
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('button', { name: 'Open example menu' }).click();
+    for (const item of [
+      page.getByRole('menuitem', { name: 'Available item' }),
+      page.getByRole('menuitemcheckbox', { name: 'Checked option' }),
+    ]) {
+      const itemBox = await item.boundingBox();
+      expect(itemBox).not.toBeNull();
+      expect(itemBox!.width).toBeGreaterThanOrEqual(44);
+      expect(itemBox!.height).toBeGreaterThanOrEqual(44);
+    }
   });
+});
+
+test('keeps approved compact overlay geometry for a fine pointer', async ({
+  page,
+}) => {
+  await page.goto('/ui');
+  expect(await page.evaluate(() => matchMedia('(pointer: fine)').matches)).toBe(
+    true,
+  );
+
+  await page.getByRole('button', { name: 'Open example dialog' }).click();
+  const dialogClose = page.getByRole('button', { name: 'Close dialog' });
+  await expect
+    .poll(async () => (await dialogClose.boundingBox())?.width)
+    .toBe(36);
+  await expect
+    .poll(async () => (await dialogClose.boundingBox())?.height)
+    .toBe(36);
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('button', { name: 'Open example menu' }).click();
+  const itemBox = await page
+    .getByRole('menuitem', { name: 'Available item' })
+    .boundingBox();
+  expect(itemBox).not.toBeNull();
+  expect(itemBox!.height).toBeLessThan(44);
 });
 
 test('contains dialog focus, closes with Escape, and returns focus', async ({

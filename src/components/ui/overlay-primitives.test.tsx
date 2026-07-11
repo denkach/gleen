@@ -4,7 +4,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { Dialog, DialogContent, DialogTrigger } from './dialog';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from './dialog';
 import {
   Tooltip,
   TooltipContent,
@@ -14,9 +21,37 @@ import {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe('Dialog', () => {
+  it('preserves supported native props, asChild composition, and refs on public parts', () => {
+    const triggerRef = createRef<HTMLButtonElement>();
+    const titleRef = createRef<HTMLHeadingElement>();
+    render(
+      <Dialog>
+        <DialogTrigger ref={triggerRef} data-contract="trigger">
+          Open API dialog
+        </DialogTrigger>
+        <DialogContent title="API dialog" description="API description">
+          Content
+        </DialogContent>
+        <DialogTitle ref={titleRef}>Standalone title contract</DialogTitle>
+        <DialogDescription data-contract="description">
+          Standalone description
+        </DialogDescription>
+        <DialogClose asChild>
+          <button type="button">Standalone close</button>
+        </DialogClose>
+      </Dialog>,
+    );
+
+    expect(triggerRef.current).toHaveAttribute('data-contract', 'trigger');
+    expect(titleRef.current).toHaveTextContent('Standalone title contract');
+    expect(
+      screen.getByRole('button', { name: 'Standalone close' }),
+    ).toBeInTheDocument();
+  });
   it('uses resolvable Radix description IDs without console diagnostics', async () => {
     const user = userEvent.setup();
     const consoleError = vi
@@ -171,11 +206,12 @@ describe('Dialog', () => {
     expect(document.querySelector('.ui-dialog-content')).toBeNull();
   });
 
-  it('omits dangling description references and warnings when no description is provided', async () => {
+  it('omits dangling description references and warns when no description is provided', async () => {
     const user = userEvent.setup();
     const consoleError = vi
       .spyOn(console, 'error')
       .mockImplementation(() => {});
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     render(
       <Dialog>
@@ -193,6 +229,43 @@ describe('Dialog', () => {
 
     expect(dialog).not.toHaveAttribute('aria-describedby');
     expect(consoleError).not.toHaveBeenCalled();
+    expect(consoleWarn).toHaveBeenCalledOnce();
+    expect(consoleWarn).toHaveBeenCalledWith(
+      'Gleen DialogContent requires a description or an aria-describedby value that resolves to mounted content.',
+    );
+  });
+
+  it('warns when a caller description reference does not resolve', async () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    render(
+      <Dialog defaultOpen>
+        <DialogContent
+          title="Missing external description"
+          aria-describedby="missing-description"
+        >
+          Content
+        </DialogContent>
+      </Dialog>,
+    );
+
+    await screen.findByRole('dialog', { name: 'Missing external description' });
+    expect(consoleWarn).toHaveBeenCalledOnce();
+    expect(consoleWarn).toHaveBeenCalledWith(
+      'Gleen DialogContent requires a description or an aria-describedby value that resolves to mounted content.',
+    );
+  });
+
+  it('keeps missing-description diagnostics silent in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(
+      <Dialog defaultOpen>
+        <DialogContent title="Production dialog">Content</DialogContent>
+      </Dialog>,
+    );
+    await screen.findByRole('dialog', { name: 'Production dialog' });
+    expect(consoleWarn).not.toHaveBeenCalled();
   });
 
   it('preserves a caller description reference when no wrapper description is provided', async () => {
@@ -238,6 +311,28 @@ describe('Dialog', () => {
 });
 
 describe('Tooltip', () => {
+  it('preserves trigger refs, native props, and asChild composition', () => {
+    const triggerRef = createRef<HTMLButtonElement>();
+    render(
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild ref={triggerRef}>
+            <button type="button" data-contract="tooltip-trigger">
+              Tooltip API
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" align="start">
+            API content
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+
+    expect(triggerRef.current).toHaveAttribute(
+      'data-contract',
+      'tooltip-trigger',
+    );
+  });
   it('appears on keyboard focus without replacing the trigger accessible name', async () => {
     const user = userEvent.setup();
 

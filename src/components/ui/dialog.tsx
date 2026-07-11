@@ -3,81 +3,150 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
   forwardRef,
-  type ComponentPropsWithoutRef,
-  type ComponentRef,
+  useEffect,
+  useRef,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
   type ReactNode,
   type RefObject,
 } from 'react';
 
 import { cx } from '@/lib/cx';
 
-export const Dialog = DialogPrimitive.Root;
-export const DialogTrigger = DialogPrimitive.Trigger;
-export const DialogClose = DialogPrimitive.Close;
-export const DialogTitle = DialogPrimitive.Title;
-export const DialogDescription = DialogPrimitive.Description;
+export interface DialogProps {
+  children?: ReactNode;
+  defaultOpen?: boolean;
+  modal?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
+}
+
+export function Dialog(props: DialogProps) {
+  return <DialogPrimitive.Root {...props} />;
+}
+
+export interface DialogTriggerProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+}
+
+export const DialogTrigger = forwardRef<HTMLButtonElement, DialogTriggerProps>(
+  function DialogTrigger(props, ref) {
+    return <DialogPrimitive.Trigger {...props} ref={ref} />;
+  },
+);
+
+export interface DialogCloseProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+}
+
+export const DialogClose = forwardRef<HTMLButtonElement, DialogCloseProps>(
+  function DialogClose(props, ref) {
+    return <DialogPrimitive.Close {...props} ref={ref} />;
+  },
+);
+
+export interface DialogTitleProps extends HTMLAttributes<HTMLHeadingElement> {
+  asChild?: boolean;
+}
+
+export const DialogTitle = forwardRef<HTMLHeadingElement, DialogTitleProps>(
+  function DialogTitle(props, ref) {
+    return <DialogPrimitive.Title {...props} ref={ref} />;
+  },
+);
+
+export interface DialogDescriptionProps extends HTMLAttributes<HTMLParagraphElement> {
+  asChild?: boolean;
+}
+
+export const DialogDescription = forwardRef<
+  HTMLParagraphElement,
+  DialogDescriptionProps
+>(function DialogDescription(props, ref) {
+  return <DialogPrimitive.Description {...props} ref={ref} />;
+});
 
 export interface DialogContentProps extends Omit<
-  ComponentPropsWithoutRef<typeof DialogPrimitive.Content>,
-  'children' | 'onOpenAutoFocus' | 'title'
+  HTMLAttributes<HTMLDivElement>,
+  'children' | 'title'
 > {
   title: string;
   description?: string;
   children: ReactNode;
   initialFocusRef?: RefObject<HTMLElement | null>;
+  onEscapeKeyDown?: (event: KeyboardEvent) => void;
+  onInteractOutside?: (event: Event) => void;
+  onPointerDownOutside?: (event: Event) => void;
 }
 
-export const DialogContent = forwardRef<
-  ComponentRef<typeof DialogPrimitive.Content>,
-  DialogContentProps
->(function DialogContent(
-  {
-    'aria-describedby': ariaDescribedBy,
-    children,
-    className,
-    description,
-    initialFocusRef,
-    title,
-    ...props
-  },
-  ref,
-) {
-  const descriptionAttributes =
-    description && ariaDescribedBy === undefined
-      ? {}
-      : { 'aria-describedby': ariaDescribedBy };
+const missingDescriptionWarning =
+  'Gleen DialogContent requires a description or an aria-describedby value that resolves to mounted content.';
 
-  return (
-    <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="ui-dialog-overlay" />
-      <DialogPrimitive.Content
-        {...props}
-        {...descriptionAttributes}
-        ref={ref}
-        className={cx('ui-dialog-content', className)}
-        onOpenAutoFocus={(event) => {
-          if (initialFocusRef?.current) {
-            event.preventDefault();
-            initialFocusRef.current.focus();
-          }
-        }}
-      >
-        <DialogPrimitive.Title className="ui-dialog-title">
-          {title}
-        </DialogPrimitive.Title>
-        {description ? (
-          <DialogPrimitive.Description className="ui-dialog-description">
-            {description}
-          </DialogPrimitive.Description>
-        ) : null}
-        <div className="ui-dialog-body">{children}</div>
-        <DialogPrimitive.Close
-          className="ui-dialog-close"
-          aria-label="Close dialog"
+export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
+  function DialogContent(
+    {
+      'aria-describedby': ariaDescribedBy,
+      children,
+      className,
+      description,
+      initialFocusRef,
+      title,
+      ...props
+    },
+    forwardedRef,
+  ) {
+    const didWarn = useRef(false);
+    useEffect(() => {
+      if (
+        process.env.NODE_ENV === 'production' ||
+        description ||
+        didWarn.current
+      )
+        return;
+      const ids = ariaDescribedBy?.trim().split(/\s+/).filter(Boolean) ?? [];
+      if (ids.length === 0 || ids.some((id) => !document.getElementById(id))) {
+        didWarn.current = true;
+        console.warn(missingDescriptionWarning);
+      }
+    }, [ariaDescribedBy, description]);
+
+    const descriptionAttributes =
+      description && ariaDescribedBy === undefined
+        ? {}
+        : { 'aria-describedby': ariaDescribedBy };
+
+    return (
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="ui-dialog-overlay" />
+        <DialogPrimitive.Content
+          {...props}
+          {...descriptionAttributes}
+          ref={forwardedRef}
+          className={cx('ui-dialog-content', className)}
+          onOpenAutoFocus={(event) => {
+            if (initialFocusRef?.current) {
+              event.preventDefault();
+              initialFocusRef.current.focus();
+            }
+          }}
         >
-          <span aria-hidden="true">×</span>
-        </DialogPrimitive.Close>
-      </DialogPrimitive.Content>
-    </DialogPrimitive.Portal>
-  );
-});
+          <DialogPrimitive.Title className="ui-dialog-title">
+            {title}
+          </DialogPrimitive.Title>
+          {description ? (
+            <DialogPrimitive.Description className="ui-dialog-description">
+              {description}
+            </DialogPrimitive.Description>
+          ) : null}
+          <div className="ui-dialog-body">{children}</div>
+          <DialogPrimitive.Close
+            className="ui-dialog-close"
+            aria-label="Close dialog"
+          >
+            <span aria-hidden="true">×</span>
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    );
+  },
+);

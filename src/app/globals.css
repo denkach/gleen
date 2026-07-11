@@ -891,6 +891,12 @@ p {
     min-width: var(--control-touch-target-min);
     min-height: var(--control-touch-target-min);
   }
+
+  .ui-dialog-close,
+  .ui-dropdown-menu-item {
+    min-width: var(--control-touch-target-min);
+    min-height: var(--control-touch-target-min);
+  }
 }
 
 .ui-preview {
