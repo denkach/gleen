@@ -81,6 +81,33 @@ Playwright supplies its own application URL when it starts the test server. In
 CI and other environments without `.env.local`, provide `NEXT_PUBLIC_APP_URL`
 explicitly for commands that validate or use the application environment.
 
+## UI primitives preview
+
+The development-only UI primitives preview is available at
+`http://localhost:3000/ui` while `npm run dev` is running. The preview is a
+review and QA surface, not a production route: production builds return an
+exact 404 for `/ui`.
+
+Run the development preview browser suite with `npm run test:e2e`. Run
+`npm run test:e2e:production` to build and start the production application and
+verify the 404 boundary. Keyboard QA covers visible focus, dialog focus
+containment and return, dropdown navigation, tabs, tooltips, and toast actions.
+The preview also supports `prefers-reduced-motion`; reduced motion shortens or
+removes animation without hiding content or changing interaction behavior.
+
+Radix supplies accessible interaction behavior only. Gleen owns the public
+component APIs, design tokens, markup composition, and all visuals. The five
+direct Radix production dependencies are intentionally limited to:
+
+- `@radix-ui/react-dialog` for modal semantics, focus containment, Escape, and
+  focus return;
+- `@radix-ui/react-dropdown-menu` for menu semantics and keyboard navigation;
+- `@radix-ui/react-tabs` for tab semantics, roving focus, and activation;
+- `@radix-ui/react-toast` for timed notifications, announcements, actions, and
+  dismissal;
+- `@radix-ui/react-tooltip` for accessible pointer and keyboard-triggered
+  descriptions.
+
 ## Static design-reference preview
 
 The approved static reference is separate from the Next.js application. Preview
