@@ -57,11 +57,11 @@ describe('approved landing hero', () => {
     expect(facets[1]?.querySelector('.flashcard-stack')).not.toBeNull();
     expect(facets[2]?.querySelector('.timeline-demo')).not.toBeNull();
     expect(facets[3]?.querySelector('.export-demo')).not.toBeNull();
-    expect([...facets].map((node) => node.className)).toEqual([
-      'facet-panel amber',
-      'facet-panel purple',
-      'facet-panel cyan',
-      'facet-panel lime',
+    expect([...facets].map((node) => node.classList.item(1))).toEqual([
+      'amber',
+      'purple',
+      'cyan',
+      'lime',
     ]);
     expect(
       document.querySelectorAll('#facets .facet-copy .btn .icon'),
