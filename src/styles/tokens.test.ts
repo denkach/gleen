@@ -38,12 +38,17 @@ describe('design token contract', () => {
     expect(css).toContain(declaration);
   });
 
-  it('provides semantic color aliases', () => {
-    expect(css).toContain('--color-background-deep: var(--background-deep);');
-    expect(css).toContain('--color-surface-panel: var(--surface-panel);');
-    expect(css).toContain('--color-text-primary: var(--text-primary);');
-    expect(css).toContain('--color-border-default: var(--border-default);');
-    expect(css).toContain('--color-artifact-summary: var(--artifact-summary);');
+  it.each([
+    '--color-background-deep: var(--background-deep);',
+    '--color-surface-panel: var(--surface-panel);',
+    '--color-text-primary: var(--text-primary);',
+    '--color-border-default: var(--border-default);',
+    '--color-artifact-summary: var(--artifact-summary);',
+    '--color-artifact-flashcards: var(--artifact-flashcards);',
+    '--color-artifact-timestamps: var(--artifact-timestamps);',
+    '--color-artifact-export: var(--artifact-export);',
+  ])('provides semantic color alias %s', (declaration) => {
+    expect(css).toContain(declaration);
   });
 
   it.each([
@@ -104,6 +109,9 @@ describe('design token contract', () => {
     expect(reducedMotionRule?.[1]).not.toContain('display: none');
     expect(reducedMotionRule?.[1]).toContain(
       '.ui-dialog-content {\n    animation: ui-overlay-in',
+    );
+    expect(css).toMatch(
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?animation-duration:\s*0\.01ms !important;[\s\S]*?transition-duration:\s*0\.01ms !important;[\s\S]*?\.ui-skeleton::after,[\s\S]*?animation:\s*none;[\s\S]*?\.ui-toast,[\s\S]*?transition:\s*none;/,
     );
   });
 

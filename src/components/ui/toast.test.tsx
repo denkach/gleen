@@ -183,6 +183,28 @@ describe('ToastProvider', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('uses a default duration of 5000 ms', () => {
+    vi.useFakeTimers();
+
+    function ImmediateToast() {
+      const { toast } = useToast();
+      useEffect(() => {
+        toast({ title: 'Default toast' });
+      }, [toast]);
+      return null;
+    }
+
+    render(
+      <ToastProvider>
+        <ImmediateToast />
+      </ToastProvider>,
+    );
+    act(() => vi.advanceTimersByTime(4999));
+    expect(screen.getByText('Default toast')).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByText('Default toast')).not.toBeInTheDocument();
+  });
+
   it('honors a custom duration', () => {
     vi.useFakeTimers();
 

@@ -23,6 +23,7 @@ export default defineConfig({
       NEXT_PUBLIC_APP_URL: baseURL,
     },
     reuseExistingServer: false,
+    timeout: 180_000,
     url: baseURL,
   },
 });

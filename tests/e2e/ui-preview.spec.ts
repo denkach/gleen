@@ -1,4 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+
+import { expect, test } from './fixtures';
 
 async function expectNoHorizontalOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({
@@ -9,15 +11,7 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
 }
 
-test('serves the development preview with noindex and no browser errors', async ({
-  page,
-}) => {
-  const errors: string[] = [];
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
-  });
-  page.on('pageerror', (error) => errors.push(error.message));
-
+test('serves the development preview with noindex', async ({ page }) => {
   const response = await page.goto('/ui');
 
   expect(response?.status()).toBe(200);
@@ -28,7 +22,6 @@ test('serves the development preview with noindex and no browser errors', async 
   await expect(
     page.getByRole('heading', { level: 1, name: 'Gleen UI primitives' }),
   ).toBeVisible();
-  expect(errors).toEqual([]);
 });
 
 for (const viewport of [
@@ -61,12 +54,17 @@ test('shows visible focus for keyboard navigation', async ({ page }) => {
   const outline = await focused.evaluate((element) => {
     const style = getComputedStyle(element);
     return {
+      backgroundColor: style.backgroundColor,
+      outlineColor: style.outlineColor,
       outlineStyle: style.outlineStyle,
       outlineWidth: style.outlineWidth,
     };
   });
   expect(outline.outlineStyle).not.toBe('none');
   expect(Number.parseFloat(outline.outlineWidth)).toBeGreaterThan(0);
+  expect(outline.outlineColor).not.toBe('transparent');
+  expect(outline.outlineColor).not.toBe('rgba(0, 0, 0, 0)');
+  expect(outline.outlineColor).not.toBe(outline.backgroundColor);
 });
 
 test('contains dialog focus, closes with Escape, and returns focus', async ({
@@ -79,6 +77,11 @@ test('contains dialog focus, closes with Escape, and returns focus', async ({
 
   const dialog = page.getByRole('dialog', { name: 'Example dialog' });
   await expect(dialog).toBeVisible();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.locator(':focus')).toHaveCount(1);
+  await expect(
+    dialog.getByRole('button', { name: 'Close dialog' }),
+  ).toBeFocused();
   for (let index = 0; index < 4; index += 1) {
     await page.keyboard.press('Tab');
     await expect(dialog.locator(':focus')).toHaveCount(1);
