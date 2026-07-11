@@ -48,6 +48,7 @@
 ### Task 1: Package and compiler foundation
 
 **Files:**
+
 - Create: `package.json`
 - Create: `package-lock.json`
 - Create: `tsconfig.json`
@@ -60,6 +61,7 @@
 - Create: `vitest.setup.ts`
 
 **Interfaces:**
+
 - Consumes: Node.js `>=22.12.0` and npm.
 - Produces: npm scripts `dev`, `build`, `start`, `format`, `format:check`, `lint`, `typecheck`, `test`, `test:watch`, and `test:e2e`.
 
@@ -97,12 +99,14 @@ git commit -m "chore: initialize DEN-11 frontend tooling"
 ### Task 2: Environment validation
 
 **Files:**
+
 - Create: `src/env.test.ts`
 - Create: `src/env.ts`
 - Create: `next.config.ts`
 - Modify: `.env.example`
 
 **Interfaces:**
+
 - Consumes: `NodeJS.ProcessEnv`.
 - Produces: `validatePublicEnv(input: NodeJS.ProcessEnv): Readonly<{ NEXT_PUBLIC_APP_URL: string }>`.
 
@@ -146,6 +150,7 @@ git commit -m "feat: validate DEN-11 public environment"
 ### Task 3: Neutral App Router route
 
 **Files:**
+
 - Create: `src/app/page.test.tsx`
 - Create: `src/app/page.tsx`
 - Create: `src/app/layout.tsx`
@@ -153,6 +158,7 @@ git commit -m "feat: validate DEN-11 public environment"
 - Delete: `src/.gitkeep`
 
 **Interfaces:**
+
 - Consumes: Next.js App Router and global CSS.
 - Produces: default `HomePage()` and `RootLayout({ children }: Readonly<{ children: React.ReactNode }>)`.
 
@@ -196,10 +202,12 @@ git commit -m "feat: add DEN-11 application shell"
 ### Task 4: Playwright browser smoke test
 
 **Files:**
+
 - Create: `playwright.config.ts`
 - Create: `tests/e2e/home.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `npm run dev`, `NEXT_PUBLIC_APP_URL`, and the root route.
 - Produces: Chromium smoke-test project with base URL `http://127.0.0.1:3000`.
 
@@ -233,9 +241,11 @@ git commit -m "test: add DEN-11 browser smoke coverage"
 ### Task 5: Continuous integration
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
+
 - Consumes: committed npm scripts and lockfile.
 - Produces: CI checks on pushes to `main` and pull requests.
 
@@ -265,9 +275,11 @@ git commit -m "ci: verify DEN-11 frontend foundation"
 ### Task 6: Developer documentation
 
 **Files:**
+
 - Modify: `README.md`
 
 **Interfaces:**
+
 - Consumes: npm scripts and environment contract.
 - Produces: reproducible setup and verification instructions.
 
@@ -291,9 +303,11 @@ git commit -m "docs: document DEN-11 frontend workflow"
 ### Task 7: Full verification and browser QA
 
 **Files:**
+
 - Verify only; modify files only when a failing check identifies an in-scope defect.
 
 **Interfaces:**
+
 - Consumes: all DEN-11 deliverables.
 - Produces: fresh evidence for every acceptance criterion.
 

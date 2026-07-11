@@ -11,24 +11,24 @@ Approximately 90% of the screen should remain dark and restrained. Spectral colo
 ## Color tokens
 
 ```css
---background-deep: #0A0A0F;
+--background-deep: #0a0a0f;
 --background-elevated: #111018;
---surface-panel: #16161F;
---surface-raised: #1B1A25;
---surface-hover: #201F2B;
+--surface-panel: #16161f;
+--surface-raised: #1b1a25;
+--surface-hover: #201f2b;
 
---text-primary: #F4F2FF;
---text-secondary: #9A98AD;
+--text-primary: #f4f2ff;
+--text-secondary: #9a98ad;
 --text-muted: #696779;
 
---artifact-summary: #FFB454;
---artifact-flashcards: #C77DFF;
---artifact-timestamps: #5BE9E9;
---artifact-export: #A8E063;
+--artifact-summary: #ffb454;
+--artifact-flashcards: #c77dff;
+--artifact-timestamps: #5be9e9;
+--artifact-export: #a8e063;
 
---border-default: rgba(255,255,255,0.06);
---border-hover: rgba(255,255,255,0.12);
---border-strong: rgba(255,255,255,0.18);
+--border-default: rgba(255, 255, 255, 0.06);
+--border-hover: rgba(255, 255, 255, 0.12);
+--border-strong: rgba(255, 255, 255, 0.18);
 ```
 
 Use artifact colors as edge light, focus, active state, fine lines, progress traces, and restrained tints. Do not use them as large saturated surfaces.
