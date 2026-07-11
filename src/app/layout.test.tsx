@@ -4,6 +4,8 @@ describe('root metadata', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://gleen.example');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://gleen-test.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test');
   });
 
   it('describes and canonicalizes the approved landing page', async () => {
