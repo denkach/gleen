@@ -10,7 +10,11 @@ Gleen is an AI platform that transforms a YouTube video into reusable knowledge 
 
 ## Repository status
 
-This archive is a project foundation and context package. It intentionally contains no application implementation yet.
+This repository contains the DEN-11 frontend foundation: a strict TypeScript,
+Next.js App Router application with Tailwind CSS, environment validation, unit
+tests, Playwright smoke tests, and CI verification. The root route is an
+intentionally neutral foundation; product screens will be implemented in later
+issues from the approved visual references.
 
 ## Start here
 
@@ -18,17 +22,70 @@ This archive is a project foundation and context package. It intentionally conta
 2. Read `docs/product.md`.
 3. Read `docs/design-system.md`.
 4. Review the approved visual prototype in `design/reference-v3/index.html`.
-5. Create a private GitHub repository.
-6. Initialize Git and make the baseline commit.
-7. Launch Codex from the repository root.
-8. Start with `linear/templates/GLE-001-repository-foundation.md`.
+5. Read the current Linear issue before making changes.
 
-## Local design preview
+The files in `design/reference-v3/` and `design/screenshots/` are approved design
+assets. They are not implementation scratch files: do not edit, reinterpret, or
+redesign them without explicit instruction. Implement approved screens by
+matching the references.
 
-From the repository root:
+## Application setup
+
+### Prerequisites
+
+- Node.js 22.12.0 or newer;
+- npm (included with Node.js);
+- Python 3 only if you want to preview the static design reference separately.
+
+From the repository root, install dependencies and create the local environment
+file:
 
 ```bash
-python -m http.server 8080
+npm install
+cp .env.example .env.local
+```
+
+`NEXT_PUBLIC_APP_URL` is the only required application variable. The example
+sets it to `http://localhost:3000`. Keep real credentials out of committed
+environment files.
+
+Start the application:
+
+```bash
+npm run dev
+```
+
+Then open `http://localhost:3000`.
+
+## Verification
+
+Install Playwright's Chromium browser once before running browser tests:
+
+```bash
+npx playwright install chromium
+```
+
+Run the repository checks with:
+
+```bash
+npm run format:check
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+npm run test:e2e
+```
+
+These commands read `.env.local`. In CI or another environment without that
+file, provide `NEXT_PUBLIC_APP_URL` explicitly.
+
+## Static design-reference preview
+
+The approved static reference is separate from the Next.js application. Preview
+it from the repository root with:
+
+```bash
+python3 -m http.server 8080
 ```
 
 Then open:
