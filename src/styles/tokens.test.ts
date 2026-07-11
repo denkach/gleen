@@ -46,6 +46,19 @@ describe('design token contract', () => {
     expect(css).toContain('--color-artifact-summary: var(--artifact-summary);');
   });
 
+  it.each([
+    '--color-overlay: var(--overlay);',
+    '--layer-overlay: var(--z-overlay);',
+    '--layer-dialog: var(--z-dialog);',
+    '--layer-tooltip: var(--z-tooltip);',
+    '--dialog-max-width: var(--size-dialog-max);',
+    '--tooltip-text-size: var(--font-size-tooltip);',
+    '--tooltip-line-height: var(--line-height-tooltip);',
+    '--dialog-entrance-scale: var(--scale-dialog-entrance);',
+  ])('provides overlay semantic alias %s', (declaration) => {
+    expect(css).toContain(declaration);
+  });
+
   it('reduces motion without hiding content', () => {
     const reducedMotionRule = css.match(
       /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*{([\s\S]*?)\n}/,
@@ -53,5 +66,8 @@ describe('design token contract', () => {
 
     expect(reducedMotionRule).not.toBeNull();
     expect(reducedMotionRule?.[1]).not.toContain('display: none');
+    expect(reducedMotionRule?.[1]).toContain(
+      '.ui-dialog-content {\n    animation: ui-overlay-in',
+    );
   });
 });

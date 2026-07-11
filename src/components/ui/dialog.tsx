@@ -7,6 +7,7 @@ import {
   type ComponentRef,
   type ReactNode,
   type RefObject,
+  useId,
 } from 'react';
 
 import { cx } from '@/lib/cx';
@@ -31,9 +32,22 @@ export const DialogContent = forwardRef<
   ComponentRef<typeof DialogPrimitive.Content>,
   DialogContentProps
 >(function DialogContent(
-  { children, className, description, initialFocusRef, title, ...props },
+  {
+    'aria-describedby': ariaDescribedBy,
+    children,
+    className,
+    description,
+    initialFocusRef,
+    title,
+    ...props
+  },
   ref,
 ) {
+  const descriptionId = useId();
+  const composedDescription = description
+    ? [descriptionId, ariaDescribedBy].filter(Boolean).join(' ')
+    : ariaDescribedBy;
+
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="ui-dialog-overlay" />
@@ -41,6 +55,7 @@ export const DialogContent = forwardRef<
         {...props}
         ref={ref}
         className={cx('ui-dialog-content', className)}
+        aria-describedby={composedDescription}
         onOpenAutoFocus={(event) => {
           if (initialFocusRef?.current) {
             event.preventDefault();
@@ -52,7 +67,10 @@ export const DialogContent = forwardRef<
           {title}
         </DialogPrimitive.Title>
         {description ? (
-          <DialogPrimitive.Description className="ui-dialog-description">
+          <DialogPrimitive.Description
+            id={descriptionId}
+            className="ui-dialog-description"
+          >
             {description}
           </DialogPrimitive.Description>
         ) : null}

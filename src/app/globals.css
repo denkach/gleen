@@ -60,6 +60,15 @@
   --gradient-angle-horizontal: 90deg;
   --transform-offscreen-start: -100%;
   --transform-offscreen-end: 100%;
+  --overlay: rgba(10, 10, 15, 0.78);
+  --z-overlay: 40;
+  --z-dialog: 50;
+  --z-tooltip: 60;
+  --size-dialog-max: 32rem;
+  --size-tooltip-max: 18rem;
+  --font-size-tooltip: 0.875rem;
+  --line-height-tooltip: 1.5;
+  --scale-dialog-entrance: 0.98;
 
   --color-focus: var(--artifact-timestamps);
   --color-transparent: transparent;
@@ -79,13 +88,16 @@
   --control-border-width: 1px;
   --focus-ring-width: 2px;
   --skeleton-line-height: 0.75rem;
-  --overlay-background: rgba(10, 10, 15, 0.78);
-  --overlay-content-width: 32rem;
-  --overlay-content-offset: 50%;
-  --overlay-closed-scale: 0.98;
   --overlay-close-font-size: 1.25rem;
-  --tooltip-max-width: 18rem;
-  --tooltip-font-size: 0.875rem;
+  --color-overlay: var(--overlay);
+  --layer-overlay: var(--z-overlay);
+  --layer-dialog: var(--z-dialog);
+  --layer-tooltip: var(--z-tooltip);
+  --dialog-max-width: var(--size-dialog-max);
+  --tooltip-max-width: var(--size-tooltip-max);
+  --tooltip-text-size: var(--font-size-tooltip);
+  --tooltip-line-height: var(--line-height-tooltip);
+  --dialog-entrance-scale: var(--scale-dialog-entrance);
   --control-font-weight: var(--font-weight-semibold);
   --control-disabled-opacity: var(--opacity-disabled);
   --control-round-radius: var(--radius-round);
@@ -400,18 +412,20 @@ p {
 
 .ui-dialog-overlay {
   position: fixed;
-  z-index: 40;
+  z-index: var(--layer-overlay);
   inset: 0;
-  background: var(--overlay-background);
+  background: var(--color-overlay);
   animation: ui-overlay-in var(--motion-interface) var(--ease-prism);
 }
 
 .ui-dialog-content {
   position: fixed;
-  z-index: 50;
-  top: var(--overlay-content-offset);
-  left: var(--overlay-content-offset);
-  width: min(var(--overlay-content-width), calc(100vw - (var(--space-6) * 2)));
+  z-index: var(--layer-dialog);
+  /* Percentages are structural: they center the fixed dialog in the viewport. */
+  top: 50%;
+  left: 50%;
+  width: calc(100vw - (var(--space-6) * 2));
+  max-width: var(--dialog-max-width);
   max-height: calc(100vh - (var(--space-6) * 2));
   padding: var(--space-6);
   overflow: auto;
@@ -468,7 +482,7 @@ p {
 }
 
 .ui-tooltip-content {
-  z-index: 60;
+  z-index: var(--layer-tooltip);
   max-width: var(--tooltip-max-width);
   padding: var(--space-2) var(--space-3);
   border: var(--control-border-width) solid var(--color-border-default);
@@ -476,8 +490,8 @@ p {
   box-shadow: var(--shadow-panel);
   background: var(--color-surface-raised);
   color: var(--color-text-primary);
-  font-size: var(--tooltip-font-size);
-  line-height: 1.5;
+  font-size: var(--tooltip-text-size);
+  line-height: var(--tooltip-line-height);
   animation: ui-overlay-in var(--motion-micro) var(--ease-prism);
 }
 
@@ -491,7 +505,7 @@ p {
   from {
     opacity: 0;
     transform: translate(-50%, calc(-50% + var(--space-2)))
-      scale(var(--overlay-closed-scale));
+      scale(var(--dialog-entrance-scale));
   }
 }
 
@@ -520,6 +534,7 @@ p {
   }
 
   .ui-dialog-content {
+    animation: ui-overlay-in var(--motion-interface) var(--ease-prism);
     transform: translate(-50%, -50%);
   }
 
