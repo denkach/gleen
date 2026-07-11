@@ -17,6 +17,43 @@ afterEach(() => {
 });
 
 describe('Dialog', () => {
+  it('uses resolvable Radix description IDs without console diagnostics', async () => {
+    const user = userEvent.setup();
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    render(
+      <Dialog>
+        <DialogTrigger>Open described dialog</DialogTrigger>
+        <DialogContent
+          title="Described dialog"
+          description="Wrapper description"
+        >
+          Content
+        </DialogContent>
+      </Dialog>,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Open described dialog' }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Described dialog',
+    });
+    const descriptionIds =
+      dialog.getAttribute('aria-describedby')?.split(' ') ?? [];
+
+    expect(descriptionIds).toHaveLength(1);
+    expect(descriptionIds[0]).toMatch(/^radix-/);
+    expect(descriptionIds.every((id) => document.getElementById(id))).toBe(
+      true,
+    );
+    expect(consoleWarn).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
   it('focuses its requested control and renders accessible copy when opened', async () => {
     const user = userEvent.setup();
     const initialFocusRef = createRef<HTMLButtonElement>();
@@ -160,6 +197,10 @@ describe('Dialog', () => {
 
   it('preserves a caller description reference when no wrapper description is provided', async () => {
     const user = userEvent.setup();
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     render(
       <>
@@ -180,9 +221,19 @@ describe('Dialog', () => {
       screen.getByRole('button', { name: 'Open external description' }),
     );
 
-    expect(
-      await screen.findByRole('dialog', { name: 'External description' }),
-    ).toHaveAccessibleDescription('External context');
+    const dialog = await screen.findByRole('dialog', {
+      name: 'External description',
+    });
+    const descriptionIds =
+      dialog.getAttribute('aria-describedby')?.split(' ') ?? [];
+
+    expect(dialog).toHaveAccessibleDescription('External context');
+    expect(descriptionIds).toEqual(['external-dialog-description']);
+    expect(descriptionIds.every((id) => document.getElementById(id))).toBe(
+      true,
+    );
+    expect(consoleWarn).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
   });
 });
 
