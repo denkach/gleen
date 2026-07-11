@@ -250,7 +250,9 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+        <ReferenceFacets />
       </main>
     </div>
   );
 }
+import { ReferenceFacets } from '@/components/marketing/reference-facets';

@@ -48,4 +48,20 @@ describe('approved landing hero', () => {
       'Use the result',
     ]);
   });
+
+  it('preserves four distinct approved facet demos', () => {
+    render(<HomePage />);
+    const facets = document.querySelectorAll('#facets .facet-panel');
+    expect(facets).toHaveLength(4);
+    expect(facets[0]?.querySelector('.summary-demo')).not.toBeNull();
+    expect(facets[1]?.querySelector('.flashcard-stack')).not.toBeNull();
+    expect(facets[2]?.querySelector('.timeline-demo')).not.toBeNull();
+    expect(facets[3]?.querySelector('.export-demo')).not.toBeNull();
+    expect([...facets].map((node) => node.className)).toEqual([
+      'facet-panel amber',
+      'facet-panel purple',
+      'facet-panel cyan',
+      'facet-panel lime',
+    ]);
+  });
 });
