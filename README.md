@@ -108,6 +108,16 @@ direct Radix production dependencies are intentionally limited to:
 - `@radix-ui/react-tooltip` for accessible pointer and keyboard-triggered
   descriptions.
 
+### Landing-page dependencies
+
+- `gsap@3.15.0` is restricted to the marketing motion controller for
+  deterministic ScrollTrigger scenes.
+- `@fontsource-variable/inter@5.2.8`,
+  `@fontsource-variable/space-grotesk@5.2.10`, and
+  `@fontsource-variable/jetbrains-mono@5.2.8` provide self-hosted assets with
+  no runtime Google Fonts request.
+- Application UI and server processing must not import GSAP.
+
 ## Static design-reference preview
 
 The approved static reference is separate from the Next.js application. Preview

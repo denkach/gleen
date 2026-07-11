@@ -4,13 +4,13 @@ import { describe, expect, it } from 'vitest';
 import HomePage from './page';
 
 describe('HomePage', () => {
-  it('shows the frontend foundation heading', () => {
+  it('shows the approved landing heading', () => {
     render(<HomePage />);
 
     expect(
       screen.getByRole('heading', {
         level: 1,
-        name: 'Gleen frontend foundation',
+        name: 'Watch less.Understand more.',
       }),
     ).toBeVisible();
   });
