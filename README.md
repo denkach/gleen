@@ -76,8 +76,10 @@ npm run build
 npm run test:e2e
 ```
 
-These commands read `.env.local`. In CI or another environment without that
-file, provide `NEXT_PUBLIC_APP_URL` explicitly.
+The Next.js development and production build commands load `.env.local`.
+Playwright supplies its own application URL when it starts the test server. In
+CI and other environments without `.env.local`, provide `NEXT_PUBLIC_APP_URL`
+explicitly for commands that validate or use the application environment.
 
 ## Static design-reference preview
 
