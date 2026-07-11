@@ -25,4 +25,27 @@ describe('approved landing hero', () => {
     expect(document.querySelectorAll('.spectrum > .ray')).toHaveLength(4);
     expect(document.querySelectorAll('.artifact-float')).toHaveLength(4);
   });
+
+  it('preserves the approved Prism Workflow structure', () => {
+    render(<HomePage />);
+    const section = document.querySelector('#how');
+    expect(section).not.toBeNull();
+    expect(
+      section?.querySelector('.process-scene > .process-track'),
+    ).not.toBeNull();
+    expect(
+      section?.querySelector('.process-scene > .process-prism'),
+    ).not.toBeNull();
+    expect(section?.querySelectorAll('.process-step')).toHaveLength(4);
+    expect(
+      [...section!.querySelectorAll('.process-step h3')].map(
+        (node) => node.textContent,
+      ),
+    ).toEqual([
+      'Paste a link',
+      'Read the video',
+      'Separate ideas',
+      'Use the result',
+    ]);
+  });
 });

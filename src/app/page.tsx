@@ -195,6 +195,61 @@ export default function HomePage() {
           </div>
           <div className="scroll-cue">Move through the spectrum</div>
         </section>
+        <section className="section" id="how">
+          <div className="container">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">The prism workflow</span>
+                <h2 className="title-lg">
+                  One link enters.
+                  <br />
+                  Knowledge comes out.
+                </h2>
+              </div>
+              <p className="body-lg">
+                Gleen follows the signal from source to structure. Each stage
+                stays visible, precise, and recoverable—without hiding behind a
+                fake progress bar.
+              </p>
+            </div>
+            <div className="process-scene">
+              <div className="process-track" />
+              <div className="process-prism" />
+              <div className="process-steps">
+                <article className="process-step active">
+                  <span className="num">01 / INPUT</span>
+                  <h3>Paste a link</h3>
+                  <p>
+                    Gleen validates the source and checks your saved analyses
+                    first.
+                  </p>
+                </article>
+                <article className="process-step active">
+                  <span className="num">02 / SIGNAL</span>
+                  <h3>Read the video</h3>
+                  <p>
+                    Transcript, metadata, chapters, and source language are
+                    mapped.
+                  </p>
+                </article>
+                <article className="process-step active">
+                  <span className="num">03 / REFRACTION</span>
+                  <h3>Separate ideas</h3>
+                  <p>
+                    Key arguments become structured, source-linked knowledge.
+                  </p>
+                </article>
+                <article className="process-step">
+                  <span className="num">04 / OUTPUT</span>
+                  <h3>Use the result</h3>
+                  <p>
+                    Study, revisit, export, and continue without paying twice.
+                  </p>
+                </article>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
