@@ -123,6 +123,13 @@ describe('design token contract', () => {
     );
   });
 
+  it('raises compact button targets to a tokenized minimum for coarse pointers', () => {
+    expect(css).toContain('--control-touch-target-min: 2.75rem;');
+    expect(css).toMatch(
+      /@media\s*\(pointer:\s*coarse\)\s*{[\s\S]*?\.ui-button\[data-size='sm'\]\s*{[^}]*min-width:\s*var\(--control-touch-target-min\);[^}]*min-height:\s*var\(--control-touch-target-min\);/,
+    );
+  });
+
   it('accounts for every safe-area inset in the toast viewport geometry', () => {
     expect(css).toMatch(
       /\.ui-toast-viewport\s*{[^}]*right:\s*calc\(var\(--toast-viewport-gap\) \+ env\(safe-area-inset-right\)\);/,

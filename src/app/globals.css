@@ -111,6 +111,7 @@
   --color-primary-edge-end: var(--artifact-timestamps);
   --control-height-sm: 2.25rem;
   --control-height-default: 2.75rem;
+  --control-touch-target-min: 2.75rem;
   --control-border-width: 1px;
   --focus-ring-width: 2px;
   --skeleton-line-height: 0.75rem;
@@ -882,6 +883,13 @@ p {
     animation: none;
     transform: none;
     transition: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .ui-button[data-size='sm'] {
+    min-width: var(--control-touch-target-min);
+    min-height: var(--control-touch-target-min);
   }
 }
 

@@ -53,18 +53,43 @@ test('shows visible focus for keyboard navigation', async ({ page }) => {
   await expect(focused).toBeVisible();
   const outline = await focused.evaluate((element) => {
     const style = getComputedStyle(element);
+    const surrounding = getComputedStyle(
+      element.closest('section') ?? element.parentElement ?? document.body,
+    );
     return {
       backgroundColor: style.backgroundColor,
       outlineColor: style.outlineColor,
       outlineStyle: style.outlineStyle,
       outlineWidth: style.outlineWidth,
+      pageBackgroundColor: getComputedStyle(document.body).backgroundColor,
+      surroundingBackgroundColor: surrounding.backgroundColor,
     };
   });
-  expect(outline.outlineStyle).not.toBe('none');
-  expect(Number.parseFloat(outline.outlineWidth)).toBeGreaterThan(0);
-  expect(outline.outlineColor).not.toBe('transparent');
-  expect(outline.outlineColor).not.toBe('rgba(0, 0, 0, 0)');
+  expect(outline.outlineStyle).toBe('solid');
+  expect(outline.outlineWidth).toBe('2px');
+  expect(outline.outlineColor).toBe('rgb(91, 233, 233)');
   expect(outline.outlineColor).not.toBe(outline.backgroundColor);
+  expect(outline.outlineColor).not.toBe(outline.pageBackgroundColor);
+  expect(outline.outlineColor).not.toBe(outline.surroundingBackgroundColor);
+});
+
+test.describe('coarse-pointer preview', () => {
+  test.use({ hasTouch: true, viewport: { width: 390, height: 844 } });
+
+  test('keeps the compact button at least 44px in both dimensions', async ({
+    page,
+  }) => {
+    await page.goto('/ui');
+    expect(
+      await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
+    ).toBe(true);
+
+    const compactButton = page.getByRole('button', { name: 'Small' });
+    const box = await compactButton.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThanOrEqual(44);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+  });
 });
 
 test('contains dialog focus, closes with Escape, and returns focus', async ({
