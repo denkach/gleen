@@ -6,7 +6,7 @@
 
 **Architecture:** A single npm-managed Next.js App Router application lives in the repository root with application code under `src/app`. Configuration is explicit and minimal; environment validation is isolated in `src/env.ts`, and unit and browser smoke tests verify the neutral root route.
 
-**Tech Stack:** Node.js 22, npm, Next.js 16.2.10, React 19.2.7, TypeScript 7.0.2 in strict mode, Tailwind CSS 4.3.2, ESLint 10.7.0, Prettier 3.9.5, Vitest 4.1.10, Testing Library, Playwright 1.61.1, GitHub Actions.
+**Tech Stack:** Node.js 22.12.0 or newer, npm, Next.js 16.2.10, React 19.2.7, TypeScript 5.9.3 in strict mode, Tailwind CSS 4.3.2, ESLint 10.7.0, Prettier 3.9.5, Vitest 4.1.10, Testing Library, Playwright 1.61.1, GitHub Actions.
 
 ## Global Constraints
 
@@ -60,12 +60,12 @@
 - Create: `vitest.setup.ts`
 
 **Interfaces:**
-- Consumes: Node.js `>=20.9.0` and npm.
+- Consumes: Node.js `>=22.12.0` and npm.
 - Produces: npm scripts `dev`, `build`, `start`, `format`, `format:check`, `lint`, `typecheck`, `test`, `test:watch`, and `test:e2e`.
 
 - [ ] **Step 1: Create the package manifest with pinned direct dependencies**
 
-Use `package.json` with `private: true` and `engines.node: ">=20.9.0"`. Pin runtime dependencies to `next@16.2.10`, `react@19.2.7`, and `react-dom@19.2.7`. Pin development dependencies to `typescript@7.0.2`, `@types/node@26.1.1`, `@types/react@19.2.17`, `@types/react-dom@19.2.3`, `tailwindcss@4.3.2`, `@tailwindcss/postcss@4.3.2`, `eslint@10.7.0`, `eslint-config-next@16.2.10`, `prettier@3.9.5`, `vitest@4.1.10`, `jsdom@29.1.1`, `@testing-library/react@16.3.2`, `@testing-library/jest-dom@6.9.1`, and `@playwright/test@1.61.1`. Define the scripts listed in the Interfaces block.
+Use `package.json` with `private: true` and `engines.node: ">=22.12.0"`. Pin runtime dependencies to `next@16.2.10`, `react@19.2.7`, and `react-dom@19.2.7`. Pin development dependencies to `typescript@5.9.3`, `@types/node@26.1.1`, `@types/react@19.2.17`, `@types/react-dom@19.2.3`, `tailwindcss@4.3.2`, `@tailwindcss/postcss@4.3.2`, `eslint@10.7.0`, `eslint-config-next@16.2.10`, `prettier@3.9.5`, `vitest@4.1.10`, `jsdom@29.1.1`, `@testing-library/react@16.3.2`, `@testing-library/jest-dom@6.9.1`, and `@playwright/test@1.61.1`. Define the scripts listed in the Interfaces block.
 
 - [ ] **Step 2: Install the declared dependencies**
 
