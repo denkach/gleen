@@ -8,6 +8,7 @@ import '@fontsource-variable/space-grotesk';
 import { validatePublicEnv } from '@/env';
 
 import './globals.css';
+import '../styles/landing-reference.css';
 
 const { NEXT_PUBLIC_APP_URL } = validatePublicEnv(process.env);
 const landingDescription =
