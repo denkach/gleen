@@ -1,36 +1,130 @@
 @import 'tailwindcss';
 
 :root {
-  --background: #0a0a0f;
-  --foreground: #f4f2ff;
+  color-scheme: dark;
+
+  --background-deep: #0a0a0f;
+  --background-elevated: #111018;
+  --surface-panel: #16161f;
+  --surface-raised: #1b1a25;
+  --surface-hover: #201f2b;
+
+  --text-primary: #f4f2ff;
+  --text-secondary: #9a98ad;
+  --text-muted: #696779;
+
+  --artifact-summary: #ffb454;
+  --artifact-flashcards: #c77dff;
+  --artifact-timestamps: #5be9e9;
+  --artifact-export: #a8e063;
+
+  --border-default: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  --font-display: 'Clash Display', 'Söhne', 'Helvetica Neue', sans-serif;
+  --font-body: Geist, Inter, 'Helvetica Neue', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-24: 6rem;
+
+  --radius-control: 8px;
+  --radius-panel: 14px;
+  --radius-feature: 22px;
+
+  --shadow-panel: 0 16px 48px rgba(0, 0, 0, 0.28);
+  --glow-summary: 0 0 24px rgba(255, 180, 84, 0.12);
+  --glow-flashcards: 0 0 24px rgba(199, 125, 255, 0.12);
+  --glow-timestamps: 0 0 24px rgba(91, 233, 233, 0.12);
+  --glow-export: 0 0 24px rgba(168, 224, 99, 0.12);
+
+  --motion-micro: 160ms;
+  --motion-interface: 280ms;
+  --motion-narrative: 800ms;
+  --ease-prism: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background-deep: var(--background-deep);
+  --color-background-elevated: var(--background-elevated);
+  --color-surface-panel: var(--surface-panel);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border-default: var(--border-default);
+  --color-border-hover: var(--border-hover);
+  --color-border-strong: var(--border-strong);
+  --color-artifact-summary: var(--artifact-summary);
+  --color-artifact-flashcards: var(--artifact-flashcards);
+  --color-artifact-timestamps: var(--artifact-timestamps);
+  --color-artifact-export: var(--artifact-export);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
+  --radius-control: var(--radius-control);
+  --radius-panel: var(--radius-panel);
+  --radius-feature: var(--radius-feature);
+  --shadow-panel: var(--shadow-panel);
+  --ease-prism: var(--ease-prism);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
+  min-width: 20rem;
   margin: 0;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:focus-visible {
+  outline: 2px solid var(--artifact-timestamps);
+  outline-offset: var(--space-1);
 }
 
 main {
   display: grid;
   min-height: 100vh;
   place-content: center;
-  padding: 2rem;
+  padding: var(--space-8);
   text-align: center;
 }
 
 h1 {
   margin: 0;
+  font-family: var(--font-display);
   font-size: clamp(2rem, 8vw, 4rem);
 }
 
 p {
-  margin: 1rem 0 0;
+  margin: var(--space-4) 0 0;
   line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
