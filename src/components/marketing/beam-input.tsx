@@ -63,7 +63,7 @@ export function BeamInput({
   const busy = state === 'refracting';
   return (
     <form
-      className="beam-form"
+      className={`beam-form${state === 'refracting' ? ' is-flashing is-processing' : ''}`}
       aria-label="Analyze a YouTube video"
       data-demo-state={state}
       onSubmit={handleSubmit}
