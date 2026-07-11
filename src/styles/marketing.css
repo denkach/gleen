@@ -143,6 +143,22 @@ html {
 .mobile-only {
   display: none;
 }
+.marketing-mobile-menu {
+  width: min(92vw, 420px);
+  background: var(--background-elevated);
+}
+.mobile-menu-links {
+  display: grid;
+  gap: 6px;
+}
+.mobile-menu-links a {
+  padding: 15px 4px;
+  border-bottom: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 24px;
+  text-decoration: none;
+}
 .hero {
   position: relative;
   display: grid;
