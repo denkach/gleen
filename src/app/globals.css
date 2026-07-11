@@ -643,8 +643,9 @@ p {
   opacity: var(--control-disabled-opacity);
 }
 
-.ui-tabs-content {
-  outline: none;
+.ui-tabs-content:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--space-1);
 }
 
 @keyframes ui-overlay-in {

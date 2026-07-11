@@ -1,4 +1,5 @@
 import { createRef } from 'react';
+import { readFileSync } from 'node:fs';
 
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -14,6 +15,8 @@ import {
   DropdownMenuTrigger,
 } from './dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
+
+const globalStyles = readFileSync('src/app/globals.css', 'utf8');
 
 function TestMenu({ onSelect = vi.fn() }: { onSelect?: () => void }) {
   return (
@@ -200,6 +203,15 @@ describe('Tabs', () => {
     }
   });
 
+  it('keeps the active tabpanel keyboard focusable', () => {
+    render(<TestTabs />);
+    const panel = screen.getByRole('tabpanel');
+
+    expect(panel).toHaveAttribute('tabindex', '0');
+    panel.focus();
+    expect(panel).toHaveFocus();
+  });
+
   it.each([
     'neutral',
     'summary',
@@ -247,5 +259,40 @@ describe('Tabs', () => {
     expect(listRef.current).toHaveClass('ui-tabs-list', 'caller-list');
     expect(screen.getByRole('tab')).toHaveClass('caller-trigger');
     expect(screen.getByRole('tabpanel')).toHaveClass('caller-panel');
+  });
+});
+
+describe('navigation stylesheet contracts', () => {
+  it('gives focused tab content a visible tokenized outline', () => {
+    expect(globalStyles).toMatch(
+      /\.ui-tabs-content:focus-visible\s*\{[^}]*outline:\s*var\(--focus-ring-width\) solid var\(--color-focus\)/,
+    );
+    expect(globalStyles).not.toMatch(
+      /\.ui-tabs-content\s*\{[^}]*outline:\s*none/,
+    );
+  });
+
+  it('contains tab overflow inside its horizontally scrollable list', () => {
+    expect(globalStyles).toMatch(
+      /\.ui-tabs-list\s*\{[^}]*max-width:\s*100%[^}]*overflow-x:\s*auto[^}]*overflow-y:\s*hidden/,
+    );
+  });
+
+  it('removes active-indicator travel for reduced motion', () => {
+    expect(globalStyles).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.ui-tabs-trigger::after\s*\{[^}]*transition:\s*none/,
+    );
+  });
+
+  it('keeps checked menu state visible with a rendered indicator', () => {
+    expect(globalStyles).toMatch(
+      /\.ui-dropdown-menu-item-indicator\s*\{[^}]*display:\s*inline-grid/,
+    );
+  });
+
+  it('uses a persistent line as the active tab non-color cue', () => {
+    expect(globalStyles).toMatch(
+      /\.ui-tabs-trigger\[data-state='active'\]::after\s*\{[^}]*opacity:\s*1[^}]*transform:\s*scaleX\(1\)/,
+    );
   });
 });
