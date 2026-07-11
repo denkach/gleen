@@ -12,6 +12,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   function Button(
     {
+      'aria-label': ariaLabel,
+      'aria-labelledby': ariaLabelledBy,
       children,
       className,
       disabled,
@@ -34,7 +36,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         data-variant={variant}
         data-loading={loading || undefined}
         disabled={disabled || loading}
-        aria-label={loading ? loadingLabel : props['aria-label']}
+        aria-label={loading ? loadingLabel : ariaLabel}
+        aria-labelledby={loading ? undefined : ariaLabelledBy}
       >
         <span className="ui-button__content" aria-hidden={loading || undefined}>
           {children}

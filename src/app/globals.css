@@ -19,6 +19,7 @@
   --artifact-export: #a8e063;
   --danger: #ff766f;
   --danger-text: #ff9d98;
+  --danger-surface-tint: 12%;
 
   --border-default: rgba(255, 255, 255, 0.06);
   --border-hover: rgba(255, 255, 255, 0.12);
@@ -41,6 +42,7 @@
   --radius-control: 8px;
   --radius-panel: 14px;
   --radius-feature: 22px;
+  --radius-round: 9999px;
 
   --shadow-panel: 0 16px 48px rgba(0, 0, 0, 0.28);
   --glow-summary: 0 0 24px rgba(255, 180, 84, 0.12);
@@ -52,14 +54,21 @@
   --motion-interface: 280ms;
   --motion-narrative: 800ms;
   --ease-prism: cubic-bezier(0.16, 1, 0.3, 1);
+  --font-weight-semibold: 600;
+  --opacity-disabled: 0.5;
+  --font-size-helper: 0.875em;
+  --gradient-angle-horizontal: 90deg;
+  --transform-offscreen-start: -100%;
+  --transform-offscreen-end: 100%;
 
   --color-focus: var(--artifact-timestamps);
+  --color-transparent: transparent;
   --color-danger: var(--danger);
   --color-danger-text: var(--danger-text);
   --color-danger-surface: color-mix(
     in srgb,
-    var(--color-danger) 12%,
-    var(--surface-panel)
+    var(--color-danger) var(--danger-surface-tint),
+    var(--color-surface-panel)
   );
   --color-primary: var(--text-primary);
   --color-on-primary: var(--background-deep);
@@ -70,6 +79,13 @@
   --control-border-width: 1px;
   --focus-ring-width: 2px;
   --skeleton-line-height: 0.75rem;
+  --control-font-weight: var(--font-weight-semibold);
+  --control-disabled-opacity: var(--opacity-disabled);
+  --control-round-radius: var(--radius-round);
+  --helper-font-size: var(--font-size-helper);
+  --skeleton-gradient-angle: var(--gradient-angle-horizontal);
+  --skeleton-transform-start: var(--transform-offscreen-start);
+  --skeleton-transform-end: var(--transform-offscreen-end);
 }
 
 @theme inline {
@@ -147,12 +163,12 @@ p {
   gap: var(--space-2);
   padding: 0 var(--space-4);
   overflow: hidden;
-  border: var(--control-border-width) solid var(--border-default);
+  border: var(--control-border-width) solid var(--color-border-default);
   border-radius: var(--radius-control);
-  background: var(--surface-panel);
-  color: var(--text-primary);
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--control-font-weight);
   cursor: pointer;
   transition:
     background-color var(--motion-micro) var(--ease-prism),
@@ -177,12 +193,12 @@ p {
 }
 
 .ui-button[data-variant='soft'] {
-  background: var(--surface-raised);
+  background: var(--color-surface-raised);
 }
 
 .ui-button[data-variant='ghost'] {
-  border-color: transparent;
-  background: transparent;
+  border-color: var(--color-transparent);
+  background: var(--color-transparent);
 }
 
 .ui-button[data-variant='danger'] {
@@ -192,8 +208,8 @@ p {
 }
 
 .ui-button:hover:not(:disabled) {
-  border-color: var(--border-hover);
-  background: var(--surface-hover);
+  border-color: var(--color-border-hover);
+  background: var(--color-surface-hover);
 }
 
 .ui-button[data-variant='primary']:hover:not(:disabled) {
@@ -212,7 +228,7 @@ p {
 
 .ui-button:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: var(--control-disabled-opacity);
 }
 
 .ui-button__content {
@@ -230,18 +246,18 @@ p {
   width: var(--space-4);
   height: var(--space-4);
   border: var(--focus-ring-width) solid currentcolor;
-  border-right-color: transparent;
-  border-radius: 50%;
+  border-right-color: var(--color-transparent);
+  border-radius: var(--control-round-radius);
 }
 
 .ui-input {
   display: grid;
   gap: var(--space-2);
-  color: var(--text-primary);
+  color: var(--color-text-primary);
 }
 
 .ui-input__label {
-  font-weight: 600;
+  font-weight: var(--control-font-weight);
 }
 
 .ui-input__control {
@@ -249,12 +265,13 @@ p {
 }
 
 .ui-input-field {
+  /* Structural full-width composition follows the approved form pattern. */
   width: 100%;
   min-height: var(--control-height-default);
-  border: var(--control-border-width) solid var(--border-default);
+  border: var(--control-border-width) solid var(--color-border-default);
   border-radius: var(--radius-panel);
-  background: var(--surface-panel);
-  color: var(--text-primary);
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
   font: inherit;
   padding: 0 var(--space-4);
   transition:
@@ -267,12 +284,12 @@ p {
 }
 
 .ui-input-field::placeholder {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .ui-input-field:hover:not(:disabled) {
-  border-color: var(--border-hover);
-  background: var(--surface-raised);
+  border-color: var(--color-border-hover);
+  background: var(--color-surface-raised);
 }
 
 .ui-input-field[aria-invalid='true'] {
@@ -281,24 +298,25 @@ p {
 
 .ui-input-field:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: var(--control-disabled-opacity);
 }
 
 .ui-input__icon {
   position: absolute;
   z-index: 1;
   inset-inline-start: var(--space-4);
+  /* Structural centering follows the approved leading-icon pattern. */
   top: 50%;
   display: inline-flex;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   transform: translateY(-50%);
   pointer-events: none;
 }
 
 .ui-input__hint,
 .ui-input__error {
-  color: var(--text-secondary);
-  font-size: 0.875em;
+  color: var(--color-text-secondary);
+  font-size: var(--helper-font-size);
 }
 
 .ui-input__error {
@@ -306,13 +324,13 @@ p {
 }
 
 .ui-panel {
-  border: var(--control-border-width) solid var(--border-default);
+  border: var(--control-border-width) solid var(--color-border-default);
   border-radius: var(--radius-panel);
-  background: var(--surface-panel);
+  background: var(--color-surface-panel);
 }
 
 .ui-panel[data-surface='raised'] {
-  background: var(--surface-raised);
+  background: var(--color-surface-raised);
   box-shadow: var(--shadow-panel);
 }
 
@@ -334,7 +352,7 @@ p {
   min-height: var(--control-height-default);
   overflow: hidden;
   border-radius: var(--radius-control);
-  background: var(--surface-raised);
+  background: var(--color-surface-raised);
 }
 
 .ui-skeleton::after,
@@ -342,10 +360,10 @@ p {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    90deg,
-    transparent,
-    var(--border-hover),
-    transparent
+    var(--skeleton-gradient-angle),
+    var(--color-transparent),
+    var(--color-border-hover),
+    var(--color-transparent)
   );
   content: '';
   animation: ui-skeleton-shimmer var(--motion-narrative) var(--ease-prism)
@@ -357,7 +375,7 @@ p {
   min-height: 0;
   gap: var(--space-2);
   overflow: visible;
-  background: transparent;
+  background: var(--color-transparent);
 }
 
 .ui-skeleton[data-shape='text']::after {
@@ -370,15 +388,15 @@ p {
   height: var(--skeleton-line-height);
   overflow: hidden;
   border-radius: var(--radius-control);
-  background: var(--surface-raised);
+  background: var(--color-surface-raised);
 }
 
 @keyframes ui-skeleton-shimmer {
   from {
-    transform: translateX(-100%);
+    transform: translateX(var(--skeleton-transform-start));
   }
   to {
-    transform: translateX(100%);
+    transform: translateX(var(--skeleton-transform-end));
   }
 }
 

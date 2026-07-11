@@ -2,6 +2,8 @@ import { forwardRef, type HTMLAttributes } from 'react';
 
 import { cx } from '@/lib/cx';
 
+const MAX_TEXT_LINES = 20;
+
 export interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {
   shape?: 'rect' | 'text';
   lines?: number;
@@ -10,7 +12,7 @@ export interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {
 export const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
   function Skeleton({ className, lines = 1, shape = 'rect', ...props }, ref) {
     const lineCount = Number.isFinite(lines)
-      ? Math.max(1, Math.floor(lines))
+      ? Math.min(MAX_TEXT_LINES, Math.max(1, Math.floor(lines)))
       : 1;
 
     return (

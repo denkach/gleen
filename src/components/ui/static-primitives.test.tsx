@@ -1,3 +1,5 @@
+import { createRef } from 'react';
+
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
@@ -40,6 +42,51 @@ describe('Button', () => {
     ).toBeDisabled();
   });
 
+  it('uses the loading label instead of a caller aria-labelledby while loading', () => {
+    render(
+      <>
+        <span id="save-label">Save changes</span>
+        <Button
+          loading
+          loadingLabel="Saving changes"
+          aria-labelledby="save-label"
+        >
+          Save
+        </Button>
+      </>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Saving changes' });
+    expect(button).not.toHaveAttribute('aria-labelledby');
+  });
+
+  it('preserves caller aria-labelledby and forwards native props and its ref', () => {
+    const ref = createRef<HTMLButtonElement>();
+    render(
+      <>
+        <span id="continue-label">Continue with video</span>
+        <Button
+          ref={ref}
+          aria-labelledby="continue-label"
+          form="video-form"
+          name="intent"
+          value="continue"
+        >
+          Continue
+        </Button>
+      </>,
+    );
+
+    const button = screen.getByRole('button', {
+      name: 'Continue with video',
+    });
+    expect(ref.current).toBe(button);
+    expect(button).toHaveAttribute('aria-labelledby', 'continue-label');
+    expect(button).toHaveAttribute('form', 'video-form');
+    expect(button).toHaveAttribute('name', 'intent');
+    expect(button).toHaveValue('continue');
+  });
+
   it('preserves a native disabled state', () => {
     render(<Button disabled>Unavailable</Button>);
 
@@ -78,6 +125,25 @@ describe('Input', () => {
     expect(describedBy).toContain(screen.getByText('Paste a YouTube link').id);
     expect(describedBy).toContain(screen.getByText('Enter a valid URL').id);
   });
+
+  it('forwards its ref and native input props', () => {
+    const ref = createRef<HTMLInputElement>();
+    render(
+      <Input
+        ref={ref}
+        label="Video URL"
+        name="videoUrl"
+        required
+        autoComplete="url"
+      />,
+    );
+
+    const input = screen.getByLabelText('Video URL');
+    expect(ref.current).toBe(input);
+    expect(input).toHaveAttribute('name', 'videoUrl');
+    expect(input).toBeRequired();
+    expect(input).toHaveAttribute('autocomplete', 'url');
+  });
 });
 
 describe('Panel', () => {
@@ -91,6 +157,13 @@ describe('Panel', () => {
     const panel = screen.getByText('Content');
     expect(panel).toHaveAttribute('data-surface', 'raised');
     expect(panel).toHaveAttribute('data-padding', 'lg');
+  });
+
+  it('forwards its ref and native div props', () => {
+    const ref = createRef<HTMLDivElement>();
+    render(<Panel ref={ref} title="Supporting context" />);
+
+    expect(ref.current).toHaveAttribute('title', 'Supporting context');
   });
 });
 
@@ -115,5 +188,19 @@ describe('Skeleton', () => {
     const skeleton = container.firstElementChild as HTMLElement;
 
     expect(within(skeleton).getAllByTestId('skeleton-line')).toHaveLength(1);
+  });
+
+  it('clamps huge finite text line counts to twenty', () => {
+    const { container } = render(<Skeleton shape="text" lines={10_000} />);
+    const skeleton = container.firstElementChild as HTMLElement;
+
+    expect(within(skeleton).getAllByTestId('skeleton-line')).toHaveLength(20);
+  });
+
+  it('forwards its ref and native div props', () => {
+    const ref = createRef<HTMLDivElement>();
+    render(<Skeleton ref={ref} title="Loading transcript" />);
+
+    expect(ref.current).toHaveAttribute('title', 'Loading transcript');
   });
 });
