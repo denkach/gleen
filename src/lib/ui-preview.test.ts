@@ -29,12 +29,12 @@ describe('isUiPreviewEnabled', () => {
       expected: false,
     },
     {
-      name: 'enables local $NODE_ENV',
+      name: 'enables local development',
       env: { NODE_ENV: 'development', VERCEL_ENV: undefined },
       expected: true,
     },
     {
-      name: 'enables local $NODE_ENV',
+      name: 'enables local test',
       env: { NODE_ENV: 'test', VERCEL_ENV: undefined },
       expected: true,
     },

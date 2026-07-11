@@ -47,6 +47,42 @@ describe('design token contract', () => {
   });
 
   it.each([
+    '--preview-max-width: 76rem;',
+    '--preview-heading-min: 2rem;',
+    '--preview-heading-fluid: 6vw;',
+    '--preview-heading-max: 4rem;',
+    '--preview-copy-max-width: 42rem;',
+    '--preview-eyebrow-tracking: 0.08em;',
+    '--preview-fixture-gap: 1.5rem;',
+    '--preview-section-gap: 2.5rem;',
+    '--preview-swatch-size: 7rem;',
+    '--preview-panel-max-width: 40rem;',
+    '--preview-section-heading-size: 1.5rem;',
+    '--preview-token-chip-size: 2.5rem;',
+  ])('provides preview layout token %s', (declaration) => {
+    expect(css).toContain(declaration);
+  });
+
+  it('uses preview layout tokens for reviewed constrained fixtures', () => {
+    expect(css).toContain('width: min(100%, var(--preview-max-width));');
+    expect(css).toContain(
+      'font-size: clamp(\n    var(--preview-heading-min),\n    var(--preview-heading-fluid),\n    var(--preview-heading-max)\n  );',
+    );
+    expect(css).toContain('max-width: var(--preview-copy-max-width);');
+    expect(css).toContain('letter-spacing: var(--preview-eyebrow-tracking);');
+    expect(css).toContain('gap: var(--preview-fixture-gap);');
+    expect(css).toContain('padding-block: var(--preview-section-gap);');
+    expect(css).toContain('min-height: var(--preview-swatch-size);');
+    expect(css).toContain('max-width: var(--preview-panel-max-width);');
+    expect(css).toContain('font-size: var(--preview-section-heading-size);');
+    expect(css).toContain(
+      'grid-template-columns: var(--preview-token-chip-size) minmax(0, 1fr);',
+    );
+    expect(css).toContain('width: var(--preview-token-chip-size);');
+    expect(css).toContain('height: var(--preview-token-chip-size);');
+  });
+
+  it.each([
     '--color-overlay: var(--overlay);',
     '--layer-overlay: var(--z-overlay);',
     '--layer-dialog: var(--z-dialog);',

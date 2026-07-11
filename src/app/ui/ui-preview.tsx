@@ -133,6 +133,18 @@ function ToastExamples() {
       >
         Show error toast
       </Button>
+      <Button
+        variant="soft"
+        onClick={() =>
+          toast({
+            title: 'Long toast title that verifies notification copy wrapping',
+            description:
+              'Long toast description remains readable when localized interface text expands across multiple lines.',
+          })
+        }
+      >
+        Show long toast
+      </Button>
     </div>
   );
 }
@@ -198,6 +210,12 @@ function PreviewGallery() {
             error="Review this value."
           />
           <Input label="Disabled input" disabled defaultValue="Unavailable" />
+          <Input
+            label="Translated long-label example that verifies control wrapping without horizontal overflow"
+            hint="Long supporting guidance remains associated with the field when translated copy needs several lines."
+            error="Long validation feedback remains announced and wraps without widening the page."
+            defaultValue="A deliberately extended example value for localization and overflow review"
+          />
         </div>
       </Section>
 
@@ -208,6 +226,20 @@ function PreviewGallery() {
             Raised surface · medium padding
           </Panel>
           <Panel padding="lg">Panel surface · large padding</Panel>
+          <Panel
+            className="ui-preview-long-panel"
+            padding="lg"
+            role="region"
+            aria-label="Long panel content example"
+          >
+            <h3>Constrained paragraph</h3>
+            <p>
+              This constrained paragraph demonstrates how extended translated
+              prose wraps inside a panel while preserving readable line length
+              and preventing the reference gallery from widening beyond its
+              container.
+            </p>
+          </Panel>
         </div>
       </Section>
 
@@ -227,6 +259,21 @@ function PreviewGallery() {
             </DialogContent>
           </Dialog>
 
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="soft">Open long dialog</Button>
+            </DialogTrigger>
+            <DialogContent
+              title="Long dialog title that demonstrates wrapping in a constrained overlay"
+              description="Long dialog description stays readable and connected to the dialog when interface copy expands."
+            >
+              <p>
+                Long dialog body copy provides a representative constrained
+                fixture for localization, zoom, and narrow viewport review.
+              </p>
+            </DialogContent>
+          </Dialog>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="soft">Open example menu</Button>
@@ -242,6 +289,19 @@ function PreviewGallery() {
               >
                 Checked option
               </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="soft">Open long-content menu</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuLabel>Constrained long content</DropdownMenuLabel>
+              <DropdownMenuItem>
+                Long translated menu item that remains readable inside a
+                constrained menu
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -270,6 +330,22 @@ function PreviewGallery() {
               <TabsContent value="two">Second tab content</TabsContent>
             </Tabs>
           ))}
+          <Tabs className="ui-preview-long-tabs" defaultValue="short">
+            <h3>Constrained long content</h3>
+            <TabsList aria-label="Long-content constrained example tabs">
+              <TabsTrigger value="short">Short label</TabsTrigger>
+              <TabsTrigger value="long">
+                Long translated tab label that wraps safely
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="short">
+              Select the long label to inspect its content.
+            </TabsContent>
+            <TabsContent value="long">
+              Long tab content remains constrained and readable when interface
+              copy expands across multiple lines.
+            </TabsContent>
+          </Tabs>
         </div>
       </Section>
 
