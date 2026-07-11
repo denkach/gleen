@@ -25,9 +25,9 @@
   --border-hover: rgba(255, 255, 255, 0.12);
   --border-strong: rgba(255, 255, 255, 0.18);
 
-  --font-display: 'Clash Display', 'Söhne', 'Helvetica Neue', sans-serif;
-  --font-body: Geist, Inter, 'Helvetica Neue', sans-serif;
-  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-display: 'Space Grotesk Variable', 'Helvetica Neue', sans-serif;
+  --font-body: 'Inter Variable', Inter, 'Helvetica Neue', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'SFMono-Regular', Consolas, monospace;
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
