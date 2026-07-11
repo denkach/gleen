@@ -79,6 +79,13 @@
   --control-border-width: 1px;
   --focus-ring-width: 2px;
   --skeleton-line-height: 0.75rem;
+  --overlay-background: rgba(10, 10, 15, 0.78);
+  --overlay-content-width: 32rem;
+  --overlay-content-offset: 50%;
+  --overlay-closed-scale: 0.98;
+  --overlay-close-font-size: 1.25rem;
+  --tooltip-max-width: 18rem;
+  --tooltip-font-size: 0.875rem;
   --control-font-weight: var(--font-weight-semibold);
   --control-disabled-opacity: var(--opacity-disabled);
   --control-round-radius: var(--radius-round);
@@ -391,6 +398,103 @@ p {
   background: var(--color-surface-raised);
 }
 
+.ui-dialog-overlay {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  background: var(--overlay-background);
+  animation: ui-overlay-in var(--motion-interface) var(--ease-prism);
+}
+
+.ui-dialog-content {
+  position: fixed;
+  z-index: 50;
+  top: var(--overlay-content-offset);
+  left: var(--overlay-content-offset);
+  width: min(var(--overlay-content-width), calc(100vw - (var(--space-6) * 2)));
+  max-height: calc(100vh - (var(--space-6) * 2));
+  padding: var(--space-6);
+  overflow: auto;
+  border: var(--control-border-width) solid var(--color-border-default);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+  transform: translate(-50%, -50%);
+  animation: ui-dialog-in var(--motion-interface) var(--ease-prism);
+}
+
+.ui-dialog-title {
+  margin: 0;
+  padding-inline-end: var(--space-8);
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-semibold);
+}
+
+.ui-dialog-description {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+}
+
+.ui-dialog-body {
+  margin-block-start: var(--space-6);
+}
+
+.ui-dialog-close {
+  position: absolute;
+  top: var(--space-3);
+  inset-inline-end: var(--space-3);
+  display: inline-grid;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  place-items: center;
+  border: var(--control-border-width) solid var(--color-border-default);
+  border-radius: var(--radius-control);
+  background: var(--color-transparent);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--overlay-close-font-size);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-micro) var(--ease-prism),
+    border-color var(--motion-micro) var(--ease-prism),
+    color var(--motion-micro) var(--ease-prism);
+}
+
+.ui-dialog-close:hover {
+  border-color: var(--color-border-hover);
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.ui-tooltip-content {
+  z-index: 60;
+  max-width: var(--tooltip-max-width);
+  padding: var(--space-2) var(--space-3);
+  border: var(--control-border-width) solid var(--color-border-default);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-panel);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+  font-size: var(--tooltip-font-size);
+  line-height: 1.5;
+  animation: ui-overlay-in var(--motion-micro) var(--ease-prism);
+}
+
+@keyframes ui-overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ui-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + var(--space-2)))
+      scale(var(--overlay-closed-scale));
+  }
+}
+
 @keyframes ui-skeleton-shimmer {
   from {
     transform: translateX(var(--skeleton-transform-start));
@@ -413,5 +517,15 @@ p {
   .ui-skeleton::after,
   .ui-skeleton__line::after {
     animation: none;
+  }
+
+  .ui-dialog-content {
+    transform: translate(-50%, -50%);
+  }
+
+  .ui-dialog-content,
+  .ui-dialog-overlay,
+  .ui-tooltip-content {
+    animation-duration: 0.01ms;
   }
 }
