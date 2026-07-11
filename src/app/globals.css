@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@import '../styles/marketing.css';
 
 :root {
   color-scheme: dark;
@@ -189,14 +188,23 @@ body {
   outline-offset: var(--space-1);
 }
 
-h1,
-h2,
-h3,
-h4 {
-  font-family: var(--font-display);
+main {
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  padding: var(--space-8);
+  text-align: center;
 }
-p {
+
+h1 {
   margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 8vw, 4rem);
+}
+
+p {
+  margin: var(--space-4) 0 0;
+  line-height: 1.5;
 }
 
 .ui-button {
