@@ -75,6 +75,7 @@
   --size-toast-max: 24rem;
   --size-toast-viewport-gap: var(--space-4);
   --size-toast-action-min: 2.75rem;
+  --size-toast-icon: 1.25rem;
   --layer-toast: 70;
   --color-success: var(--artifact-export);
   --color-success-surface: color-mix(
@@ -117,6 +118,7 @@
   --toast-max-width: var(--size-toast-max);
   --toast-viewport-gap: var(--size-toast-viewport-gap);
   --toast-action-min-size: var(--size-toast-action-min);
+  --toast-icon-size: var(--size-toast-icon);
   --control-font-weight: var(--font-weight-semibold);
   --control-disabled-opacity: var(--opacity-disabled);
   --control-round-radius: var(--radius-round);
@@ -663,15 +665,21 @@ p {
 
 .ui-toast-viewport {
   position: fixed;
-  right: max(var(--toast-viewport-gap), env(safe-area-inset-right));
-  bottom: max(var(--toast-viewport-gap), env(safe-area-inset-bottom));
+  right: calc(var(--toast-viewport-gap) + env(safe-area-inset-right));
+  bottom: calc(var(--toast-viewport-gap) + env(safe-area-inset-bottom));
   z-index: var(--layer-toast);
   display: grid;
   width: min(
     var(--toast-max-width),
-    calc(100vw - (var(--toast-viewport-gap) * 2))
+    calc(
+      100vw - env(safe-area-inset-left) - env(safe-area-inset-right) -
+        (var(--toast-viewport-gap) * 2)
+    )
   );
-  max-height: calc(100vh - (var(--toast-viewport-gap) * 2));
+  max-height: calc(
+    100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) -
+      (var(--toast-viewport-gap) * 2)
+  );
   margin: 0;
   padding: 0;
   gap: var(--space-3);
@@ -737,8 +745,8 @@ p {
 
 .ui-toast-icon {
   display: inline-grid;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: var(--toast-icon-size);
+  height: var(--toast-icon-size);
   place-items: center;
   border: var(--control-border-width) solid currentColor;
   border-radius: var(--control-round-radius);

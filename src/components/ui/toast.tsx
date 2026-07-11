@@ -70,7 +70,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className="ui-toast"
             data-variant={item.variant}
             duration={item.duration}
-            role="status"
             onOpenChange={(open) => {
               if (!open) removeToast(item.id);
             }}

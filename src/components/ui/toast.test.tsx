@@ -13,12 +13,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider, useToast } from './toast';
 
 function ToastTrigger({
+  actionLabel,
   description,
+  duration,
   onAction,
   title = 'Saved to library',
   variant = 'neutral',
 }: {
+  actionLabel?: string;
   description?: string;
+  duration?: number;
   onAction?: () => void;
   title?: string;
   variant?: 'neutral' | 'success' | 'error';
@@ -32,8 +36,9 @@ function ToastTrigger({
           title,
           description,
           variant,
-          actionLabel: onAction ? 'Undo' : undefined,
+          actionLabel: actionLabel ?? (onAction ? 'Undo' : undefined),
           onAction,
+          duration,
         })
       }
     >
@@ -53,7 +58,7 @@ describe('ToastProvider', () => {
     );
   });
 
-  it('announces its title and description and exposes non-color variant state', async () => {
+  it('keeps interactive toast content outside its Radix live announcement', async () => {
     const user = userEvent.setup();
 
     render(
@@ -62,13 +67,34 @@ describe('ToastProvider', () => {
           title="Export failed"
           description="Try again in a moment."
           variant="error"
+          actionLabel="Retry export"
+          onAction={() => {}}
         />
       </ToastProvider>,
     );
 
     await user.click(screen.getByRole('button', { name: 'Show toast' }));
 
-    const toast = await screen.findByRole('status');
+    const toast = document.querySelector('.ui-toast');
+    expect(toast).not.toBeNull();
+    expect(toast).not.toHaveAttribute('role');
+    expect(toast?.querySelector('[role="status"]')).toBeNull();
+    expect(toast?.querySelectorAll('button')).toHaveLength(2);
+
+    const announcement = await waitFor(() => {
+      const status = screen
+        .getAllByRole('status')
+        .find((item) => item.textContent?.includes('Export failed'));
+      expect(status).toBeDefined();
+      return status!;
+    });
+    expect(announcement).toHaveAttribute('aria-live', 'assertive');
+    expect(announcement).toHaveTextContent('Error');
+    expect(announcement).toHaveTextContent('Export failed');
+    expect(announcement).toHaveTextContent('Try again in a moment.');
+    expect(announcement).toHaveTextContent('Retry export');
+    expect(announcement.querySelector('button')).toBeNull();
+
     expect(toast).toHaveTextContent('Export failed');
     expect(toast).toHaveTextContent('Try again in a moment.');
     expect(toast).toHaveTextContent('Error');
@@ -134,7 +160,7 @@ describe('ToastProvider', () => {
     );
   });
 
-  it('uses a 5000 ms default duration and cleans up on unmount', async () => {
+  it('cleans up a pending default 5000 ms timer on unmount', () => {
     vi.useFakeTimers();
 
     function ImmediateToast() {
@@ -152,12 +178,30 @@ describe('ToastProvider', () => {
     );
     expect(screen.getByText('Temporary toast')).toBeInTheDocument();
 
-    act(() => vi.advanceTimersByTime(4999));
-    expect(screen.getByText('Temporary toast')).toBeInTheDocument();
-    act(() => vi.advanceTimersByTime(1));
-    expect(screen.queryByText('Temporary toast')).not.toBeInTheDocument();
-
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
     expect(() => unmount()).not.toThrow();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('honors a custom duration', () => {
+    vi.useFakeTimers();
+
+    function ImmediateToast() {
+      const { toast } = useToast();
+      useEffect(() => {
+        toast({ title: 'Quick toast', duration: 1200 });
+      }, [toast]);
+      return null;
+    }
+
+    render(
+      <ToastProvider>
+        <ImmediateToast />
+      </ToastProvider>,
+    );
+    act(() => vi.advanceTimersByTime(1199));
+    expect(screen.getByText('Quick toast')).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByText('Quick toast')).not.toBeInTheDocument();
   });
 });

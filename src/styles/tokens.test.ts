@@ -70,4 +70,27 @@ describe('design token contract', () => {
       '.ui-dialog-content {\n    animation: ui-overlay-in',
     );
   });
+
+  it('provides and uses the semantic toast icon size token', () => {
+    expect(css).toContain('--size-toast-icon: 1.25rem;');
+    expect(css).toContain('--toast-icon-size: var(--size-toast-icon);');
+    expect(css).toMatch(
+      /\.ui-toast-icon\s*{[^}]*width:\s*var\(--toast-icon-size\);[^}]*height:\s*var\(--toast-icon-size\);/,
+    );
+  });
+
+  it('accounts for every safe-area inset in the toast viewport geometry', () => {
+    expect(css).toMatch(
+      /\.ui-toast-viewport\s*{[^}]*right:\s*calc\(var\(--toast-viewport-gap\) \+ env\(safe-area-inset-right\)\);/,
+    );
+    expect(css).toMatch(
+      /\.ui-toast-viewport\s*{[^}]*bottom:\s*calc\(var\(--toast-viewport-gap\) \+ env\(safe-area-inset-bottom\)\);/,
+    );
+    expect(css).toMatch(
+      /width:\s*min\(\s*var\(--toast-max-width\),\s*calc\(\s*100vw\s*-\s*env\(safe-area-inset-left\)\s*-\s*env\(safe-area-inset-right\)\s*-\s*\(var\(--toast-viewport-gap\) \* 2\)\s*\)\s*\);/,
+    );
+    expect(css).toMatch(
+      /max-height:\s*calc\(\s*100vh\s*-\s*env\(safe-area-inset-top\)\s*-\s*env\(safe-area-inset-bottom\)\s*-\s*\(var\(--toast-viewport-gap\) \* 2\)\s*\);/,
+    );
+  });
 });
