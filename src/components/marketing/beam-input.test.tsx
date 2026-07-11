@@ -27,11 +27,17 @@ describe('BeamInput', () => {
     const input = screen.getByRole('textbox', { name: 'YouTube URL' });
 
     fireEvent.change(input, { target: { value: 'https://example.com/video' } });
-    fireEvent.submit(screen.getByRole('form', { name: 'Analyze a YouTube video' }));
+    fireEvent.submit(
+      screen.getByRole('form', { name: 'Analyze a YouTube video' }),
+    );
 
     expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByRole('alert')).toHaveTextContent('Use a YouTube or youtu.be URL.');
-    expect(screen.getByRole('button', { name: 'Transform video' })).toBeEnabled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Use a YouTube or youtu.be URL.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Transform video' }),
+    ).toBeEnabled();
   });
 
   it('runs a local non-networked demo and returns to idle', () => {
@@ -43,18 +49,24 @@ describe('BeamInput', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'YouTube URL' }), {
       target: { value: 'https://youtu.be/demo' },
     });
-    fireEvent.submit(screen.getByRole('form', { name: 'Analyze a YouTube video' }));
+    fireEvent.submit(
+      screen.getByRole('form', { name: 'Analyze a YouTube video' }),
+    );
 
     expect(screen.getByRole('button', { name: 'Refracting…' })).toBeDisabled();
     expect(onDemoStateChange).toHaveBeenLastCalledWith('refracting');
     expect(fetchSpy).not.toHaveBeenCalled();
 
     act(() => vi.advanceTimersByTime(1600));
-    expect(screen.getByRole('status')).toHaveTextContent('Demo artifacts are ready.');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Demo artifacts are ready.',
+    );
     expect(onDemoStateChange).toHaveBeenLastCalledWith('complete');
 
     act(() => vi.advanceTimersByTime(900));
-    expect(screen.getByRole('button', { name: 'Transform video' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Transform video' }),
+    ).toBeEnabled();
     expect(onDemoStateChange).toHaveBeenLastCalledWith('idle');
     fetchSpy.mockRestore();
   });
