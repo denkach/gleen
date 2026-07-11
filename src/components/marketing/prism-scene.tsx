@@ -5,9 +5,11 @@ const artifacts = [
   ['export', 'Export ready'],
 ] as const;
 
-export function PrismScene() {
+export function PrismScene({
+  demoState,
+}: Readonly<{ demoState: BeamDemoState }>) {
   return (
-    <div className="prism-stage" aria-hidden="true">
+    <div className="prism-stage" aria-hidden="true" data-demo-state={demoState}>
       <div className="prism-haze" />
       <div className="prism-wrap">
         <span className="beam-in" />
@@ -53,3 +55,4 @@ export function PrismScene() {
     </div>
   );
 }
+import type { BeamDemoState } from './beam-input';

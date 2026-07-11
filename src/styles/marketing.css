@@ -232,6 +232,13 @@ html {
 .beam-form .link-icon {
   color: var(--text-muted);
 }
+.beam-feedback {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 22px;
+  color: var(--danger-text);
+  font-size: 12px;
+}
 .hero-caption {
   display: flex;
   align-items: center;
