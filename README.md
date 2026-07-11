@@ -83,10 +83,10 @@ explicitly for commands that validate or use the application environment.
 
 ## UI primitives preview
 
-The development-only UI primitives preview is available at
-`http://localhost:3000/ui` while `npm run dev` is running. The preview is a
-review and QA surface, not a production route: production builds return an
-exact 404 for `/ui`.
+The UI primitives preview is available for development and non-production
+preview only at `http://localhost:3000/ui` while `npm run dev` is running. It
+is a review and QA surface, not a production route: production builds return
+an exact 404 for `/ui`.
 
 Run the development preview browser suite with `npm run test:e2e`. Run
 `npm run test:e2e:production` to build and start the production application and
