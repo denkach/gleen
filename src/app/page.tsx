@@ -1,5 +1,9 @@
 import { ReferenceFacets } from '@/components/marketing/reference-facets';
 import { ReferenceHeaderBehavior } from '@/components/marketing/reference-header';
+import {
+  ReferenceFooter,
+  ReferencePricing,
+} from '@/components/marketing/reference-pricing-footer';
 
 const Arrow = () => (
   <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
@@ -255,7 +259,9 @@ export default function HomePage() {
           </div>
         </section>
         <ReferenceFacets />
+        <ReferencePricing />
       </main>
+      <ReferenceFooter />
     </div>
   );
 }

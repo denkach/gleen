@@ -67,4 +67,16 @@ describe('approved landing hero', () => {
       document.querySelectorAll('#facets .facet-copy .btn .icon'),
     ).toHaveLength(4);
   });
+
+  it('preserves the approved pricing and footer composition', () => {
+    render(<HomePage />);
+    expect(document.querySelectorAll('#pricing .plan-card')).toHaveLength(3);
+    expect(
+      document.querySelectorAll('#pricing .plan-card.recommended'),
+    ).toHaveLength(1);
+    expect(screen.getByRole('contentinfo')).toHaveTextContent(
+      'AI-generated content should be checked against the original source.',
+    );
+    expect(document.querySelectorAll('.footer-grid > div')).toHaveLength(4);
+  });
 });
