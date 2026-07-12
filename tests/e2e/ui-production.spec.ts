@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 test('production analysis form does not import the timed fixture driver', () => {
@@ -9,6 +9,26 @@ test('production analysis form does not import the timed fixture driver', () => 
   );
 
   expect(productionForm).not.toContain('analyze-processing-fixture');
+});
+
+test('production server artifacts exclude the fixture driver and timer schedule', () => {
+  const files = readdirSync(resolve('.next/server'), {
+    recursive: true,
+    withFileTypes: true,
+  });
+  const forbidden = [
+    'prototypeSchedule',
+    'https://www.youtube.com/watch?v=gleen-fixture',
+  ];
+  const matches = files.flatMap((entry) => {
+    if (!entry.isFile() || !/\.(?:js|json|map)$/.test(entry.name)) return [];
+    const content = readFileSync(resolve(entry.parentPath, entry.name), 'utf8');
+    return forbidden
+      .filter((identifier) => content.includes(identifier))
+      .map((identifier) => `${entry.name}: ${identifier}`);
+  });
+
+  expect(matches).toEqual([]);
 });
 
 test('returns an exact 404 for the UI preview in production', async ({

@@ -5,7 +5,7 @@ import {
   type AnalysisVisualState,
   type Artifact,
 } from '@/lib/analyze-processing/analysis-visual-state';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 export type AnalyzeProcessingVisualProps = Readonly<{
   state: AnalysisVisualState;
@@ -14,6 +14,7 @@ export type AnalyzeProcessingVisualProps = Readonly<{
   errorMessage?: string;
   onRetry?: () => void;
   showCompletionOverlay?: boolean;
+  idleContent?: ReactNode;
 }>;
 
 export function AnalyzeProcessingVisual({
@@ -23,6 +24,7 @@ export function AnalyzeProcessingVisual({
   errorMessage,
   onRetry,
   showCompletionOverlay,
+  idleContent,
 }: AnalyzeProcessingVisualProps) {
   const presentation = getAnalysisVisualPresentation(state);
   const selectedRays = selectedArtifacts.map(
@@ -43,8 +45,15 @@ export function AnalyzeProcessingVisual({
       <div className={`analyze-shell ${presentation.mode}`}>
         <div className="analyze-photon" aria-hidden="true" />
         <div className="analyze-shell-flash" aria-hidden="true" />
+        {idleContent ? (
+          <div className="analyze-input-row">{idleContent}</div>
+        ) : null}
 
-        <div className="analyze-processing-panel">
+        <div
+          className="analyze-processing-panel"
+          aria-hidden={presentation.mode === 'idle'}
+          inert={presentation.mode === 'idle' ? true : undefined}
+        >
           <div
             className="analyze-status-copy"
             role="status"

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-import { AnalyzeProcessingFixture } from '@/components/app-shell/analyze-processing-fixture';
+import AnalyzeProcessingFixtureEntry from '@/components/app-shell/analyze-processing-fixture-entry';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 
 export default function AnalyzeProcessingFixturePage() {
@@ -8,5 +8,5 @@ export default function AnalyzeProcessingFixturePage() {
     notFound();
   }
 
-  return <AnalyzeProcessingFixture />;
+  return <AnalyzeProcessingFixtureEntry />;
 }

@@ -192,6 +192,11 @@ describe('NewAnalysisForm', () => {
         }),
     );
     renderForm(action);
+    const mountedShell = document.querySelector('.analyze-shell');
+    expect(mountedShell).not.toBeNull();
+    expect(mountedShell).toContainElement(
+      document.querySelector('#new-analysis-form'),
+    );
     fireEvent.change(screen.getByLabelText('YouTube URL'), {
       target: { value: 'https://youtu.be/abcdefghijk' },
     });
@@ -204,6 +209,10 @@ describe('NewAnalysisForm', () => {
     expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
       'data-analysis-state',
       'submitting',
+    );
+    expect(document.querySelector('.analyze-shell')).toBe(mountedShell);
+    expect(mountedShell).toContainElement(
+      document.querySelector('#new-analysis-form'),
     );
     expect(screen.getByRole('status')).toHaveTextContent(
       'Checking video and transcript…',

@@ -135,6 +135,35 @@ test('production input row disables synchronously and follows the approved exit 
 }) => {
   await page.goto('/app-shell-fixture?intake=ready');
   await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
+  await page.locator('.analyze-shell').evaluate((shell) => {
+    const testWindow = window as typeof window & {
+      __productionAnalyzeShell?: Element;
+      __productionAnalyzeSamples?: Array<{
+        opacity: number;
+        shellHeight: number;
+        photonOpacity: number;
+        flashOpacity: number;
+      }>;
+    };
+    testWindow.__productionAnalyzeShell = shell;
+    testWindow.__productionAnalyzeSamples = [];
+    const startedAt = performance.now();
+    const recordFrame = () => {
+      const inputRow = document.querySelector('.analyze-input-row')!;
+      const photon = document.querySelector('.analyze-photon')!;
+      const flash = document.querySelector('.analyze-shell-flash')!;
+      testWindow.__productionAnalyzeSamples!.push({
+        opacity: Number(getComputedStyle(inputRow).opacity),
+        shellHeight: shell.getBoundingClientRect().height,
+        photonOpacity: Number(getComputedStyle(photon).opacity),
+        flashOpacity: Number(getComputedStyle(flash).opacity),
+      });
+      if (performance.now() - startedAt < 1_200) {
+        requestAnimationFrame(recordFrame);
+      }
+    };
+    requestAnimationFrame(recordFrame);
+  });
   const form = page.locator('#new-analysis-form');
   const analyze = page.getByRole('button', { name: 'Analyze video' });
   const disabledAtDispatchReturn = await analyze.evaluate((button) => {
@@ -142,30 +171,48 @@ test('production input row disables synchronously and follows the approved exit 
     return (button as HTMLButtonElement).disabled;
   });
   expect(disabledAtDispatchReturn).toBe(true);
-  await expect(page.getByTestId('analyze-processing-visual')).toBeVisible();
-  const samples: Array<{ opacity: number; transform: string; filter: string }> =
-    [];
+  const visual = page.getByTestId('analyze-processing-visual');
+  const shell = visual.locator('.analyze-shell');
+  await expect(visual).toHaveAttribute('data-analysis-state', 'submitting');
+  expect(
+    await shell.evaluate(
+      (element) =>
+        element ===
+        (window as typeof window & { __productionAnalyzeShell?: Element })
+          .__productionAnalyzeShell,
+    ),
+  ).toBe(true);
   await expect
     .poll(
-      async () => {
-        const computed = await form.evaluate((element) => {
-          const style = getComputedStyle(element);
-          return {
-            opacity: Number(style.opacity),
-            transform: style.transform,
-            filter: style.filter,
-          };
-        });
-        samples.push(computed);
-        return computed.opacity;
-      },
+      () => shell.evaluate((element) => element.getBoundingClientRect().height),
       { intervals: [25], timeout: 800 },
     )
-    .toBeLessThan(0.01);
+    .toBeGreaterThanOrEqual(299.5);
+  const samples = await page.evaluate(
+    () =>
+      (
+        window as typeof window & {
+          __productionAnalyzeSamples?: Array<{
+            opacity: number;
+            shellHeight: number;
+            photonOpacity: number;
+            flashOpacity: number;
+          }>;
+        }
+      ).__productionAnalyzeSamples ?? [],
+  );
   expect(
     samples.some((sample) => sample.opacity > 0.05 && sample.opacity < 0.95),
   ).toBe(true);
-  const style = await form.evaluate((element) => {
+  expect(
+    samples.some(
+      (sample) => sample.shellHeight > 130 && sample.shellHeight < 290,
+    ),
+  ).toBe(true);
+  expect(samples.some((sample) => sample.photonOpacity > 0.5)).toBe(true);
+  expect(samples.some((sample) => sample.flashOpacity > 0.05)).toBe(true);
+  await expect(shell).toHaveCSS('height', '300px');
+  const style = await form.locator('..').evaluate((element) => {
     const computed = getComputedStyle(element);
     return {
       opacity: computed.opacity,

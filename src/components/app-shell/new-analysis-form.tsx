@@ -160,57 +160,61 @@ export function NewAnalysisForm({
     ? 'submitting'
     : state.status === 'error'
       ? 'error'
-      : null;
+      : 'idle';
+  const isVisualBusy = visualState !== 'idle';
 
   return (
     <>
-      <form
-        ref={formRef}
-        id="new-analysis-form"
-        action={formAction}
-        className={`beam-form app-beam-form${visualState ? ' processing-hidden' : ''}`}
-        aria-describedby="intake-status"
-        aria-hidden={visualState ? true : undefined}
-        inert={visualState ? true : undefined}
-        onSubmit={validateArtifacts}
-      >
-        <AppIcon name="link" className="link-icon" />
-        <input
-          aria-label="YouTube URL"
-          name="rawUrl"
-          type="url"
-          placeholder="Paste a YouTube link"
-          defaultValue={state.rawUrl}
-          required
-          disabled={pending}
-        />
-        <input type="hidden" name="outputLocale" value={outputLocale} />
-        <input type="hidden" name="summaryPreset" value={summaryPreset} />
-        <input type="hidden" name="flashcardPreset" value={flashcardPreset} />
-        {selectedArtifacts.map((artifact) => (
-          <input
-            key={artifact}
-            type="hidden"
-            name="artifacts"
-            value={artifact}
-          />
-        ))}
-        <SubmitButton pending={pending} />
-      </form>
-
-      {visualState ? (
-        <AnalyzeProcessingVisual
-          state={visualState}
-          selectedArtifacts={selectedArtifacts}
-          submittedUrl={state.rawUrl || submittedUrl}
-          errorMessage={visualState === 'error' ? state.message : undefined}
-          onRetry={
-            visualState === 'error'
-              ? () => formRef.current?.requestSubmit()
-              : undefined
-          }
-        />
-      ) : null}
+      <AnalyzeProcessingVisual
+        state={visualState}
+        selectedArtifacts={selectedArtifacts}
+        submittedUrl={state.rawUrl || submittedUrl}
+        errorMessage={visualState === 'error' ? state.message : undefined}
+        onRetry={
+          visualState === 'error'
+            ? () => formRef.current?.requestSubmit()
+            : undefined
+        }
+        idleContent={
+          <form
+            ref={formRef}
+            id="new-analysis-form"
+            action={formAction}
+            className="beam-form app-beam-form"
+            aria-describedby="intake-status"
+            aria-hidden={isVisualBusy ? true : undefined}
+            inert={isVisualBusy ? true : undefined}
+            onSubmit={validateArtifacts}
+          >
+            <AppIcon name="link" className="link-icon" />
+            <input
+              aria-label="YouTube URL"
+              name="rawUrl"
+              type="url"
+              placeholder="Paste a YouTube link"
+              defaultValue={state.rawUrl}
+              required
+              disabled={pending}
+            />
+            <input type="hidden" name="outputLocale" value={outputLocale} />
+            <input type="hidden" name="summaryPreset" value={summaryPreset} />
+            <input
+              type="hidden"
+              name="flashcardPreset"
+              value={flashcardPreset}
+            />
+            {selectedArtifacts.map((artifact) => (
+              <input
+                key={artifact}
+                type="hidden"
+                name="artifacts"
+                value={artifact}
+              />
+            ))}
+            <SubmitButton pending={pending} />
+          </form>
+        }
+      />
 
       <div className={`analysis-form-meta${pending ? ' pending' : ''}`}>
         <Dialog open={advancedOpen} onOpenChange={setAdvancedOpen}>
