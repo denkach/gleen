@@ -172,6 +172,21 @@ describe('AnalyzeProcessingVisual', () => {
       /\.analysis-visual \.analyze-shell\.processing\s*{[^}]*height:\s*300px/,
     );
     expect(css).toMatch(
+      /\.analysis-visual \.analyze-shell\.idle\.production-intake\s*{[\s\S]*?max-width:\s*760px;[\s\S]*?height:\s*66px;[\s\S]*?padding:\s*7px;[\s\S]*?border-radius:\s*17px;[\s\S]*?background:\s*rgba\(17, 16, 24, 0\.76\)/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 900px\)[\s\S]*?\.analysis-visual \.analyze-shell\.idle\.production-intake\s*{[^}]*height:\s*112px/,
+    );
+    expect(css).toMatch(
+      /\.analysis-visual \.analyze-shell\.idle\.production-intake \.analyze-input-row\s*{[\s\S]*?position:\s*relative;[\s\S]*?inset:\s*auto;[\s\S]*?padding:\s*0/,
+    );
+    expect(css).toMatch(
+      /\.analysis-visual \.analyze-shell\.idle\.production-intake \.app-beam-form\s*{[\s\S]*?padding:\s*0;[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/,
+    );
+    expect(css).not.toMatch(
+      /\.analysis-visual [^{]*\.app-beam-form\s*{[^}]*max-width:\s*none/,
+    );
+    expect(css).toMatch(
       /\.analysis-visual \.analyze-processing-panel\s*{[^}]*grid-template-columns:\s*1\.15fr 0\.85fr/,
     );
     expect(css).toContain('.analyze-ray.summary');

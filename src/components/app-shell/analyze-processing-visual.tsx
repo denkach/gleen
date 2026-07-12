@@ -42,7 +42,9 @@ export function AnalyzeProcessingVisual({
       data-submitted-url={submittedUrl}
       data-testid="analyze-processing-visual"
     >
-      <div className={`analyze-shell ${presentation.mode}`}>
+      <div
+        className={`analyze-shell ${presentation.mode}${idleContent ? ' production-intake' : ''}`}
+      >
         <div className="analyze-photon" aria-hidden="true" />
         <div className="analyze-shell-flash" aria-hidden="true" />
         {idleContent ? (

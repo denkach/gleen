@@ -531,9 +531,27 @@
     transform 0.55s var(--ease-prism),
     filter 0.55s var(--ease-prism);
 }
-.analysis-visual .analyze-input-row .app-beam-form {
-  width: 100%;
-  max-width: none;
+.analysis-visual .analyze-shell.idle.production-intake .analyze-input-row {
+  position: relative;
+  inset: auto;
+  padding: 0;
+}
+.analysis-visual .analyze-shell.idle.production-intake .app-beam-form {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.analysis-visual .analyze-shell.idle.production-intake .app-beam-form::before {
+  right: 87px;
+  left: 10px;
+}
+.analysis-visual
+  .analyze-shell.idle.production-intake
+  .app-beam-form
+  .link-icon {
+  left: 14px;
 }
 .analysis-visual :is(.processing, .complete, .error) .analyze-input-row {
   pointer-events: none;
@@ -1105,19 +1123,56 @@
 
 .analysis-visual .analyze-shell {
   position: relative;
+  width: 100%;
+  overflow: hidden;
+  transition:
+    max-width 0.75s var(--ease-prism),
+    height 0.75s var(--ease-prism),
+    padding 0.35s,
+    border-color 0.35s,
+    border-radius 0.35s,
+    background 0.35s,
+    box-shadow 0.35s;
+}
+
+.analysis-visual .analyze-shell.idle.production-intake {
+  max-width: 760px;
+  height: 66px;
+  padding: 7px;
+  border: 1px solid var(--border-hover);
+  border-radius: 17px;
+  background: rgba(17, 16, 24, 0.76);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.015),
+    0 24px 70px rgba(0, 0, 0, 0.35),
+    inset 0 1px rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+}
+
+.analysis-visual .analyze-shell.idle:not(.production-intake) {
   max-width: 1395px;
   height: 122px;
-  overflow: hidden;
+  padding: 0;
   border: 1px solid var(--border-strong);
   border-radius: 30px;
   background: var(--analysis-shell-surface);
   box-shadow:
     0 0 0 1px var(--analysis-shell-idle-inset) inset,
     0 0 40px var(--analysis-shell-idle-glow);
-  transition:
-    height 0.75s var(--ease-prism),
-    border-color 0.35s,
-    box-shadow 0.35s;
+}
+
+.analysis-visual .analyze-shell.processing,
+.analysis-visual .analyze-shell.complete,
+.analysis-visual .analyze-shell.error {
+  max-width: 1395px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 30px;
+  background: var(--analysis-shell-surface);
+  box-shadow:
+    0 0 0 1px var(--analysis-shell-idle-inset) inset,
+    0 0 40px var(--analysis-shell-idle-glow);
+  backdrop-filter: none;
 }
 
 .analysis-visual .analyze-shell.processing {
@@ -1624,10 +1679,26 @@
 }
 
 @media (max-width: 900px) {
-  .analysis-visual .analyze-input-row {
+  .analysis-visual .analyze-shell.idle.production-intake {
+    height: 112px;
+  }
+  .analysis-visual :is(.processing, .complete, .error) .analyze-input-row {
     padding: 12px;
   }
-  .analysis-visual .analyze-shell {
+  .analysis-visual
+    .analyze-shell.idle.production-intake
+    .app-beam-form::before {
+    top: 23px;
+    right: 10px;
+    left: 10px;
+  }
+  .analysis-visual
+    .analyze-shell.idle.production-intake
+    .app-beam-form
+    .link-icon {
+    top: 23px;
+  }
+  .analysis-visual .analyze-shell.idle:not(.production-intake) {
     height: 164px;
     border-radius: 24px;
   }
@@ -1635,6 +1706,7 @@
   .analysis-visual .analyze-shell.complete,
   .analysis-visual .analyze-shell.error {
     height: 500px;
+    border-radius: 24px;
   }
   .analysis-visual .analyze-processing-panel {
     grid-template-columns: 1fr;

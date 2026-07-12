@@ -38,6 +38,83 @@ async function openFixture(page: Page) {
   );
 }
 
+const den16IdleGeometry = [
+  {
+    viewport: { width: 1440, height: 900 },
+    shell: { x: 335, y: 353.6875, width: 760, height: 66 },
+    input: { x: 343, y: 361.6875, width: 594.953125, height: 50 },
+    button: { x: 937.953125, y: 362.6875, width: 149.046875, height: 48 },
+    meta: { x: 335, y: 419.6875, width: 1012, height: 30.5 },
+    dashboard: { x: 284, y: 517.1875, width: 1114, height: 299 },
+  },
+  {
+    viewport: { width: 390, height: 844 },
+    shell: { x: 33, y: 255.4375, width: 324, height: 112 },
+    input: { x: 41, y: 263.4375, width: 308, height: 48 },
+    button: { x: 41, y: 311.4375, width: 308, height: 48 },
+    meta: { x: 33, y: 367.4375, width: 324, height: 30.5 },
+    dashboard: { x: 14, y: 446, width: 362, height: 616 },
+  },
+] as const;
+
+for (const baseline of den16IdleGeometry) {
+  test(`idle production shell exactly matches the DEN-16 form at ${baseline.viewport.width}x${baseline.viewport.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(baseline.viewport);
+    await page.goto('/app-shell-fixture?intake=ready');
+
+    const actual = await page.evaluate(() => {
+      const box = (selector: string) => {
+        const element = document.querySelector(selector)!;
+        const rect = element.getBoundingClientRect();
+        return {
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+        };
+      };
+      const shell = document.querySelector('.analyze-shell')!;
+      const style = getComputedStyle(shell);
+      return {
+        shell: box('.analyze-shell'),
+        input: box('#new-analysis-form input[name="rawUrl"]'),
+        button: box('#new-analysis-form button[type="submit"]'),
+        meta: box('.analysis-form-meta'),
+        dashboard: box('.dashboard-grid'),
+        style: {
+          border: style.border,
+          borderRadius: style.borderRadius,
+          padding: style.padding,
+          background: style.backgroundColor,
+          boxShadow: style.boxShadow,
+        },
+      };
+    });
+
+    for (const key of [
+      'shell',
+      'input',
+      'button',
+      'meta',
+      'dashboard',
+    ] as const) {
+      for (const dimension of ['x', 'y', 'width', 'height'] as const) {
+        expect(actual[key][dimension]).toBeCloseTo(baseline[key][dimension], 0);
+      }
+    }
+    expect(actual.style).toEqual({
+      border: '1px solid rgba(255, 255, 255, 0.12)',
+      borderRadius: '17px',
+      padding: '7px',
+      background: 'rgba(17, 16, 24, 0.76)',
+      boxShadow:
+        'rgba(255, 255, 255, 0.016) 0px 0px 0px 1px, rgba(0, 0, 0, 0.35) 0px 24px 70px 0px, rgba(255, 255, 255, 0.03) 0px 1px 0px 0px inset',
+    });
+  });
+}
+
 test('launches the approved opening and renders only selected artifact rays', async ({
   page,
 }) => {
