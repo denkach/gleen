@@ -128,6 +128,8 @@ for (const [scenario, rawUrl, message] of [
       page.getByRole('status').filter({ hasText: message }),
     ).toBeVisible();
     await expect(page.getByLabel('YouTube URL')).toHaveValue(rawUrl);
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeFocused();
   });
 }
 

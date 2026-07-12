@@ -212,7 +212,18 @@ describe('NewAnalysisForm', () => {
       'data-stage-state',
       'pending',
     );
-    expect(screen.getByRole('button', { name: 'Analyzing…' })).toBeDisabled();
+    expect(
+      document.querySelector<HTMLButtonElement>(
+        '#new-analysis-form button[type="submit"]',
+      ),
+    ).toBeDisabled();
+    expect(document.querySelector('#new-analysis-form')).toHaveAttribute(
+      'inert',
+    );
+    expect(document.querySelector('#new-analysis-form')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
 
     await act(async () =>
       resolveAction(createInitialIntakeActionState(defaults)),
@@ -242,8 +253,11 @@ describe('NewAnalysisForm', () => {
     });
 
     expect(input).toHaveValue('https://youtu.be/abcdefghijk');
-    expect(screen.getByRole('button', { name: 'Analyzing…' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Analyzing…' }));
+    const hiddenSubmit = document.querySelector<HTMLButtonElement>(
+      '#new-analysis-form button[type="submit"]',
+    );
+    expect(hiddenSubmit).toBeDisabled();
+    fireEvent.click(hiddenSubmit!);
     expect(action).toHaveBeenCalledTimes(1);
     await act(async () =>
       resolveAction({
@@ -257,6 +271,13 @@ describe('NewAnalysisForm', () => {
       'data-analysis-state',
       'error',
     );
+    expect(document.querySelector('#new-analysis-form')).toHaveAttribute(
+      'inert',
+    );
+    expect(document.querySelector('#new-analysis-form')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
     expect(screen.getByRole('status')).toHaveTextContent(
       'The video service is temporarily unavailable. Try again.',
     );
@@ -266,10 +287,32 @@ describe('NewAnalysisForm', () => {
     );
     expect(screen.queryByText('TRANSCRIPT')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    const retry = screen.getByRole('button', { name: 'Try again' });
+    expect(
+      screen.queryByRole('button', { name: 'Analyze video' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(retry);
     expect(action).toHaveBeenCalledTimes(2);
+    const retryFormData = action.mock.calls[1]?.[1] as FormData;
+    expect(retryFormData.getAll('rawUrl')).toEqual([
+      'https://youtu.be/abcdefghijk',
+    ]);
+    expect(retryFormData.getAll('outputLocale')).toEqual(['de']);
+    expect(retryFormData.getAll('summaryPreset')).toEqual(['balanced']);
+    expect(retryFormData.getAll('flashcardPreset')).toEqual(['18']);
+    expect(retryFormData.getAll('artifacts')).toEqual([
+      'summary',
+      'timestamps',
+    ]);
     await act(async () =>
       resolveAction(createInitialIntakeActionState(defaults)),
+    );
+    expect(document.querySelector('#new-analysis-form')).not.toHaveAttribute(
+      'inert',
+    );
+    expect(document.querySelector('#new-analysis-form')).not.toHaveAttribute(
+      'aria-hidden',
     );
   });
 

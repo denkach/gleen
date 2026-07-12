@@ -168,6 +168,8 @@ export function NewAnalysisForm({
         action={formAction}
         className={`beam-form app-beam-form${visualState ? ' processing-hidden' : ''}`}
         aria-describedby="intake-status"
+        aria-hidden={visualState ? true : undefined}
+        inert={visualState ? true : undefined}
         onSubmit={validateArtifacts}
       >
         <AppIcon name="link" className="link-icon" />
