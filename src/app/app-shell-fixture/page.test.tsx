@@ -1,16 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 
-const { isUiPreviewEnabled, notFound } = vi.hoisted(() => ({
+const { isUiPreviewEnabled, notFound, push } = vi.hoisted(() => ({
   isUiPreviewEnabled: vi.fn(),
   notFound: vi.fn((): never => {
     throw new Error('NEXT_NOT_FOUND');
   }),
+  push: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
   notFound,
   usePathname: () => '/app',
+  useRouter: () => ({ push }),
 }));
 vi.mock('@/lib/ui-preview', () => ({ isUiPreviewEnabled }));
 
