@@ -116,6 +116,46 @@ describe('AnalyzeProcessingVisual', () => {
       'data-stage-state',
       'done',
     );
+    expect(
+      screen
+        .getByRole('heading', {
+          name: 'Your knowledge artifacts are ready.',
+        })
+        .closest('.analyze-complete-banner'),
+    ).toHaveAttribute('aria-hidden', 'false');
+  });
+
+  it('lets completion copy render before a controlled overlay reveal', () => {
+    const { rerender } = render(
+      <AnalyzeProcessingVisual
+        state="complete"
+        selectedArtifacts={['summary']}
+        submittedUrl="https://youtu.be/dQw4w9WgXcQ"
+        showCompletionOverlay={false}
+      />,
+    );
+
+    expect(screen.getByText('Analysis complete')).toBeInTheDocument();
+    const overlay = screen
+      .getByRole('heading', {
+        name: 'Your knowledge artifacts are ready.',
+        hidden: true,
+      })
+      .closest('.analyze-complete-banner');
+    expect(overlay).not.toHaveClass('show');
+    expect(overlay).toHaveAttribute('aria-hidden', 'true');
+
+    rerender(
+      <AnalyzeProcessingVisual
+        state="complete"
+        selectedArtifacts={['summary']}
+        submittedUrl="https://youtu.be/dQw4w9WgXcQ"
+        showCompletionOverlay
+      />,
+    );
+
+    expect(overlay).toHaveClass('show');
+    expect(overlay).toHaveAttribute('aria-hidden', 'false');
   });
 
   it('retains the exact scoped processing, responsive, and motion contracts', () => {

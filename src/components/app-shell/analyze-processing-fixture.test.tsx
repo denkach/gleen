@@ -6,6 +6,13 @@ import { AnalyzeProcessingFixture } from './analyze-processing-fixture';
 const visual = () => screen.getByTestId('analyze-processing-visual');
 const expectState = (state: string) =>
   expect(visual()).toHaveAttribute('data-analysis-state', state);
+const completionOverlay = () =>
+  screen
+    .getByRole('heading', {
+      name: 'Your knowledge artifacts are ready.',
+      hidden: true,
+    })
+    .closest('.analyze-complete-banner');
 
 describe('AnalyzeProcessingFixture', () => {
   beforeEach(() => vi.useFakeTimers());
@@ -38,6 +45,8 @@ describe('AnalyzeProcessingFixture', () => {
     expectState('artifacts');
     await advance(1_500);
     expectState('complete');
+    expect(screen.getByText('Analysis complete')).toBeInTheDocument();
+    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
     await advance(600);
     expectState('complete');
     expect(
@@ -55,6 +64,7 @@ describe('AnalyzeProcessingFixture', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Replay sequence' }));
     expectState('idle');
+    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
     await advance(79);
     expectState('idle');
     await advance(1);
@@ -70,13 +80,35 @@ describe('AnalyzeProcessingFixture', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Preview error' }));
     expectState('error');
+    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
     await advance(10_000);
     expectState('error');
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expectState('submitting');
+    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
     await advance(850);
     expectState('validating');
+  });
+
+  it('resets a visible completion overlay for replay, error, and retry', async () => {
+    render(<AnalyzeProcessingFixture />);
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze video' }));
+    await advance(7_100);
+    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'false');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replay sequence' }));
+    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
+    await advance(7_180);
+    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'false');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview error' }));
+    expectState('error');
+    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expectState('submitting');
+    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('clears every scheduled timer on unmount', () => {

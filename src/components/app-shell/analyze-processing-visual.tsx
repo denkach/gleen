@@ -13,6 +13,7 @@ export type AnalyzeProcessingVisualProps = Readonly<{
   submittedUrl: string;
   errorMessage?: string;
   onRetry?: () => void;
+  showCompletionOverlay?: boolean;
 }>;
 
 export function AnalyzeProcessingVisual({
@@ -21,6 +22,7 @@ export function AnalyzeProcessingVisual({
   submittedUrl,
   errorMessage,
   onRetry,
+  showCompletionOverlay,
 }: AnalyzeProcessingVisualProps) {
   const presentation = getAnalysisVisualPresentation(state);
   const selectedRays = selectedArtifacts.map(
@@ -28,6 +30,8 @@ export function AnalyzeProcessingVisual({
   );
   const isError = presentation.mode === 'error';
   const isComplete = presentation.mode === 'complete';
+  const isCompletionOverlayVisible =
+    isComplete && (showCompletionOverlay ?? true);
 
   return (
     <div
@@ -116,8 +120,8 @@ export function AnalyzeProcessingVisual({
         </div>
 
         <div
-          className={`analyze-complete-banner${isComplete ? ' show' : ''}`}
-          aria-hidden={!isComplete}
+          className={`analyze-complete-banner${isCompletionOverlayVisible ? ' show' : ''}`}
+          aria-hidden={!isCompletionOverlayVisible}
         >
           <div className="analyze-complete-card">
             <div className="analyze-complete-prism" aria-hidden="true" />

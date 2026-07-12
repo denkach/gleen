@@ -26,11 +26,11 @@ const prototypeSchedule: readonly [
   [3_500, 'structuring'],
   [5_000, 'artifacts'],
   [6_500, 'complete'],
-  [7_100, 'complete'],
 ];
 
 export function AnalyzeProcessingFixture() {
   const [state, setState] = useState<AnalysisVisualState>('idle');
+  const [showCompletionOverlay, setShowCompletionOverlay] = useState(false);
   const [selectedArtifacts, setSelectedArtifacts] =
     useState<readonly Artifact[]>(allArtifacts);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -43,20 +43,26 @@ export function AnalyzeProcessingFixture() {
 
   const run = useCallback(() => {
     clearTimers();
+    setShowCompletionOverlay(false);
     setState('submitting');
     timers.current = prototypeSchedule.map(([delay, nextState]) =>
       setTimeout(() => setState(nextState), delay),
+    );
+    timers.current.push(
+      setTimeout(() => setShowCompletionOverlay(true), 7_100),
     );
   }, [clearTimers]);
 
   const replay = useCallback(() => {
     clearTimers();
+    setShowCompletionOverlay(false);
     setState('idle');
     timers.current = [setTimeout(run, 80)];
   }, [clearTimers, run]);
 
   const previewError = useCallback(() => {
     clearTimers();
+    setShowCompletionOverlay(false);
     setState('error');
   }, [clearTimers]);
 
@@ -115,6 +121,7 @@ export function AnalyzeProcessingFixture() {
             : undefined
         }
         onRetry={run}
+        showCompletionOverlay={showCompletionOverlay}
       />
     </section>
   );
