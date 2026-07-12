@@ -4,6 +4,13 @@
 
 **Goal:** Let an authenticated user validate a YouTube video, choose the knowledge artifacts they need, store a native transcript snapshot, reuse an exact prior intake, or explicitly create a re-analysis attempt.
 
+**Approved pending-state decision:** Retain the opaque Server Action and
+`useActionState` architecture. Its metadata, transcript, duplicate, and save
+work shares one combined pending state announced exactly as
+`Checking video and transcript…`; do not fabricate phase changes with timers.
+Distinct real phases are deferred until a streaming or durable processing
+architecture can expose them truthfully.
+
 **Architecture:** Pure domain modules parse URLs, validate intake configuration, normalize artifact-dependent presets, and compute a server-side SHA-256 fingerprint. Fixed-origin YouTube and Supadata adapters feed an orchestration service backed by an RLS-protected Supabase repository; a Server Action exposes stable states to the approved New analysis UI. The saved readiness route remains truthful and contains no generated artifacts.
 
 **Tech Stack:** Next.js 16 App Router, React 19, strict TypeScript, Zod 4, Supabase SSR/Postgres/RLS, Tailwind/CSS-variable tokens, Vitest/Testing Library, Playwright.
@@ -905,7 +912,7 @@ test('chooses artifacts, preserves failures, detects duplicates, and opens readi
 });
 ```
 
-Add separate exact-duplicate/open-existing/re-analysis confirmation, error preservation, keyboard focus order, 44px touch targets, aria-live announcement, and pending double-submit stories.
+Add separate exact-duplicate/open-existing/re-analysis confirmation, error preservation, keyboard focus order, 44px touch targets, the combined `Checking video and transcript…` aria-live announcement, and pending double-submit stories. Do not use fake timers or assert timer-derived phase changes; pending resets naturally when the Server Action resolves and remains present under reduced motion.
 
 - [ ] **Step 4: Verify all approved viewport and motion variants**
 

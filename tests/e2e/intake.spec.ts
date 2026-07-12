@@ -39,9 +39,7 @@ test('chooses artifacts, prevents double submit, announces pending, and opens re
   await page.getByRole('button', { name: 'Analyze video' }).dblclick();
   await expect(page.getByRole('button', { name: 'Analyzing…' })).toBeDisabled();
   const pendingStatus = page.getByRole('status', { name: '' });
-  await expect(pendingStatus).toHaveText('Checking video');
-  await expect(pendingStatus).toHaveText('Checking transcript');
-  await expect(pendingStatus).toHaveText('Saving intake');
+  await expect(pendingStatus).toHaveText('Checking video and transcript…');
   await expect(page).toHaveURL(/\/app\/video\//, { timeout: 15_000 });
   await expect(page.getByText('Ready for processing')).toBeVisible();
 });

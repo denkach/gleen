@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import {
   createInitialIntakeActionState,
@@ -18,8 +18,6 @@ import { NewAnalysisForm } from './new-analysis-form';
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
-
-afterEach(() => vi.useRealTimers());
 
 const defaults = {
   outputLocale: 'en' as const,
@@ -213,8 +211,7 @@ describe('NewAnalysisForm', () => {
     expect(input).toHaveValue('https://youtu.be/abcdefghijk');
   });
 
-  test('announces each honest pending phase and resets when the action resolves', async () => {
-    vi.useFakeTimers();
+  test('announces one truthful pending state and resets when the action resolves', async () => {
     let resolveAction!: (state: IntakeActionState) => void;
     const action = vi.fn(
       () =>
@@ -231,15 +228,15 @@ describe('NewAnalysisForm', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole('status')).toHaveTextContent('Checking video');
-    act(() => vi.advanceTimersByTime(800));
-    expect(screen.getByRole('status')).toHaveTextContent('Checking transcript');
-    act(() => vi.advanceTimersByTime(800));
-    expect(screen.getByRole('status')).toHaveTextContent('Saving intake');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Checking video and transcript…',
+    );
     await act(async () =>
       resolveAction(createInitialIntakeActionState(defaults)),
     );
-    expect(screen.queryByText('Saving intake')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Checking video and transcript…'),
+    ).not.toBeInTheDocument();
   });
 
   test('renders approved duplicate copy and confirms reanalysis with sourceId only', async () => {

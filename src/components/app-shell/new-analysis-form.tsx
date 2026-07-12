@@ -57,26 +57,9 @@ const localeNames: Record<(typeof supportedLocales)[number], string> = {
 };
 
 function PendingAnnouncement() {
-  const [phase, setPhase] = useState('Checking video');
-
-  useEffect(() => {
-    const transcriptTimer = window.setTimeout(
-      () => setPhase('Checking transcript'),
-      750,
-    );
-    const savingTimer = window.setTimeout(
-      () => setPhase('Saving intake'),
-      1500,
-    );
-    return () => {
-      window.clearTimeout(transcriptTimer);
-      window.clearTimeout(savingTimer);
-    };
-  }, []);
-
   return (
     <span className="sr-only" role="status" aria-live="polite">
-      {phase}
+      Checking video and transcript…
     </span>
   );
 }

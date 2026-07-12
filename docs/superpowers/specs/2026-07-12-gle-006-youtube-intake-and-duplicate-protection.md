@@ -227,9 +227,7 @@ Required states:
 
 - idle;
 - local validation error;
-- checking video;
-- checking transcript;
-- saving intake;
+- checking video and transcript (one combined pending state);
 - exact duplicate;
 - ready/success redirect;
 - recoverable provider failure;
@@ -237,7 +235,11 @@ Required states:
 
 Use text status announcements with `aria-live`; do not communicate status by
 the prism line or color alone. Pending state keeps the URL visible and prevents
-double submission.
+double submission. By explicit user decision, the opaque Server Action and
+`useActionState` architecture uses the single truthful pending announcement
+`Checking video and transcript…`. It must not derive or claim individual phases
+from timers. Distinct real phases are deferred until a streaming or durable
+processing architecture can report them truthfully.
 
 Error copy must distinguish:
 
