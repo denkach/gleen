@@ -1,17 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getUser, redirect } = vi.hoisted(() => ({
+const { getUser, redirect, usePathname } = vi.hoisted(() => ({
   getUser: vi.fn(),
   redirect: vi.fn((path: string): never => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
+  usePathname: vi.fn(() => '/app'),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(async () => ({ auth: { getUser } })),
 }));
-vi.mock('next/navigation', () => ({ redirect }));
+vi.mock('next/navigation', () => ({ redirect, usePathname }));
 
 import AppLayout from './layout';
 
