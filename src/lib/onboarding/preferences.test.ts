@@ -48,6 +48,21 @@ describe('onboarding preferences', () => {
     });
   });
 
+  it('accepts PostgreSQL timestamps with an explicit UTC offset', () => {
+    const completedAt = '2026-07-12T01:34:19.861+00:00';
+
+    expect(
+      onboardingStateSchema.parse({
+        interfaceLocale: 'ru',
+        outputLocale: 'ru',
+        summaryPreset: 'detailed',
+        flashcardPreset: 18,
+        onboardingStep: 3,
+        onboardingCompletedAt: completedAt,
+      }).onboardingCompletedAt,
+    ).toBe(completedAt);
+  });
+
   it('defines ownership constraints and RLS in the migration', async () => {
     const migration = await readFile(
       join(

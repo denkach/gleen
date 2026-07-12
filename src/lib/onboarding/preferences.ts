@@ -22,14 +22,18 @@ export const onboardingStateSchema = z.object({
   summaryPreset: summaryPresetSchema,
   flashcardPreset: flashcardPresetSchema,
   onboardingStep: onboardingStepSchema,
-  onboardingCompletedAt: z.string().datetime().nullable(),
+  onboardingCompletedAt: z.string().datetime({ offset: true }).nullable(),
 });
 
 export const onboardingPatchSchema = onboardingStateSchema
   .omit({ onboardingCompletedAt: true })
   .partial()
   .extend({
-    onboardingCompletedAt: z.string().datetime().nullable().optional(),
+    onboardingCompletedAt: z
+      .string()
+      .datetime({ offset: true })
+      .nullable()
+      .optional(),
   });
 
 export type OnboardingState = z.infer<typeof onboardingStateSchema>;
