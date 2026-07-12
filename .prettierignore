@@ -3,6 +3,7 @@ node_modules
 coverage
 playwright-report
 test-results
+supabase/.temp/**
 design/reference-v3/**
 design/screenshots/**
 docs/design-system.md
