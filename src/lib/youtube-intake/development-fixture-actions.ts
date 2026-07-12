@@ -23,16 +23,18 @@ async function submit(
   formData: FormData,
 ) {
   if (scenario === 'ready')
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 1_800));
   const result = await actions(scenario).submit(previous, formData);
-  if (
-    scenario === 'ready' &&
-    result.redirectTo &&
-    formData.getAll('artifacts').includes('flashcards')
-  ) {
+  if (scenario === 'ready' && result.redirectTo) {
+    const params = new URLSearchParams({
+      outputLocale: String(formData.get('outputLocale')),
+      summaryPreset: String(formData.get('summaryPreset')),
+    });
+    if (formData.getAll('artifacts').includes('flashcards'))
+      params.set('flashcardPreset', String(formData.get('flashcardPreset')));
     return {
       ...result,
-      redirectTo: `${result.redirectTo}?flashcardPreset=${formData.get('flashcardPreset')}`,
+      redirectTo: `${result.redirectTo}?${params}`,
     };
   }
   return result;

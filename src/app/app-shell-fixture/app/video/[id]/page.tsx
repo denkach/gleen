@@ -5,6 +5,10 @@ import { IntakeReadiness } from '@/components/app-shell/intake-readiness';
 import { unavailableUsage } from '@/lib/app-shell';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
+import {
+  outputLocaleSchema,
+  summaryPresetSchema,
+} from '@/lib/onboarding/preferences';
 
 const allowedIds = new Set([
   fixtureSavedIntake.id,
@@ -17,7 +21,11 @@ export default async function FixtureReadinessPage({
   searchParams,
 }: Readonly<{
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ flashcardPreset?: string }>;
+  searchParams: Promise<{
+    flashcardPreset?: string;
+    outputLocale?: string;
+    summaryPreset?: string;
+  }>;
 }>) {
   if (
     !isUiPreviewEnabled({
@@ -27,22 +35,31 @@ export default async function FixtureReadinessPage({
   )
     notFound();
   const { id } = await params;
-  const { flashcardPreset } = await searchParams;
+  const { flashcardPreset, outputLocale, summaryPreset } = await searchParams;
   if (!allowedIds.has(id)) notFound();
   const intake = {
     ...fixtureSavedIntake,
     id,
-    configuration:
-      flashcardPreset === '18' || flashcardPreset === '30'
-        ? {
-            ...fixtureSavedIntake.configuration,
-            artifacts: [
+    configuration: {
+      ...fixtureSavedIntake.configuration,
+      outputLocale:
+        outputLocaleSchema.safeParse(outputLocale).data ??
+        fixtureSavedIntake.configuration.outputLocale,
+      summaryPreset:
+        summaryPresetSchema.safeParse(summaryPreset).data ??
+        fixtureSavedIntake.configuration.summaryPreset,
+      artifacts:
+        flashcardPreset === '18' || flashcardPreset === '30'
+          ? [
               ...fixtureSavedIntake.configuration.artifacts,
               'flashcards' as const,
-            ],
-            flashcardPreset: Number(flashcardPreset) as 18 | 30,
-          }
-        : fixtureSavedIntake.configuration,
+            ]
+          : fixtureSavedIntake.configuration.artifacts,
+      flashcardPreset:
+        flashcardPreset === '18' || flashcardPreset === '30'
+          ? (Number(flashcardPreset) as 18 | 30)
+          : fixtureSavedIntake.configuration.flashcardPreset,
+    },
     attempt: id.startsWith('4444') ? 2 : 1,
     reanalysisOf: id.startsWith('4444') ? fixtureSavedIntake.id : null,
   };

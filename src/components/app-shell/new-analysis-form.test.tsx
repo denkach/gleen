@@ -1,6 +1,12 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import {
   createInitialIntakeActionState,
@@ -12,6 +18,8 @@ import { NewAnalysisForm } from './new-analysis-form';
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
+
+afterEach(() => vi.useRealTimers());
 
 const defaults = {
   outputLocale: 'en' as const,
@@ -35,6 +43,42 @@ function renderForm(
 }
 
 describe('NewAnalysisForm', () => {
+  test('persists output language and summary preset and submits each named value once', async () => {
+    const user = userEvent.setup();
+    const action = vi.fn(
+      async (state: IntakeActionState, formData: FormData) => {
+        void formData;
+        return state;
+      },
+    );
+    renderForm(action);
+
+    await user.click(screen.getByRole('button', { name: 'Advanced options' }));
+    await user.click(screen.getByRole('radio', { name: 'Deutsch' }));
+    await user.selectOptions(
+      screen.getByLabelText('Summary preset'),
+      'detailed',
+    );
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await user.click(screen.getByRole('button', { name: 'Advanced options' }));
+    expect(screen.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
+    expect(screen.getByLabelText('Summary preset')).toHaveValue('detailed');
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await user.type(
+      screen.getByLabelText('YouTube URL'),
+      'https://youtu.be/abcdefghijk',
+    );
+    await act(async () => {
+      fireEvent.submit(document.querySelector('#new-analysis-form')!);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    const formData = action.mock.calls[0]?.[1] as FormData;
+    expect(formData.getAll('outputLocale')).toEqual(['de']);
+    expect(formData.getAll('summaryPreset')).toEqual(['detailed']);
+  });
+
   test('enables the approved intake and starts with domain artifact defaults', async () => {
     const user = userEvent.setup();
     renderForm(async (state) => state);
@@ -81,7 +125,10 @@ describe('NewAnalysisForm', () => {
     await user.click(screen.getByRole('button', { name: 'Advanced options' }));
 
     expect(screen.queryByLabelText('Flashcard count')).not.toBeInTheDocument();
-    for (const name of ['Summary', 'Timestamps', 'Transcript']) {
+    expect(screen.getByLabelText('Summary preset')).toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox', { name: 'Summary' }));
+    expect(screen.queryByLabelText('Summary preset')).not.toBeInTheDocument();
+    for (const name of ['Timestamps', 'Transcript']) {
       await user.click(screen.getByRole('checkbox', { name }));
     }
     await user.click(screen.getByRole('button', { name: 'Done' }));
@@ -89,7 +136,10 @@ describe('NewAnalysisForm', () => {
       screen.getByLabelText('YouTube URL'),
       'https://youtu.be/abcdefghijk',
     );
-    await user.click(screen.getByRole('button', { name: 'Analyze video' }));
+    await act(async () => {
+      fireEvent.submit(document.querySelector('#new-analysis-form')!);
+      await Promise.resolve();
+    });
     expect(screen.getByRole('status')).toHaveTextContent(
       'Choose at least one artifact.',
     );
@@ -121,7 +171,7 @@ describe('NewAnalysisForm', () => {
       screen.getByLabelText('YouTube URL'),
       'https://youtu.be/abcdefghijk',
     );
-    await user.click(screen.getByRole('button', { name: 'Analyze video' }));
+    fireEvent.submit(document.querySelector('#new-analysis-form')!);
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
     const formData = action.mock.calls[0]?.[1] as FormData;
     expect(formData.getAll('flashcardPreset')).toEqual(['30']);
@@ -140,11 +190,14 @@ describe('NewAnalysisForm', () => {
     renderForm(action);
     const input = screen.getByLabelText('YouTube URL');
     await user.type(input, 'https://youtu.be/abcdefghijk');
-    await user.click(screen.getByRole('button', { name: 'Analyze video' }));
+    await act(async () => {
+      fireEvent.submit(document.querySelector('#new-analysis-form')!);
+      await Promise.resolve();
+    });
 
     expect(input).toHaveValue('https://youtu.be/abcdefghijk');
     expect(screen.getByRole('button', { name: 'Analyzing…' })).toBeDisabled();
-    await user.click(screen.getByRole('button', { name: 'Analyzing…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Analyzing…' }));
     expect(action).toHaveBeenCalledTimes(1);
     resolveAction({
       ...createInitialIntakeActionState(defaults),
@@ -160,6 +213,35 @@ describe('NewAnalysisForm', () => {
     expect(input).toHaveValue('https://youtu.be/abcdefghijk');
   });
 
+  test('announces each honest pending phase and resets when the action resolves', async () => {
+    vi.useFakeTimers();
+    let resolveAction!: (state: IntakeActionState) => void;
+    const action = vi.fn(
+      () =>
+        new Promise<IntakeActionState>((resolve) => {
+          resolveAction = resolve;
+        }),
+    );
+    renderForm(action);
+    fireEvent.change(screen.getByLabelText('YouTube URL'), {
+      target: { value: 'https://youtu.be/abcdefghijk' },
+    });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('#new-analysis-form')!);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('status')).toHaveTextContent('Checking video');
+    act(() => vi.advanceTimersByTime(800));
+    expect(screen.getByRole('status')).toHaveTextContent('Checking transcript');
+    act(() => vi.advanceTimersByTime(800));
+    expect(screen.getByRole('status')).toHaveTextContent('Saving intake');
+    await act(async () =>
+      resolveAction(createInitialIntakeActionState(defaults)),
+    );
+    expect(screen.queryByText('Saving intake')).not.toBeInTheDocument();
+  });
+
   test('renders approved duplicate copy and confirms reanalysis with sourceId only', async () => {
     const user = userEvent.setup();
     const duplicate: IntakeActionState = {
@@ -167,6 +249,13 @@ describe('NewAnalysisForm', () => {
       status: 'duplicate',
       rawUrl: 'https://youtu.be/abcdefghijk',
       existingId: 'saved-123',
+      duplicateConfiguration: {
+        outputLocale: 'de',
+        summaryPreset: 'detailed',
+        flashcardPreset: null,
+        artifacts: ['summary', 'transcript'],
+        analysisContractVersion: 1,
+      },
     };
     const submit = vi.fn(async () => duplicate);
     const reanalyze = vi.fn(
@@ -194,6 +283,9 @@ describe('NewAnalysisForm', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent(
       'A new processing attempt will be created.',
     );
+    expect(screen.getByRole('dialog')).toHaveTextContent('de');
+    expect(screen.getByRole('dialog')).toHaveTextContent('Detailed');
+    expect(screen.getByRole('dialog')).not.toHaveTextContent('30');
     await user.click(screen.getByRole('button', { name: 'Confirm analysis' }));
     await waitFor(() => expect(reanalyze).toHaveBeenCalledTimes(1));
     const formData = reanalyze.mock.calls[0]?.[1] as FormData;

@@ -1,6 +1,7 @@
 import type { IntakeActionState } from './action-state';
 import {
   intakeConfigurationSchema,
+  normalizeIntakeConfiguration,
   type IntakeConfiguration,
 } from './configuration';
 import type { IntakeErrorCode } from './providers';
@@ -115,6 +116,13 @@ export function createIntakeActions(dependencies: IntakeActionDependencies) {
               rawUrl,
               configuration: parsed.data,
               existingId: result.intake.id,
+              duplicateConfiguration: normalizeIntakeConfiguration({
+                ...result.intake.configuration,
+                summaryPreset:
+                  result.intake.configuration.summaryPreset ?? 'balanced',
+                flashcardPreset:
+                  result.intake.configuration.flashcardPreset ?? 18,
+              }),
             }
           : {
               status: 'ready',

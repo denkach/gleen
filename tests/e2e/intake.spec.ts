@@ -38,13 +38,31 @@ test('chooses artifacts, prevents double submit, announces pending, and opens re
   await page.getByRole('button', { name: 'Done' }).click();
   await page.getByRole('button', { name: 'Analyze video' }).dblclick();
   await expect(page.getByRole('button', { name: 'Analyzing…' })).toBeDisabled();
-  await expect(
-    page
-      .getByRole('status', { name: '' })
-      .filter({ hasText: 'Analyzing video' }),
-  ).toBeAttached();
+  const pendingStatus = page.getByRole('status', { name: '' });
+  await expect(pendingStatus).toHaveText('Checking video');
+  await expect(pendingStatus).toHaveText('Checking transcript');
+  await expect(pendingStatus).toHaveText('Saving intake');
   await expect(page).toHaveURL(/\/app\/video\//, { timeout: 15_000 });
   await expect(page.getByText('Ready for processing')).toBeVisible();
+});
+
+test('persists output language and summary preset through options and submission', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture?intake=ready');
+  await page.getByLabel('YouTube URL').fill(videoUrl);
+  await page.getByRole('button', { name: 'Advanced options' }).click();
+  await page.getByRole('radio', { name: 'Deutsch' }).click();
+  await page.getByLabel('Summary preset').selectOption('detailed');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Advanced options' }).click();
+  await expect(page.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
+  await expect(page.getByLabel('Summary preset')).toHaveValue('detailed');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Analyze video' }).click();
+  await expect(page.getByText('Ready for processing')).toBeVisible();
+  await expect(page.getByText('German', { exact: true })).toBeVisible();
+  await expect(page.getByText('Detailed', { exact: true })).toBeVisible();
 });
 
 test('retains a 30-card preset after closing options and submits it to readiness', async ({
@@ -76,10 +94,23 @@ test('detects an exact duplicate, opens existing, and confirms re-analysis', asy
   await expect(page.getByText('No credits will be used.')).toBeVisible();
   const existing = page.getByRole('link', { name: 'Open saved result' });
   await expect(existing).toHaveAttribute('href', /\/app\/video\//);
+  await page.getByRole('button', { name: 'Advanced options' }).click();
+  await page.getByRole('radio', { name: 'Deutsch' }).click();
+  await page.getByLabel('Summary preset').selectOption('detailed');
+  await page.getByRole('checkbox', { name: 'Flashcards' }).check();
+  await page.getByLabel('Flashcard count').selectOption('30');
+  await page.getByRole('button', { name: 'Done' }).click();
   await page.getByRole('button', { name: 'Analyze again' }).click();
-  await expect(
-    page.getByRole('dialog', { name: 'Analyze this video again?' }),
-  ).toContainText('A new processing attempt will be created.');
+  const confirmation = page.getByRole('dialog', {
+    name: 'Analyze this video again?',
+  });
+  await expect(confirmation).toContainText(
+    'A new processing attempt will be created.',
+  );
+  await expect(confirmation).toContainText('en');
+  await expect(confirmation).toContainText('Balanced');
+  await expect(confirmation).not.toContainText('Deutsch');
+  await expect(confirmation).not.toContainText('30');
   await page.getByRole('button', { name: 'Confirm analysis' }).click();
   await expect(page).toHaveURL(/\/app\/video\/4444/);
   await expect(page.getByText('Ready for processing')).toBeVisible();

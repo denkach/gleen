@@ -1,6 +1,7 @@
 import {
   defaultArtifactSelection,
   type IntakeConfiguration,
+  type NormalizedIntakeConfiguration,
 } from './configuration';
 
 export type IntakeActionState = Readonly<{
@@ -9,6 +10,7 @@ export type IntakeActionState = Readonly<{
   configuration: IntakeConfiguration;
   message?: string;
   existingId?: string;
+  duplicateConfiguration?: NormalizedIntakeConfiguration;
   redirectTo?: string;
 }>;
 

@@ -139,13 +139,20 @@ describe('intake server actions', () => {
     expect(submit).not.toHaveBeenCalled();
   });
 
-  test('duplicate state exposes only the saved intake id', async () => {
+  test('duplicate state exposes the saved normalized configuration without private intake data', async () => {
     submit.mockResolvedValue({
       kind: 'duplicate',
       intake: {
         id: '11111111-1111-4111-8111-111111111111',
         title: 'Must not leak through state',
         transcriptSegments: [{ text: 'private', offsetMs: 0, durationMs: 1 }],
+        configuration: {
+          outputLocale: 'uk',
+          summaryPreset: null,
+          flashcardPreset: 30,
+          artifacts: ['transcript', 'flashcards'],
+          analysisContractVersion: 1,
+        },
       },
     });
 
@@ -154,6 +161,13 @@ describe('intake server actions', () => {
       rawUrl: ' https://youtu.be/dQw4w9WgXcQ ',
       configuration: expect.any(Object),
       existingId: '11111111-1111-4111-8111-111111111111',
+      duplicateConfiguration: {
+        outputLocale: 'uk',
+        summaryPreset: null,
+        flashcardPreset: 30,
+        artifacts: ['flashcards', 'transcript'],
+        analysisContractVersion: 1,
+      },
     });
   });
 
