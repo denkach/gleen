@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gleen — Analyze Prism Animation</title>
+<style>
+:root{
+  --bg:#09090e;--surface:#101016;--surface-2:#14131c;--line:rgba(255,255,255,.09);
+  --text:#f4f2ff;--muted:#777486;--amber:#ffb454;--purple:#c77dff;--cyan:#5be9e9;--lime:#a8e063;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:radial-gradient(circle at 70% 42%,rgba(74,56,102,.08),transparent 32%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.18;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.12'/%3E%3C/svg%3E")}
+.wrap{min-height:100%;display:grid;place-items:center;padding:40px}
+.stage{position:relative;width:min(1960px,100%);min-height:675px;border:1px solid rgba(255,255,255,.08);border-radius:40px;background:linear-gradient(180deg,rgba(17,17,24,.92),rgba(10,10,15,.96));overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.018) inset,0 30px 100px rgba(0,0,0,.35)}
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 58% 50%,rgba(132,96,194,.08),transparent 26%)}
+.content{position:relative;z-index:2;padding:100px 90px 82px;max-width:1540px}
+.eyebrow{font:500 13px/1.2 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.28em;color:#666374;margin-bottom:34px}
+h1{font-size:clamp(64px,6.7vw,108px);line-height:.96;letter-spacing:-.055em;font-weight:400;max-width:1250px;margin:0 0 56px}
+.analyze-shell{position:relative;max-width:1395px;height:122px;border:1px solid rgba(255,255,255,.18);border-radius:30px;background:rgba(13,12,20,.88);box-shadow:0 0 0 1px rgba(255,255,255,.04) inset,0 0 40px rgba(199,125,255,.035);overflow:hidden;transition:height .75s var(--ease),border-color .35s,box-shadow .35s}
+.analyze-shell.processing{height:300px;border-color:rgba(255,255,255,.16);box-shadow:0 0 0 1px rgba(255,255,255,.05) inset,0 0 72px rgba(199,125,255,.065)}
+.input-row{position:absolute;inset:0;display:grid;grid-template-columns:1fr 275px;align-items:center;padding:16px;transition:opacity .35s var(--ease),transform .55s var(--ease),filter .55s var(--ease)}
+.processing .input-row{opacity:0;transform:translateY(-18px) scale(.985);filter:blur(12px);pointer-events:none}
+.url-wrap{display:flex;align-items:center;gap:22px;padding:0 28px;min-width:0}
+.link-icon{width:30px;height:30px;opacity:.68;flex:0 0 auto}
+.url{font-size:31px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f2f0fa;letter-spacing:-.02em;position:relative}
+.caret{display:inline-block;width:1.5px;height:1.05em;background:#fff;vertical-align:-.08em;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.analyze-btn{height:88px;border:0;border-radius:22px;background:#f3f1ff;color:#121119;font-size:23px;font-weight:650;display:flex;align-items:center;justify-content:center;gap:26px;cursor:pointer;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.45) inset,0 0 28px rgba(244,242,255,.12);transition:transform .18s var(--ease),box-shadow .28s,filter .28s}
+.analyze-btn::before{content:"";position:absolute;inset:-2px;background:linear-gradient(90deg,var(--amber),var(--purple),var(--cyan),var(--lime));opacity:0;filter:blur(10px);z-index:-1;transition:opacity .25s}
+.analyze-btn:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(255,255,255,.6) inset,0 0 38px rgba(244,242,255,.2)}
+.analyze-btn:hover::before{opacity:.7}
+.analyze-btn:active{transform:scale(.975)}
+.analyze-btn[disabled]{cursor:default}
+.arrow{font-size:38px;font-weight:300;transition:transform .25s var(--ease),opacity .2s}
+.analyze-btn:hover .arrow{transform:translateX(5px)}
+.photon{position:absolute;left:38px;top:50%;width:12px;height:12px;border-radius:50%;background:#fff;opacity:0;transform:translateY(-50%);box-shadow:0 0 10px #fff,0 0 22px #fff,0 0 45px rgba(255,255,255,.65);z-index:5}
+.photon::after{content:"";position:absolute;right:3px;top:50%;width:240px;height:2px;transform:translateY(-50%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),#fff);filter:blur(.3px)}
+.shell-flash{position:absolute;inset:0;opacity:0;pointer-events:none;background:linear-gradient(90deg,transparent 20%,rgba(255,255,255,.8) 50%,transparent 80%);mix-blend-mode:screen;z-index:6}
+.processing-panel{position:absolute;inset:0;padding:35px 42px;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;opacity:0;transform:translateY(24px);pointer-events:none;transition:opacity .6s .28s var(--ease),transform .7s .28s var(--ease)}
+.processing .processing-panel{opacity:1;transform:none;pointer-events:auto}
+.status-copy{display:flex;flex-direction:column;justify-content:center;min-width:0}
+.status-kicker{font:500 11px/1 "JetBrains Mono",monospace;letter-spacing:.22em;color:#777486;margin-bottom:14px}
+.status-title{font-size:34px;letter-spacing:-.035em;margin:0 0 8px;font-weight:520}
+.status-subtitle{font-size:18px;color:#8f8b9e;margin-bottom:26px}
+.steps{display:grid;gap:10px;max-width:610px}
+.step{display:grid;grid-template-columns:24px 1fr auto;align-items:center;gap:12px;min-height:32px;color:#666274;font-size:15px;transition:color .35s,transform .35s var(--ease),opacity .35s}
+.step-dot{width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.18);position:relative;margin-left:4px}
+.step.active{color:#f1eff8;transform:translateX(4px)}
+.step.active .step-dot{border-color:#fff;background:#fff;box-shadow:0 0 10px #fff,0 0 20px rgba(255,255,255,.35)}
+.step.done{color:#aaa7b5}
+.step.done .step-dot{border-color:rgba(168,224,99,.75);background:var(--lime);box-shadow:0 0 12px rgba(168,224,99,.35)}
+.trace{height:2px;width:96px;background:rgba(255,255,255,.06);overflow:hidden;border-radius:99px;opacity:0}
+.step.active .trace{opacity:1}
+.trace::after{content:"";display:block;width:35%;height:100%;background:linear-gradient(90deg,transparent,#fff,transparent);animation:trace 1.5s linear infinite}
+@keyframes trace{from{transform:translateX(-120%)}to{transform:translateX(320%)}}
+.leave-note{margin-top:18px;color:#5f5b6d;font-size:13px}
+.optic{position:relative;display:grid;place-items:center;min-height:220px}
+.prism{position:relative;width:104px;height:104px;clip-path:polygon(50% 3%,96% 91%,4% 91%);background:linear-gradient(135deg,rgba(255,255,255,.75),rgba(199,125,255,.08) 42%,rgba(91,233,233,.12));filter:drop-shadow(0 0 18px rgba(255,255,255,.16));animation:breathe 2.8s ease-in-out infinite;z-index:3}
+.prism::before{content:"";position:absolute;inset:2px;clip-path:inherit;background:linear-gradient(145deg,rgba(255,255,255,.28),rgba(12,11,18,.82) 46%,rgba(255,255,255,.08));}
+.prism::after{content:"";position:absolute;left:50%;top:12%;width:1px;height:76%;background:linear-gradient(180deg,rgba(255,255,255,.65),transparent);transform:rotate(-18deg);transform-origin:top}
+@keyframes breathe{50%{filter:drop-shadow(0 0 28px rgba(255,255,255,.24));transform:scale(1.025)}}
+.beam-in{position:absolute;right:calc(50% + 45px);top:50%;width:180px;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),#fff);box-shadow:0 0 10px rgba(255,255,255,.4)}
+.rays{position:absolute;left:calc(50% + 45px);top:50%;width:210px;height:120px;transform:translateY(-50%)}
+.ray{position:absolute;left:0;top:50%;width:0;height:2px;transform-origin:left center;border-radius:99px;animation:rayGrow .8s .25s var(--ease) forwards}
+.ray:nth-child(1){background:linear-gradient(90deg,var(--amber),transparent);transform:rotate(-15deg)}
+.ray:nth-child(2){background:linear-gradient(90deg,var(--purple),transparent);transform:rotate(-5deg)}
+.ray:nth-child(3){background:linear-gradient(90deg,var(--cyan),transparent);transform:rotate(7deg)}
+.ray:nth-child(4){background:linear-gradient(90deg,var(--lime),transparent);transform:rotate(18deg)}
+@keyframes rayGrow{to{width:190px}}
+.artifact-labels{position:absolute;left:calc(50% + 180px);top:50%;height:150px;transform:translateY(-50%);font:500 10px/1 "JetBrains Mono",monospace;letter-spacing:.12em;color:#777487}
+.artifact-labels span{position:absolute;opacity:0;animation:labelIn .45s .85s var(--ease) forwards}
+.artifact-labels span:nth-child(1){top:13px;color:var(--amber)}
+.artifact-labels span:nth-child(2){top:50px;color:var(--purple)}
+.artifact-labels span:nth-child(3){top:88px;color:var(--cyan)}
+.artifact-labels span:nth-child(4){top:126px;color:var(--lime)}
+@keyframes labelIn{to{opacity:.75;transform:translateX(7px)}}
+.controls{display:flex;gap:12px;margin-top:20px;align-items:center}
+.control{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.025);color:#8c8998;border-radius:12px;padding:10px 14px;cursor:pointer;font-size:13px;transition:.2s}
+.control:hover{color:#fff;border-color:rgba(255,255,255,.2)}
+.advanced{display:flex;align-items:center;gap:14px;margin-top:26px;color:#636071;font-size:17px;transition:opacity .35s,transform .35s}
+.stage.is-busy .advanced{opacity:.35;transform:translateY(4px)}
+.gear{font-size:22px}
+.spectral-line{position:absolute;right:-160px;top:345px;width:900px;height:1px;background:linear-gradient(90deg,transparent,var(--amber),var(--purple),var(--cyan),var(--lime),transparent);opacity:.35;transform:rotate(-7deg);filter:blur(.1px);animation:drift 7s ease-in-out infinite alternate}
+@keyframes drift{to{transform:rotate(-5.8deg) translateX(-34px);opacity:.5}}
+.complete-banner{position:absolute;inset:0;z-index:8;display:grid;place-items:center;background:rgba(8,8,13,.76);backdrop-filter:blur(14px);opacity:0;pointer-events:none;transition:opacity .5s}
+.complete-banner.show{opacity:1;pointer-events:auto}
+.complete-card{text-align:center;transform:translateY(14px) scale(.98);transition:transform .65s var(--ease)}
+.complete-banner.show .complete-card{transform:none}
+.complete-card h2{font-size:42px;margin:16px 0 8px;letter-spacing:-.04em}
+.complete-card p{color:#918d9d;margin:0 0 20px}
+.complete-prism{margin:auto;width:90px;height:90px;clip-path:polygon(50% 3%,96% 91%,4% 91%);background:conic-gradient(from 210deg,var(--amber),var(--purple),var(--cyan),var(--lime),var(--amber));filter:drop-shadow(0 0 24px rgba(255,255,255,.2));animation:finishPulse 1.2s ease-out both}
+@keyframes finishPulse{0%{transform:scale(.7);opacity:0;filter:blur(10px)}55%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+@keyframes photonRun{0%{opacity:0;left:38px}8%{opacity:1}78%{opacity:1}100%{left:calc(100% - 305px);opacity:0}}
+@keyframes flash{0%,100%{opacity:0;transform:translateX(-45%)}45%{opacity:.5}70%{opacity:.12;transform:translateX(45%)}}
+.stage.launching .photon{animation:photonRun .82s var(--ease) forwards}
+.stage.launching .shell-flash{animation:flash .9s ease-out forwards}
+.stage.launching .analyze-btn{transform:scale(.965);filter:brightness(1.08)}
+.stage.launching .arrow{transform:translateX(34px);opacity:0}
+@media(max-width:900px){
+  .wrap{padding:16px}.stage{border-radius:26px;min-height:720px}.content{padding:68px 24px 48px}.eyebrow{margin-bottom:24px}h1{font-size:58px;margin-bottom:38px}.analyze-shell{height:164px;border-radius:24px}.input-row{grid-template-columns:1fr;padding:12px;align-content:center;gap:10px}.url-wrap{height:62px;padding:0 14px}.url{font-size:18px}.analyze-btn{height:66px;border-radius:18px;font-size:18px}.analyze-shell.processing{height:500px}.processing-panel{grid-template-columns:1fr;padding:28px 24px;gap:12px}.optic{min-height:180px;order:-1}.artifact-labels{display:none}.beam-in{width:100px}.rays{width:140px}.ray{animation-name:rayGrowMobile}@keyframes rayGrowMobile{to{width:120px}}.status-title{font-size:29px}.spectral-line{top:330px;right:-500px}.advanced{font-size:14px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.15s!important}.photon,.shell-flash{display:none}.processing .processing-panel{transition-delay:0s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <main class="stage" id="stage">
+    <div class="spectral-line"></div>
+    <section class="content">
+      <div class="eyebrow">NEW ANALYSIS</div>
+      <h1>Turn a video into something useful.</h1>
+      <div class="analyze-shell" id="shell" aria-live="polite">
+        <div class="photon"></div><div class="shell-flash"></div>
+        <div class="input-row">
+          <div class="url-wrap">
+            <svg class="link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10.5 13.5l3-3"/><path d="M7.05 15.95l-1.4 1.4a4 4 0 0 1-5.66-5.66l3-3a4 4 0 0 1 5.66 0" transform="translate(4 0)"/><path d="M16.95 8.05l1.4-1.4a4 4 0 1 1 5.66 5.66l-3 3a4 4 0 0 1-5.66 0" transform="translate(-4 0)"/></svg>
+            <div class="url">https://www.youtube.com/watch?v=dQw4w9WgXcQ<span class="caret"></span></div>
+          </div>
+          <button class="analyze-btn" id="analyzeBtn"><span class="btn-label">Analyze video</span><span class="arrow">→</span></button>
+        </div>
+        <div class="processing-panel">
+          <div class="status-copy">
+            <div class="status-kicker">ANALYSIS IN PROGRESS</div>
+            <h2 class="status-title" id="statusTitle">Analyzing your video</h2>
+            <div class="status-subtitle" id="statusSubtitle">Finding the signal.</div>
+            <div class="steps" id="steps">
+              <div class="step" data-index="0"><span class="step-dot"></span><span>Validating video</span><span class="trace"></span></div>
+              <div class="step" data-index="1"><span class="step-dot"></span><span>Finding transcript</span><span class="trace"></span></div>
+              <div class="step" data-index="2"><span class="step-dot"></span><span>Structuring key ideas</span><span class="trace"></span></div>
+              <div class="step" data-index="3"><span class="step-dot"></span><span>Creating knowledge artifacts</span><span class="trace"></span></div>
+            </div>
+            <div class="leave-note">You can safely leave this page. We’ll save the result to your history.</div>
+            <div class="controls"><button class="control" id="replayBtn">Replay animation</button><button class="control" id="errorBtn">Preview error</button></div>
+          </div>
+          <div class="optic">
+            <div class="beam-in"></div>
+            <div class="prism"></div>
+            <div class="rays"><i class="ray"></i><i class="ray"></i><i class="ray"></i><i class="ray"></i></div>
+            <div class="artifact-labels"><span>SUMMARY</span><span>FLASHCARDS</span><span>TIMESTAMPS</span><span>EXPORT</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="advanced"><span class="gear">⚙</span><span>Advanced options</span><span>Summary, Timestamps, Transcript</span></div>
+    </section>
+    <div class="complete-banner" id="completeBanner">
+      <div class="complete-card"><div class="complete-prism"></div><h2>Your knowledge artifacts are ready.</h2><p>Summary, flashcards, timestamps and transcript have been prepared.</p><button class="control" id="restartBtn">Run again</button></div>
+    </div>
+  </main>
+</div>
+<script>
+const stage=document.getElementById('stage');const shell=document.getElementById('shell');const btn=document.getElementById('analyzeBtn');const steps=[...document.querySelectorAll('.step')];const title=document.getElementById('statusTitle');const subtitle=document.getElementById('statusSubtitle');const complete=document.getElementById('completeBanner');
+let timers=[];const clearTimers=()=>{timers.forEach(clearTimeout);timers=[]};
+const setStep=(i)=>{steps.forEach((s,idx)=>{s.classList.toggle('done',idx<i);s.classList.toggle('active',idx===i)});const copy=[['Analyzing your video','Validating the source.'],['Analyzing your video','Finding the transcript.'],['Finding the signal','Structuring key ideas.'],['Separating the spectrum','Creating your knowledge artifacts.']][i];title.textContent=copy[0];subtitle.textContent=copy[1]};
+function reset(){clearTimers();stage.className='stage';shell.className='analyze-shell';btn.disabled=false;complete.classList.remove('show');steps.forEach(s=>s.classList.remove('active','done'));title.textContent='Analyzing your video';subtitle.textContent='Finding the signal.'}
+function run(){if(btn.disabled)return;reset();btn.disabled=true;stage.classList.add('launching','is-busy');timers.push(setTimeout(()=>{stage.classList.remove('launching');shell.classList.add('processing');setStep(0)},850));timers.push(setTimeout(()=>setStep(1),2100));timers.push(setTimeout(()=>setStep(2),3500));timers.push(setTimeout(()=>setStep(3),5000));timers.push(setTimeout(()=>{steps.forEach(s=>{s.classList.remove('active');s.classList.add('done')});title.textContent='Analysis complete';subtitle.textContent='Your knowledge artifacts are ready.'},6500));timers.push(setTimeout(()=>complete.classList.add('show'),7100))}
+btn.addEventListener('click',run);document.getElementById('replayBtn').addEventListener('click',()=>{reset();setTimeout(run,80)});document.getElementById('restartBtn').addEventListener('click',()=>{reset();setTimeout(run,80)});
+document.getElementById('errorBtn').addEventListener('click',()=>{clearTimers();shell.classList.add('processing');stage.classList.add('is-busy');steps.forEach((s,i)=>{s.classList.toggle('done',i===0);s.classList.remove('active')});title.textContent='We couldn’t access this video.';subtitle.textContent='Check that it is public and try again.';btn.disabled=false;complete.classList.remove('show')});
+</script>
+</body>
+</html>
