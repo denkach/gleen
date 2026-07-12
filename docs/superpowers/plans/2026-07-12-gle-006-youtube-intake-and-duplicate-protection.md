@@ -460,7 +460,7 @@ test('creates constrained private intake storage and atomic re-analysis', () => 
 
 - [ ] **Step 2: Add the migration**
 
-Create the table columns from the approved spec with checks for 11-character YouTube IDs, HTTPS canonical URLs, non-empty locale/language/title, positive duration, allowed presets, a non-empty `text[] selected_artifacts` contained by the four allowed identifiers, 64-character lowercase hex duplicate keys, attempts greater than zero, and statuses `ready|processing|complete|failed`. Add the specified indexes and select/insert/update/delete-own RLS policies. Add `security invoker` RPC `create_analysis_reattempt(source_id uuid)` using `SELECT ... FOR UPDATE`, `auth.uid()`, `max(attempt)+1`, and `reanalysis_of = source_id`; use that function name consistently in SQL and TypeScript.
+Create the table columns from the approved spec with checks for 11-character YouTube IDs, HTTPS canonical URLs, non-empty locale/language/title, positive duration, allowed presets, a non-empty `text[] selected_artifacts` contained by the four allowed identifiers, 64-character lowercase hex duplicate keys, attempts greater than zero, and statuses `ready|processing|complete|failed`. Add the specified indexes and select/insert/update-own RLS policies; DEN-16 must not add deletion. Add `security invoker` RPC `create_analysis_reattempt(source_id uuid, refreshed_snapshot jsonb)` using `SELECT ... FOR UPDATE`, `auth.uid()`, `max(attempt)+1`, and `reanalysis_of = source_id`. The RPC must insert the refreshed provider-validated metadata and transcript snapshot supplied by the server rather than copying stale source content; use that function name and payload consistently in SQL and TypeScript.
 
 - [ ] **Step 3: Define repository types and write failing mapping/concurrency tests**
 
@@ -479,11 +479,15 @@ export type IntakeRepository = Readonly<{
   findReusable(userId: string, duplicateKey: string): Promise<AnalysisIntake | null>;
   insertReady(input: NewAnalysisIntake): Promise<AnalysisIntake>;
   findOwned(userId: string, id: string): Promise<AnalysisIntake | null>;
-  createReanalysis(userId: string, sourceId: string): Promise<AnalysisIntake>;
+  createReanalysis(
+    userId: string,
+    sourceId: string,
+    refreshedSnapshot: NewAnalysisIntake,
+  ): Promise<AnalysisIntake>;
 }>;
 ```
 
-Test that the Supabase adapter always filters `user_id`, excludes `failed` from reusable rows, orders by attempt descending, maps snake_case rows through Zod, re-queries on Postgres unique violation `23505`, and calls only `create_analysis_reattempt` for re-analysis.
+Test that the Supabase adapter always filters `user_id`, excludes `failed` from reusable rows, orders by attempt descending, maps snake_case rows through Zod, re-queries on Postgres unique violation `23505`, and passes the fresh server-validated snapshot to `create_analysis_reattempt` for re-analysis.
 
 - [ ] **Step 4: Implement the repository adapter**
 
@@ -542,7 +546,7 @@ Add separate cases for invalid URL short-circuit, every metadata/transcript erro
 
 - [ ] **Step 2: Implement ordered service flow**
 
-`submit` must parse URL and configuration, request metadata, compute the normalized fingerprint, query `findReusable`, return the duplicate immediately, otherwise retrieve a native transcript, insert a ready row, and return `{ kind: 'ready', intake }`. `reanalyze` must load the owned source, re-check current metadata and native transcript, then call the repository atomic method; it must never trust form-provided metadata, user ID, configuration, or duplicate key.
+`submit` must parse URL and configuration, request metadata, compute the normalized fingerprint, query `findReusable`, return the duplicate immediately, otherwise retrieve a native transcript, insert a ready row, and return `{ kind: 'ready', intake }`. `reanalyze` must load the owned source, re-check current metadata and native transcript, construct a refreshed `NewAnalysisIntake` from the owned configuration and validated provider data, then pass that snapshot to the repository atomic method; it must never trust form-provided metadata, user ID, configuration, or duplicate key.
 
 - [ ] **Step 3: Write failing Server Action state tests**
 
