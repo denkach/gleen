@@ -42,11 +42,13 @@
 ### Task 1: Preserve the Prototype and Define the Timer-Free Visual State Contract
 
 **Files:**
+
 - Create with `apply_patch`: `design/prototypes/analyze-processing/index.html`
 - Create: `src/lib/analyze-processing/analysis-visual-state.ts`
 - Create: `src/lib/analyze-processing/analysis-visual-state.test.ts`
 
 **Interfaces:**
+
 - Produces: `AnalysisVisualState`, `AnalysisStage`, `AnalysisVisualPresentation`, `getAnalysisVisualPresentation(state)`.
 - Produces: `artifactRayDefinitions` keyed by DEN-16 `Artifact` identifiers.
 
@@ -88,12 +90,15 @@ describe('getAnalysisVisualPresentation', () => {
     ['transcript', 'transcript', ['validating']],
     ['structuring', 'structuring', ['validating', 'transcript']],
     ['artifacts', 'artifacts', ['validating', 'transcript', 'structuring']],
-  ] as const)('maps %s only from an application-provided state', (state, activeStage, completedStages) => {
-    expect(getAnalysisVisualPresentation(state)).toMatchObject({
-      activeStage,
-      completedStages,
-    });
-  });
+  ] as const)(
+    'maps %s only from an application-provided state',
+    (state, activeStage, completedStages) => {
+      expect(getAnalysisVisualPresentation(state)).toMatchObject({
+        activeStage,
+        completedStages,
+      });
+    },
+  );
 
   test('uses the approved ordered stage labels', () => {
     expect(orderedAnalysisStages.map((stage) => stage.label)).toEqual([
@@ -116,9 +121,16 @@ Expected: FAIL because the state module does not exist.
 
 ```ts
 export type AnalysisVisualState =
-  | 'idle' | 'submitting' | 'validating' | 'transcript'
-  | 'structuring' | 'artifacts' | 'complete' | 'error';
-export type AnalysisStageId = 'validating' | 'transcript' | 'structuring' | 'artifacts';
+  | 'idle'
+  | 'submitting'
+  | 'validating'
+  | 'transcript'
+  | 'structuring'
+  | 'artifacts'
+  | 'complete'
+  | 'error';
+export type AnalysisStageId =
+  'validating' | 'transcript' | 'structuring' | 'artifacts';
 export type AnalysisStage = Readonly<{ id: AnalysisStageId; label: string }>;
 export type AnalysisVisualPresentation = Readonly<{
   mode: 'idle' | 'processing' | 'complete' | 'error';
@@ -152,12 +164,14 @@ git commit -m "feat(DEN-24): define processing visual states"
 ### Task 2: Controlled React Port of the Exact Processing Composition
 
 **Files:**
+
 - Create: `src/components/app-shell/analyze-processing-visual.tsx`
 - Create: `src/components/app-shell/analyze-processing-visual.test.tsx`
 - Modify: `src/styles/app-shell-reference.css`
 - Modify: `src/app/globals.css`
 
 **Interfaces:**
+
 - Consumes: Task 1 `AnalysisVisualState`, `getAnalysisVisualPresentation`, and DEN-16 `Artifact`.
 - Produces: `AnalyzeProcessingVisual(props)` with no timer ownership.
 
@@ -171,8 +185,14 @@ render(
     submittedUrl="https://youtu.be/dQw4w9WgXcQ"
   />,
 );
-expect(screen.getByText('Finding transcript')).toHaveAttribute('data-stage-state', 'active');
-expect(screen.getByText('Validating video')).toHaveAttribute('data-stage-state', 'done');
+expect(screen.getByText('Finding transcript')).toHaveAttribute(
+  'data-stage-state',
+  'active',
+);
+expect(screen.getByText('Validating video')).toHaveAttribute(
+  'data-stage-state',
+  'done',
+);
 expect(screen.getByText('SUMMARY')).toBeInTheDocument();
 expect(screen.getByText('TIMESTAMPS')).toBeInTheDocument();
 expect(screen.getByText('TRANSCRIPT')).toBeInTheDocument();
@@ -204,12 +224,19 @@ export type AnalyzeProcessingVisualProps = Readonly<{
 export function AnalyzeProcessingVisual(props: AnalyzeProcessingVisualProps) {
   const presentation = getAnalysisVisualPresentation(props.state);
   return (
-    <div className={`analyze-shell ${presentation.mode}`} data-analysis-state={props.state}>
+    <div
+      className={`analyze-shell ${presentation.mode}`}
+      data-analysis-state={props.state}
+    >
       <div className="analyze-photon" aria-hidden="true" />
       <div className="analyze-shell-flash" aria-hidden="true" />
       <div className="analyze-processing-panel">
-        <div className="analyze-status-copy">{/* controlled copy and stages */}</div>
-        <div className="analyze-optic" aria-hidden="true">{/* exact beam, prism, rays */}</div>
+        <div className="analyze-status-copy">
+          {/* controlled copy and stages */}
+        </div>
+        <div className="analyze-optic" aria-hidden="true">
+          {/* exact beam, prism, rays */}
+        </div>
       </div>
     </div>
   );
@@ -240,11 +267,13 @@ git commit -m "feat(DEN-24): port approved processing prism visual"
 ### Task 3: Integrate Real DEN-16 Submission, Error, and Readiness Navigation
 
 **Files:**
+
 - Modify: `src/components/app-shell/new-analysis-form.tsx`
 - Modify: `src/components/app-shell/new-analysis-form.test.tsx`
 - Modify: `src/styles/app-shell-reference.css`
 
 **Interfaces:**
+
 - Consumes: Task 2 controlled visual and existing `useActionState` pending/error/redirect state.
 - Produces: production mapping `idle → submitting → navigation | error`, retry, and opening-transition cap.
 
@@ -253,9 +282,18 @@ git commit -m "feat(DEN-24): port approved processing prism visual"
 Add tests proving:
 
 ```tsx
-expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute('data-analysis-state', 'submitting');
-expect(screen.getByRole('status')).toHaveTextContent('Checking video and transcript…');
-expect(screen.queryByText('Structuring key ideas')?.closest('[data-stage-state="done"]')).toBeNull();
+expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+  'data-analysis-state',
+  'submitting',
+);
+expect(screen.getByRole('status')).toHaveTextContent(
+  'Checking video and transcript…',
+);
+expect(
+  screen
+    .queryByText('Structuring key ideas')
+    ?.closest('[data-stage-state="done"]'),
+).toBeNull();
 ```
 
 Resolve the action with an error and assert the typed URL, configuration, safe message, and **Try again** remain. Resolve with `redirectTo` and use fake timers only to test the bounded opening-transition delay; assert navigation occurs no later than 1.8 seconds from submit. Under mocked reduced motion, navigation must occur immediately.
@@ -296,6 +334,7 @@ git commit -m "feat(DEN-24): connect prism motion to intake state"
 ### Task 4: Development-Only Full State Driver and Production Isolation
 
 **Files:**
+
 - Create: `src/components/app-shell/analyze-processing-fixture.tsx`
 - Create: `src/components/app-shell/analyze-processing-fixture.test.tsx`
 - Create: `src/app/analyze-processing-fixture/page.tsx`
@@ -304,6 +343,7 @@ git commit -m "feat(DEN-24): connect prism motion to intake state"
 - Modify: `tests/e2e/ui-production.spec.ts`
 
 **Interfaces:**
+
 - Consumes: Task 2 controlled visual.
 - Produces: a fixture-only timer driver that cycles every visual state and is unavailable in production.
 
@@ -312,11 +352,20 @@ git commit -m "feat(DEN-24): connect prism motion to intake state"
 Use fake timers to assert only the fixture driver advances:
 
 ```ts
-expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute('data-analysis-state', 'idle');
+expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+  'data-analysis-state',
+  'idle',
+);
 await user.click(screen.getByRole('button', { name: 'Analyze video' }));
-expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute('data-analysis-state', 'submitting');
+expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+  'data-analysis-state',
+  'submitting',
+);
 await vi.advanceTimersByTimeAsync(850);
-expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute('data-analysis-state', 'validating');
+expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+  'data-analysis-state',
+  'validating',
+);
 ```
 
 Continue through transcript, structuring, artifacts, and complete using the prototype timings. Test replay, error preview, retry, cleanup on unmount, and selected-artifact variation.
@@ -357,11 +406,13 @@ git commit -m "test(DEN-24): add isolated processing motion fixture"
 ### Task 5: Browser Verification Against the Prototype
 
 **Files:**
+
 - Create: `tests/e2e/analyze-processing.spec.ts`
 - Modify: `tests/e2e/intake.spec.ts`
 - Modify: `tests/e2e/ui-production.spec.ts`
 
 **Interfaces:**
+
 - Consumes: complete production integration and dev fixture.
 - Produces: full visual, responsive, accessibility, performance-proxy, and production-isolation evidence.
 
