@@ -136,6 +136,38 @@ test('marks New active in desktop and mobile navigation', async ({ page }) => {
   ).not.toBe('none');
 });
 
+test('renders representative sprite icons as approved strokes without fills', async ({
+  page,
+}) => {
+  await page.goto(fixturePath);
+
+  for (const icon of [
+    page
+      .getByRole('navigation', { name: 'Application navigation' })
+      .getByRole('link', { name: 'New analysis' })
+      .locator('.app-icon'),
+    page.locator('.app-beam-form .app-icon').first(),
+    page.locator('.advanced-link .app-icon'),
+  ]) {
+    const style = await icon.evaluate((element) => {
+      const computed = getComputedStyle(element);
+      return {
+        color: computed.color,
+        fill: computed.fill,
+        stroke: computed.stroke,
+        strokeWidth: computed.strokeWidth,
+        strokeLinecap: computed.strokeLinecap,
+        strokeLinejoin: computed.strokeLinejoin,
+      };
+    });
+    expect(style.fill).toBe('none');
+    expect(style.stroke).toBe(style.color);
+    expect(style.strokeWidth).toBe('1.7px');
+    expect(style.strokeLinecap).toBe('round');
+    expect(style.strokeLinejoin).toBe('round');
+  }
+});
+
 test('moves keyboard focus from the skip link to main content', async ({
   page,
 }) => {

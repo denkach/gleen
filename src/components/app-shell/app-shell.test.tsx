@@ -99,5 +99,8 @@ describe('AppShell', () => {
     expect(css).toMatch(
       /\.side-link\.active::after\s*{[^}]*left:\s*-12px[^}]*top:\s*9px[^}]*bottom:\s*9px/,
     );
+    expect(css).toMatch(
+      /\.app-icon\s*{(?=[^}]*stroke:\s*currentColor)(?=[^}]*fill:\s*none)(?=[^}]*stroke-width:\s*1\.7)(?=[^}]*stroke-linecap:\s*round)(?=[^}]*stroke-linejoin:\s*round)[^}]*}/,
+    );
   });
 });

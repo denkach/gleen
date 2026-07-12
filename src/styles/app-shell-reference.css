@@ -240,6 +240,11 @@
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .app-icon-sm {
   width: 16px;
