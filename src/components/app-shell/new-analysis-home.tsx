@@ -7,6 +7,7 @@ import {
 import { defaultOnboardingState } from '@/lib/onboarding/preferences';
 
 import { NewAnalysisForm } from './new-analysis-form';
+import type { ComponentProps } from 'react';
 
 type ProfileDefaults = Pick<
   IntakeActionState['configuration'],
@@ -15,7 +16,15 @@ type ProfileDefaults = Pick<
 
 export function NewAnalysisHome({
   profileDefaults = defaultOnboardingState,
-}: Readonly<{ profileDefaults?: ProfileDefaults }>) {
+  action,
+  reanalyzeAction,
+  resultPathPrefix,
+}: Readonly<{
+  profileDefaults?: ProfileDefaults;
+  action?: ComponentProps<typeof NewAnalysisForm>['action'];
+  reanalyzeAction?: ComponentProps<typeof NewAnalysisForm>['reanalyzeAction'];
+  resultPathPrefix?: string;
+}>) {
   return (
     <>
       <section className="analysis-hero" aria-labelledby="new-analysis-title">
@@ -23,6 +32,9 @@ export function NewAnalysisHome({
         <h1 id="new-analysis-title">Turn a video into something useful.</h1>
         <NewAnalysisForm
           initialState={createInitialIntakeActionState(profileDefaults)}
+          action={action}
+          reanalyzeAction={reanalyzeAction}
+          resultPathPrefix={resultPathPrefix}
         />
       </section>
 

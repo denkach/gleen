@@ -1096,7 +1096,12 @@
   }
   .skip-link,
   .side-link,
+  .app-beam-form,
+  .duplicate-banner,
+  .duplicate-banner > a,
+  .duplicate-banner > button,
   .intake-readiness-foot a {
-    transition: none;
+    transition: none !important;
+    animation: none !important;
   }
 }

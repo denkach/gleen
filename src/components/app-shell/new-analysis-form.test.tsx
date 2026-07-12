@@ -124,9 +124,11 @@ describe('NewAnalysisForm', () => {
       rawUrl: 'https://youtu.be/abcdefghijk',
       message: 'The video service is temporarily unavailable. Try again.',
     });
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'The video service is temporarily unavailable. Try again.',
-    );
+    expect(
+      await screen.findByText(
+        'The video service is temporarily unavailable. Try again.',
+      ),
+    ).toHaveAttribute('role', 'status');
     expect(input).toHaveValue('https://youtu.be/abcdefghijk');
   });
 

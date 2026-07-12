@@ -34,6 +34,7 @@ type NewAnalysisFormProps = Readonly<{
   initialState: IntakeActionState;
   action?: IntakeAction;
   reanalyzeAction?: IntakeAction;
+  resultPathPrefix?: string;
 }>;
 
 const artifactOptions = [
@@ -46,10 +47,17 @@ const artifactOptions = [
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button className="btn btn-primary" type="submit" disabled={pending}>
-      <span>{pending ? 'Analyzing…' : 'Analyze video'}</span>
-      <AppIcon name="arrow" />
-    </button>
+    <>
+      <button className="btn btn-primary" type="submit" disabled={pending}>
+        <span>{pending ? 'Analyzing…' : 'Analyze video'}</span>
+        <AppIcon name="arrow" />
+      </button>
+      {pending ? (
+        <span className="sr-only" role="status" aria-live="polite">
+          Analyzing video
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -66,6 +74,7 @@ export function NewAnalysisForm({
   action = submitYouTubeIntake,
   initialState,
   reanalyzeAction = reanalyzeIntake,
+  resultPathPrefix = '/app/video',
 }: NewAnalysisFormProps) {
   const router = useRouter();
   const [state, formAction] = useActionState(action, initialState);
@@ -139,6 +148,14 @@ export function NewAnalysisForm({
             value={state.configuration.flashcardPreset}
           />
         ) : null}
+        {selectedArtifacts.map((artifact) => (
+          <input
+            key={artifact}
+            type="hidden"
+            name="artifacts"
+            value={artifact}
+          />
+        ))}
         <SubmitButton />
       </form>
 
@@ -159,8 +176,6 @@ export function NewAnalysisForm({
                   <label key={value} className="artifact-option">
                     <input
                       type="checkbox"
-                      name="artifacts"
-                      form="new-analysis-form"
                       value={value}
                       defaultChecked={selectedArtifacts.includes(value)}
                       onChange={(event) => {
@@ -213,7 +228,9 @@ export function NewAnalysisForm({
         <section className="duplicate-banner" aria-labelledby="duplicate-title">
           <h2 id="duplicate-title">You already analyzed this video.</h2>
           <p>No credits will be used.</p>
-          <Link href={`/app/video/${state.existingId}`}>Open saved result</Link>
+          <Link href={`${resultPathPrefix}/${state.existingId}`}>
+            Open saved result
+          </Link>
           <button type="button" onClick={() => setConfirmOpen(true)}>
             Analyze again
           </button>

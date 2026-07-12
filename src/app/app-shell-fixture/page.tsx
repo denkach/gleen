@@ -4,6 +4,16 @@ import { AppShell } from '@/components/app-shell/app-shell';
 import { NewAnalysisHome } from '@/components/app-shell/new-analysis-home';
 import { unavailableUsage } from '@/lib/app-shell';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
+import {
+  reanalyzeFixture,
+  submitDuplicateFixture,
+  submitInvalidUrlFixture,
+  submitProviderOutageFixture,
+  submitReadyFixture,
+  submitReanalysisFixture,
+  submitTranscriptUnavailableFixture,
+  submitVideoUnavailableFixture,
+} from '@/lib/youtube-intake/development-fixture-actions';
 
 const fixtureIdentity = {
   displayName: 'Test User',
@@ -11,7 +21,19 @@ const fixtureIdentity = {
   initials: 'TU',
 } as const;
 
-export default function AppShellFixturePage() {
+export const fixtureCases = [
+  'ready',
+  'duplicate',
+  'invalid-url',
+  'video-unavailable',
+  'transcript-unavailable',
+  'provider-outage',
+  'reanalysis',
+] as const;
+
+type Props = Readonly<{ searchParams: Promise<{ intake?: string }> }>;
+
+export default async function AppShellFixturePage({ searchParams }: Props) {
   if (
     !isUiPreviewEnabled({
       NODE_ENV: process.env.NODE_ENV,
@@ -21,13 +43,35 @@ export default function AppShellFixturePage() {
     notFound();
   }
 
+  const { intake } = await searchParams;
+  if (
+    intake &&
+    !fixtureCases.includes(intake as (typeof fixtureCases)[number])
+  ) {
+    notFound();
+  }
+  const scenario = intake ?? 'ready';
+  const fixtureActions = {
+    ready: submitReadyFixture,
+    duplicate: submitDuplicateFixture,
+    'invalid-url': submitInvalidUrlFixture,
+    'video-unavailable': submitVideoUnavailableFixture,
+    'transcript-unavailable': submitTranscriptUnavailableFixture,
+    'provider-outage': submitProviderOutageFixture,
+    reanalysis: submitReanalysisFixture,
+  } as const;
+
   return (
     <AppShell
       identity={fixtureIdentity}
       usage={unavailableUsage}
       pathnameOverride="/app"
     >
-      <NewAnalysisHome />
+      <NewAnalysisHome
+        action={fixtureActions[scenario as keyof typeof fixtureActions]}
+        reanalyzeAction={reanalyzeFixture}
+        resultPathPrefix="/app-shell-fixture/app/video"
+      />
     </AppShell>
   );
 }

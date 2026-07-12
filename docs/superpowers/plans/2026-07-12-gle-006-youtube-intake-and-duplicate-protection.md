@@ -47,6 +47,7 @@
 ### Task 1: Pure URL, Artifact Configuration, and Fingerprint Domain
 
 **Files:**
+
 - Create: `src/lib/youtube-intake/url.ts`
 - Create: `src/lib/youtube-intake/url.test.ts`
 - Create: `src/lib/youtube-intake/configuration.ts`
@@ -55,6 +56,7 @@
 - Create: `src/lib/youtube-intake/fingerprint.test.ts`
 
 **Interfaces:**
+
 - Produces: `parseYouTubeUrl(raw: string): YouTubeUrlResult` where success contains `{ videoId, canonicalUrl }`.
 - Produces: `intakeConfigurationSchema`, `defaultArtifactSelection`, `normalizeIntakeConfiguration(input): NormalizedIntakeConfiguration`.
 - Produces: `createDuplicateKey(videoId, configuration): string`.
@@ -124,22 +126,29 @@ export function parseYouTubeUrl(raw: string): YouTubeUrlResult {
     url.password ||
     url.port ||
     (!longHosts.has(url.hostname) && url.hostname !== 'youtu.be')
-  ) return { ok: false, code: 'invalid_url' };
+  )
+    return { ok: false, code: 'invalid_url' };
 
   const segments = url.pathname.split('/').filter(Boolean);
   const pathId =
     url.hostname === 'youtu.be'
-      ? segments.length === 1 ? segments[0] : undefined
-      : segments.length === 2 && ['shorts', 'embed', 'live'].includes(segments[0])
+      ? segments.length === 1
+        ? segments[0]
+        : undefined
+      : segments.length === 2 &&
+          ['shorts', 'embed', 'live'].includes(segments[0])
         ? segments[1]
         : undefined;
   const queryId =
     longHosts.has(url.hostname) && url.pathname === '/watch'
-      ? url.searchParams.get('v') ?? undefined
+      ? (url.searchParams.get('v') ?? undefined)
       : undefined;
   const videoId = pathId ?? queryId;
   const conflictingQuery = pathId && url.searchParams.get('v');
-  if (!videoIdPattern.test(videoId ?? '') || (conflictingQuery && conflictingQuery !== videoId))
+  if (
+    !videoIdPattern.test(videoId ?? '') ||
+    (conflictingQuery && conflictingQuery !== videoId)
+  )
     return { ok: false, code: 'invalid_url' };
   return {
     ok: true,
@@ -160,18 +169,35 @@ import {
 
 describe('intake configuration', () => {
   test('uses the approved artifact defaults', () => {
-    expect(defaultArtifactSelection).toEqual(['summary', 'timestamps', 'transcript']);
+    expect(defaultArtifactSelection).toEqual([
+      'summary',
+      'timestamps',
+      'transcript',
+    ]);
   });
 
   test('requires at least one artifact and removes duplicates', () => {
-    expect(() => normalizeIntakeConfiguration({
-      outputLocale: 'en', summaryPreset: 'balanced', flashcardPreset: 18,
-      artifacts: [], analysisContractVersion: 1,
-    })).toThrow();
-    expect(normalizeIntakeConfiguration({
-      outputLocale: 'en', summaryPreset: 'detailed', flashcardPreset: 30,
-      artifacts: ['transcript', 'summary', 'summary'], analysisContractVersion: 1,
-    })).toMatchObject({ artifacts: ['summary', 'transcript'], flashcardPreset: null });
+    expect(() =>
+      normalizeIntakeConfiguration({
+        outputLocale: 'en',
+        summaryPreset: 'balanced',
+        flashcardPreset: 18,
+        artifacts: [],
+        analysisContractVersion: 1,
+      }),
+    ).toThrow();
+    expect(
+      normalizeIntakeConfiguration({
+        outputLocale: 'en',
+        summaryPreset: 'detailed',
+        flashcardPreset: 30,
+        artifacts: ['transcript', 'summary', 'summary'],
+        analysisContractVersion: 1,
+      }),
+    ).toMatchObject({
+      artifacts: ['summary', 'transcript'],
+      flashcardPreset: null,
+    });
   });
 });
 ```
@@ -192,7 +218,9 @@ describe('createDuplicateKey', () => {
   test('is stable across artifact order and ignores inactive presets', () => {
     const first = createDuplicateKey('dQw4w9WgXcQ', base);
     const second = createDuplicateKey('dQw4w9WgXcQ', {
-      ...base, artifacts: ['transcript', 'summary'], flashcardPreset: null,
+      ...base,
+      artifacts: ['transcript', 'summary'],
+      flashcardPreset: null,
     });
     expect(first).toBe(second);
     expect(first).toMatch(/^[a-f0-9]{64}$/);
@@ -204,7 +232,10 @@ describe('createDuplicateKey', () => {
     );
     expect(createDuplicateKey('dQw4w9WgXcQ', base)).not.toBe(
       createDuplicateKey('dQw4w9WgXcQ', {
-        ...base, artifacts: ['flashcards'], summaryPreset: null, flashcardPreset: 18,
+        ...base,
+        artifacts: ['flashcards'],
+        summaryPreset: null,
+        flashcardPreset: 18,
       }),
     );
   });
@@ -217,8 +248,17 @@ describe('createDuplicateKey', () => {
 // configuration.ts
 import { z } from 'zod';
 
-export const artifactSchema = z.enum(['summary', 'timestamps', 'transcript', 'flashcards']);
-export const defaultArtifactSelection = ['summary', 'timestamps', 'transcript'] as const;
+export const artifactSchema = z.enum([
+  'summary',
+  'timestamps',
+  'transcript',
+  'flashcards',
+]);
+export const defaultArtifactSelection = [
+  'summary',
+  'timestamps',
+  'transcript',
+] as const;
 export const intakeConfigurationSchema = z.object({
   outputLocale: z.enum(['uk', 'ru', 'en', 'es', 'de']),
   summaryPreset: z.enum(['balanced', 'detailed']),
@@ -234,14 +274,18 @@ export type NormalizedIntakeConfiguration = Readonly<{
   artifacts: readonly z.infer<typeof artifactSchema>[];
   analysisContractVersion: 1;
 }>;
-export function normalizeIntakeConfiguration(input: unknown): NormalizedIntakeConfiguration {
+export function normalizeIntakeConfiguration(
+  input: unknown,
+): NormalizedIntakeConfiguration {
   const parsed = intakeConfigurationSchema.parse(input);
   const artifacts = [...new Set(parsed.artifacts)].sort();
   return {
     ...parsed,
     artifacts,
     summaryPreset: artifacts.includes('summary') ? parsed.summaryPreset : null,
-    flashcardPreset: artifacts.includes('flashcards') ? parsed.flashcardPreset : null,
+    flashcardPreset: artifacts.includes('flashcards')
+      ? parsed.flashcardPreset
+      : null,
   };
 }
 ```
@@ -281,6 +325,7 @@ git commit -m "feat(DEN-16): add intake domain validation"
 ### Task 2: Server Environment and Fixed-Origin Provider Adapters
 
 **Files:**
+
 - Modify: `src/env.ts`
 - Modify: `src/env.test.ts`
 - Create: `src/lib/youtube-intake/providers.ts`
@@ -290,6 +335,7 @@ git commit -m "feat(DEN-16): add intake domain validation"
 - Create: `src/lib/youtube-intake/supadata-provider.test.ts`
 
 **Interfaces:**
+
 - Consumes: canonical URL and video ID from Task 1.
 - Produces: `validateProviderEnv(process.env): ProviderEnv`.
 - Produces: `VideoMetadataProvider.getVideo(videoId): Promise<VideoMetadataResult>`.
@@ -302,13 +348,18 @@ import { expect, test } from 'vitest';
 import { validateProviderEnv } from './env';
 
 test('requires both server-only provider keys', () => {
-  expect(() => validateProviderEnv({})).toThrow('YOUTUBE_DATA_API_KEY is required');
+  expect(() => validateProviderEnv({})).toThrow(
+    'YOUTUBE_DATA_API_KEY is required',
+  );
   expect(() => validateProviderEnv({ YOUTUBE_DATA_API_KEY: 'yt' })).toThrow(
     'SUPADATA_API_KEY is required',
   );
-  expect(validateProviderEnv({
-    YOUTUBE_DATA_API_KEY: 'yt', SUPADATA_API_KEY: 'supadata',
-  })).toEqual({ YOUTUBE_DATA_API_KEY: 'yt', SUPADATA_API_KEY: 'supadata' });
+  expect(
+    validateProviderEnv({
+      YOUTUBE_DATA_API_KEY: 'yt',
+      SUPADATA_API_KEY: 'supadata',
+    }),
+  ).toEqual({ YOUTUBE_DATA_API_KEY: 'yt', SUPADATA_API_KEY: 'supadata' });
 });
 ```
 
@@ -324,7 +375,10 @@ export function validateProviderEnv(input: NodeJS.ProcessEnv): ProviderEnv {
   if (!youtube) throw new Error('YOUTUBE_DATA_API_KEY is required');
   const supadata = input.SUPADATA_API_KEY?.trim();
   if (!supadata) throw new Error('SUPADATA_API_KEY is required');
-  return Object.freeze({ YOUTUBE_DATA_API_KEY: youtube, SUPADATA_API_KEY: supadata });
+  return Object.freeze({
+    YOUTUBE_DATA_API_KEY: youtube,
+    SUPADATA_API_KEY: supadata,
+  });
 }
 ```
 
@@ -333,43 +387,105 @@ export function validateProviderEnv(input: NodeJS.ProcessEnv): ProviderEnv {
 ```ts
 // providers.ts
 export type IntakeErrorCode =
-  | 'invalid_url' | 'video_unavailable' | 'video_restricted'
-  | 'live_not_ready' | 'unsupported_duration' | 'transcript_unavailable'
-  | 'transcript_language_unavailable' | 'provider_configuration'
-  | 'provider_unavailable' | 'session_expired' | 'persistence_failure';
+  | 'invalid_url'
+  | 'video_unavailable'
+  | 'video_restricted'
+  | 'live_not_ready'
+  | 'unsupported_duration'
+  | 'transcript_unavailable'
+  | 'transcript_language_unavailable'
+  | 'provider_configuration'
+  | 'provider_unavailable'
+  | 'session_expired'
+  | 'persistence_failure';
 export type VideoMetadata = Readonly<{
-  videoId: string; title: string; channelTitle: string; durationSeconds: number;
-  thumbnailUrl: string; captionAvailable: boolean;
+  videoId: string;
+  title: string;
+  channelTitle: string;
+  durationSeconds: number;
+  thumbnailUrl: string;
+  captionAvailable: boolean;
 }>;
-export type TranscriptSegment = Readonly<{ text: string; offsetMs: number; durationMs: number }>;
+export type TranscriptSegment = Readonly<{
+  text: string;
+  offsetMs: number;
+  durationMs: number;
+}>;
 export type VideoMetadataResult =
   | Readonly<{ ok: true; data: VideoMetadata }>
-  | Readonly<{ ok: false; code: Extract<IntakeErrorCode,
-      'video_unavailable' | 'video_restricted' | 'live_not_ready' |
-      'unsupported_duration' | 'provider_configuration' | 'provider_unavailable'> }>;
+  | Readonly<{
+      ok: false;
+      code: Extract<
+        IntakeErrorCode,
+        | 'video_unavailable'
+        | 'video_restricted'
+        | 'live_not_ready'
+        | 'unsupported_duration'
+        | 'provider_configuration'
+        | 'provider_unavailable'
+      >;
+    }>;
 export type TranscriptResult =
-  | Readonly<{ ok: true; language: string; segments: readonly TranscriptSegment[] }>
-  | Readonly<{ ok: false; code: Extract<IntakeErrorCode,
-      'transcript_unavailable' | 'transcript_language_unavailable' |
-      'provider_configuration' | 'provider_unavailable'> }>;
-export type VideoMetadataProvider = Readonly<{ getVideo(videoId: string): Promise<VideoMetadataResult> }>;
+  | Readonly<{
+      ok: true;
+      language: string;
+      segments: readonly TranscriptSegment[];
+    }>
+  | Readonly<{
+      ok: false;
+      code: Extract<
+        IntakeErrorCode,
+        | 'transcript_unavailable'
+        | 'transcript_language_unavailable'
+        | 'provider_configuration'
+        | 'provider_unavailable'
+      >;
+    }>;
+export type VideoMetadataProvider = Readonly<{
+  getVideo(videoId: string): Promise<VideoMetadataResult>;
+}>;
 export type TranscriptProvider = Readonly<{
-  getNativeTranscript(canonicalUrl: string, preferredLanguage?: string): Promise<TranscriptResult>;
+  getNativeTranscript(
+    canonicalUrl: string,
+    preferredLanguage?: string,
+  ): Promise<TranscriptResult>;
 }>;
 ```
 
 ```ts
 import { expect, test, vi } from 'vitest';
-import { createYouTubeProvider, parseIsoDurationSeconds } from './youtube-provider';
+import {
+  createYouTubeProvider,
+  parseIsoDurationSeconds,
+} from './youtube-provider';
 
 test('maps validated YouTube metadata and uses a fixed videos.list origin', async () => {
-  const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [{
-    id: 'dQw4w9WgXcQ', snippet: { title: 'Title', channelTitle: 'Channel',
-      thumbnails: { high: { url: 'https://i.ytimg.com/image.jpg' } } },
-    contentDetails: { duration: 'PT1H2M3S', caption: 'true' },
-    status: { privacyStatus: 'public', embeddable: true, uploadStatus: 'processed' },
-  }] }), { status: 200 }));
-  const result = await createYouTubeProvider('secret', fetcher).getVideo('dQw4w9WgXcQ');
+  const fetcher = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        items: [
+          {
+            id: 'dQw4w9WgXcQ',
+            snippet: {
+              title: 'Title',
+              channelTitle: 'Channel',
+              thumbnails: { high: { url: 'https://i.ytimg.com/image.jpg' } },
+            },
+            contentDetails: { duration: 'PT1H2M3S', caption: 'true' },
+            status: {
+              privacyStatus: 'public',
+              embeddable: true,
+              uploadStatus: 'processed',
+            },
+          },
+        ],
+      }),
+      { status: 200 },
+    ),
+  );
+  const result = await createYouTubeProvider('secret', fetcher).getVideo(
+    'dQw4w9WgXcQ',
+  );
   expect(result).toMatchObject({ ok: true, data: { durationSeconds: 3723 } });
   const calledUrl = new URL(fetcher.mock.calls[0][0]);
   expect(calledUrl.origin).toBe('https://www.googleapis.com');
@@ -383,11 +499,19 @@ import { expect, test, vi } from 'vitest';
 import { createSupadataProvider } from './supadata-provider';
 
 test('always requests native timestamped transcript without AI fallback', async () => {
-  const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-    lang: 'en', content: [{ text: 'Hello', offset: 0, duration: 1200 }],
-  }), { status: 200 }));
-  const result = await createSupadataProvider('secret', fetcher)
-    .getNativeTranscript('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'en');
+  const fetcher = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        lang: 'en',
+        content: [{ text: 'Hello', offset: 0, duration: 1200 }],
+      }),
+      { status: 200 },
+    ),
+  );
+  const result = await createSupadataProvider(
+    'secret',
+    fetcher,
+  ).getNativeTranscript('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'en');
   expect(result).toMatchObject({ ok: true, language: 'en' });
   const url = new URL(fetcher.mock.calls[0][0]);
   expect(url.origin).toBe('https://api.supadata.ai');
@@ -395,12 +519,20 @@ test('always requests native timestamped transcript without AI fallback', async 
   expect(url.href).not.toMatch(/auto|generate/);
 });
 
-test.each([[206, 'transcript_unavailable'], [401, 'provider_configuration'],
-  [402, 'provider_configuration'], [429, 'provider_unavailable'], [503, 'provider_unavailable']])
-('maps status %i to %s', async (status, code) => {
-  const provider = createSupadataProvider('secret', vi.fn().mockResolvedValue(new Response('', { status })));
-  await expect(provider.getNativeTranscript('https://www.youtube.com/watch?v=dQw4w9WgXcQ'))
-    .resolves.toEqual({ ok: false, code });
+test.each([
+  [206, 'transcript_unavailable'],
+  [401, 'provider_configuration'],
+  [402, 'provider_configuration'],
+  [429, 'provider_unavailable'],
+  [503, 'provider_unavailable'],
+])('maps status %i to %s', async (status, code) => {
+  const provider = createSupadataProvider(
+    'secret',
+    vi.fn().mockResolvedValue(new Response('', { status })),
+  );
+  await expect(
+    provider.getNativeTranscript('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+  ).resolves.toEqual({ ok: false, code });
 });
 ```
 
@@ -431,6 +563,7 @@ git commit -m "feat(DEN-16): add YouTube and native transcript adapters"
 ### Task 3: RLS-Protected Intake Persistence and Atomic Re-analysis
 
 **Files:**
+
 - Create: `supabase/migrations/202607120002_create_analysis_intakes.sql`
 - Create: `src/lib/youtube-intake/migration.test.ts`
 - Create: `src/lib/youtube-intake/repository.ts`
@@ -438,6 +571,7 @@ git commit -m "feat(DEN-16): add YouTube and native transcript adapters"
 - Create: `src/lib/youtube-intake/supabase-repository.test.ts`
 
 **Interfaces:**
+
 - Consumes: normalized configuration and provider results from Tasks 1–2.
 - Produces: `AnalysisIntake`, `NewAnalysisIntake`, and `IntakeRepository` with `findReusable`, `insertReady`, `findOwned`, and `createReanalysis`.
 
@@ -447,7 +581,10 @@ git commit -m "feat(DEN-16): add YouTube and native transcript adapters"
 import fs from 'node:fs';
 import { expect, test } from 'vitest';
 
-const sql = fs.readFileSync('supabase/migrations/202607120002_create_analysis_intakes.sql', 'utf8');
+const sql = fs.readFileSync(
+  'supabase/migrations/202607120002_create_analysis_intakes.sql',
+  'utf8',
+);
 test('creates constrained private intake storage and atomic re-analysis', () => {
   expect(sql).toMatch(/create table public\.analysis_intakes/);
   expect(sql).toMatch(/unique \(user_id, duplicate_key, attempt\)/);
@@ -466,17 +603,32 @@ Create the table columns from the approved spec with checks for 11-character You
 
 ```ts
 export type AnalysisIntake = Readonly<{
-  id: string; userId: string; youtubeVideoId: string; canonicalUrl: string;
-  title: string; channelTitle: string; durationSeconds: number; thumbnailUrl: string;
-  transcriptLanguage: string; transcriptSegments: readonly TranscriptSegment[];
-  configuration: NormalizedIntakeConfiguration; duplicateKey: string;
-  attempt: number; status: 'ready' | 'processing' | 'complete' | 'failed';
-  reanalysisOf: string | null; createdAt: string;
+  id: string;
+  userId: string;
+  youtubeVideoId: string;
+  canonicalUrl: string;
+  title: string;
+  channelTitle: string;
+  durationSeconds: number;
+  thumbnailUrl: string;
+  transcriptLanguage: string;
+  transcriptSegments: readonly TranscriptSegment[];
+  configuration: NormalizedIntakeConfiguration;
+  duplicateKey: string;
+  attempt: number;
+  status: 'ready' | 'processing' | 'complete' | 'failed';
+  reanalysisOf: string | null;
+  createdAt: string;
 }>;
-export type NewAnalysisIntake = Omit<AnalysisIntake,
-  'id' | 'attempt' | 'status' | 'reanalysisOf' | 'createdAt'>;
+export type NewAnalysisIntake = Omit<
+  AnalysisIntake,
+  'id' | 'attempt' | 'status' | 'reanalysisOf' | 'createdAt'
+>;
 export type IntakeRepository = Readonly<{
-  findReusable(userId: string, duplicateKey: string): Promise<AnalysisIntake | null>;
+  findReusable(
+    userId: string,
+    duplicateKey: string,
+  ): Promise<AnalysisIntake | null>;
   insertReady(input: NewAnalysisIntake): Promise<AnalysisIntake>;
   findOwned(userId: string, id: string): Promise<AnalysisIntake | null>;
   createReanalysis(
@@ -507,12 +659,14 @@ git commit -m "feat(DEN-16): persist protected analysis intakes"
 ### Task 4: Intake Orchestration and Authenticated Server Actions
 
 **Files:**
+
 - Create: `src/lib/youtube-intake/service.ts`
 - Create: `src/lib/youtube-intake/service.test.ts`
 - Create: `src/lib/youtube-intake/actions.ts`
 - Create: `src/lib/youtube-intake/actions.test.ts`
 
 **Interfaces:**
+
 - Consumes: Tasks 1–3 domain, providers, and repository.
 - Produces: `createIntakeService(dependencies).submit(input)` and `.reanalyze(userId, sourceId)`.
 - Produces: `submitYouTubeIntake(previousState, formData): Promise<IntakeActionState>` and `reanalyzeIntake(previousState, formData)`.
@@ -522,23 +676,35 @@ git commit -m "feat(DEN-16): persist protected analysis intakes"
 ```ts
 test('reuses an exact intake before requesting a paid transcript', async () => {
   const transcript = vi.fn();
-  const service = createIntakeService({ metadata, transcript: { getNativeTranscript: transcript }, repository });
+  const service = createIntakeService({
+    metadata,
+    transcript: { getNativeTranscript: transcript },
+    repository,
+  });
   repository.findReusable.mockResolvedValue(existing);
-  await expect(service.submit(validInput)).resolves.toEqual({ kind: 'duplicate', intake: existing });
+  await expect(service.submit(validInput)).resolves.toEqual({
+    kind: 'duplicate',
+    intake: existing,
+  });
   expect(transcript).not.toHaveBeenCalled();
   expect(repository.insertReady).not.toHaveBeenCalled();
 });
 
 test('validates providers and stores a transcript snapshot for a new intake', async () => {
   repository.findReusable.mockResolvedValue(null);
-  await expect(createIntakeService(dependencies).submit(validInput))
-    .resolves.toMatchObject({ kind: 'ready', intake: { status: 'ready' } });
+  await expect(
+    createIntakeService(dependencies).submit(validInput),
+  ).resolves.toMatchObject({ kind: 'ready', intake: { status: 'ready' } });
   expect(transcript.getNativeTranscript).toHaveBeenCalledWith(
-    'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'en',
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    'en',
   );
-  expect(repository.insertReady).toHaveBeenCalledWith(expect.objectContaining({
-    userId: validInput.userId, transcriptSegments: segments,
-  }));
+  expect(repository.insertReady).toHaveBeenCalledWith(
+    expect.objectContaining({
+      userId: validInput.userId,
+      transcriptSegments: segments,
+    }),
+  );
 });
 ```
 
@@ -581,6 +747,7 @@ git commit -m "feat(DEN-16): orchestrate protected video intake"
 ### Task 5: Approved New Analysis Form, Artifact Options, and Duplicate Banner
 
 **Files:**
+
 - Create: `src/components/app-shell/new-analysis-form.tsx`
 - Create: `src/components/app-shell/new-analysis-form.test.tsx`
 - Modify: `src/components/app-shell/new-analysis-home.tsx`
@@ -590,6 +757,7 @@ git commit -m "feat(DEN-16): orchestrate protected video intake"
 - Modify: `src/styles/app-shell-reference.css`
 
 **Interfaces:**
+
 - Consumes: `IntakeActionState`, `submitYouTubeIntake`, `reanalyzeIntake`, and persisted onboarding preferences.
 - Produces: interactive form embedded in unchanged `.analysis-hero` geometry.
 
@@ -618,7 +786,9 @@ Use `useActionState`, `useFormStatus`, the existing `Dialog`, semantic checkboxe
   <h2 id="duplicate-title">You already analyzed this video.</h2>
   <p>No credits will be used.</p>
   <Link href={`/app/video/${state.existingId}`}>Open saved result</Link>
-  <button type="button" onClick={() => setConfirmOpen(true)}>Analyze again</button>
+  <button type="button" onClick={() => setConfirmOpen(true)}>
+    Analyze again
+  </button>
 </section>
 ```
 
@@ -646,6 +816,7 @@ git commit -m "feat(DEN-16): activate approved YouTube intake form"
 ### Task 6: Owned Intake Readiness Route
 
 **Files:**
+
 - Create: `src/components/app-shell/intake-readiness.tsx`
 - Create: `src/components/app-shell/intake-readiness.test.tsx`
 - Create: `src/app/app/video/[id]/page.tsx`
@@ -653,6 +824,7 @@ git commit -m "feat(DEN-16): activate approved YouTube intake form"
 - Modify: `src/styles/app-shell-reference.css`
 
 **Interfaces:**
+
 - Consumes: `IntakeRepository.findOwned(userId, id)` and authenticated Supabase user.
 - Produces: protected `/app/video/[id]` page inside the shared app layout.
 
@@ -693,6 +865,7 @@ git commit -m "feat(DEN-16): add intake readiness route"
 ### Task 7: Fixture Safety, Browser Coverage, and Full Verification
 
 **Files:**
+
 - Modify: `src/app/app-shell-fixture/page.tsx`
 - Modify: `src/app/app-shell-fixture/page.test.tsx`
 - Modify: `tests/e2e/fixtures.ts`
@@ -701,6 +874,7 @@ git commit -m "feat(DEN-16): add intake readiness route"
 - Modify: `README.md`
 
 **Interfaces:**
+
 - Consumes: completed DEN-16 flow.
 - Produces: deterministic development-only provider/storage fixtures and production exclusion assertions.
 
@@ -715,11 +889,15 @@ Keep production actions wired only to real fixed-origin adapters. Expose a devel
 - [ ] **Step 3: Add end-to-end browser stories**
 
 ```ts
-test('chooses artifacts, preserves failures, detects duplicates, and opens readiness', async ({ page }) => {
+test('chooses artifacts, preserves failures, detects duplicates, and opens readiness', async ({
+  page,
+}) => {
   await page.goto('/app-shell-fixture?intake=ready');
   await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
   await page.getByRole('button', { name: 'Advanced options' }).click();
-  await expect(page.getByRole('checkbox', { name: 'Flashcards' })).not.toBeChecked();
+  await expect(
+    page.getByRole('checkbox', { name: 'Flashcards' }),
+  ).not.toBeChecked();
   await page.getByRole('button', { name: 'Save options' }).click();
   await page.getByRole('button', { name: 'Analyze video' }).click();
   await expect(page).toHaveURL(/\/app\/video\//);
