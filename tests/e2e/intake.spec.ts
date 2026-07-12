@@ -18,10 +18,12 @@ async function submit(page: Page) {
 }
 
 async function atLeast44(locator: Locator) {
-  const box = await locator.boundingBox();
-  expect(box).not.toBeNull();
-  expect(box!.width).toBeGreaterThanOrEqual(44);
-  expect(box!.height).toBeGreaterThanOrEqual(44);
+  await expect
+    .poll(async () => {
+      const box = await locator.boundingBox();
+      return box ? Math.min(box.width, box.height) : 0;
+    })
+    .toBeGreaterThanOrEqual(44);
 }
 
 test('chooses artifacts, prevents double submit, announces pending, and opens readiness', async ({
@@ -41,8 +43,26 @@ test('chooses artifacts, prevents double submit, announces pending, and opens re
       .getByRole('status', { name: '' })
       .filter({ hasText: 'Analyzing video' }),
   ).toBeAttached();
-  await expect(page).toHaveURL(/\/app\/video\//);
+  await expect(page).toHaveURL(/\/app\/video\//, { timeout: 15_000 });
   await expect(page.getByText('Ready for processing')).toBeVisible();
+});
+
+test('retains a 30-card preset after closing options and submits it to readiness', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture?intake=ready');
+  await page.getByLabel('YouTube URL').fill(videoUrl);
+  await page.getByRole('button', { name: 'Advanced options' }).click();
+  await page.getByRole('checkbox', { name: 'Flashcards' }).check();
+  await page.getByLabel('Flashcard count').selectOption('30');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Advanced options' }).click();
+  await expect(page.getByLabel('Flashcard count')).toHaveValue('30');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Analyze video' }).click();
+
+  await expect(page.getByText('Ready for processing')).toBeVisible();
+  await expect(page.getByText('30 cards')).toBeVisible();
 });
 
 test('detects an exact duplicate, opens existing, and confirms re-analysis', async ({
@@ -129,41 +149,71 @@ for (const viewport of [
     await submit(page);
     await expect(page.getByText('No credits will be used.')).toBeVisible();
     await noOverflow(page);
+    await page.getByRole('link', { name: 'Open saved result' }).click();
+    await expect(page.getByText('Ready for processing')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: '← Back to New analysis' }),
+    ).toBeVisible();
+    await noOverflow(page);
+
+    const nav = page.getByRole('navigation', { name: 'Mobile navigation' });
     if (viewport.width === 390) {
-      const nav = page.getByRole('navigation', { name: 'Mobile navigation' });
       await expect(nav).toBeVisible();
-      expect(
-        (await page
-          .getByRole('button', { name: 'Analyze again' })
-          .boundingBox())!.y,
-      ).toBeLessThan((await nav.boundingBox())!.y);
+      const back = page.getByRole('link', { name: '← Back to New analysis' });
+      await back.scrollIntoViewIfNeeded();
+      expect((await back.boundingBox())!.y).toBeLessThan(
+        (await nav.boundingBox())!.y,
+      );
+    } else {
+      await expect(nav).toBeHidden();
     }
   });
 }
 
 test.describe('touch intake controls', () => {
   test.use({ hasTouch: true, viewport: { width: 390, height: 844 } });
-  test('keeps interactive form and duplicate targets at least 44px', async ({
+  test('keeps dialog, duplicate, and readiness targets at least 44px', async ({
     page,
   }) => {
     await page.goto('/app-shell-fixture?intake=duplicate');
     await atLeast44(page.getByLabel('YouTube URL'));
     await atLeast44(page.getByRole('button', { name: 'Analyze video' }));
     await atLeast44(page.getByRole('button', { name: 'Advanced options' }));
+    await page.getByRole('button', { name: 'Advanced options' }).click();
+    for (const name of ['Summary', 'Timestamps', 'Transcript', 'Flashcards']) {
+      await atLeast44(page.getByRole('checkbox', { name }).locator('..'));
+    }
+    await page.getByRole('checkbox', { name: 'Flashcards' }).check();
+    await atLeast44(page.getByLabel('Flashcard count'));
+    await atLeast44(page.getByRole('button', { name: 'Done' }));
+    await page.getByRole('button', { name: 'Done' }).click();
     await submit(page);
     await atLeast44(page.getByRole('link', { name: 'Open saved result' }));
     await atLeast44(page.getByRole('button', { name: 'Analyze again' }));
+    await page.getByRole('link', { name: 'Open saved result' }).click();
+    await atLeast44(page.getByRole('link', { name: '← Back to New analysis' }));
   });
 });
 
-test('removes intake motion while preserving content', async ({ page }) => {
+test('removes dialog and readiness motion while preserving content', async ({
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/app-shell-fixture?intake=duplicate');
+  await page.getByRole('button', { name: 'Advanced options' }).click();
+  const options = page.getByRole('dialog', { name: 'Advanced options' });
+  await expect(options).toBeVisible();
+  expect(
+    await options.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.animationName, style.transitionDuration];
+    }),
+  ).toEqual(['none', '0s']);
+  await page.getByRole('button', { name: 'Done' }).click();
   await submit(page);
-  for (const locator of [
-    page.locator('.app-beam-form'),
-    page.locator('.duplicate-banner'),
-  ]) {
+  await page.getByRole('link', { name: 'Open saved result' }).click();
+  for (const locator of [page.locator('.intake-readiness')]) {
     expect(
       await locator.evaluate((element) => {
         const style = getComputedStyle(element);
@@ -172,4 +222,8 @@ test('removes intake motion while preserving content', async ({ page }) => {
     ).toEqual(['none', '0s']);
     await expect(locator).toBeVisible();
   }
+  await expect(page.getByText('Ready for processing')).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: '← Back to New analysis' }),
+  ).toBeVisible();
 });

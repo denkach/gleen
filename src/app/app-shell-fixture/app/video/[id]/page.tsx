@@ -14,7 +14,11 @@ const allowedIds = new Set([
 
 export default async function FixtureReadinessPage({
   params,
-}: Readonly<{ params: Promise<{ id: string }> }>) {
+  searchParams,
+}: Readonly<{
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ flashcardPreset?: string }>;
+}>) {
   if (
     !isUiPreviewEnabled({
       NODE_ENV: process.env.NODE_ENV,
@@ -23,10 +27,22 @@ export default async function FixtureReadinessPage({
   )
     notFound();
   const { id } = await params;
+  const { flashcardPreset } = await searchParams;
   if (!allowedIds.has(id)) notFound();
   const intake = {
     ...fixtureSavedIntake,
     id,
+    configuration:
+      flashcardPreset === '18' || flashcardPreset === '30'
+        ? {
+            ...fixtureSavedIntake.configuration,
+            artifacts: [
+              ...fixtureSavedIntake.configuration.artifacts,
+              'flashcards' as const,
+            ],
+            flashcardPreset: Number(flashcardPreset) as 18 | 30,
+          }
+        : fixtureSavedIntake.configuration,
     attempt: id.startsWith('4444') ? 2 : 1,
     reanalysisOf: id.startsWith('4444') ? fixtureSavedIntake.id : null,
   };

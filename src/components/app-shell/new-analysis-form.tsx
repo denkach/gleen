@@ -92,6 +92,9 @@ export function NewAnalysisForm({
   const [selectedArtifacts, setSelectedArtifacts] = useState<string[]>(
     initialState.configuration.artifacts,
   );
+  const [flashcardPreset, setFlashcardPreset] = useState<18 | 30>(
+    initialState.configuration.flashcardPreset,
+  );
   const [clientMessage, setClientMessage] = useState<string>();
 
   useEffect(() => {
@@ -141,13 +144,7 @@ export function NewAnalysisForm({
           name="summaryPreset"
           value={state.configuration.summaryPreset}
         />
-        {!selectedArtifacts.includes('flashcards') ? (
-          <input
-            type="hidden"
-            name="flashcardPreset"
-            value={state.configuration.flashcardPreset}
-          />
-        ) : null}
+        <input type="hidden" name="flashcardPreset" value={flashcardPreset} />
         {selectedArtifacts.map((artifact) => (
           <input
             key={artifact}
@@ -197,9 +194,10 @@ export function NewAnalysisForm({
                 <span>Flashcard count</span>
                 <select
                   aria-label="Flashcard count"
-                  name="flashcardPreset"
-                  form="new-analysis-form"
-                  defaultValue={state.configuration.flashcardPreset}
+                  value={flashcardPreset}
+                  onChange={(event) =>
+                    setFlashcardPreset(Number(event.target.value) as 18 | 30)
+                  }
                 >
                   <option value="18">18</option>
                   <option value="30">30</option>
@@ -261,7 +259,7 @@ export function NewAnalysisForm({
             {selectedArtifacts.includes('flashcards') ? (
               <div>
                 <dt>Flashcards</dt>
-                <dd>{state.configuration.flashcardPreset}</dd>
+                <dd>{flashcardPreset}</dd>
               </div>
             ) : null}
           </dl>

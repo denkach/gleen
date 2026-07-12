@@ -24,7 +24,18 @@ async function submit(
 ) {
   if (scenario === 'ready')
     await new Promise((resolve) => setTimeout(resolve, 250));
-  return actions(scenario).submit(previous, formData);
+  const result = await actions(scenario).submit(previous, formData);
+  if (
+    scenario === 'ready' &&
+    result.redirectTo &&
+    formData.getAll('artifacts').includes('flashcards')
+  ) {
+    return {
+      ...result,
+      redirectTo: `${result.redirectTo}?flashcardPreset=${formData.get('flashcardPreset')}`,
+    };
+  }
+  return result;
 }
 
 export async function submitReadyFixture(

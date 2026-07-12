@@ -986,7 +986,7 @@
   }
   .app-content {
     min-height: calc(100vh - 62px);
-    padding: 26px 14px calc(40px + env(safe-area-inset-bottom));
+    padding: 26px 14px calc(107px + env(safe-area-inset-bottom));
   }
   .page-head {
     align-items: flex-start;
@@ -1082,10 +1082,14 @@
   }
   .advanced-link,
   .artifact-option,
+  .analysis-options .btn,
   .duplicate-banner .btn,
   .reanalyze-dialog .btn,
   .preset-option select {
     min-height: 44px;
+  }
+  .analysis-options .btn {
+    min-width: 44px;
   }
 }
 
@@ -1097,9 +1101,11 @@
   .skip-link,
   .side-link,
   .app-beam-form,
+  .analysis-options,
   .duplicate-banner,
   .duplicate-banner > a,
   .duplicate-banner > button,
+  .intake-readiness,
   .intake-readiness-foot a {
     transition: none !important;
     animation: none !important;

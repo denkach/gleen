@@ -99,6 +99,34 @@ describe('NewAnalysisForm', () => {
     expect(screen.getByLabelText('Flashcard count')).toBeInTheDocument();
   });
 
+  test('persists a changed flashcard preset after the dialog unmounts and submits it once', async () => {
+    const user = userEvent.setup();
+    const action = vi.fn(
+      async (state: IntakeActionState, formData: FormData) => {
+        void formData;
+        return state;
+      },
+    );
+    renderForm(action);
+
+    await user.click(screen.getByRole('button', { name: 'Advanced options' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Flashcards' }));
+    await user.selectOptions(screen.getByLabelText('Flashcard count'), '30');
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await user.click(screen.getByRole('button', { name: 'Advanced options' }));
+    expect(screen.getByLabelText('Flashcard count')).toHaveValue('30');
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+
+    await user.type(
+      screen.getByLabelText('YouTube URL'),
+      'https://youtu.be/abcdefghijk',
+    );
+    await user.click(screen.getByRole('button', { name: 'Analyze video' }));
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    const formData = action.mock.calls[0]?.[1] as FormData;
+    expect(formData.getAll('flashcardPreset')).toEqual(['30']);
+  });
+
   test('preserves the typed URL, prevents double submit, and announces recoverable errors', async () => {
     const user = userEvent.setup();
     let resolveAction!: (state: IntakeActionState) => void;
