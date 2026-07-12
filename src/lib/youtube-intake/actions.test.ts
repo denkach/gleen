@@ -39,12 +39,8 @@ vi.mock('./service', async (importOriginal) => {
   return { ...original, createIntakeService };
 });
 
-import {
-  createInitialIntakeActionState,
-  reanalyzeIntake,
-  submitYouTubeIntake,
-  type IntakeActionState,
-} from './actions';
+import { reanalyzeIntake, submitYouTubeIntake } from './actions';
+import { createInitialIntakeActionState } from './action-state';
 import { IntakeServiceError } from './service';
 
 const previousState = createInitialIntakeActionState({

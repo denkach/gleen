@@ -3,8 +3,8 @@
 import { validateProviderEnv } from '@/env';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
+import type { IntakeActionState } from './action-state';
 import {
-  defaultArtifactSelection,
   intakeConfigurationSchema,
   type IntakeConfiguration,
 } from './configuration';
@@ -15,19 +15,7 @@ import type { SupabaseIntakeClient } from './supabase-repository';
 import { createSupadataProvider } from './supadata-provider';
 import { createYouTubeProvider } from './youtube-provider';
 
-export type IntakeActionState = Readonly<{
-  status: 'idle' | 'error' | 'duplicate' | 'ready';
-  rawUrl: string;
-  configuration: IntakeConfiguration;
-  message?: string;
-  existingId?: string;
-  redirectTo?: string;
-}>;
-
-type IntakeProfileDefaults = Pick<
-  IntakeConfiguration,
-  'outputLocale' | 'summaryPreset' | 'flashcardPreset'
->;
+export type { IntakeActionState } from './action-state';
 
 const safeMessages: Record<IntakeErrorCode, string> = {
   invalid_url: 'Enter a supported YouTube URL and valid analysis options.',
@@ -45,20 +33,6 @@ const safeMessages: Record<IntakeErrorCode, string> = {
   session_expired: 'Your session has expired. Sign in and try again.',
   persistence_failure: 'We could not save this analysis. Try again.',
 };
-
-export function createInitialIntakeActionState(
-  defaults: IntakeProfileDefaults,
-): IntakeActionState {
-  return {
-    status: 'idle',
-    rawUrl: '',
-    configuration: {
-      ...defaults,
-      artifacts: [...defaultArtifactSelection],
-      analysisContractVersion: 1,
-    },
-  };
-}
 
 function formConfiguration(
   formData: FormData,
