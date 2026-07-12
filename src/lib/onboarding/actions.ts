@@ -79,6 +79,6 @@ export async function saveOnboardingPreferences(
   return {
     status: 'success',
     data: result.data,
-    ...(result.data.onboardingCompletedAt ? { redirectTo: '/protected' } : {}),
+    ...(result.data.onboardingCompletedAt ? { redirectTo: '/app' } : {}),
   };
 }

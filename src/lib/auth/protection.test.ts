@@ -10,6 +10,9 @@ describe('protected route decisions', () => {
     expect(protectedRouteRedirect('/onboarding?step=2', null)).toBe(
       '/sign-in?next=%2Fonboarding%3Fstep%3D2',
     );
+    expect(protectedRouteRedirect('/app/history', null)).toBe(
+      '/sign-in?next=%2Fapp%2Fhistory',
+    );
   });
 
   it('allows authenticated users through', () => {
