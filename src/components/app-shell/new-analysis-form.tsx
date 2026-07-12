@@ -6,6 +6,7 @@ import {
   useActionState,
   useCallback,
   useEffect,
+  useRef,
   useState,
   type FormEvent,
 } from 'react';
@@ -28,6 +29,7 @@ import {
 } from '@/lib/onboarding/preferences';
 
 import { AppIcon } from './app-icon';
+import { AnalyzeProcessingVisual } from './analyze-processing-visual';
 
 type IntakeAction = (
   previousState: IntakeActionState,
@@ -56,23 +58,12 @@ const localeNames: Record<(typeof supportedLocales)[number], string> = {
   de: 'Deutsch',
 };
 
-function PendingAnnouncement() {
-  return (
-    <span className="sr-only" role="status" aria-live="polite">
-      Checking video and transcript…
-    </span>
-  );
-}
-
 function SubmitButton({ pending }: Readonly<{ pending: boolean }>) {
   return (
-    <>
-      <button className="btn btn-primary" type="submit" disabled={pending}>
-        <span>{pending ? 'Analyzing…' : 'Analyze video'}</span>
-        <AppIcon name="arrow" />
-      </button>
-      {pending ? <PendingAnnouncement /> : null}
-    </>
+    <button className="btn btn-primary" type="submit" disabled={pending}>
+      <span>{pending ? 'Analyzing…' : 'Analyze video'}</span>
+      <AppIcon name="arrow" />
+    </button>
   );
 }
 
@@ -104,9 +95,9 @@ export function NewAnalysisForm({
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [selectedArtifacts, setSelectedArtifacts] = useState<string[]>(
-    initialState.configuration.artifacts,
-  );
+  const [selectedArtifacts, setSelectedArtifacts] = useState<
+    (typeof artifactOptions)[number][0][]
+  >(initialState.configuration.artifacts);
   const [outputLocale, setOutputLocale] = useState<
     OnboardingState['outputLocale']
   >(initialState.configuration.outputLocale);
@@ -117,10 +108,32 @@ export function NewAnalysisForm({
     initialState.configuration.flashcardPreset,
   );
   const [clientMessage, setClientMessage] = useState<string>();
+  const [submittedUrl, setSubmittedUrl] = useState(initialState.rawUrl);
+  const formRef = useRef<HTMLFormElement>(null);
+  const submissionStartedAt = useRef<number | undefined>(undefined);
 
   useEffect(() => {
+    const isReanalysisRedirect = Boolean(reanalyzeState.redirectTo);
     const redirectTo = reanalyzeState.redirectTo ?? state.redirectTo;
-    if (redirectTo) router.push(redirectTo);
+    if (!redirectTo) return;
+
+    const reducedMotion = window.matchMedia?.(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
+    const openingRemainder =
+      !isReanalysisRedirect && submissionStartedAt.current !== undefined
+        ? Math.max(0, 1800 - (Date.now() - submissionStartedAt.current))
+        : 0;
+    if (reducedMotion || openingRemainder === 0) {
+      router.push(redirectTo);
+      return;
+    }
+
+    const navigationTimer = window.setTimeout(
+      () => router.push(redirectTo),
+      openingRemainder,
+    );
+    return () => window.clearTimeout(navigationTimer);
   }, [reanalyzeState.redirectTo, router, state.redirectTo]);
 
   const selectionSummary = artifactOptions
@@ -131,18 +144,29 @@ export function NewAnalysisForm({
   function validateArtifacts(event: FormEvent<HTMLFormElement>) {
     if (selectedArtifacts.length > 0) {
       setClientMessage(undefined);
+      setSubmittedUrl(
+        new FormData(event.currentTarget).get('rawUrl')?.toString() ?? '',
+      );
+      submissionStartedAt.current = Date.now();
       return;
     }
     event.preventDefault();
     setClientMessage('Choose at least one artifact.');
   }
 
+  const visualState = pending
+    ? 'submitting'
+    : state.status === 'error'
+      ? 'error'
+      : null;
+
   return (
     <>
       <form
+        ref={formRef}
         id="new-analysis-form"
         action={formAction}
-        className="beam-form app-beam-form"
+        className={`beam-form app-beam-form${visualState ? ' processing-hidden' : ''}`}
         aria-describedby="intake-status"
         onSubmit={validateArtifacts}
       >
@@ -154,6 +178,7 @@ export function NewAnalysisForm({
           placeholder="Paste a YouTube link"
           defaultValue={state.rawUrl}
           required
+          disabled={pending}
         />
         <input type="hidden" name="outputLocale" value={outputLocale} />
         <input type="hidden" name="summaryPreset" value={summaryPreset} />
@@ -169,9 +194,23 @@ export function NewAnalysisForm({
         <SubmitButton pending={pending} />
       </form>
 
-      <div className="analysis-form-meta">
+      {visualState ? (
+        <AnalyzeProcessingVisual
+          state={visualState}
+          selectedArtifacts={selectedArtifacts}
+          submittedUrl={state.rawUrl || submittedUrl}
+          errorMessage={visualState === 'error' ? state.message : undefined}
+          onRetry={
+            visualState === 'error'
+              ? () => formRef.current?.requestSubmit()
+              : undefined
+          }
+        />
+      ) : null}
+
+      <div className={`analysis-form-meta${pending ? ' pending' : ''}`}>
         <Dialog open={advancedOpen} onOpenChange={setAdvancedOpen}>
-          <DialogTrigger className="advanced-link">
+          <DialogTrigger className="advanced-link" disabled={pending}>
             <AppIcon name="settings" /> Advanced options
           </DialogTrigger>
           <DialogContent
@@ -267,7 +306,7 @@ export function NewAnalysisForm({
         </p>
       </div>
 
-      {clientMessage || state.status === 'error' ? (
+      {clientMessage || (state.status === 'error' && !visualState) ? (
         <p className="intake-status" id="intake-status" role="status">
           {clientMessage ?? state.message}
         </p>

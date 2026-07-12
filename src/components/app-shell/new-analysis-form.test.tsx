@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import {
   createInitialIntakeActionState,
@@ -15,9 +15,17 @@ import {
 
 import { NewAnalysisForm } from './new-analysis-form';
 
+const routerPush = vi.fn();
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: routerPush }),
 }));
+
+afterEach(() => {
+  routerPush.mockClear();
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 const defaults = {
   outputLocale: 'en' as const,
@@ -175,7 +183,43 @@ describe('NewAnalysisForm', () => {
     expect(formData.getAll('flashcardPreset')).toEqual(['30']);
   });
 
-  test('preserves the typed URL, prevents double submit, and announces recoverable errors', async () => {
+  test('maps pending to the honest controlled visual without fabricating granular progress', async () => {
+    let resolveAction!: (state: IntakeActionState) => void;
+    const action = vi.fn(
+      () =>
+        new Promise<IntakeActionState>((resolve) => {
+          resolveAction = resolve;
+        }),
+    );
+    renderForm(action);
+    fireEvent.change(screen.getByLabelText('YouTube URL'), {
+      target: { value: 'https://youtu.be/abcdefghijk' },
+    });
+
+    await act(async () => {
+      fireEvent.submit(document.querySelector('#new-analysis-form')!);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-state',
+      'submitting',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Checking video and transcript…',
+    );
+    expect(screen.getByText('Structuring key ideas')).toHaveAttribute(
+      'data-stage-state',
+      'pending',
+    );
+    expect(screen.getByRole('button', { name: 'Analyzing…' })).toBeDisabled();
+
+    await act(async () =>
+      resolveAction(createInitialIntakeActionState(defaults)),
+    );
+  });
+
+  test('preserves URL and configuration on a safe error and retries the real form', async () => {
     const user = userEvent.setup();
     let resolveAction!: (state: IntakeActionState) => void;
     const action = vi.fn(
@@ -187,6 +231,10 @@ describe('NewAnalysisForm', () => {
     );
     renderForm(action);
     const input = screen.getByLabelText('YouTube URL');
+    await user.click(screen.getByRole('button', { name: 'Advanced options' }));
+    await user.click(screen.getByRole('radio', { name: 'Deutsch' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Transcript' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
     await user.type(input, 'https://youtu.be/abcdefghijk');
     await act(async () => {
       fireEvent.submit(document.querySelector('#new-analysis-form')!);
@@ -197,21 +245,37 @@ describe('NewAnalysisForm', () => {
     expect(screen.getByRole('button', { name: 'Analyzing…' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Analyzing…' }));
     expect(action).toHaveBeenCalledTimes(1);
-    resolveAction({
-      ...createInitialIntakeActionState(defaults),
-      status: 'error',
-      rawUrl: 'https://youtu.be/abcdefghijk',
-      message: 'The video service is temporarily unavailable. Try again.',
-    });
-    expect(
-      await screen.findByText(
-        'The video service is temporarily unavailable. Try again.',
-      ),
-    ).toHaveAttribute('role', 'status');
+    await act(async () =>
+      resolveAction({
+        ...createInitialIntakeActionState(defaults),
+        status: 'error',
+        rawUrl: 'https://youtu.be/abcdefghijk',
+        message: 'The video service is temporarily unavailable. Try again.',
+      }),
+    );
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-state',
+      'error',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'The video service is temporarily unavailable. Try again.',
+    );
     expect(input).toHaveValue('https://youtu.be/abcdefghijk');
+    expect(document.querySelector('input[name="outputLocale"]')).toHaveValue(
+      'de',
+    );
+    expect(screen.queryByText('TRANSCRIPT')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(action).toHaveBeenCalledTimes(2);
+    await act(async () =>
+      resolveAction(createInitialIntakeActionState(defaults)),
+    );
   });
 
-  test('announces one truthful pending state and resets when the action resolves', async () => {
+  test('delays readiness navigation only for the remaining opening narrative', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
     let resolveAction!: (state: IntakeActionState) => void;
     const action = vi.fn(
       () =>
@@ -228,15 +292,85 @@ describe('NewAnalysisForm', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Checking video and transcript…',
+    await act(async () => {
+      vi.advanceTimersByTime(250);
+      resolveAction({
+        ...createInitialIntakeActionState(defaults),
+        status: 'ready',
+        redirectTo: '/app/video/ready-123',
+      });
+      await vi.runAllTicks();
+    });
+    expect(routerPush).not.toHaveBeenCalled();
+
+    await act(async () => vi.advanceTimersByTime(1549));
+    expect(routerPush).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(routerPush).toHaveBeenCalledWith('/app/video/ready-123');
+  });
+
+  test('navigates immediately on readiness when reduced motion is requested', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }));
+    let resolveAction!: (state: IntakeActionState) => void;
+    const action = vi.fn(
+      () =>
+        new Promise<IntakeActionState>((resolve) => {
+          resolveAction = resolve;
+        }),
     );
+    renderForm(action);
+    fireEvent.change(screen.getByLabelText('YouTube URL'), {
+      target: { value: 'https://youtu.be/abcdefghijk' },
+    });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('#new-analysis-form')!);
+      await Promise.resolve();
+    });
     await act(async () =>
-      resolveAction(createInitialIntakeActionState(defaults)),
+      resolveAction({
+        ...createInitialIntakeActionState(defaults),
+        status: 'ready',
+        redirectTo: '/app/video/ready-123',
+      }),
     );
-    expect(
-      screen.queryByText('Checking video and transcript…'),
-    ).not.toBeInTheDocument();
+
+    expect(routerPush).toHaveBeenCalledWith('/app/video/ready-123');
+  });
+
+  test('cancels a pending readiness navigation when the form unmounts', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    let resolveAction!: (state: IntakeActionState) => void;
+    const action = vi.fn(
+      () =>
+        new Promise<IntakeActionState>((resolve) => {
+          resolveAction = resolve;
+        }),
+    );
+    const { unmount } = render(
+      <NewAnalysisForm
+        initialState={createInitialIntakeActionState(defaults)}
+        action={action}
+        reanalyzeAction={action}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('YouTube URL'), {
+      target: { value: 'https://youtu.be/abcdefghijk' },
+    });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('#new-analysis-form')!);
+      await Promise.resolve();
+      resolveAction({
+        ...createInitialIntakeActionState(defaults),
+        status: 'ready',
+        redirectTo: '/app/video/ready-123',
+      });
+      await vi.runAllTicks();
+    });
+
+    unmount();
+    await act(async () => vi.advanceTimersByTime(1800));
+    expect(routerPush).not.toHaveBeenCalled();
   });
 
   test('renders approved duplicate copy and confirms reanalysis with sourceId only', async () => {
@@ -287,6 +421,42 @@ describe('NewAnalysisForm', () => {
     await waitFor(() => expect(reanalyze).toHaveBeenCalledTimes(1));
     const formData = reanalyze.mock.calls[0]?.[1] as FormData;
     expect([...formData.entries()]).toEqual([['sourceId', 'saved-123']]);
+  });
+
+  test('does not apply the decorative intake delay to duplicate reanalysis navigation', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10_000);
+    const duplicate: IntakeActionState = {
+      ...createInitialIntakeActionState(defaults),
+      status: 'duplicate',
+      rawUrl: 'https://youtu.be/abcdefghijk',
+      existingId: 'saved-123',
+    };
+    const submit = vi.fn(async () => duplicate);
+    const reanalyze = vi.fn(async () => ({
+      ...duplicate,
+      status: 'ready' as const,
+      redirectTo: '/app/video/reanalysis-123',
+    }));
+    render(
+      <NewAnalysisForm
+        initialState={createInitialIntakeActionState(defaults)}
+        action={submit}
+        reanalyzeAction={reanalyze}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('YouTube URL'), {
+      target: { value: 'https://youtu.be/abcdefghijk' },
+    });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('#new-analysis-form')!);
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze again' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm analysis' }));
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+
+    expect(routerPush).toHaveBeenCalledWith('/app/video/reanalysis-123');
   });
 
   test('announces reanalysis failures inside confirmation and only disables its submit', async () => {

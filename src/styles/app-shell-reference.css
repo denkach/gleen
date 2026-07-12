@@ -515,6 +515,16 @@
 .app-beam-form:has(.btn:disabled) {
   border-color: var(--border-strong);
 }
+.app-beam-form.processing-hidden {
+  position: absolute;
+  width: min(760px, 100%);
+  pointer-events: none;
+  opacity: 0;
+}
+.analysis-form-meta.pending {
+  pointer-events: none;
+  opacity: var(--opacity-disabled);
+}
 .analysis-options {
   border: 1px solid var(--border-default);
   border-radius: 14px;
