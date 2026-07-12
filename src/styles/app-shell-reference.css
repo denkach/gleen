@@ -1082,8 +1082,8 @@
   border-radius: 30px;
   background: var(--analysis-shell-surface);
   box-shadow:
-    0 0 0 1px var(--analysis-shell-inset) inset,
-    0 0 40px var(--glow-flashcards);
+    0 0 0 1px var(--analysis-shell-idle-inset) inset,
+    0 0 40px var(--analysis-shell-idle-glow);
   transition:
     height 0.75s var(--ease-prism),
     border-color 0.35s,
@@ -1092,17 +1092,19 @@
 
 .analysis-visual .analyze-shell.processing {
   height: 300px;
+  border-color: var(--analysis-shell-processing-border);
   box-shadow:
-    0 0 0 1px var(--analysis-shell-inset) inset,
-    0 0 72px var(--analysis-shell-glow);
+    0 0 0 1px var(--analysis-shell-processing-inset) inset,
+    0 0 72px var(--analysis-shell-processing-glow);
 }
 
 .analysis-visual .analyze-shell.complete,
 .analysis-visual .analyze-shell.error {
   height: 300px;
+  border-color: var(--analysis-shell-processing-border);
   box-shadow:
-    0 0 0 1px var(--analysis-shell-inset) inset,
-    0 0 72px var(--analysis-shell-glow);
+    0 0 0 1px var(--analysis-shell-processing-inset) inset,
+    0 0 72px var(--analysis-shell-processing-glow);
 }
 
 .analysis-visual .analyze-photon {
@@ -1117,7 +1119,7 @@
   box-shadow:
     0 0 10px var(--analysis-optic-white),
     0 0 22px var(--analysis-optic-white),
-    0 0 45px var(--analysis-optic-soft);
+    0 0 45px var(--analysis-photon-tail-glow);
   opacity: 0;
   transform: translateY(-50%);
 }
@@ -1131,7 +1133,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    var(--analysis-optic-faint),
+    var(--analysis-photon-tail),
     var(--analysis-optic-white)
   );
   content: '';
@@ -1250,7 +1252,7 @@
   background: var(--analysis-optic-white);
   box-shadow:
     0 0 10px var(--analysis-optic-white),
-    0 0 20px var(--analysis-optic-soft);
+    0 0 20px var(--analysis-active-dot-glow);
 }
 
 .analysis-visual .analyze-step.done {
@@ -1258,9 +1260,9 @@
 }
 
 .analysis-visual .analyze-step.done .analyze-step-dot {
-  border-color: var(--artifact-export);
+  border-color: var(--analysis-done-dot-border);
   background: var(--artifact-export);
-  box-shadow: var(--glow-export);
+  box-shadow: 0 0 12px var(--analysis-done-dot-glow);
 }
 
 .analysis-visual .analyze-trace {
@@ -1315,7 +1317,7 @@
     var(--analysis-prism-cyan)
   );
   clip-path: polygon(50% 3%, 96% 91%, 4% 91%);
-  filter: drop-shadow(0 0 18px var(--analysis-optic-soft));
+  filter: drop-shadow(0 0 18px var(--analysis-prism-resting-shadow));
   animation: analyze-breathe 2.8s ease-in-out infinite;
 }
 
@@ -1324,9 +1326,9 @@
   inset: 2px;
   background: linear-gradient(
     145deg,
-    var(--analysis-optic-soft),
+    var(--analysis-prism-inner-face),
     var(--analysis-prism-core) 46%,
-    var(--analysis-shell-inset)
+    var(--analysis-prism-inner-edge)
   );
   clip-path: inherit;
   content: '';
@@ -1379,7 +1381,7 @@
   width: 0;
   height: 2px;
   border-radius: 99px;
-  transform: rotate(calc(-15deg + var(--ray-index) * 11deg));
+  transform: rotate(var(--ray-angle));
   transform-origin: left center;
   animation: analyze-ray-grow 0.8s 0.25s var(--ease-prism) forwards;
 }
@@ -1413,7 +1415,7 @@
 
 .analysis-visual .analyze-artifact-labels span {
   position: absolute;
-  top: calc(13px + var(--ray-index) * 37px);
+  top: var(--label-top);
   opacity: 0;
   animation: analyze-label-in 0.45s 0.85s var(--ease-prism) forwards;
 }
@@ -1510,7 +1512,7 @@
     var(--artifact-summary)
   );
   clip-path: polygon(50% 3%, 96% 91%, 4% 91%);
-  filter: drop-shadow(0 0 24px var(--analysis-optic-soft));
+  filter: drop-shadow(0 0 24px var(--analysis-complete-prism-shadow));
   animation: analyze-finish-pulse 1.2s ease-out both;
 }
 
@@ -1559,7 +1561,7 @@
 
 @keyframes analyze-breathe {
   50% {
-    filter: drop-shadow(0 0 28px var(--analysis-optic-soft));
+    filter: drop-shadow(0 0 28px var(--analysis-prism-breathing-shadow));
     transform: scale(1.025);
   }
 }
@@ -1655,6 +1657,12 @@
   }
   .analysis-visual .analyze-processing-panel {
     transition-delay: 0s;
+  }
+}
+
+@media (max-width: 900px) and (prefers-reduced-motion: reduce) {
+  .analysis-visual .analyze-ray {
+    width: 120px;
   }
 }
 

@@ -93,20 +93,20 @@ export function AnalyzeProcessingVisual({
             <div className="analyze-beam-in" aria-hidden="true" />
             <div className="analyze-prism" aria-hidden="true" />
             <div className="analyze-rays" aria-hidden="true">
-              {selectedRays.map((ray, index) => (
+              {selectedRays.map((ray) => (
                 <i
                   className={`analyze-ray ${ray.tone}`}
-                  key={`${ray.label}-${index}`}
-                  style={{ '--ray-index': index } as CSSProperties}
+                  key={ray.label}
+                  style={{ '--ray-angle': ray.angle } as CSSProperties}
                 />
               ))}
             </div>
             <div className="analyze-artifact-labels">
-              {selectedRays.map((ray, index) => (
+              {selectedRays.map((ray) => (
                 <span
                   className={ray.tone}
-                  key={`${ray.label}-${index}`}
-                  style={{ '--ray-index': index } as CSSProperties}
+                  key={ray.label}
+                  style={{ '--label-top': ray.labelTop } as CSSProperties}
                 >
                   {ray.label}
                 </span>

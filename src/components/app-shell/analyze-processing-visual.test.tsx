@@ -9,7 +9,7 @@ import { AnalyzeProcessingVisual } from './analyze-processing-visual';
 
 describe('AnalyzeProcessingVisual', () => {
   it('renders the controlled stage and only the selected intake artifacts', () => {
-    render(
+    const { container } = render(
       <AnalyzeProcessingVisual
         state="transcript"
         selectedArtifacts={['summary', 'timestamps', 'transcript']}
@@ -30,6 +30,19 @@ describe('AnalyzeProcessingVisual', () => {
     expect(screen.getByText('TRANSCRIPT')).toBeInTheDocument();
     expect(screen.queryByText('FLASHCARDS')).not.toBeInTheDocument();
     expect(screen.queryByText('EXPORT')).not.toBeInTheDocument();
+
+    const rays = [...container.querySelectorAll<HTMLElement>('.analyze-ray')];
+    expect(
+      rays.map((ray) => ray.style.getPropertyValue('--ray-angle')),
+    ).toEqual(['-15deg', '7deg', '18deg']);
+    const labels = [
+      ...container.querySelectorAll<HTMLElement>(
+        '.analyze-artifact-labels span',
+      ),
+    ];
+    expect(
+      labels.map((label) => label.style.getPropertyValue('--label-top')),
+    ).toEqual(['13px', '88px', '126px']);
   });
 
   it('keeps every optical element out of the accessibility tree', () => {
@@ -110,6 +123,10 @@ describe('AnalyzeProcessingVisual', () => {
       path.join(process.cwd(), 'src/styles/app-shell-reference.css'),
       'utf8',
     );
+    const tokens = readFileSync(
+      path.join(process.cwd(), 'src/app/globals.css'),
+      'utf8',
+    );
 
     expect(css).toMatch(
       /\.analysis-visual \.analyze-shell\.processing\s*{[^}]*height:\s*300px/,
@@ -124,6 +141,45 @@ describe('AnalyzeProcessingVisual', () => {
     expect(css).toMatch(/@media \(max-width: 900px\)/);
     expect(css).toMatch(
       /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.analyze-photon[\s\S]*\.analyze-shell-flash[\s\S]*\.analyze-prism[\s\S]*\.analyze-trace/,
+    );
+    expect(tokens).toMatch(
+      /--analysis-shell-idle-glow:\s*rgba\(199, 125, 255, 0\.035\)/,
+    );
+    expect(tokens).toMatch(
+      /--analysis-shell-idle-inset:\s*rgba\(255, 255, 255, 0\.04\)/,
+    );
+    expect(tokens).toMatch(
+      /--analysis-shell-processing-border:\s*rgba\(255, 255, 255, 0\.16\)/,
+    );
+    expect(tokens).toMatch(
+      /--analysis-photon-tail-glow:\s*rgba\(255, 255, 255, 0\.65\)/,
+    );
+    expect(tokens).toMatch(
+      /--analysis-prism-resting-shadow:\s*rgba\(255, 255, 255, 0\.16\)/,
+    );
+    expect(tokens).toMatch(
+      /--analysis-prism-inner-face:\s*rgba\(255, 255, 255, 0\.28\)/,
+    );
+    expect(tokens).toMatch(
+      /--analysis-prism-breathing-shadow:\s*rgba\(255, 255, 255, 0\.24\)/,
+    );
+    expect(tokens).toMatch(
+      /--analysis-done-dot-border:\s*rgba\(168, 224, 99, 0\.75\)/,
+    );
+    expect(tokens).toMatch(
+      /--analysis-done-dot-glow:\s*rgba\(168, 224, 99, 0\.35\)/,
+    );
+    expect(css).toMatch(
+      /\.analysis-visual \.analyze-shell\s*{[\s\S]*?0 0 40px var\(--analysis-shell-idle-glow\)/,
+    );
+    expect(css).toMatch(
+      /\.analysis-visual \.analyze-ray\s*{[\s\S]*?transform:\s*rotate\(var\(--ray-angle\)\)/,
+    );
+    expect(css).toMatch(
+      /\.analysis-visual \.analyze-artifact-labels span\s*{[\s\S]*?top:\s*var\(--label-top\)/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 900px\)[\s\S]*@media \(prefers-reduced-motion: reduce\)[\s\S]*\.analysis-visual \.analyze-ray\s*{\s*width:\s*120px/,
     );
   });
 });

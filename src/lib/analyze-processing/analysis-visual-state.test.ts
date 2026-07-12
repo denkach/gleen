@@ -51,5 +51,31 @@ describe('getAnalysisVisualPresentation', () => {
       label: 'TRANSCRIPT',
       tone: 'neutral',
     });
+    expect(artifactRayDefinitions).toEqual({
+      summary: {
+        label: 'SUMMARY',
+        tone: 'summary',
+        angle: '-15deg',
+        labelTop: '13px',
+      },
+      flashcards: {
+        label: 'FLASHCARDS',
+        tone: 'flashcards',
+        angle: '-5deg',
+        labelTop: '50px',
+      },
+      timestamps: {
+        label: 'TIMESTAMPS',
+        tone: 'timestamps',
+        angle: '7deg',
+        labelTop: '88px',
+      },
+      transcript: {
+        label: 'TRANSCRIPT',
+        tone: 'neutral',
+        angle: '18deg',
+        labelTop: '126px',
+      },
+    });
   });
 });

@@ -31,6 +31,8 @@ export type Artifact = IntakeConfiguration['artifacts'][number];
 export type ArtifactRayDefinition = Readonly<{
   label: string;
   tone: 'summary' | 'flashcards' | 'timestamps' | 'neutral';
+  angle: `${number}deg`;
+  labelTop: `${number}px`;
 }>;
 
 export const orderedAnalysisStages: readonly AnalysisStage[] = [
@@ -41,10 +43,30 @@ export const orderedAnalysisStages: readonly AnalysisStage[] = [
 ];
 
 export const artifactRayDefinitions = {
-  summary: { label: 'SUMMARY', tone: 'summary' },
-  flashcards: { label: 'FLASHCARDS', tone: 'flashcards' },
-  timestamps: { label: 'TIMESTAMPS', tone: 'timestamps' },
-  transcript: { label: 'TRANSCRIPT', tone: 'neutral' },
+  summary: {
+    label: 'SUMMARY',
+    tone: 'summary',
+    angle: '-15deg',
+    labelTop: '13px',
+  },
+  flashcards: {
+    label: 'FLASHCARDS',
+    tone: 'flashcards',
+    angle: '-5deg',
+    labelTop: '50px',
+  },
+  timestamps: {
+    label: 'TIMESTAMPS',
+    tone: 'timestamps',
+    angle: '7deg',
+    labelTop: '88px',
+  },
+  transcript: {
+    label: 'TRANSCRIPT',
+    tone: 'neutral',
+    angle: '18deg',
+    labelTop: '126px',
+  },
 } as const satisfies Readonly<Record<Artifact, ArtifactRayDefinition>>;
 
 export function getAnalysisVisualPresentation(
