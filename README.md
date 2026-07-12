@@ -67,6 +67,27 @@ npm run dev
 
 Then open `http://localhost:3000`.
 
+## Authenticated application
+
+The application shell requires a valid Supabase session. After onboarding,
+authenticated users land on `/app`; unauthenticated requests are redirected to
+the account-access flow. The shell currently provides these routes:
+
+- `/app` — New analysis home;
+- `/app/history` — History placeholder;
+- `/app/subscription` — Subscription placeholder;
+- `/app/settings/profile` — Profile settings placeholder.
+
+Video intake, saved-analysis history, billing and usage accounting, and full
+settings workflows belong to later issues. Their current shell destinations are
+truthful placeholders and do not simulate those product capabilities.
+
+For deterministic responsive and accessibility browser checks, development and
+non-production previews expose `/app-shell-fixture`. It renders the real shell
+with explicit test-only identity data behind the same environment boundary as
+the UI primitives preview. Production builds return an exact 404 for this route;
+it is not an authentication bypass and must never be used as one.
+
 ## Verification
 
 Install Playwright's Chromium browser once before running browser tests:
@@ -105,9 +126,9 @@ preview only at `http://localhost:3000/ui` while `npm run dev` is running. It
 is a review and QA surface, not a production route: production builds return
 an exact 404 for `/ui`.
 
-Run the development preview browser suite with `npm run test:e2e`. Run
+Run the development preview and app-shell browser suite with `npm run test:e2e`. Run
 `npm run test:e2e:production` to build and start the production application and
-verify the 404 boundary. Keyboard QA covers visible focus, dialog focus
+verify the exact 404 boundaries for `/ui` and `/app-shell-fixture`. Keyboard QA covers visible focus, dialog focus
 containment and return, dropdown navigation, tabs, tooltips, and toast actions.
 The preview also supports `prefers-reduced-motion`; reduced motion shortens or
 removes animation without hiding content or changing interaction behavior.

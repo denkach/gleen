@@ -19,6 +19,7 @@ type AppShellProps = Readonly<{
   children: React.ReactNode;
   identity: AppIdentity;
   usage: AppUsage;
+  pathnameOverride?: string;
 }>;
 
 function Brand() {
@@ -47,8 +48,14 @@ function UnavailableButton({
   );
 }
 
-export function AppShell({ children, identity, usage }: AppShellProps) {
-  const pathname = usePathname();
+export function AppShell({
+  children,
+  identity,
+  usage,
+  pathnameOverride,
+}: AppShellProps) {
+  const runtimePathname = usePathname();
+  const pathname = pathnameOverride ?? runtimePathname;
   const currentItem =
     appNavigation.find((item) => isAppNavigationItemActive(pathname, item)) ??
     appNavigation[0];
