@@ -45,9 +45,19 @@ npm install
 cp .env.example .env.local
 ```
 
-`NEXT_PUBLIC_APP_URL` is the only required application variable. The example
-sets it to `http://localhost:3000`. Keep real credentials out of committed
-environment files.
+Set `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. The Supabase URL and publishable key are
+safe browser configuration; service-role keys and other secrets must remain
+server-only and must never be committed.
+
+For DEN-14 account access:
+
+1. Create or link a Supabase project.
+2. Apply `supabase/migrations/202607120001_create_profiles.sql`.
+3. Enable Google and email/password providers in Supabase Auth.
+4. Add local and production `/auth/callback` URLs to the Supabase redirect
+   allowlist.
+5. Copy the public project URL and publishable key into `.env.local`.
 
 Start the application:
 
@@ -77,9 +87,16 @@ npm run test:e2e
 ```
 
 The Next.js development and production build commands load `.env.local`.
-Playwright supplies its own application URL when it starts the test server. In
-CI and other environments without `.env.local`, provide `NEXT_PUBLIC_APP_URL`
-explicitly for commands that validate or use the application environment.
+Playwright supplies non-secret test configuration when it starts the test
+server and never contacts a production Supabase project. In CI and other
+environments without `.env.local`, provide all three public variables explicitly.
+
+### Authentication dependencies
+
+- `@supabase/supabase-js@2.110.2` provides the official Auth and Postgres client.
+- `@supabase/ssr@0.12.0` provides cookie-backed browser/server clients for the
+  Next.js App Router.
+- `zod@4.4.3` validates authentication and onboarding boundaries.
 
 ## UI primitives preview
 

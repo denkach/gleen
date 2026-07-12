@@ -83,7 +83,10 @@ export function AccessForm({ intent }: AccessFormProps) {
           </label>
           <div className="input-wrap">
             <span className="input-icon" aria-hidden="true">
-              @
+              <svg viewBox="0 0 24 24">
+                <path d="M4 6.5h16v11H4z" />
+                <path d="m4.5 7 7.5 6 7.5-6" />
+              </svg>
             </span>
             <input
               className="input with-icon"

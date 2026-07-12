@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = 'http://127.0.0.1:3100';
+const testSupabaseUrl = 'https://gleen-test.supabase.co';
+const testSupabaseKey = 'sb_publishable_test';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -21,6 +23,8 @@ export default defineConfig({
       'npm run build && npm run start -- --hostname 127.0.0.1 --port 3100',
     env: {
       NEXT_PUBLIC_APP_URL: baseURL,
+      NEXT_PUBLIC_SUPABASE_URL: testSupabaseUrl,
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: testSupabaseKey,
     },
     reuseExistingServer: false,
     timeout: 180_000,
