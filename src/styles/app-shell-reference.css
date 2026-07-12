@@ -138,7 +138,10 @@
     color var(--motion-micro) ease;
 }
 
-.side-link:not(:disabled):hover,
+.side-link:not(:disabled):hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.025);
+}
 .side-link.active {
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.045);
@@ -148,10 +151,21 @@
   opacity: var(--opacity-disabled);
 }
 
-.side-link.active::after {
+.side-link.active::before {
   content: '';
   position: absolute;
   left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: var(--text-primary);
+  box-shadow: 0 0 9px rgba(255, 255, 255, 0.75);
+}
+
+.side-link.active::after {
+  content: '';
+  position: absolute;
+  left: -12px;
   top: 9px;
   bottom: 9px;
   width: 1px;

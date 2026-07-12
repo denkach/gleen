@@ -37,10 +37,28 @@ describe('AppShell', () => {
     expect(
       screen.getByRole('navigation', { name: 'Mobile navigation' }),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'History' })[0]).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    const historyLinks = screen.getAllByRole('link', { name: 'History' });
+    expect(historyLinks).toHaveLength(2);
+    for (const historyLink of historyLinks) {
+      expect(historyLink).toHaveAttribute('aria-current', 'page');
+      expect(historyLink).toHaveClass('active');
+    }
+
+    const unavailableControls = [
+      screen.getByRole('button', { name: 'Support' }),
+      screen.getByRole('button', { name: 'Change language' }),
+      ...screen.getAllByRole('button', { name: 'Notifications' }),
+    ];
+    for (const control of unavailableControls) {
+      expect(control).toBeDisabled();
+      expect(control).toHaveAttribute(
+        'aria-describedby',
+        'app-shell-unavailable-description',
+      );
+    }
+    expect(
+      document.getElementById('app-shell-unavailable-description'),
+    ).toHaveTextContent('Unavailable in this version');
     expect(screen.getByText('Alex Koval')).toBeInTheDocument();
     expect(screen.getByText('alex@example.com')).toBeInTheDocument();
     expect(
@@ -69,5 +87,17 @@ describe('AppShell', () => {
     );
     expect(css).toContain('padding-bottom: env(safe-area-inset-bottom);');
     expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+    expect(css).toMatch(
+      /\.side-link:not\(:disabled\):hover\s*{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.025\)/,
+    );
+    expect(css).toMatch(
+      /\.side-link\.active\s*{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.045\)/,
+    );
+    expect(css).toMatch(
+      /\.side-link\.active::before\s*{[^}]*left:\s*0[^}]*top:\s*10px[^}]*bottom:\s*10px/,
+    );
+    expect(css).toMatch(
+      /\.side-link\.active::after\s*{[^}]*left:\s*-12px[^}]*top:\s*9px[^}]*bottom:\s*9px/,
+    );
   });
 });
