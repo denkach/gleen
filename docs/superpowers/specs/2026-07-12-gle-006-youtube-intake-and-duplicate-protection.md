@@ -114,15 +114,31 @@ The intake configuration includes:
 - selected artifacts;
 - analysis contract version.
 
-Initial values come from the authenticated user's persisted profile. Selected
-artifacts use a domain-level default configuration, not copy embedded inside a
-visual component.
+The selectable artifacts are `summary`, `timestamps`, `transcript`, and
+`flashcards`. At least one artifact must be selected. The initial selection is:
+
+- Summary: selected;
+- Timestamps: selected;
+- Transcript: selected;
+- Flashcards: not selected.
+
+Export destinations are not generated artifacts. They are chosen after results
+exist and therefore do not participate in intake validation or duplicate
+matching.
+
+Output language and applicable presets come from the authenticated user's
+persisted profile. The artifact selection above is a domain-level default, not
+copy or state embedded inside a visual component. DEN-16 applies changes to the
+current intake only and does not overwrite profile preferences.
 
 The approved `Advanced options` row opens a restrained existing Dialog
 primitive. It allows changing output language, summary preset, flashcard preset,
 and selected artifacts for this intake only. Interface language is not changed.
 The dialog uses the existing settings/onboarding selection language and does not
-introduce a new visual system.
+introduce a new visual system. Artifact controls expose clear selected and
+unselected states, remain keyboard-operable, and show a validation message if
+the user tries to continue with no artifacts selected. Summary and flashcard
+presets remain visible only when their corresponding artifact is selected.
 
 ## Duplicate fingerprint
 
@@ -131,9 +147,9 @@ Create a canonical JSON representation with fixed property ordering:
 ```text
 youtubeVideoId
 outputLocale
-summaryPreset
-flashcardPreset
 sorted unique artifact identifiers
+summaryPreset when summary is selected, otherwise null
+flashcardPreset when flashcards are selected, otherwise null
 analysisContractVersion
 ```
 
@@ -143,7 +159,9 @@ names, or mutable display copy in the fingerprint.
 
 Duplicate scope is per authenticated user. The same video with a different
 output language, summary preset, flashcard preset, artifact selection, or
-analysis contract version is a distinct intake.
+analysis contract version is a distinct intake when that setting affects a
+selected artifact. Changing a hidden or inactive preset does not create a new
+fingerprint.
 
 ## Persistence
 
@@ -286,6 +304,8 @@ Automated coverage must include:
 - every provider status/error mapping and timeout;
 - native mode is always sent and `auto`/`generate` never appears;
 - canonical fingerprint stability, artifact sorting, and configuration changes;
+- artifact defaults, at-least-one validation, and exclusion of export targets;
+- inactive summary/flashcard presets do not change the fingerprint;
 - migrations, constraints, indexes, and RLS ownership;
 - exact duplicate returns without insert/provider charge where possible;
 - concurrent uniqueness recovery;
