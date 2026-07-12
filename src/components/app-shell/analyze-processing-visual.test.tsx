@@ -178,6 +178,10 @@ describe('AnalyzeProcessingVisual', () => {
     expect(css).toMatch(
       /\.analysis-visual \.analyze-artifact-labels span\s*{[\s\S]*?top:\s*var\(--label-top\)/,
     );
+    const baseStepRule = css.match(
+      /\.analysis-visual \.analyze-step\s*{([^}]*)}/,
+    );
+    expect(baseStepRule?.[1]).not.toMatch(/\bopacity\s*:/);
     expect(css).toMatch(
       /@media \(max-width: 900px\)[\s\S]*@media \(prefers-reduced-motion: reduce\)[\s\S]*\.analysis-visual \.analyze-ray\s*{\s*width:\s*120px/,
     );
