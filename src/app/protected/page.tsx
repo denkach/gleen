@@ -20,7 +20,10 @@ export default async function ProtectedVerificationPage() {
           Authentication is active. The full application shell is implemented
           separately in DEN-15.
         </p>
-        <Link className="ui-button" href="/onboarding">
+        <Link
+          className="ui-button protected-preferences-link"
+          href="/onboarding"
+        >
           Review preferences
         </Link>
       </section>

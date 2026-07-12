@@ -10,6 +10,18 @@ const css = readFileSync(
 );
 
 describe('design token contract', () => {
+  it('adds tokenized separation above the protected preferences link', () => {
+    const page = readFileSync(
+      new URL('../app/protected/page.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(page).toContain('ui-button protected-preferences-link');
+    expect(css).toMatch(
+      /\.protected-preferences-link\s*{[\s\S]*?margin-block-start:\s*var\(--space-6\)/,
+    );
+  });
+
   it.each([
     '--background-deep: #0a0a0f;',
     '--background-elevated: #111018;',

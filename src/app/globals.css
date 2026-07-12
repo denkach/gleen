@@ -228,6 +228,10 @@ p {
     color var(--motion-micro) var(--ease-prism);
 }
 
+.protected-preferences-link {
+  margin-block-start: var(--space-6);
+}
+
 .ui-button[data-size='sm'] {
   min-height: var(--control-height-sm);
   padding-inline: var(--space-3);
