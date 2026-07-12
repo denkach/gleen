@@ -40,9 +40,15 @@ for (const path of [
     const response = await page.goto(path);
 
     expect(response?.status()).toBe(404);
+    expect(new URL(page.url()).pathname).toBe(path.split('?')[0]);
     await expect(
       page.getByRole('heading', {
         name: 'Turn a video into something useful.',
+      }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('heading', {
+        name: 'Analyze processing motion fixture',
       }),
     ).toHaveCount(0);
   });

@@ -45,6 +45,23 @@ test('chooses artifacts, prevents double submit, announces pending, and opens re
     .filter({ hasText: 'Checking video and transcript…' });
   await expect(pendingStatus).toBeVisible();
   await expect(pendingStatus).toContainText('Checking video and transcript…');
+  const processing = page.getByTestId('analyze-processing-visual');
+  await expect(processing).toHaveAttribute('data-analysis-state', 'submitting');
+  for (const stage of [
+    'Validating video',
+    'Finding transcript',
+    'Structuring key ideas',
+    'Creating knowledge artifacts',
+  ]) {
+    await expect(processing.getByText(stage, { exact: true })).toHaveAttribute(
+      'data-stage-state',
+      'pending',
+    );
+  }
+  await expect(processing.getByText('FLASHCARDS', { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(processing.getByText('EXPORT', { exact: true })).toHaveCount(0);
   await expect(page).toHaveURL(/\/app\/video\//, { timeout: 15_000 });
   await expect(page.getByText('Ready for processing')).toBeVisible();
 });
@@ -262,4 +279,22 @@ test('removes dialog and readiness motion while preserving content', async ({
   await expect(
     page.getByRole('link', { name: '← Back to New analysis' }),
   ).toBeVisible();
+});
+
+test('reduced motion adds no decorative delay to truthful readiness navigation', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/app-shell-fixture?intake=ready');
+  await page.getByLabel('YouTube URL').fill(videoUrl);
+  const startedAt = Date.now();
+  await page.getByRole('button', { name: 'Analyze video' }).click();
+  await expect(page).toHaveURL(/\/app\/video\//, { timeout: 3_000 });
+  // The fixture action intentionally takes 1.8s. This ceiling proves the
+  // client does not add the separate 1.8s decorative opening delay.
+  expect(Date.now() - startedAt).toBeLessThan(2_800);
+  await expect(page.getByText('Ready for processing')).toBeVisible();
+  await expect(
+    page.getByText('Your knowledge artifacts are ready.'),
+  ).toHaveCount(0);
 });
