@@ -9,6 +9,7 @@ import { validatePublicEnv } from '@/env';
 
 import './globals.css';
 import '../styles/landing-reference.css';
+import '../styles/auth-reference.css';
 
 const { NEXT_PUBLIC_APP_URL } = validatePublicEnv(process.env);
 const landingDescription =
