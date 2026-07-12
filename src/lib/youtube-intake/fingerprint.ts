@@ -5,12 +5,17 @@ export function createDuplicateKey(
   youtubeVideoId: string,
   configuration: NormalizedIntakeConfiguration,
 ): string {
+  const artifacts = [...configuration.artifacts].sort();
   const canonical = JSON.stringify({
     youtubeVideoId,
     outputLocale: configuration.outputLocale,
-    artifacts: [...configuration.artifacts].sort(),
-    summaryPreset: configuration.summaryPreset,
-    flashcardPreset: configuration.flashcardPreset,
+    artifacts,
+    summaryPreset: artifacts.includes('summary')
+      ? configuration.summaryPreset
+      : null,
+    flashcardPreset: artifacts.includes('flashcards')
+      ? configuration.flashcardPreset
+      : null,
     analysisContractVersion: configuration.analysisContractVersion,
   });
 

@@ -25,6 +25,8 @@ describe('parseYouTubeUrl', () => {
     'https://youtube.com/playlist?list=PL123',
     'https://youtube.com/watch?v=short',
     'https://youtu.be/dQw4w9WgXcQ?v=aaaaaaaaaaa',
+    'https://youtube.com/watch?v=dQw4w9WgXcQ&v=aaaaaaaaaaa',
+    'https://youtube.com/shorts/dQw4w9WgXcQ?v=dQw4w9WgXcQ&v=aaaaaaaaaaa',
   ])('rejects %s', (raw) => {
     expect(parseYouTubeUrl(raw)).toEqual({ ok: false, code: 'invalid_url' });
   });

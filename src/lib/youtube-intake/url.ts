@@ -33,16 +33,19 @@ export function parseYouTubeUrl(raw: string): YouTubeUrlResult {
           ['shorts', 'embed', 'live'].includes(segments[0])
         ? segments[1]
         : undefined;
+  const queryIds = url.searchParams.getAll('v');
+  const distinctQueryIds = new Set(queryIds);
   const queryId =
     longHosts.has(url.hostname) && url.pathname === '/watch'
-      ? (url.searchParams.get('v') ?? undefined)
+      ? queryIds[0]
       : undefined;
   const videoId = pathId ?? queryId;
-  const conflictingQuery = pathId && url.searchParams.get('v');
+  const conflictingQuery = pathId && queryIds.some((id) => id !== pathId);
 
   if (
     !videoIdPattern.test(videoId ?? '') ||
-    (conflictingQuery && conflictingQuery !== videoId)
+    distinctQueryIds.size > 1 ||
+    conflictingQuery
   ) {
     return { ok: false, code: 'invalid_url' };
   }

@@ -15,10 +15,24 @@ describe('createDuplicateKey', () => {
     const second = createDuplicateKey('dQw4w9WgXcQ', {
       ...base,
       artifacts: ['transcript', 'summary'],
-      flashcardPreset: null,
+      flashcardPreset: 30,
     });
     expect(first).toBe(second);
     expect(first).toMatch(/^[a-f0-9]{64}$/);
+
+    const transcriptOnly = {
+      ...base,
+      artifacts: ['transcript'] as const,
+      summaryPreset: 'balanced' as const,
+      flashcardPreset: 18 as const,
+    };
+    expect(createDuplicateKey('dQw4w9WgXcQ', transcriptOnly)).toBe(
+      createDuplicateKey('dQw4w9WgXcQ', {
+        ...transcriptOnly,
+        summaryPreset: 'detailed',
+        flashcardPreset: 30,
+      }),
+    );
   });
 
   test('changes when a selected artifact or active preset changes', () => {
