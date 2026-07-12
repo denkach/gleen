@@ -90,7 +90,7 @@ export function createIntakeService(dependencies: IntakeServiceDependencies) {
         );
       if (!transcriptResult.ok) fail(transcriptResult.code);
 
-      const intake = await dependencies.repository.insertReady({
+      const inserted = await dependencies.repository.insertReady({
         userId: input.userId,
         youtubeVideoId: url.videoId,
         canonicalUrl: url.canonicalUrl,
@@ -103,7 +103,10 @@ export function createIntakeService(dependencies: IntakeServiceDependencies) {
         configuration,
         duplicateKey,
       });
-      return { kind: 'ready', intake };
+      return {
+        kind: inserted.kind === 'recovered' ? 'duplicate' : 'ready',
+        intake: inserted.intake,
+      };
     },
 
     async reanalyze(

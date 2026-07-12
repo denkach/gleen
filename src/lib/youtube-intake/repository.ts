@@ -25,12 +25,16 @@ export type NewAnalysisIntake = Omit<
   'id' | 'attempt' | 'status' | 'reanalysisOf' | 'createdAt'
 >;
 
+export type InsertReadyResult =
+  | Readonly<{ kind: 'inserted'; intake: AnalysisIntake }>
+  | Readonly<{ kind: 'recovered'; intake: AnalysisIntake }>;
+
 export type IntakeRepository = Readonly<{
   findReusable(
     userId: string,
     duplicateKey: string,
   ): Promise<AnalysisIntake | null>;
-  insertReady(input: NewAnalysisIntake): Promise<AnalysisIntake>;
+  insertReady(input: NewAnalysisIntake): Promise<InsertReadyResult>;
   findOwned(userId: string, id: string): Promise<AnalysisIntake | null>;
   createReanalysis(
     userId: string,

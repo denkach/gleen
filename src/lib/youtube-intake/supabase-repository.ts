@@ -173,10 +173,10 @@ export function createSupabaseIntakeRepository(
 
       if (result.error?.code === '23505') {
         const winner = await findReusable(input.userId, input.duplicateKey);
-        if (winner) return winner;
+        if (winner) return { kind: 'recovered', intake: winner };
         throw new IntakeRepositoryError();
       }
-      return unwrapRequired(result);
+      return { kind: 'inserted', intake: unwrapRequired(result) };
     },
 
     async findOwned(userId, id) {

@@ -62,12 +62,15 @@ function setup() {
   const repository: IntakeRepository = {
     findReusable: vi.fn().mockResolvedValue(null),
     insertReady: vi.fn().mockImplementation(async (input) => ({
-      ...input,
-      id: '33333333-3333-4333-8333-333333333333',
-      attempt: 1,
-      status: 'ready' as const,
-      reanalysisOf: null,
-      createdAt: '2026-07-12T11:00:00.000Z',
+      kind: 'inserted' as const,
+      intake: {
+        ...input,
+        id: '33333333-3333-4333-8333-333333333333',
+        attempt: 1,
+        status: 'ready' as const,
+        reanalysisOf: null,
+        createdAt: '2026-07-12T11:00:00.000Z',
+      },
     })),
     findOwned: vi.fn().mockResolvedValue(existing),
     createReanalysis: vi
@@ -177,16 +180,22 @@ describe('createIntakeService', () => {
     expect(dependencies.repository.insertReady).not.toHaveBeenCalled();
   });
 
-  test('accepts the repository winner when a concurrent insert is recovered', async () => {
+  test('returns duplicate when a concurrent insert winner is recovered', async () => {
     const dependencies = setup();
-    vi.mocked(dependencies.repository.insertReady).mockResolvedValue(existing);
+    vi.mocked(dependencies.repository.insertReady).mockResolvedValue({
+      kind: 'recovered',
+      intake: existing,
+    });
 
     await expect(
       createIntakeService(dependencies).submit(validInput),
     ).resolves.toEqual({
-      kind: 'ready',
+      kind: 'duplicate',
       intake: existing,
     });
+    expect(dependencies.transcript.getNativeTranscript).toHaveBeenCalledTimes(
+      1,
+    );
     expect(dependencies.repository.insertReady).toHaveBeenCalledTimes(1);
   });
 

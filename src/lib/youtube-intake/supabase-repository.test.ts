@@ -110,6 +110,20 @@ describe('Supabase intake repository', () => {
     expect(query.eq).toHaveBeenCalledWith('id', intakeId);
   });
 
+  it('classifies a successful insert as inserted', async () => {
+    const insert = insertQuery({ data: row, error: null });
+    const client = { from: vi.fn().mockReturnValue(insert), rpc: vi.fn() };
+
+    await expect(
+      createSupabaseIntakeRepository(client).insertReady(input),
+    ).resolves.toEqual({
+      kind: 'inserted',
+      intake: expect.objectContaining({ id: intakeId }),
+    });
+
+    expect(client.from).toHaveBeenCalledTimes(1);
+  });
+
   it('maps inserts to snake case and recovers a unique race by re-querying', async () => {
     const insert = insertQuery({ data: null, error: { code: '23505' } });
     const reusable = selectQuery({ data: row, error: null });
@@ -120,7 +134,10 @@ describe('Supabase intake repository', () => {
 
     await expect(
       createSupabaseIntakeRepository(client).insertReady(input),
-    ).resolves.toMatchObject({ id: intakeId, attempt: 2 });
+    ).resolves.toEqual({
+      kind: 'recovered',
+      intake: expect.objectContaining({ id: intakeId, attempt: 2 }),
+    });
 
     expect(insert.insert).toHaveBeenCalledWith(
       expect.objectContaining({
