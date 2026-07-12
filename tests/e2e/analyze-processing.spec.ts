@@ -14,6 +14,12 @@ async function animationName(locator: Locator) {
   return locator.evaluate((element) => getComputedStyle(element).animationName);
 }
 
+async function transitionDurations(locator: Locator) {
+  return locator.evaluate(
+    (element) => getComputedStyle(element).transitionDuration,
+  );
+}
+
 async function expectNoHorizontalOverflow(page: Page) {
   await expect
     .poll(() =>
@@ -41,9 +47,13 @@ test('launches the approved opening and renders only selected artifact rays', as
   const analyze = page.getByRole('button', { name: 'Analyze video' });
   const visual = page.getByTestId('analyze-processing-visual');
   const shell = visual.locator('.analyze-shell');
-  const startedAt = Date.now();
-  await analyze.click();
+  const startedAt = await page.evaluate(() => performance.now());
+  const disabledAtDispatchReturn = await analyze.evaluate((button) => {
+    (button as HTMLButtonElement).click();
+    return (button as HTMLButtonElement).disabled;
+  });
 
+  expect(disabledAtDispatchReturn).toBe(true);
   await expect(analyze).toBeDisabled();
   await expect(visual).toHaveAttribute('data-analysis-state', 'submitting');
   await expect(shell).toHaveClass(/processing/);
@@ -61,10 +71,115 @@ test('launches the approved opening and renders only selected artifact rays', as
   await expect(visual.getByText('TRANSCRIPT', { exact: true })).toBeVisible();
   await expect(visual.getByText('FLASHCARDS', { exact: true })).toHaveCount(0);
   await expect(visual.getByText('EXPORT', { exact: true })).toHaveCount(0);
+  const samples: Array<{
+    elapsed: number;
+    shellHeight: number;
+    photonLeft: number;
+    photonOpacity: number;
+    flashOpacity: number;
+    panelOpacity: number;
+    panelY: number;
+  }> = [];
   await expect
-    .poll(async () => (await shell.boundingBox())?.height ?? 0)
-    .toBeCloseTo(300, 0);
-  expect(Date.now() - startedAt).toBeLessThanOrEqual(1_800);
+    .poll(
+      async () => {
+        const sample = await visual.evaluate((element, origin) => {
+          const shellElement = element.querySelector('.analyze-shell')!;
+          const photon = element.querySelector('.analyze-photon')!;
+          const flash = element.querySelector('.analyze-shell-flash')!;
+          const panel = element.querySelector('.analyze-processing-panel')!;
+          const panelStyle = getComputedStyle(panel);
+          return {
+            elapsed: performance.now() - origin,
+            shellHeight: shellElement.getBoundingClientRect().height,
+            photonLeft: Number.parseFloat(getComputedStyle(photon).left),
+            photonOpacity: Number.parseFloat(getComputedStyle(photon).opacity),
+            flashOpacity: Number.parseFloat(getComputedStyle(flash).opacity),
+            panelOpacity: Number.parseFloat(panelStyle.opacity),
+            panelY: new DOMMatrix(panelStyle.transform).m42,
+          };
+        }, startedAt);
+        samples.push(sample);
+        return sample.shellHeight >= 299.5 && sample.panelOpacity >= 0.99;
+      },
+      { intervals: [35], timeout: 1_800 },
+    )
+    .toBe(true);
+  const settledAt = samples.at(-1)!.elapsed;
+  expect(settledAt).toBeGreaterThanOrEqual(600);
+  expect(settledAt).toBeLessThanOrEqual(1_100);
+  expect(
+    samples.some(
+      (sample) => sample.shellHeight > 130 && sample.shellHeight < 290,
+    ),
+  ).toBe(true);
+  expect(
+    samples.some(
+      (sample) => sample.photonOpacity > 0.5 && sample.photonLeft > 38,
+    ),
+  ).toBe(true);
+  expect(samples.some((sample) => sample.flashOpacity > 0.05)).toBe(true);
+  expect(
+    samples.some(
+      (sample) =>
+        sample.panelOpacity > 0 &&
+        sample.panelOpacity < 0.95 &&
+        sample.panelY > 0,
+    ),
+  ).toBe(true);
+  await expect(shell).toHaveCSS('height', '300px');
+});
+
+test('production input row disables synchronously and follows the approved exit progression', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture?intake=ready');
+  await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
+  const form = page.locator('#new-analysis-form');
+  const analyze = page.getByRole('button', { name: 'Analyze video' });
+  const disabledAtDispatchReturn = await analyze.evaluate((button) => {
+    (button as HTMLButtonElement).click();
+    return (button as HTMLButtonElement).disabled;
+  });
+  expect(disabledAtDispatchReturn).toBe(true);
+  await expect(page.getByTestId('analyze-processing-visual')).toBeVisible();
+  const samples: Array<{ opacity: number; transform: string; filter: string }> =
+    [];
+  await expect
+    .poll(
+      async () => {
+        const computed = await form.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {
+            opacity: Number(style.opacity),
+            transform: style.transform,
+            filter: style.filter,
+          };
+        });
+        samples.push(computed);
+        return computed.opacity;
+      },
+      { intervals: [25], timeout: 800 },
+    )
+    .toBeLessThan(0.01);
+  expect(
+    samples.some((sample) => sample.opacity > 0.05 && sample.opacity < 0.95),
+  ).toBe(true);
+  const style = await form.evaluate((element) => {
+    const computed = getComputedStyle(element);
+    return {
+      opacity: computed.opacity,
+      transform: computed.transform,
+      filter: computed.filter,
+      transitionProperty: computed.transitionProperty,
+    };
+  });
+  expect(Number(style.opacity)).toBeLessThan(0.01);
+  expect(style.transform).not.toBe('none');
+  expect(style.filter).toContain('blur');
+  expect(style.transitionProperty).toContain('opacity');
+  expect(style.transitionProperty).toContain('transform');
+  expect(style.transitionProperty).toContain('filter');
 });
 
 test('plays every deterministic fixture state with stage text instead of percentages', async ({
@@ -156,14 +271,46 @@ for (const viewport of viewports) {
     await expect
       .poll(async () => (await shell.boundingBox())?.height ?? 0)
       .toBeCloseTo(viewport.width <= 900 ? 500 : 300, 0);
-    const geometry = await panel.evaluate((element) => ({
-      columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
-    }));
+    const shellBox = (await shell.boundingBox())!;
+    expect(shellBox.width).toBeCloseTo(Math.min(1_395, viewport.width), 0);
+    const geometry = await panel.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      const status = element
+        .querySelector('.analyze-status-copy')!
+        .getBoundingClientRect();
+      const optic = element
+        .querySelector('.analyze-optic')!
+        .getBoundingClientRect();
+      return {
+        columns: style.gridTemplateColumns.split(' ').length,
+        gap: Number.parseFloat(style.gap),
+        paddingTop: Number.parseFloat(style.paddingTop),
+        paddingLeft: Number.parseFloat(style.paddingLeft),
+        radius: Number.parseFloat(
+          getComputedStyle(element.parentElement!).borderRadius,
+        ),
+        statusTop: status.top - rect.top,
+        opticTop: optic.top - rect.top,
+      };
+    });
     expect(geometry.columns).toBe(viewport.width <= 900 ? 1 : 2);
+    expect(geometry.radius).toBe(viewport.width <= 900 ? 24 : 30);
+    expect(geometry.paddingTop).toBe(viewport.width <= 900 ? 28 : 35);
+    expect(geometry.paddingLeft).toBe(viewport.width <= 900 ? 24 : 42);
+    expect(geometry.gap).toBe(viewport.width <= 900 ? 12 : 48);
+    if (viewport.width <= 900) {
+      expect(geometry.opticTop).toBeLessThan(geometry.statusTop);
+    } else {
+      expect(Math.abs(geometry.opticTop - geometry.statusTop)).toBeLessThan(2);
+    }
 
     const labels = visual.locator('.analyze-artifact-labels span');
     if (viewport.width <= 900) {
       await expect(labels.first()).toBeHidden();
+      await expect(
+        page.getByRole('navigation', { name: 'Mobile navigation' }),
+      ).toHaveCount(0);
     } else {
       await expect(labels.first()).toBeVisible();
     }
@@ -173,8 +320,18 @@ for (const viewport of viewports) {
 test.describe('touch fixture actions', () => {
   test.use({ hasTouch: true, viewport: { width: 390, height: 844 } });
 
-  test('keeps the processing retry action at least 44px', async ({ page }) => {
+  test('keeps every visible fixture action at least 44px', async ({ page }) => {
     await openFixture(page);
+    for (const action of await page
+      .locator(
+        '.analyze-processing-fixture button:visible, .analyze-processing-fixture label:visible',
+      )
+      .all()) {
+      const box = await action.boundingBox();
+      expect(
+        Math.min(box?.width ?? 0, box?.height ?? 0),
+      ).toBeGreaterThanOrEqual(44);
+    }
     await page.getByRole('button', { name: 'Preview error' }).click();
     const retryBox = await page
       .getByRole('button', { name: 'Try again' })
@@ -192,6 +349,8 @@ test('reduced motion removes decorative motion while retaining truthful state', 
   await openFixture(page);
   await page.getByRole('button', { name: 'Analyze video' }).click();
   const visual = page.getByTestId('analyze-processing-visual');
+  const shell = visual.locator('.analyze-shell');
+  const panel = visual.locator('.analyze-processing-panel');
 
   await expect(visual.locator('.analyze-photon')).toBeHidden();
   await expect(visual.locator('.analyze-shell-flash')).toBeHidden();
@@ -209,6 +368,11 @@ test('reduced motion removes decorative motion while retaining truthful state', 
         (element) => getComputedStyle(element, '::after').animationName,
       ),
   ).toBe('none');
+  expect(await transitionDurations(shell)).toBe('0s');
+  expect(await transitionDurations(panel)).toBe('0s');
+  await expect(shell).toHaveCSS('height', '300px');
+  await expect(panel).toHaveCSS('opacity', '1');
+  await expect(panel).toHaveCSS('transform', 'none');
   await expect(
     visual.getByRole('status').filter({
       hasText: 'Checking video and transcript…',

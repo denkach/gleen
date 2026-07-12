@@ -77,7 +77,10 @@ export function AnalyzeProcessingFixture() {
   useEffect(() => clearTimers, [clearTimers]);
 
   return (
-    <section aria-labelledby="analyze-processing-fixture-title">
+    <section
+      className="analyze-processing-fixture"
+      aria-labelledby="analyze-processing-fixture-title"
+    >
       <header>
         <p>Development-only deterministic demo</p>
         <h1 id="analyze-processing-fixture-title">
@@ -85,7 +88,7 @@ export function AnalyzeProcessingFixture() {
         </h1>
       </header>
 
-      <fieldset>
+      <fieldset className="analyze-processing-fixture-options">
         <legend>Fixture artifact rays</legend>
         {allArtifacts.map((artifact) => (
           <label key={artifact}>
@@ -99,8 +102,15 @@ export function AnalyzeProcessingFixture() {
         ))}
       </fieldset>
 
-      <div>
-        <button type="button" onClick={run} disabled={isRunning}>
+      <div className="analyze-processing-fixture-actions">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.currentTarget.disabled = true;
+            run();
+          }}
+          disabled={isRunning}
+        >
           Analyze video
         </button>
         <button type="button" onClick={replay}>

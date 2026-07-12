@@ -182,6 +182,9 @@ describe('AnalyzeProcessingVisual', () => {
     expect(css).toMatch(
       /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.analyze-photon[\s\S]*\.analyze-shell-flash[\s\S]*\.analyze-prism[\s\S]*\.analyze-trace/,
     );
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.analysis-visual \.analyze-shell,\s*\.analysis-visual \.analyze-processing-panel\s*{[^}]*transition:\s*none\s*!important/,
+    );
     expect(tokens).toMatch(
       /--analysis-shell-idle-glow:\s*rgba\(199, 125, 255, 0\.035\)/,
     );

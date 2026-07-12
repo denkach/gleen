@@ -148,6 +148,8 @@ export function NewAnalysisForm({
         new FormData(event.currentTarget).get('rawUrl')?.toString() ?? '',
       );
       submissionStartedAt.current = Date.now();
+      const submitter = (event.nativeEvent as SubmitEvent).submitter;
+      if (submitter instanceof HTMLButtonElement) submitter.disabled = true;
       return;
     }
     event.preventDefault();

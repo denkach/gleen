@@ -456,6 +456,10 @@
     0 24px 70px rgba(0, 0, 0, 0.35),
     inset 0 1px rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(16px);
+  transition:
+    opacity 0.35s var(--ease-prism),
+    transform 0.55s var(--ease-prism),
+    filter 0.55s var(--ease-prism);
 }
 .app-beam-form::before {
   content: '';
@@ -520,6 +524,8 @@
   width: min(760px, 100%);
   pointer-events: none;
   opacity: 0;
+  filter: blur(12px);
+  transform: translateY(-18px) scale(0.985);
 }
 .analysis-form-meta.pending {
   pointer-events: none;
@@ -1657,15 +1663,16 @@
   .analysis-visual .analyze-complete-prism {
     animation: none !important;
   }
+  .analysis-visual .analyze-shell,
+  .analysis-visual .analyze-processing-panel {
+    transition: none !important;
+  }
   .analysis-visual .analyze-ray {
     width: 190px;
   }
   .analysis-visual .analyze-artifact-labels span {
     opacity: 0.75;
     transform: translateX(7px);
-  }
-  .analysis-visual .analyze-processing-panel {
-    transition-delay: 0s;
   }
 }
 
@@ -1693,6 +1700,15 @@
   .analysis-options .btn {
     min-width: 44px;
   }
+  .analyze-processing-fixture-actions button,
+  .analyze-processing-fixture-options label {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .analyze-processing-fixture-options label {
+    display: inline-flex;
+    align-items: center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1711,5 +1727,9 @@
   .intake-readiness-foot a {
     transition: none !important;
     animation: none !important;
+  }
+  .app-beam-form.processing-hidden {
+    filter: none;
+    transform: none;
   }
 }
