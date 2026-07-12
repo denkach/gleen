@@ -1,4 +1,15 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+test('production analysis form does not import the timed fixture driver', () => {
+  const productionForm = readFileSync(
+    resolve('src/components/app-shell/new-analysis-form.tsx'),
+    'utf8',
+  );
+
+  expect(productionForm).not.toContain('analyze-processing-fixture');
+});
 
 test('returns an exact 404 for the UI preview in production', async ({
   page,
@@ -12,6 +23,7 @@ test('returns an exact 404 for the UI preview in production', async ({
 });
 
 for (const path of [
+  '/analyze-processing-fixture',
   '/app-shell-fixture',
   '/app-shell-fixture?intake=ready',
   '/app-shell-fixture?intake=duplicate',
