@@ -41,13 +41,38 @@ describe('NewAnalysisForm', () => {
 
     expect(screen.getByLabelText('YouTube URL')).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Analyze video' })).toBeEnabled();
+    const beam = document.querySelector('.beam-form.app-beam-form');
+    expect(beam).not.toBeNull();
+    expect(beam?.querySelector('.analysis-options')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Advanced options' }));
+    expect(
+      screen.getByRole('dialog', { name: 'Advanced options' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Summary' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Timestamps' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Transcript' })).toBeChecked();
     expect(
       screen.getByRole('checkbox', { name: 'Flashcards' }),
     ).not.toBeChecked();
+  });
+
+  test('closes advanced options on Escape and returns focus to its trigger', async () => {
+    const user = userEvent.setup();
+    renderForm(async (state) => state);
+    const trigger = screen.getByRole('button', { name: 'Advanced options' });
+
+    await user.click(trigger);
+    expect(
+      await screen.findByRole('dialog', { name: 'Advanced options' }),
+    ).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Advanced options' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(trigger).toHaveFocus();
   });
 
   test('requires an artifact and reveals flashcard options only when selected', async () => {
@@ -59,6 +84,7 @@ describe('NewAnalysisForm', () => {
     for (const name of ['Summary', 'Timestamps', 'Transcript']) {
       await user.click(screen.getByRole('checkbox', { name }));
     }
+    await user.click(screen.getByRole('button', { name: 'Done' }));
     await user.type(
       screen.getByLabelText('YouTube URL'),
       'https://youtu.be/abcdefghijk',
@@ -68,6 +94,7 @@ describe('NewAnalysisForm', () => {
       'Choose at least one artifact.',
     );
 
+    await user.click(screen.getByRole('button', { name: 'Advanced options' }));
     await user.click(screen.getByRole('checkbox', { name: 'Flashcards' }));
     expect(screen.getByLabelText('Flashcard count')).toBeInTheDocument();
   });
@@ -141,5 +168,57 @@ describe('NewAnalysisForm', () => {
     await waitFor(() => expect(reanalyze).toHaveBeenCalledTimes(1));
     const formData = reanalyze.mock.calls[0]?.[1] as FormData;
     expect([...formData.entries()]).toEqual([['sourceId', 'saved-123']]);
+  });
+
+  test('announces reanalysis failures inside confirmation and only disables its submit', async () => {
+    const user = userEvent.setup();
+    const duplicate: IntakeActionState = {
+      ...createInitialIntakeActionState(defaults),
+      status: 'duplicate',
+      existingId: 'saved-123',
+    };
+    let resolveReanalysis!: (state: IntakeActionState) => void;
+    const reanalyze = vi.fn(
+      () =>
+        new Promise<IntakeActionState>((resolve) => {
+          resolveReanalysis = resolve;
+        }),
+    );
+    render(
+      <NewAnalysisForm
+        initialState={duplicate}
+        action={async (state) => state}
+        reanalyzeAction={reanalyze}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Analyze again' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm analysis' }));
+
+    expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled();
+    expect(
+      document.querySelector<HTMLButtonElement>(
+        '.app-beam-form button[type="submit"]',
+      ),
+    ).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Creating…' }));
+    expect(reanalyze).toHaveBeenCalledTimes(1);
+
+    resolveReanalysis({
+      ...duplicate,
+      status: 'error',
+      message: 'The video service is temporarily unavailable. Try again.',
+    });
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Analyze this video again?',
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'The video service is temporarily unavailable. Try again.',
+    );
+    expect(dialog).toContainElement(screen.getByRole('status'));
+    expect(
+      screen.getByRole('button', { name: 'Confirm analysis' }),
+    ).toBeEnabled();
   });
 });

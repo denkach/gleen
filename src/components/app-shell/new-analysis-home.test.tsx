@@ -74,5 +74,12 @@ describe('NewAnalysisHome', () => {
     expect(css).toMatch(
       /@media\s*\(max-width:\s*720px\)[\s\S]*?\.analysis-hero\s*{(?=[^}]*padding:\s*28px 18px)(?=[^}]*min-height:\s*340px)[^}]*}[\s\S]*?\.dashboard-grid\s*{[^}]*grid-template-columns:\s*1fr/,
     );
+    expect(css).toMatch(/\.app-beam-form\s*{[^}]*display:\s*flex/);
+    expect(css).not.toMatch(/\.app-beam-form\s*{[^}]*flex-wrap:/);
+    const analysisOptionsCss = css.match(/\.analysis-options\s*{([^}]*)}/)?.[1];
+    const duplicateBannerCss = css.match(/\.duplicate-banner\s*{([^}]*)}/)?.[1];
+    expect(analysisOptionsCss).not.toContain('rgba(');
+    expect(analysisOptionsCss).toContain('box-shadow: var(--shadow-panel)');
+    expect(duplicateBannerCss).not.toContain('rgba(');
   });
 });

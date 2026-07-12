@@ -11,7 +11,12 @@ import {
 } from 'react';
 import { useFormStatus } from 'react-dom';
 
-import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   reanalyzeIntake,
   submitYouTubeIntake,
@@ -102,6 +107,7 @@ export function NewAnalysisForm({
   return (
     <>
       <form
+        id="new-analysis-form"
         action={formAction}
         className="beam-form app-beam-form"
         aria-describedby="intake-status"
@@ -126,64 +132,70 @@ export function NewAnalysisForm({
           name="summaryPreset"
           value={state.configuration.summaryPreset}
         />
+        {!selectedArtifacts.includes('flashcards') ? (
+          <input
+            type="hidden"
+            name="flashcardPreset"
+            value={state.configuration.flashcardPreset}
+          />
+        ) : null}
         <SubmitButton />
-
-        <div className="analysis-options" hidden={!advancedOpen}>
-          <fieldset>
-            <legend>Artifacts</legend>
-            <div className="artifact-options">
-              {artifactOptions.map(([value, label]) => (
-                <label key={value} className="artifact-option">
-                  <input
-                    type="checkbox"
-                    name="artifacts"
-                    value={value}
-                    defaultChecked={selectedArtifacts.includes(value)}
-                    onChange={(event) => {
-                      setClientMessage(undefined);
-                      setSelectedArtifacts((current) =>
-                        event.target.checked
-                          ? [...current, value]
-                          : current.filter((artifact) => artifact !== value),
-                      );
-                    }}
-                  />
-                  <span>{label}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          {selectedArtifacts.includes('flashcards') ? (
-            <label className="preset-option">
-              <span>Flashcard count</span>
-              <select
-                aria-label="Flashcard count"
-                name="flashcardPreset"
-                defaultValue={state.configuration.flashcardPreset}
-              >
-                <option value="18">18</option>
-                <option value="30">30</option>
-              </select>
-            </label>
-          ) : (
-            <input
-              type="hidden"
-              name="flashcardPreset"
-              value={state.configuration.flashcardPreset}
-            />
-          )}
-        </div>
       </form>
 
       <div className="analysis-form-meta">
-        <button
-          className="advanced-link"
-          type="button"
-          aria-expanded={advancedOpen}
-          onClick={() => setAdvancedOpen((open) => !open)}
-        >
-          <AppIcon name="settings" /> Advanced options
-        </button>
+        <Dialog open={advancedOpen} onOpenChange={setAdvancedOpen}>
+          <DialogTrigger className="advanced-link">
+            <AppIcon name="settings" /> Advanced options
+          </DialogTrigger>
+          <DialogContent
+            className="analysis-options"
+            title="Advanced options"
+            description="Choose the knowledge artifacts for this analysis."
+          >
+            <fieldset>
+              <legend>Artifacts</legend>
+              <div className="artifact-options">
+                {artifactOptions.map(([value, label]) => (
+                  <label key={value} className="artifact-option">
+                    <input
+                      type="checkbox"
+                      name="artifacts"
+                      form="new-analysis-form"
+                      value={value}
+                      defaultChecked={selectedArtifacts.includes(value)}
+                      onChange={(event) => {
+                        setClientMessage(undefined);
+                        setSelectedArtifacts((current) =>
+                          event.target.checked
+                            ? [...current, value]
+                            : current.filter((artifact) => artifact !== value),
+                        );
+                      }}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            {selectedArtifacts.includes('flashcards') ? (
+              <label className="preset-option">
+                <span>Flashcard count</span>
+                <select
+                  aria-label="Flashcard count"
+                  name="flashcardPreset"
+                  form="new-analysis-form"
+                  defaultValue={state.configuration.flashcardPreset}
+                >
+                  <option value="18">18</option>
+                  <option value="30">30</option>
+                </select>
+              </label>
+            ) : null}
+            <DialogClose className="btn btn-secondary" type="button">
+              Done
+            </DialogClose>
+          </DialogContent>
+        </Dialog>
         <p className="selection-summary">
           {selectionSummary || 'No artifacts selected'}
         </p>
@@ -246,6 +258,11 @@ export function NewAnalysisForm({
             </DialogClose>
             <ConfirmButton />
           </form>
+          {reanalyzeState.status === 'error' ? (
+            <p className="intake-status" role="status" aria-live="polite">
+              {reanalyzeState.message}
+            </p>
+          ) : null}
         </DialogContent>
       </Dialog>
     </>

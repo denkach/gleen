@@ -48,6 +48,21 @@
   --glow-flashcards: 0 0 24px rgba(199, 125, 255, 0.12);
   --glow-timestamps: 0 0 24px rgba(91, 233, 233, 0.12);
   --glow-export: 0 0 24px rgba(168, 224, 99, 0.12);
+  --surface-artifact-selected: color-mix(
+    in srgb,
+    var(--artifact-flashcards) 6%,
+    transparent
+  );
+  --border-duplicate: color-mix(
+    in srgb,
+    var(--artifact-timestamps) 16%,
+    transparent
+  );
+  --surface-duplicate: color-mix(
+    in srgb,
+    var(--artifact-timestamps) 3.5%,
+    transparent
+  );
 
   --motion-micro: 160ms;
   --motion-interface: 280ms;
