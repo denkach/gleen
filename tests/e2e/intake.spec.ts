@@ -58,10 +58,12 @@ test('chooses artifacts, prevents double submit, announces pending, and opens re
       /^(pending|active|done)$/,
     );
   }
-  await expect(processing.getByText('FLASHCARDS', { exact: true })).toHaveCount(
+  for (const rail of ['SUMMARY', 'FLASHCARDS', 'TIMESTAMPS', 'EXPORT']) {
+    await expect(processing.getByText(rail, { exact: true })).toBeVisible();
+  }
+  await expect(processing.getByText('TRANSCRIPT', { exact: true })).toHaveCount(
     0,
   );
-  await expect(processing.getByText('EXPORT', { exact: true })).toHaveCount(0);
   await expect(page).toHaveURL(/\/app\/video\//, { timeout: 15_000 });
   await expect(page.getByText('Ready for processing')).toBeVisible();
 });
