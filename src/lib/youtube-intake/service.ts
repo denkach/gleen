@@ -19,6 +19,9 @@ export type IntakeServiceDependencies = Readonly<{
   metadata: VideoMetadataProvider;
   transcript: TranscriptProvider;
   repository: IntakeRepository;
+  pipeline: Readonly<{
+    createAndStart(userId: string, analysisId: string): Promise<void>;
+  }>;
 }>;
 
 export type SubmitIntakeInput = Readonly<{
@@ -103,6 +106,12 @@ export function createIntakeService(dependencies: IntakeServiceDependencies) {
         configuration,
         duplicateKey,
       });
+      if (inserted.kind === 'inserted') {
+        await dependencies.pipeline.createAndStart(
+          input.userId,
+          inserted.intake.id,
+        );
+      }
       return {
         kind: inserted.kind === 'recovered' ? 'duplicate' : 'ready',
         intake: inserted.intake,
@@ -142,6 +151,7 @@ export function createIntakeService(dependencies: IntakeServiceDependencies) {
         sourceId,
         snapshot,
       );
+      await dependencies.pipeline.createAndStart(userId, intake.id);
       return { kind: 'ready', intake };
     },
   };

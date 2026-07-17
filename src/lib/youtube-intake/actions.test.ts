@@ -7,7 +7,9 @@ const {
   createYouTubeProvider,
   createSupadataProvider,
   createSupabaseIntakeRepository,
+  createSupabaseAnalysisRepository,
   createIntakeService,
+  startAnalysis,
 } = vi.hoisted(() => {
   const submit = vi.fn();
   const reanalyze = vi.fn();
@@ -18,6 +20,11 @@ const {
     createYouTubeProvider: vi.fn(() => ({ getVideo: vi.fn() })),
     createSupadataProvider: vi.fn(() => ({ getNativeTranscript: vi.fn() })),
     createSupabaseIntakeRepository: vi.fn(() => ({})),
+    createSupabaseAnalysisRepository: vi.fn(() => ({
+      createForAnalysis: vi.fn(async () => ({ job: { id: 'job-id' } })),
+      setReservationStatus: vi.fn(),
+    })),
+    startAnalysis: vi.fn(async () => ({ runId: 'run-id' })),
     createIntakeService: vi.fn(() => ({ submit, reanalyze })),
   };
 });
@@ -34,6 +41,10 @@ vi.mock('@/env', () => ({
 vi.mock('./youtube-provider', () => ({ createYouTubeProvider }));
 vi.mock('./supadata-provider', () => ({ createSupadataProvider }));
 vi.mock('./supabase-repository', () => ({ createSupabaseIntakeRepository }));
+vi.mock('@/lib/analysis-pipeline/supabase-repository', () => ({
+  createSupabaseAnalysisRepository,
+}));
+vi.mock('@/lib/analysis-pipeline/start', () => ({ startAnalysis }));
 vi.mock('./service', async (importOriginal) => {
   const original = await importOriginal<typeof import('./service')>();
   return { ...original, createIntakeService };
@@ -183,6 +194,13 @@ describe('intake server actions', () => {
       status: 'ready',
       redirectTo: '/app/video/33333333-3333-4333-8333-333333333333',
     });
+    expect(createIntakeService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pipeline: expect.objectContaining({
+          createAndStart: expect.any(Function),
+        }),
+      }),
+    );
   });
 
   test.each([

@@ -39,6 +39,9 @@ const validInput = {
 };
 
 function setup() {
+  const pipeline = {
+    createAndStart: vi.fn().mockResolvedValue(undefined),
+  };
   const metadata = {
     getVideo: vi.fn().mockResolvedValue({
       ok: true,
@@ -84,7 +87,7 @@ function setup() {
         createdAt: '2026-07-12T12:00:00.000Z',
       })),
   };
-  return { metadata, transcript, repository };
+  return { metadata, transcript, repository, pipeline };
 }
 
 describe('createIntakeService', () => {
@@ -138,6 +141,10 @@ describe('createIntakeService', () => {
         transcriptSegments: segments,
         configuration: { ...configuration, flashcardPreset: null },
       }),
+    );
+    expect(dependencies.pipeline.createAndStart).toHaveBeenCalledWith(
+      validInput.userId,
+      '33333333-3333-4333-8333-333333333333',
     );
   });
 
@@ -197,6 +204,7 @@ describe('createIntakeService', () => {
       1,
     );
     expect(dependencies.repository.insertReady).toHaveBeenCalledTimes(1);
+    expect(dependencies.pipeline.createAndStart).not.toHaveBeenCalled();
   });
 
   test('rejects re-analysis when the source is not owned', async () => {
@@ -242,6 +250,10 @@ describe('createIntakeService', () => {
           existing.configuration,
         ),
       }),
+    );
+    expect(dependencies.pipeline.createAndStart).toHaveBeenCalledWith(
+      validInput.userId,
+      '44444444-4444-4444-8444-444444444444',
     );
   });
 });
