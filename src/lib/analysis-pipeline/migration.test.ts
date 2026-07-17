@@ -13,6 +13,8 @@ it('defines owned RLS policies and atomic pipeline RPCs', () => {
   expect(sql).toContain('create function public.retry_analysis_pipeline');
   expect(sql).toContain('analysis_jobs_select_own');
   expect(sql).toContain('analysis_artifacts_select_own');
+  expect(sql).toContain('analysis_job_events_insert_own');
+  expect(sql).toContain('analysis_usage_reservations_update_own');
   expect(sql).toContain(
     'alter publication supabase_realtime add table public.analysis_jobs',
   );

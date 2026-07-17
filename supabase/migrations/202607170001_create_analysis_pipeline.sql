@@ -93,9 +93,11 @@ create policy "analysis_artifacts_select_own" on public.analysis_artifacts for s
 create policy "analysis_usage_reservations_select_own" on public.analysis_usage_reservations for select to authenticated using (auth.uid() = user_id);
 create policy "analysis_jobs_insert_own" on public.analysis_jobs for insert to authenticated with check (auth.uid() = user_id);
 create policy "analysis_jobs_update_own" on public.analysis_jobs for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "analysis_job_events_insert_own" on public.analysis_job_events for insert to authenticated with check (auth.uid() = user_id);
 create policy "analysis_artifacts_insert_own" on public.analysis_artifacts for insert to authenticated with check (auth.uid() = user_id);
 create policy "analysis_artifacts_update_own" on public.analysis_artifacts for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "analysis_usage_reservations_insert_own" on public.analysis_usage_reservations for insert to authenticated with check (auth.uid() = user_id);
+create policy "analysis_usage_reservations_update_own" on public.analysis_usage_reservations for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create function public.create_analysis_pipeline(analysis_id uuid)
 returns public.analysis_jobs
