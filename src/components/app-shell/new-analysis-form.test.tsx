@@ -183,7 +183,8 @@ describe('NewAnalysisForm', () => {
     expect(formData.getAll('flashcardPreset')).toEqual(['30']);
   });
 
-  test('maps pending to the honest controlled visual without fabricating granular progress', async () => {
+  test('keeps production pending honest without fabricating granular stages', async () => {
+    vi.useFakeTimers();
     let resolveAction!: (state: IntakeActionState) => void;
     const action = vi.fn(
       () =>
@@ -217,10 +218,22 @@ describe('NewAnalysisForm', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'Checking video and transcript…',
     );
-    expect(screen.getByText('Structuring key ideas')).toHaveAttribute(
-      'data-stage-state',
-      'pending',
+    await act(async () => vi.advanceTimersByTime(5_000));
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-state',
+      'submitting',
     );
+    for (const stage of [
+      'Validating video',
+      'Finding transcript',
+      'Structuring key ideas',
+      'Creating knowledge artifacts',
+    ]) {
+      expect(screen.getByText(stage)).toHaveAttribute(
+        'data-stage-state',
+        'pending',
+      );
+    }
     expect(
       document.querySelector<HTMLButtonElement>(
         '#new-analysis-form button[type="submit"]',
@@ -325,7 +338,7 @@ describe('NewAnalysisForm', () => {
     );
   });
 
-  test('delays readiness navigation only for the remaining opening narrative', async () => {
+  test('shows a four-second processing, completion, and exit handoff before navigation', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(10_000);
     let resolveAction!: (state: IntakeActionState) => void;
@@ -355,8 +368,33 @@ describe('NewAnalysisForm', () => {
     });
     expect(routerPush).not.toHaveBeenCalled();
 
-    await act(async () => vi.advanceTimersByTime(1549));
+    await act(async () => vi.advanceTimersByTime(2_749));
     expect(routerPush).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-state',
+      'complete',
+    );
+    expect(routerPush).not.toHaveBeenCalled();
+
+    expect(screen.getByText('Your artifacts are ready')).toBeInTheDocument();
+    expect(
+      screen.getByText('Opening the result workspace'),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('analyze-processing-visual')).not.toHaveAttribute(
+      'data-analysis-exiting',
+      'true',
+    );
+    await act(async () => vi.advanceTimersByTime(399));
+    expect(routerPush).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-exiting',
+      'true',
+    );
+    await act(async () => vi.advanceTimersByTime(599));
+    expect(routerPush).not.toHaveBeenCalled();
+
     await act(async () => vi.advanceTimersByTime(1));
     expect(routerPush).toHaveBeenCalledWith('/app/video/ready-123');
   });

@@ -23,6 +23,7 @@ import {
   submitYouTubeIntake,
   type IntakeActionState,
 } from '@/lib/youtube-intake/actions';
+import type { AnalysisVisualState } from '@/lib/analyze-processing/analysis-visual-state';
 import {
   supportedLocales,
   type OnboardingState,
@@ -49,6 +50,10 @@ const artifactOptions = [
   ['transcript', 'Transcript'],
   ['flashcards', 'Flashcards'],
 ] as const;
+
+const processingMinimumDuration = 3_000;
+const completionCopyDuration = 400;
+const exitTransitionDuration = 600;
 
 const localeNames: Record<(typeof supportedLocales)[number], string> = {
   uk: 'Українська',
@@ -109,32 +114,77 @@ export function NewAnalysisForm({
   );
   const [clientMessage, setClientMessage] = useState<string>();
   const [submittedUrl, setSubmittedUrl] = useState(initialState.rawUrl);
+  const [visualState, setVisualState] = useState<AnalysisVisualState>('idle');
+  const [isExiting, setIsExiting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const submissionStartedAt = useRef<number | undefined>(undefined);
+  const visualTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const navigationScheduledFor = useRef<string | undefined>(undefined);
+
+  const clearVisualTimers = useCallback(() => {
+    for (const timer of visualTimers.current) clearTimeout(timer);
+    visualTimers.current = [];
+  }, []);
+
+  const startVisualTimeline = useCallback(() => {
+    clearVisualTimers();
+    navigationScheduledFor.current = undefined;
+    setIsExiting(false);
+    setVisualState('submitting');
+  }, [clearVisualTimers]);
+
+  useEffect(() => clearVisualTimers, [clearVisualTimers]);
 
   useEffect(() => {
     const isReanalysisRedirect = Boolean(reanalyzeState.redirectTo);
     const redirectTo = reanalyzeState.redirectTo ?? state.redirectTo;
     if (!redirectTo) return;
 
-    const reducedMotion = window.matchMedia?.(
-      '(prefers-reduced-motion: reduce)',
-    ).matches;
-    const openingRemainder =
-      !isReanalysisRedirect && submissionStartedAt.current !== undefined
-        ? Math.max(0, 1800 - (Date.now() - submissionStartedAt.current))
-        : 0;
-    if (reducedMotion || openingRemainder === 0) {
+    if (isReanalysisRedirect) {
       router.push(redirectTo);
       return;
     }
 
-    const navigationTimer = window.setTimeout(
-      () => router.push(redirectTo),
-      openingRemainder,
+    if (navigationScheduledFor.current === redirectTo) return;
+    navigationScheduledFor.current = redirectTo;
+
+    const reducedMotion = window.matchMedia?.(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
+    if (reducedMotion || submissionStartedAt.current === undefined) {
+      clearVisualTimers();
+      router.push(redirectTo);
+      return;
+    }
+
+    const elapsed = Date.now() - submissionStartedAt.current;
+    const processingRemainder = Math.max(
+      0,
+      processingMinimumDuration - elapsed,
     );
-    return () => window.clearTimeout(navigationTimer);
-  }, [reanalyzeState.redirectTo, router, state.redirectTo]);
+    visualTimers.current.push(
+      setTimeout(() => setVisualState('complete'), processingRemainder),
+      setTimeout(
+        () => setIsExiting(true),
+        processingRemainder + completionCopyDuration,
+      ),
+      setTimeout(
+        () => router.push(redirectTo),
+        processingRemainder + completionCopyDuration + exitTransitionDuration,
+      ),
+    );
+  }, [clearVisualTimers, reanalyzeState.redirectTo, router, state.redirectTo]);
+
+  useEffect(() => {
+    if (pending) return;
+    if (state.status === 'error') {
+      clearVisualTimers();
+      return;
+    }
+    if (!state.redirectTo && ['idle', 'duplicate'].includes(state.status)) {
+      clearVisualTimers();
+    }
+  }, [clearVisualTimers, pending, state.redirectTo, state.status]);
 
   const selectionSummary = artifactOptions
     .filter(([value]) => selectedArtifacts.includes(value))
@@ -148,6 +198,7 @@ export function NewAnalysisForm({
         new FormData(event.currentTarget).get('rawUrl')?.toString() ?? '',
       );
       submissionStartedAt.current = Date.now();
+      startVisualTimeline();
       const submitter = (event.nativeEvent as SubmitEvent).submitter;
       if (submitter instanceof HTMLButtonElement) submitter.disabled = true;
       return;
@@ -156,22 +207,29 @@ export function NewAnalysisForm({
     setClientMessage('Choose at least one artifact.');
   }
 
-  const visualState = pending
-    ? 'submitting'
-    : state.status === 'error'
+  const resolvedWithoutRedirect =
+    !pending &&
+    !state.redirectTo &&
+    ['idle', 'duplicate'].includes(state.status);
+  const displayVisualState =
+    state.status === 'error'
       ? 'error'
-      : 'idle';
-  const isVisualBusy = visualState !== 'idle';
+      : resolvedWithoutRedirect
+        ? 'idle'
+        : visualState;
+  const isVisualBusy = displayVisualState !== 'idle';
 
   return (
     <>
       <AnalyzeProcessingVisual
-        state={visualState}
-        selectedArtifacts={selectedArtifacts}
+        state={displayVisualState}
+        isExiting={isExiting}
         submittedUrl={state.rawUrl || submittedUrl}
-        errorMessage={visualState === 'error' ? state.message : undefined}
+        errorMessage={
+          displayVisualState === 'error' ? state.message : undefined
+        }
         onRetry={
-          visualState === 'error'
+          displayVisualState === 'error'
             ? () => formRef.current?.requestSubmit()
             : undefined
         }

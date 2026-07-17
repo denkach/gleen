@@ -15,21 +15,13 @@ import {
   submitVideoUnavailableFixture,
 } from '@/lib/youtube-intake/development-fixture-actions';
 
+import { fixtureCases } from './fixture-cases';
+
 const fixtureIdentity = {
   displayName: 'Test User',
   email: 'test@example.com',
   initials: 'TU',
 } as const;
-
-export const fixtureCases = [
-  'ready',
-  'duplicate',
-  'invalid-url',
-  'video-unavailable',
-  'transcript-unavailable',
-  'provider-outage',
-  'reanalysis',
-] as const;
 
 type Props = Readonly<{ searchParams: Promise<{ intake?: string }> }>;
 

@@ -1,5 +1,3 @@
-import type { IntakeConfiguration } from '@/lib/youtube-intake/configuration';
-
 export type AnalysisVisualState =
   | 'idle'
   | 'submitting'
@@ -26,13 +24,10 @@ export type AnalysisVisualPresentation = Readonly<{
   completedStages: readonly AnalysisStageId[];
 }>;
 
-export type Artifact = IntakeConfiguration['artifacts'][number];
-
-export type ArtifactRayDefinition = Readonly<{
+export type ArtifactRailDefinition = Readonly<{
+  id: 'summary' | 'flashcards' | 'timestamps' | 'export';
   label: string;
-  tone: 'summary' | 'flashcards' | 'timestamps' | 'neutral';
-  angle: `${number}deg`;
-  labelTop: `${number}px`;
+  tone: 'summary' | 'flashcards' | 'timestamps' | 'export';
 }>;
 
 export const orderedAnalysisStages: readonly AnalysisStage[] = [
@@ -42,32 +37,28 @@ export const orderedAnalysisStages: readonly AnalysisStage[] = [
   { id: 'artifacts', label: 'Creating knowledge artifacts' },
 ];
 
-export const artifactRayDefinitions = {
-  summary: {
+export const artifactRailDefinitions = [
+  {
+    id: 'summary',
     label: 'SUMMARY',
     tone: 'summary',
-    angle: '-15deg',
-    labelTop: '13px',
   },
-  flashcards: {
+  {
+    id: 'flashcards',
     label: 'FLASHCARDS',
     tone: 'flashcards',
-    angle: '-5deg',
-    labelTop: '50px',
   },
-  timestamps: {
+  {
+    id: 'timestamps',
     label: 'TIMESTAMPS',
     tone: 'timestamps',
-    angle: '7deg',
-    labelTop: '88px',
   },
-  transcript: {
-    label: 'TRANSCRIPT',
-    tone: 'neutral',
-    angle: '18deg',
-    labelTop: '126px',
+  {
+    id: 'export',
+    label: 'EXPORT',
+    tone: 'export',
   },
-} as const satisfies Readonly<Record<Artifact, ArtifactRayDefinition>>;
+] as const satisfies readonly ArtifactRailDefinition[];
 
 export function getAnalysisVisualPresentation(
   state: AnalysisVisualState,
@@ -124,8 +115,8 @@ export function getAnalysisVisualPresentation(
     case 'complete':
       return {
         mode: 'complete',
-        title: 'Analysis complete',
-        subtitle: 'Your knowledge artifacts are ready.',
+        title: 'Your artifacts are ready',
+        subtitle: 'Opening the result workspace',
         activeStage: null,
         completedStages: [
           'validating',

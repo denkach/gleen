@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
-  artifactRayDefinitions,
+  artifactRailDefinitions,
   getAnalysisVisualPresentation,
   orderedAnalysisStages,
 } from './analysis-visual-state';
@@ -40,42 +40,12 @@ describe('getAnalysisVisualPresentation', () => {
     ]);
   });
 
-  test('defines rays only for supported intake artifacts', () => {
-    expect(Object.keys(artifactRayDefinitions)).toEqual([
-      'summary',
-      'flashcards',
-      'timestamps',
-      'transcript',
+  test('defines the four approved semantic rails without optical geometry', () => {
+    expect(artifactRailDefinitions).toEqual([
+      { id: 'summary', label: 'SUMMARY', tone: 'summary' },
+      { id: 'flashcards', label: 'FLASHCARDS', tone: 'flashcards' },
+      { id: 'timestamps', label: 'TIMESTAMPS', tone: 'timestamps' },
+      { id: 'export', label: 'EXPORT', tone: 'export' },
     ]);
-    expect(artifactRayDefinitions.transcript).toMatchObject({
-      label: 'TRANSCRIPT',
-      tone: 'neutral',
-    });
-    expect(artifactRayDefinitions).toEqual({
-      summary: {
-        label: 'SUMMARY',
-        tone: 'summary',
-        angle: '-15deg',
-        labelTop: '13px',
-      },
-      flashcards: {
-        label: 'FLASHCARDS',
-        tone: 'flashcards',
-        angle: '-5deg',
-        labelTop: '50px',
-      },
-      timestamps: {
-        label: 'TIMESTAMPS',
-        tone: 'timestamps',
-        angle: '7deg',
-        labelTop: '88px',
-      },
-      transcript: {
-        label: 'TRANSCRIPT',
-        tone: 'neutral',
-        angle: '18deg',
-        labelTop: '126px',
-      },
-    });
   });
 });

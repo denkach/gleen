@@ -1,49 +1,42 @@
 import {
-  artifactRayDefinitions,
+  artifactRailDefinitions,
   getAnalysisVisualPresentation,
   orderedAnalysisStages,
   type AnalysisVisualState,
-  type Artifact,
 } from '@/lib/analyze-processing/analysis-visual-state';
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 export type AnalyzeProcessingVisualProps = Readonly<{
   state: AnalysisVisualState;
-  selectedArtifacts: readonly Artifact[];
+  isExiting?: boolean;
   submittedUrl: string;
   errorMessage?: string;
   onRetry?: () => void;
-  showCompletionOverlay?: boolean;
   idleContent?: ReactNode;
 }>;
 
 export function AnalyzeProcessingVisual({
   state,
-  selectedArtifacts,
+  isExiting = false,
   submittedUrl,
   errorMessage,
   onRetry,
-  showCompletionOverlay,
   idleContent,
 }: AnalyzeProcessingVisualProps) {
   const presentation = getAnalysisVisualPresentation(state);
-  const selectedRays = selectedArtifacts.map(
-    (artifact) => artifactRayDefinitions[artifact],
-  );
   const isError = presentation.mode === 'error';
   const isComplete = presentation.mode === 'complete';
-  const isCompletionOverlayVisible =
-    isComplete && (showCompletionOverlay ?? true);
 
   return (
     <div
       className="analysis-visual"
       data-analysis-state={state}
+      data-analysis-exiting={isExiting ? 'true' : undefined}
       data-submitted-url={submittedUrl}
       data-testid="analyze-processing-visual"
     >
       <div
-        className={`analyze-shell ${presentation.mode}${idleContent ? ' production-intake' : ''}`}
+        className={`analyze-shell ${presentation.mode}${idleContent ? ' production-intake' : ''}${isExiting ? ' exiting' : ''}`}
       >
         <div className="analyze-photon" aria-hidden="true" />
         <div className="analyze-shell-flash" aria-hidden="true" />
@@ -104,42 +97,23 @@ export function AnalyzeProcessingVisual({
             ) : null}
           </div>
 
-          <div className="analyze-optic" aria-hidden="true">
-            <div className="analyze-beam-in" aria-hidden="true" />
-            <div className="analyze-prism" aria-hidden="true" />
-            <div className="analyze-rays" aria-hidden="true">
-              {selectedRays.map((ray) => (
-                <i
-                  className={`analyze-ray ${ray.tone}`}
-                  key={ray.label}
-                  style={{ '--ray-angle': ray.angle } as CSSProperties}
-                />
-              ))}
-            </div>
-            <div className="analyze-artifact-labels">
-              {selectedRays.map((ray) => (
-                <span
-                  className={ray.tone}
-                  key={ray.label}
-                  style={{ '--label-top': ray.labelTop } as CSSProperties}
-                >
-                  {ray.label}
-                </span>
-              ))}
+          <div className="analyze-rail-visual" aria-hidden="true">
+            <div className="analyze-rail-box">
+              <div className="analyze-master-rail" aria-hidden="true" />
+              <div className="analyze-rails" aria-hidden="true">
+                {artifactRailDefinitions.map((rail) => (
+                  <div className={`analyze-rail ${rail.tone}`} key={rail.id}>
+                    <span>{rail.label}</span>
+                    <span className="analyze-track" />
+                    <small>{isComplete ? 'ready' : 'queued'}</small>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
-        <div
-          className={`analyze-complete-banner${isCompletionOverlayVisible ? ' show' : ''}`}
-          aria-hidden={!isCompletionOverlayVisible}
-        >
-          <div className="analyze-complete-card">
-            <div className="analyze-complete-prism" aria-hidden="true" />
-            <h2>Your knowledge artifacts are ready.</h2>
-            <p>{selectedRays.map((ray) => ray.label).join(', ')}</p>
-          </div>
-        </div>
+        <div className="analyze-completion-wipe" aria-hidden="true" />
       </div>
     </div>
   );

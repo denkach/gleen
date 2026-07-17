@@ -16,7 +16,8 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@/lib/ui-preview', () => ({ isUiPreviewEnabled }));
 
-import AppShellFixturePage, { fixtureCases } from './page';
+import { fixtureCases } from './fixture-cases';
+import AppShellFixturePage from './page';
 
 beforeEach(() => vi.clearAllMocks());
 

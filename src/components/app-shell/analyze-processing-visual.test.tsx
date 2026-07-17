@@ -8,11 +8,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { AnalyzeProcessingVisual } from './analyze-processing-visual';
 
 describe('AnalyzeProcessingVisual', () => {
-  it('renders the controlled stage and only the selected intake artifacts', () => {
+  it('renders the controlled stage and all four approved spectral rails', () => {
     const { container } = render(
       <AnalyzeProcessingVisual
         state="transcript"
-        selectedArtifacts={['summary', 'timestamps', 'transcript']}
         submittedUrl="https://youtu.be/dQw4w9WgXcQ"
       />,
     );
@@ -27,29 +26,18 @@ describe('AnalyzeProcessingVisual', () => {
     );
     expect(screen.getByText('SUMMARY')).toBeInTheDocument();
     expect(screen.getByText('TIMESTAMPS')).toBeInTheDocument();
-    expect(screen.getByText('TRANSCRIPT')).toBeInTheDocument();
-    expect(screen.queryByText('FLASHCARDS')).not.toBeInTheDocument();
-    expect(screen.queryByText('EXPORT')).not.toBeInTheDocument();
-
-    const rays = [...container.querySelectorAll<HTMLElement>('.analyze-ray')];
-    expect(
-      rays.map((ray) => ray.style.getPropertyValue('--ray-angle')),
-    ).toEqual(['-15deg', '7deg', '18deg']);
-    const labels = [
-      ...container.querySelectorAll<HTMLElement>(
-        '.analyze-artifact-labels span',
-      ),
-    ];
-    expect(
-      labels.map((label) => label.style.getPropertyValue('--label-top')),
-    ).toEqual(['13px', '88px', '126px']);
+    expect(screen.getByText('FLASHCARDS')).toBeInTheDocument();
+    expect(screen.getByText('EXPORT')).toBeInTheDocument();
+    expect(screen.queryByText('TRANSCRIPT')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('.analyze-rail')).toHaveLength(4);
+    expect(container.querySelector('.analyze-prism')).not.toBeInTheDocument();
+    expect(container.querySelector('.analyze-rays')).not.toBeInTheDocument();
   });
 
   it('keeps every optical element out of the accessibility tree', () => {
     const { container } = render(
       <AnalyzeProcessingVisual
         state="artifacts"
-        selectedArtifacts={['summary', 'flashcards']}
         submittedUrl="https://youtu.be/dQw4w9WgXcQ"
       />,
     );
@@ -57,10 +45,9 @@ describe('AnalyzeProcessingVisual', () => {
     for (const selector of [
       '.analyze-photon',
       '.analyze-shell-flash',
-      '.analyze-optic',
-      '.analyze-beam-in',
-      '.analyze-prism',
-      '.analyze-rays',
+      '.analyze-rail-visual',
+      '.analyze-master-rail',
+      '.analyze-rails',
     ]) {
       expect(container.querySelector(selector)).toHaveAttribute(
         'aria-hidden',
@@ -74,7 +61,6 @@ describe('AnalyzeProcessingVisual', () => {
     render(
       <AnalyzeProcessingVisual
         state="error"
-        selectedArtifacts={['summary']}
         submittedUrl="https://youtu.be/dQw4w9WgXcQ"
         errorMessage="This video is private."
         onRetry={onRetry}
@@ -91,10 +77,9 @@ describe('AnalyzeProcessingVisual', () => {
   });
 
   it('updates immediately when its controlled state changes', () => {
-    const { rerender } = render(
+    const { container, rerender } = render(
       <AnalyzeProcessingVisual
         state="validating"
-        selectedArtifacts={['timestamps']}
         submittedUrl="https://youtu.be/dQw4w9WgXcQ"
       />,
     );
@@ -102,7 +87,6 @@ describe('AnalyzeProcessingVisual', () => {
     rerender(
       <AnalyzeProcessingVisual
         state="complete"
-        selectedArtifacts={['timestamps']}
         submittedUrl="https://youtu.be/dQw4w9WgXcQ"
       />,
     );
@@ -111,51 +95,37 @@ describe('AnalyzeProcessingVisual', () => {
       'data-analysis-state',
       'complete',
     );
-    expect(screen.getByText('Analysis complete')).toBeInTheDocument();
+    expect(screen.getByText('Your artifacts are ready')).toBeInTheDocument();
+    expect(
+      screen.getByText('Opening the result workspace'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Creating knowledge artifacts')).toHaveAttribute(
       'data-stage-state',
       'done',
     );
     expect(
-      screen
-        .getByRole('heading', {
-          name: 'Your knowledge artifacts are ready.',
-        })
-        .closest('.analyze-complete-banner'),
-    ).toHaveAttribute('aria-hidden', 'false');
+      container.querySelector('.analyze-completion-wipe'),
+    ).toBeInTheDocument();
   });
 
-  it('lets completion copy render before a controlled overlay reveal', () => {
-    const { rerender } = render(
+  it('exposes the restrained result exit state', () => {
+    render(
       <AnalyzeProcessingVisual
         state="complete"
-        selectedArtifacts={['summary']}
         submittedUrl="https://youtu.be/dQw4w9WgXcQ"
-        showCompletionOverlay={false}
+        isExiting
       />,
     );
 
-    expect(screen.getByText('Analysis complete')).toBeInTheDocument();
-    const overlay = screen
-      .getByRole('heading', {
-        name: 'Your knowledge artifacts are ready.',
-        hidden: true,
-      })
-      .closest('.analyze-complete-banner');
-    expect(overlay).not.toHaveClass('show');
-    expect(overlay).toHaveAttribute('aria-hidden', 'true');
-
-    rerender(
-      <AnalyzeProcessingVisual
-        state="complete"
-        selectedArtifacts={['summary']}
-        submittedUrl="https://youtu.be/dQw4w9WgXcQ"
-        showCompletionOverlay
-      />,
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-exiting',
+      'true',
     );
-
-    expect(overlay).toHaveClass('show');
-    expect(overlay).toHaveAttribute('aria-hidden', 'false');
+    expect(
+      screen
+        .getByTestId('analyze-processing-visual')
+        .querySelector('.analyze-shell'),
+    ).toHaveClass('exiting');
   });
 
   it('retains the exact scoped processing, responsive, and motion contracts', () => {
@@ -189,13 +159,18 @@ describe('AnalyzeProcessingVisual', () => {
     expect(css).toMatch(
       /\.analysis-visual \.analyze-processing-panel\s*{[^}]*grid-template-columns:\s*1\.15fr 0\.85fr/,
     );
-    expect(css).toContain('.analyze-ray.summary');
-    expect(css).toContain('.analyze-ray.flashcards');
-    expect(css).toContain('.analyze-ray.timestamps');
-    expect(css).toContain('.analyze-ray.neutral');
+    expect(css).toContain('.analyze-rail.summary');
+    expect(css).toContain('.analyze-rail.flashcards');
+    expect(css).toContain('.analyze-rail.timestamps');
+    expect(css).toContain('.analyze-rail.export');
+    expect(css).toMatch(
+      /\.analysis-visual \.analyze-shell\.exiting \.analyze-processing-panel\s*{[^}]*opacity:\s*0;[^}]*transform:\s*scale\(0\.985\)/,
+    );
+    expect(css).not.toContain('.analyze-prism');
+    expect(css).not.toContain('.analyze-rays');
     expect(css).toMatch(/@media \(max-width: 900px\)/);
     expect(css).toMatch(
-      /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.analyze-photon[\s\S]*\.analyze-shell-flash[\s\S]*\.analyze-prism[\s\S]*\.analyze-trace/,
+      /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.analyze-photon[\s\S]*\.analyze-shell-flash[\s\S]*\.analyze-completion-wipe[\s\S]*\.analyze-trace/,
     );
     expect(css).toMatch(
       /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.analysis-visual \.analyze-shell,\s*\.analysis-visual \.analyze-processing-panel\s*{[^}]*transition:\s*none\s*!important/,
@@ -213,15 +188,6 @@ describe('AnalyzeProcessingVisual', () => {
       /--analysis-photon-tail-glow:\s*rgba\(255, 255, 255, 0\.65\)/,
     );
     expect(tokens).toMatch(
-      /--analysis-prism-resting-shadow:\s*rgba\(255, 255, 255, 0\.16\)/,
-    );
-    expect(tokens).toMatch(
-      /--analysis-prism-inner-face:\s*rgba\(255, 255, 255, 0\.28\)/,
-    );
-    expect(tokens).toMatch(
-      /--analysis-prism-breathing-shadow:\s*rgba\(255, 255, 255, 0\.24\)/,
-    );
-    expect(tokens).toMatch(
       /--analysis-done-dot-border:\s*rgba\(168, 224, 99, 0\.75\)/,
     );
     expect(tokens).toMatch(
@@ -230,18 +196,13 @@ describe('AnalyzeProcessingVisual', () => {
     expect(css).toMatch(
       /\.analysis-visual \.analyze-shell\s*{[\s\S]*?0 0 40px var\(--analysis-shell-idle-glow\)/,
     );
-    expect(css).toMatch(
-      /\.analysis-visual \.analyze-ray\s*{[\s\S]*?transform:\s*rotate\(var\(--ray-angle\)\)/,
-    );
-    expect(css).toMatch(
-      /\.analysis-visual \.analyze-artifact-labels span\s*{[\s\S]*?top:\s*var\(--label-top\)/,
-    );
+    expect(css).toMatch(/\.analysis-visual \.analyze-track::before/);
     const baseStepRule = css.match(
       /\.analysis-visual \.analyze-step\s*{([^}]*)}/,
     );
     expect(baseStepRule?.[1]).not.toMatch(/\bopacity\s*:/);
     expect(css).toMatch(
-      /@media \(max-width: 900px\)[\s\S]*@media \(prefers-reduced-motion: reduce\)[\s\S]*\.analysis-visual \.analyze-ray\s*{\s*width:\s*120px/,
+      /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.analysis-visual \.analyze-track::before[\s\S]*transform:\s*scaleX\(1\)/,
     );
   });
 });

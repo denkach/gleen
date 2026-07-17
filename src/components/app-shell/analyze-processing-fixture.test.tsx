@@ -6,14 +6,6 @@ import { AnalyzeProcessingFixture } from './analyze-processing-fixture';
 const visual = () => screen.getByTestId('analyze-processing-visual');
 const expectState = (state: string) =>
   expect(visual()).toHaveAttribute('data-analysis-state', state);
-const completionOverlay = () =>
-  screen
-    .getByRole('heading', {
-      name: 'Your knowledge artifacts are ready.',
-      hidden: true,
-    })
-    .closest('.analyze-complete-banner');
-
 describe('AnalyzeProcessingFixture', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => {
@@ -45,15 +37,12 @@ describe('AnalyzeProcessingFixture', () => {
     expectState('artifacts');
     await advance(1_500);
     expectState('complete');
-    expect(screen.getByText('Analysis complete')).toBeInTheDocument();
-    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
-    await advance(600);
-    expectState('complete');
     expect(
       screen.getByRole('heading', {
-        name: 'Your knowledge artifacts are ready.',
+        name: 'Your artifacts are ready',
       }),
     ).toBeVisible();
+    expect(screen.getByText('Opening the result workspace')).toBeVisible();
   });
 
   it('clears the current run and restarts replay after the prototype delay', async () => {
@@ -64,7 +53,6 @@ describe('AnalyzeProcessingFixture', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Replay sequence' }));
     expectState('idle');
-    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
     await advance(79);
     expectState('idle');
     await advance(1);
@@ -80,35 +68,13 @@ describe('AnalyzeProcessingFixture', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Preview error' }));
     expectState('error');
-    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
     await advance(10_000);
     expectState('error');
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expectState('submitting');
-    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
     await advance(850);
     expectState('validating');
-  });
-
-  it('resets a visible completion overlay for replay, error, and retry', async () => {
-    render(<AnalyzeProcessingFixture />);
-    fireEvent.click(screen.getByRole('button', { name: 'Analyze video' }));
-    await advance(7_100);
-    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'false');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Replay sequence' }));
-    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
-    await advance(7_180);
-    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'false');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Preview error' }));
-    expectState('error');
-    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expectState('submitting');
-    expect(completionOverlay()).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('clears every scheduled timer on unmount', () => {
@@ -118,18 +84,17 @@ describe('AnalyzeProcessingFixture', () => {
 
     unmount();
 
-    expect(clearTimeoutSpy).toHaveBeenCalledTimes(6);
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(5);
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('lets the fixture vary selected artifact rays without adding Export', () => {
+  it('always exposes the four approved artifact rails', () => {
     render(<AnalyzeProcessingFixture />);
+    expect(screen.getByText('SUMMARY')).toBeInTheDocument();
     expect(screen.getByText('FLASHCARDS')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Flashcards' }));
-
-    expect(screen.queryByText('FLASHCARDS')).not.toBeInTheDocument();
-    expect(screen.queryByText('EXPORT')).not.toBeInTheDocument();
+    expect(screen.getByText('TIMESTAMPS')).toBeInTheDocument();
+    expect(screen.getByText('EXPORT')).toBeInTheDocument();
+    expect(screen.queryByText('TRANSCRIPT')).not.toBeInTheDocument();
     expect(visual()).toHaveAttribute(
       'data-submitted-url',
       'https://www.youtube.com/watch?v=gleen-fixture',

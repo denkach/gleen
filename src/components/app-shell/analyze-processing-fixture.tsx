@@ -2,21 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type {
-  AnalysisVisualState,
-  Artifact,
-} from '@/lib/analyze-processing/analysis-visual-state';
+import type { AnalysisVisualState } from '@/lib/analyze-processing/analysis-visual-state';
 
 import { AnalyzeProcessingVisual } from './analyze-processing-visual';
 
 const fixtureUrl = 'https://www.youtube.com/watch?v=gleen-fixture';
-const allArtifacts: readonly Artifact[] = [
-  'summary',
-  'flashcards',
-  'timestamps',
-  'transcript',
-];
-
 const prototypeSchedule: readonly [
   delay: number,
   state: AnalysisVisualState,
@@ -30,9 +20,6 @@ const prototypeSchedule: readonly [
 
 export function AnalyzeProcessingFixture() {
   const [state, setState] = useState<AnalysisVisualState>('idle');
-  const [showCompletionOverlay, setShowCompletionOverlay] = useState(false);
-  const [selectedArtifacts, setSelectedArtifacts] =
-    useState<readonly Artifact[]>(allArtifacts);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const isRunning = !['idle', 'complete', 'error'].includes(state);
 
@@ -43,36 +30,22 @@ export function AnalyzeProcessingFixture() {
 
   const run = useCallback(() => {
     clearTimers();
-    setShowCompletionOverlay(false);
     setState('submitting');
     timers.current = prototypeSchedule.map(([delay, nextState]) =>
       setTimeout(() => setState(nextState), delay),
-    );
-    timers.current.push(
-      setTimeout(() => setShowCompletionOverlay(true), 7_100),
     );
   }, [clearTimers]);
 
   const replay = useCallback(() => {
     clearTimers();
-    setShowCompletionOverlay(false);
     setState('idle');
     timers.current = [setTimeout(run, 80)];
   }, [clearTimers, run]);
 
   const previewError = useCallback(() => {
     clearTimers();
-    setShowCompletionOverlay(false);
     setState('error');
   }, [clearTimers]);
-
-  const toggleArtifact = (artifact: Artifact) => {
-    setSelectedArtifacts((current) =>
-      current.includes(artifact)
-        ? current.filter((item) => item !== artifact)
-        : [...current, artifact],
-    );
-  };
 
   useEffect(() => clearTimers, [clearTimers]);
 
@@ -87,20 +60,6 @@ export function AnalyzeProcessingFixture() {
           Analyze processing motion fixture
         </h1>
       </header>
-
-      <fieldset className="analyze-processing-fixture-options">
-        <legend>Fixture artifact rays</legend>
-        {allArtifacts.map((artifact) => (
-          <label key={artifact}>
-            <input
-              type="checkbox"
-              checked={selectedArtifacts.includes(artifact)}
-              onChange={() => toggleArtifact(artifact)}
-            />
-            {artifact[0].toUpperCase() + artifact.slice(1)}
-          </label>
-        ))}
-      </fieldset>
 
       <div className="analyze-processing-fixture-actions">
         <button
@@ -123,7 +82,6 @@ export function AnalyzeProcessingFixture() {
 
       <AnalyzeProcessingVisual
         state={state}
-        selectedArtifacts={selectedArtifacts}
         submittedUrl={fixtureUrl}
         errorMessage={
           state === 'error'
@@ -131,7 +89,6 @@ export function AnalyzeProcessingFixture() {
             : undefined
         }
         onRetry={run}
-        showCompletionOverlay={showCompletionOverlay}
       />
     </section>
   );

@@ -115,11 +115,10 @@ for (const baseline of den16IdleGeometry) {
   });
 }
 
-test('launches the approved opening and renders only selected artifact rays', async ({
+test('launches the approved opening and renders the fixed spectral rails', async ({
   page,
 }) => {
   await openFixture(page);
-  await page.getByRole('checkbox', { name: 'Flashcards' }).uncheck();
 
   const analyze = page.getByRole('button', { name: 'Analyze video' });
   const visual = page.getByTestId('analyze-processing-visual');
@@ -140,14 +139,13 @@ test('launches the approved opening and renders only selected artifact rays', as
   expect(await animationName(visual.locator('.analyze-shell-flash'))).toBe(
     'analyze-shell-flash',
   );
-  await expect(visual.locator('.analyze-prism')).toBeVisible();
-  await expect(visual.locator('.analyze-beam-in')).toBeVisible();
-  await expect(visual.locator('.analyze-ray')).toHaveCount(3);
+  await expect(visual.locator('.analyze-master-rail')).toBeVisible();
+  await expect(visual.locator('.analyze-rail')).toHaveCount(4);
   await expect(visual.getByText('SUMMARY', { exact: true })).toBeVisible();
+  await expect(visual.getByText('FLASHCARDS', { exact: true })).toBeVisible();
   await expect(visual.getByText('TIMESTAMPS', { exact: true })).toBeVisible();
-  await expect(visual.getByText('TRANSCRIPT', { exact: true })).toBeVisible();
-  await expect(visual.getByText('FLASHCARDS', { exact: true })).toHaveCount(0);
-  await expect(visual.getByText('EXPORT', { exact: true })).toHaveCount(0);
+  await expect(visual.getByText('EXPORT', { exact: true })).toBeVisible();
+  await expect(visual.getByText('TRANSCRIPT', { exact: true })).toHaveCount(0);
   const samples: Array<{
     elapsed: number;
     shellHeight: number;
@@ -288,7 +286,7 @@ test('production input row disables synchronously and follows the approved exit 
   ).toBe(true);
   expect(samples.some((sample) => sample.photonOpacity > 0.5)).toBe(true);
   expect(samples.some((sample) => sample.flashOpacity > 0.05)).toBe(true);
-  await expect(shell).toHaveCSS('height', '300px');
+  await expect(shell).toHaveCSS('height', '420px');
   const style = await form.locator('..').evaluate((element) => {
     const computed = getComputedStyle(element);
     return {
@@ -304,6 +302,95 @@ test('production input row disables synchronously and follows the approved exit 
   expect(style.transitionProperty).toContain('opacity');
   expect(style.transitionProperty).toContain('transform');
   expect(style.transitionProperty).toContain('filter');
+});
+
+test('hands completion through the exit wipe before opening the result', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture?intake=ready');
+  await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
+  await page.getByRole('button', { name: 'Analyze video' }).click();
+
+  const visual = page.getByTestId('analyze-processing-visual');
+  await expect(visual).toHaveAttribute('data-analysis-state', 'complete', {
+    timeout: 3_500,
+  });
+  await expect(
+    visual.getByRole('heading', { name: 'Your artifacts are ready' }),
+  ).toBeVisible();
+  await expect(visual).toHaveAttribute('data-analysis-exiting', 'true', {
+    timeout: 1_000,
+  });
+  await expect(page).toHaveURL(/app-shell-fixture\?intake=ready/);
+  await expect(page).toHaveURL(/\/app-shell-fixture\/app\/video\//, {
+    timeout: 1_000,
+  });
+});
+
+test('production form keeps stages truthful and contains the rails at app-shell tablet width', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto('/app-shell-fixture?intake=ready');
+  await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
+  await page.getByRole('button', { name: 'Analyze video' }).click();
+
+  const visual = page.getByTestId('analyze-processing-visual');
+  await expect(visual).toHaveAttribute('data-analysis-state', 'submitting');
+  await expect(visual.getByText('Validating video')).toHaveAttribute(
+    'data-stage-state',
+    'pending',
+  );
+  await expect(visual.locator('.analyze-shell')).toHaveCSS('height', '420px');
+  expect(
+    await visual
+      .locator('.analyze-trace')
+      .first()
+      .evaluate(
+        (element) => getComputedStyle(element, '::after').animationName,
+      ),
+  ).toBe('analyze-trace');
+
+  const geometry = await visual.evaluate((element) => {
+    const shell = element
+      .querySelector('.analyze-shell')!
+      .getBoundingClientRect();
+    const panel = element
+      .querySelector('.analyze-processing-panel')!
+      .getBoundingClientRect();
+    const rails = element
+      .querySelector('.analyze-rail-visual')!
+      .getBoundingClientRect();
+    const status = element
+      .querySelector('.analyze-status-copy')!
+      .getBoundingClientRect();
+    const visibleRails = [
+      ...element.querySelectorAll<HTMLElement>(
+        '.analyze-master-rail, .analyze-rail',
+      ),
+    ].filter((item) => getComputedStyle(item).display !== 'none');
+    return {
+      railsRightOfStatus: rails.left > status.right,
+      columnsAligned: Math.abs(rails.top - status.top) < 2,
+      panelInsideShell:
+        panel.left >= shell.left &&
+        panel.right <= shell.right &&
+        panel.top >= shell.top &&
+        panel.bottom <= shell.bottom,
+      railsInsideShell: visibleRails.every((item) => {
+        const rect = item.getBoundingClientRect();
+        return rect.left >= shell.left - 1 && rect.right <= shell.right + 1;
+      }),
+      railCount: visibleRails.length,
+    };
+  });
+  expect(geometry).toMatchObject({
+    railsRightOfStatus: true,
+    columnsAligned: true,
+    panelInsideShell: true,
+    railsInsideShell: true,
+    railCount: 5,
+  });
 });
 
 test('plays every deterministic fixture state with stage text instead of percentages', async ({
@@ -348,7 +435,7 @@ test('plays every deterministic fixture state with stage text instead of percent
   });
   await expect(
     visual.getByRole('heading', {
-      name: 'Your knowledge artifacts are ready.',
+      name: 'Your artifacts are ready',
     }),
   ).toBeVisible({ timeout: 1_500 });
 });
@@ -381,7 +468,6 @@ for (const viewport of viewports) {
   }) => {
     await page.setViewportSize(viewport);
     await openFixture(page);
-    await page.getByRole('checkbox', { name: 'Flashcards' }).uncheck();
     await page.getByRole('button', { name: 'Analyze video' }).click();
     const visual = page.getByTestId('analyze-processing-visual');
     const panel = visual.locator('.analyze-processing-panel');
@@ -391,10 +477,12 @@ for (const viewport of viewports) {
     await expect(shell).toBeVisible();
     await expect(panel).toBeVisible();
     await expect(visual.getByText('Validating video')).toBeVisible();
-    await expect(visual.locator('.analyze-ray')).toHaveCount(3);
+    await expect(visual.locator('.analyze-rail')).toHaveCount(4);
+    const expectedHeight =
+      viewport.width <= 540 ? 500 : viewport.width <= 1100 ? 420 : 300;
     await expect
       .poll(async () => (await shell.boundingBox())?.height ?? 0)
-      .toBeCloseTo(viewport.width <= 900 ? 500 : 300, 0);
+      .toBeCloseTo(expectedHeight, 0);
     const shellBox = (await shell.boundingBox())!;
     expect(shellBox.width).toBeCloseTo(Math.min(1_395, viewport.width), 0);
     const geometry = await panel.evaluate((element) => {
@@ -403,8 +491,8 @@ for (const viewport of viewports) {
       const status = element
         .querySelector('.analyze-status-copy')!
         .getBoundingClientRect();
-      const optic = element
-        .querySelector('.analyze-optic')!
+      const rails = element
+        .querySelector('.analyze-rail-visual')!
         .getBoundingClientRect();
       return {
         columns: style.gridTemplateColumns.split(' ').length,
@@ -415,29 +503,37 @@ for (const viewport of viewports) {
           getComputedStyle(element.parentElement!).borderRadius,
         ),
         statusTop: status.top - rect.top,
-        opticTop: optic.top - rect.top,
+        railsTop: rails.top - rect.top,
       };
     });
-    expect(geometry.columns).toBe(viewport.width <= 900 ? 1 : 2);
-    expect(geometry.radius).toBe(viewport.width <= 900 ? 24 : 30);
-    expect(geometry.paddingTop).toBe(viewport.width <= 900 ? 28 : 35);
-    expect(geometry.paddingLeft).toBe(viewport.width <= 900 ? 24 : 42);
-    expect(geometry.gap).toBe(viewport.width <= 900 ? 12 : 48);
-    if (viewport.width <= 900) {
-      expect(geometry.opticTop).toBeLessThan(geometry.statusTop);
+    const isStacked = viewport.width <= 540;
+    const isCompact = viewport.width > 540 && viewport.width <= 1100;
+    expect(geometry.columns).toBe(isStacked ? 1 : 2);
+    expect(geometry.radius).toBe(viewport.width <= 1100 ? 24 : 30);
+    expect(geometry.paddingTop).toBe(viewport.width <= 1100 ? 28 : 35);
+    expect(geometry.paddingLeft).toBe(viewport.width <= 1100 ? 24 : 42);
+    expect(geometry.gap).toBe(isStacked ? 12 : isCompact ? 20 : 48);
+    if (isStacked) {
+      expect(geometry.railsTop).toBeGreaterThan(geometry.statusTop);
     } else {
-      expect(Math.abs(geometry.opticTop - geometry.statusTop)).toBeLessThan(2);
+      expect(Math.abs(geometry.railsTop - geometry.statusTop)).toBeLessThan(2);
     }
 
-    const labels = visual.locator('.analyze-artifact-labels span');
-    if (viewport.width <= 900) {
-      await expect(labels.first()).toBeHidden();
-      await expect(
-        page.getByRole('navigation', { name: 'Mobile navigation' }),
-      ).toHaveCount(0);
-    } else {
-      await expect(labels.first()).toBeVisible();
-    }
+    const containedRails = await visual.evaluate((element) => {
+      const shell = element
+        .querySelector('.analyze-shell')!
+        .getBoundingClientRect();
+      const visibleRails = [
+        ...element.querySelectorAll<HTMLElement>(
+          '.analyze-master-rail, .analyze-rail',
+        ),
+      ].filter((rail) => getComputedStyle(rail).display !== 'none');
+      return visibleRails.every((rail) => {
+        const rect = rail.getBoundingClientRect();
+        return rect.left >= shell.left - 1 && rect.right <= shell.right + 1;
+      });
+    });
+    expect(containedRails).toBe(true);
   });
 }
 
@@ -479,8 +575,8 @@ test('reduced motion removes decorative motion while retaining truthful state', 
   await expect(visual.locator('.analyze-photon')).toBeHidden();
   await expect(visual.locator('.analyze-shell-flash')).toBeHidden();
   for (const locator of [
-    visual.locator('.analyze-prism'),
-    visual.locator('.analyze-ray').first(),
+    visual.locator('.analyze-master-rail'),
+    visual.locator('.analyze-track').first(),
   ]) {
     expect(await animationName(locator)).toBe('none');
   }
