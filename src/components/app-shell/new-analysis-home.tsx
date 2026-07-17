@@ -1,32 +1,41 @@
 import Link from 'next/link';
 
-import { AppIcon } from './app-icon';
+import {
+  createInitialIntakeActionState,
+  type IntakeActionState,
+} from '@/lib/youtube-intake/action-state';
+import { defaultOnboardingState } from '@/lib/onboarding/preferences';
 
-export function NewAnalysisHome() {
+import { NewAnalysisForm } from './new-analysis-form';
+import type { ComponentProps } from 'react';
+
+type ProfileDefaults = Pick<
+  IntakeActionState['configuration'],
+  'outputLocale' | 'summaryPreset' | 'flashcardPreset'
+>;
+
+export function NewAnalysisHome({
+  profileDefaults = defaultOnboardingState,
+  action,
+  reanalyzeAction,
+  resultPathPrefix,
+}: Readonly<{
+  profileDefaults?: ProfileDefaults;
+  action?: ComponentProps<typeof NewAnalysisForm>['action'];
+  reanalyzeAction?: ComponentProps<typeof NewAnalysisForm>['reanalyzeAction'];
+  resultPathPrefix?: string;
+}>) {
   return (
     <>
       <section className="analysis-hero" aria-labelledby="new-analysis-title">
         <span className="eyebrow">New analysis</span>
         <h1 id="new-analysis-title">Turn a video into something useful.</h1>
-        <form
-          className="beam-form app-beam-form"
-          aria-describedby="intake-status"
-        >
-          <AppIcon name="link" className="link-icon" />
-          <input
-            aria-label="YouTube URL"
-            type="url"
-            placeholder="Paste a YouTube link"
-            disabled
-          />
-          <button className="btn btn-primary" type="button" disabled>
-            <span>Analyze video</span>
-            <AppIcon name="arrow" />
-          </button>
-        </form>
-        <p className="advanced-link" id="intake-status">
-          <AppIcon name="settings" /> Video intake arrives in the next step.
-        </p>
+        <NewAnalysisForm
+          initialState={createInitialIntakeActionState(profileDefaults)}
+          action={action}
+          reanalyzeAction={reanalyzeAction}
+          resultPathPrefix={resultPathPrefix}
+        />
       </section>
 
       <div className="dashboard-grid">

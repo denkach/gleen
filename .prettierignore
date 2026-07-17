@@ -7,5 +7,6 @@ test-results
 supabase/.temp/**
 design/reference-v3/**
 design/screenshots/**
+design/prototypes/analyze-processing/index.html
 docs/design-system.md
 package-lock.json

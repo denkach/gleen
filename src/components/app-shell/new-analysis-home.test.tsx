@@ -2,13 +2,25 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { render, screen } from '@testing-library/react';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 import { NewAnalysisHome } from './new-analysis-home';
 
 describe('NewAnalysisHome', () => {
-  test('renders truthful unavailable intake and empty analysis states', () => {
-    render(<NewAnalysisHome />);
+  test('renders active intake with profile defaults and empty analysis states', () => {
+    render(
+      <NewAnalysisHome
+        profileDefaults={{
+          outputLocale: 'de',
+          summaryPreset: 'detailed',
+          flashcardPreset: 30,
+        }}
+      />,
+    );
 
     expect(
       screen.getByRole('heading', {
@@ -16,12 +28,10 @@ describe('NewAnalysisHome', () => {
         name: 'Turn a video into something useful.',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('YouTube URL')).toBeDisabled();
+    expect(screen.getByLabelText('YouTube URL')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Analyze video' })).toBeEnabled();
     expect(
-      screen.getByRole('button', { name: 'Analyze video' }),
-    ).toBeDisabled();
-    expect(
-      screen.getByText('Video intake arrives in the next step.'),
+      screen.getByText(/Summary, Timestamps, Transcript/),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Recent analyses' }),
@@ -64,5 +74,12 @@ describe('NewAnalysisHome', () => {
     expect(css).toMatch(
       /@media\s*\(max-width:\s*720px\)[\s\S]*?\.analysis-hero\s*{(?=[^}]*padding:\s*28px 18px)(?=[^}]*min-height:\s*340px)[^}]*}[\s\S]*?\.dashboard-grid\s*{[^}]*grid-template-columns:\s*1fr/,
     );
+    expect(css).toMatch(/\.app-beam-form\s*{[^}]*display:\s*flex/);
+    expect(css).not.toMatch(/\.app-beam-form\s*{[^}]*flex-wrap:/);
+    const analysisOptionsCss = css.match(/\.analysis-options\s*{([^}]*)}/)?.[1];
+    const duplicateBannerCss = css.match(/\.duplicate-banner\s*{([^}]*)}/)?.[1];
+    expect(analysisOptionsCss).not.toContain('rgba(');
+    expect(analysisOptionsCss).toContain('box-shadow: var(--shadow-panel)');
+    expect(duplicateBannerCss).not.toContain('rgba(');
   });
 });
