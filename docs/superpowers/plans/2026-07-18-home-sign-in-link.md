@@ -20,14 +20,16 @@
 ### Task 1: Route the landing-page sign-in action
 
 **Files:**
+
 - Modify: `src/app/page.tsx`
 - Test: `tests/e2e/auth.spec.ts`
 
 **Interfaces:**
+
 - Consumes: existing Next.js `/sign-in` route and the landing-page link with accessible name `Sign in`
 - Produces: a desktop header link whose `href` is `/sign-in`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add this focused Playwright test to `tests/e2e/auth.spec.ts`:
 
@@ -47,7 +49,7 @@ test('opens account access from the landing-page sign-in action', async ({
 });
 ```
 
-- [ ] **Step 2: Run the test and verify the regression**
+- [x] **Step 2: Run the test and verify the regression**
 
 Run:
 
@@ -57,7 +59,7 @@ PLAYWRIGHT_PORT=3018 npx playwright test tests/e2e/auth.spec.ts --project=chromi
 
 Expected: FAIL because the current link has `href="#product"`.
 
-- [ ] **Step 3: Implement the minimal fix**
+- [x] **Step 3: Implement the minimal fix**
 
 In `src/app/page.tsx`, change only the link destination:
 
@@ -67,7 +69,7 @@ In `src/app/page.tsx`, change only the link destination:
 </a>
 ```
 
-- [ ] **Step 4: Verify the focused behavior**
+- [x] **Step 4: Verify the focused behavior**
 
 Rerun:
 
@@ -77,7 +79,7 @@ PLAYWRIGHT_PORT=3018 npx playwright test tests/e2e/auth.spec.ts --project=chromi
 
 Expected: PASS.
 
-- [ ] **Step 5: Run proportional regression checks**
+- [x] **Step 5: Run proportional regression checks**
 
 Run:
 
@@ -89,7 +91,7 @@ PLAYWRIGHT_PORT=3018 npx playwright test tests/e2e/auth.spec.ts --project=chromi
 
 Expected: lint and type checking exit successfully; the Chromium auth suite passes.
 
-- [ ] **Step 6: Verify in the browser and commit**
+- [x] **Step 6: Verify in the browser and commit**
 
 At desktop width, open `/`, click `Sign in`, and confirm `/sign-in` renders the `Sign in to Gleen` heading without console errors. Then commit only the two task files:
 

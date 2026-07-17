@@ -6,6 +6,20 @@ const authViewports = [
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
 
+test('opens account access from the landing-page sign-in action', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  const signIn = page.getByRole('link', { name: 'Sign in' });
+  await expect(signIn).toHaveAttribute('href', '/sign-in');
+  await signIn.click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(
+    page.getByRole('heading', { name: 'Sign in to Gleen' }),
+  ).toBeVisible();
+});
+
 for (const viewport of authViewports) {
   test(`renders approved account access at ${viewport.name}`, async ({
     page,
