@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Gleen — Spectral Rail</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #09090d;
+        --panel: #111118;
+        --panel-raised: #171620;
+        --text: #f4f2ff;
+        --muted: #8e8a9c;
+        --line: rgba(255, 255, 255, 0.09);
+        --line-strong: rgba(255, 255, 255, 0.17);
+        --amber: #ffb454;
+        --purple: #c77dff;
+        --cyan: #5be9e9;
+        --lime: #a8e063;
+        --coral: #ff7d73;
+        --ease: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+      }
+
+      body {
+        margin: 0;
+        overflow-x: hidden;
+        background:
+          radial-gradient(
+            circle at 76% 38%,
+            rgba(199, 125, 255, 0.06),
+            transparent 32%
+          ),
+          var(--bg);
+        color: var(--text);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        content: '';
+        pointer-events: none;
+        opacity: 0.18;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.07'/%3E%3C/svg%3E");
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--text);
+        outline-offset: 3px;
+      }
+
+      .wrap {
+        display: grid;
+        min-height: 100vh;
+        place-items: center;
+        padding: 36px;
+      }
+
+      .hero {
+        position: relative;
+        width: min(1440px, 100%);
+        min-height: 680px;
+        overflow: hidden;
+        padding: 74px 78px;
+        border: 1px solid var(--line);
+        border-radius: 34px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.014), transparent 42%),
+          #0b0b11;
+        box-shadow: 0 34px 110px rgba(0, 0, 0, 0.42);
+      }
+
+      .hero::after {
+        position: absolute;
+        right: -190px;
+        top: 330px;
+        width: 860px;
+        height: 1px;
+        content: '';
+        opacity: 0.22;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--amber),
+          var(--purple),
+          var(--cyan),
+          var(--lime),
+          transparent
+        );
+        transform: rotate(-6deg);
+      }
+
+      .content {
+        position: relative;
+        z-index: 1;
+        max-width: 1180px;
+      }
+
+      .kicker {
+        color: #747183;
+        font:
+          500 12px ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        letter-spacing: 0.26em;
+      }
+
+      h1 {
+        max-width: 1120px;
+        margin: 34px 0 48px;
+        font-size: clamp(56px, 6.5vw, 106px);
+        font-weight: 420;
+        letter-spacing: -0.065em;
+        line-height: 0.95;
+      }
+
+      .analysis-card {
+        position: relative;
+        height: 112px;
+        overflow: hidden;
+        border: 1px solid var(--line-strong);
+        border-radius: 25px;
+        background: rgba(14, 14, 21, 0.94);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.025) inset;
+        transition:
+          height 680ms var(--ease),
+          border-color 300ms ease,
+          background 350ms ease,
+          box-shadow 350ms ease;
+      }
+
+      .analysis-card[data-state='submitting'] {
+        border-color: rgba(255, 255, 255, 0.28);
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+          0 0 34px rgba(199, 125, 255, 0.06);
+      }
+
+      .analysis-card[data-state='validating'],
+      .analysis-card[data-state='transcript'],
+      .analysis-card[data-state='structuring'],
+      .analysis-card[data-state='artifacts'],
+      .analysis-card[data-state='complete'] {
+        height: 330px;
+        border-color: rgba(255, 255, 255, 0.12);
+        background: linear-gradient(
+          180deg,
+          rgba(23, 23, 32, 0.96),
+          rgba(11, 11, 16, 0.98)
+        );
+      }
+
+      .analysis-card[data-state='error'] {
+        height: 186px;
+        border-color: rgba(255, 125, 115, 0.58);
+        box-shadow:
+          3px 0 0 rgba(255, 125, 115, 0.72) inset,
+          0 0 30px rgba(255, 125, 115, 0.06);
+      }
+
+      .url-row {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 12px 12px 12px 32px;
+        transition:
+          opacity 360ms var(--ease),
+          transform 480ms var(--ease),
+          filter 480ms var(--ease);
+      }
+
+      .analysis-card[data-state='validating'] .url-row,
+      .analysis-card[data-state='transcript'] .url-row,
+      .analysis-card[data-state='structuring'] .url-row,
+      .analysis-card[data-state='artifacts'] .url-row,
+      .analysis-card[data-state='complete'] .url-row {
+        pointer-events: none;
+        opacity: 0;
+        filter: blur(9px);
+        transform: translateY(-15px);
+      }
+
+      .link-icon {
+        width: 24px;
+        flex: 0 0 auto;
+        opacity: 0.72;
+      }
+
+      .url-input {
+        min-width: 0;
+        flex: 1;
+        border: 0;
+        background: transparent;
+        color: #dedbe7;
+        font-size: clamp(17px, 2vw, 26px);
+        letter-spacing: -0.02em;
+        text-overflow: ellipsis;
+      }
+
+      .url-input:focus {
+        outline-offset: 8px;
+      }
+
+      .analyze-button {
+        position: relative;
+        display: flex;
+        height: 86px;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 18px;
+        overflow: hidden;
+        padding: 0 28px;
+        border: 0;
+        border-radius: 20px;
+        background: #f2f0fa;
+        color: #0b0b11;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: 760;
+        transition:
+          transform 180ms var(--ease),
+          box-shadow 250ms ease;
+      }
+
+      .analyze-button::before {
+        position: absolute;
+        inset: 0;
+        content: '';
+        opacity: 0;
+        border: 1px solid transparent;
+        border-radius: inherit;
+        background: linear-gradient(
+            90deg,
+            var(--amber),
+            var(--purple),
+            var(--cyan),
+            var(--lime)
+          )
+          border-box;
+        mask:
+          linear-gradient(#000 0 0) padding-box,
+          linear-gradient(#000 0 0);
+        mask-composite: exclude;
+        transition: opacity 180ms ease;
+      }
+
+      .analyze-button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 50px rgba(244, 242, 255, 0.14);
+      }
+
+      .analyze-button:active:not(:disabled),
+      .analysis-card[data-state='submitting'] .analyze-button {
+        transform: scale(0.975);
+      }
+
+      .analysis-card[data-state='submitting'] .analyze-button::before {
+        opacity: 0.85;
+      }
+
+      .analyze-button:disabled {
+        cursor: default;
+      }
+
+      .arrow {
+        font-size: 29px;
+        transition:
+          transform 400ms var(--ease),
+          opacity 200ms ease;
+      }
+
+      .analysis-card[data-state='submitting'] .arrow {
+        opacity: 0;
+        transform: translateX(28px);
+      }
+
+      .photon {
+        position: absolute;
+        left: 36px;
+        top: 50%;
+        z-index: 4;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        opacity: 0;
+        background: #fff;
+        box-shadow:
+          0 0 10px #fff,
+          0 0 26px rgba(255, 255, 255, 0.8);
+        transform: translateY(-50%);
+      }
+
+      .photon::after {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        width: 170px;
+        height: 2px;
+        content: '';
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.16),
+          #fff
+        );
+        transform: translateY(-50%);
+      }
+
+      .analysis-card[data-state='submitting'] .photon {
+        animation: photon-travel 520ms 150ms var(--ease) forwards;
+      }
+
+      .processing-ui {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-columns: 1.08fr 0.92fr;
+        gap: 38px;
+        padding: 32px 36px;
+        pointer-events: none;
+        opacity: 0;
+        filter: blur(9px);
+        transform: translateY(14px);
+        transition:
+          opacity 460ms 240ms var(--ease),
+          transform 520ms 240ms var(--ease),
+          filter 520ms 240ms var(--ease);
+      }
+
+      .analysis-card:not([data-state='idle']):not(
+          [data-state='submitting']
+        ):not([data-state='error'])
+        .processing-ui {
+        pointer-events: auto;
+        opacity: 1;
+        filter: none;
+        transform: none;
+      }
+
+      .status-copy h2 {
+        margin: 0 0 7px;
+        font-size: 31px;
+        font-weight: 560;
+        letter-spacing: -0.04em;
+      }
+
+      .status-copy > p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .stages {
+        display: grid;
+        gap: 12px;
+        margin-top: 23px;
+      }
+
+      .stage {
+        display: grid;
+        min-height: 25px;
+        grid-template-columns: 20px 1fr auto;
+        align-items: center;
+        gap: 10px;
+        color: #6d6a79;
+        font-size: 14px;
+        transition:
+          color 240ms ease,
+          transform 240ms var(--ease);
+      }
+
+      .stage-dot {
+        position: relative;
+        width: 9px;
+        height: 9px;
+        border: 1px solid #575463;
+        border-radius: 50%;
+      }
+
+      .stage.active {
+        color: #f1eef8;
+        transform: translateX(3px);
+      }
+
+      .stage.active .stage-dot {
+        border-color: #fff;
+        background: #fff;
+        box-shadow: 0 0 18px rgba(255, 255, 255, 0.6);
+      }
+
+      .stage.active .stage-dot::after {
+        position: absolute;
+        inset: -6px;
+        content: '';
+        border-top: 1px solid rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        animation: active-trace 1.4s linear infinite;
+      }
+
+      .stage.done {
+        color: #aaa7b5;
+      }
+
+      .stage.done .stage-dot {
+        display: grid;
+        width: 13px;
+        height: 13px;
+        place-items: center;
+        border-color: #8d8a99;
+        background: transparent;
+      }
+
+      .stage.done .stage-dot::before {
+        content: '✓';
+        color: #b7b4c0;
+        font-size: 9px;
+      }
+
+      .stage-index {
+        color: #696676;
+        font:
+          500 10px ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+      }
+
+      .leave-note {
+        margin-top: 20px;
+        color: #777485;
+        font-size: 12px;
+      }
+
+      .rail-visual {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+      }
+
+      .rail-box {
+        width: 100%;
+      }
+
+      .master-rail {
+        position: relative;
+        height: 1px;
+        opacity: 0;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.95),
+          transparent
+        );
+        transform: scaleX(0.04);
+        transform-origin: left;
+      }
+
+      .analysis-card:not([data-state='idle']):not(
+          [data-state='submitting']
+        ):not([data-state='error'])
+        .master-rail {
+        animation: rail-grow 440ms 620ms var(--ease) forwards;
+      }
+
+      .rails {
+        display: grid;
+        gap: 20px;
+        margin-top: 34px;
+      }
+
+      .rail {
+        display: grid;
+        grid-template-columns: 92px 1fr 48px;
+        align-items: center;
+        gap: 12px;
+        color: var(--rail-color);
+        font:
+          500 10px ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .rail:nth-child(1) {
+        --rail-color: var(--amber);
+      }
+      .rail:nth-child(2) {
+        --rail-color: var(--purple);
+      }
+      .rail:nth-child(3) {
+        --rail-color: var(--cyan);
+      }
+      .rail:nth-child(4) {
+        --rail-color: var(--lime);
+      }
+
+      .track {
+        position: relative;
+        height: 2px;
+        overflow: visible;
+        background: rgba(255, 255, 255, 0.055);
+      }
+
+      .track::before {
+        position: absolute;
+        inset: 0;
+        content: '';
+        opacity: 0;
+        background: var(--rail-color);
+        box-shadow: 0 0 13px
+          color-mix(in srgb, var(--rail-color) 55%, transparent);
+        transform: scaleX(0.02);
+        transform-origin: left;
+      }
+
+      .analysis-card:not([data-state='idle']):not(
+          [data-state='submitting']
+        ):not([data-state='error'])
+        .rail:nth-child(1)
+        .track::before {
+        animation: rail-grow 560ms 760ms var(--ease) forwards;
+      }
+      .analysis-card:not([data-state='idle']):not(
+          [data-state='submitting']
+        ):not([data-state='error'])
+        .rail:nth-child(2)
+        .track::before {
+        animation: rail-grow 560ms 880ms var(--ease) forwards;
+      }
+      .analysis-card:not([data-state='idle']):not(
+          [data-state='submitting']
+        ):not([data-state='error'])
+        .rail:nth-child(3)
+        .track::before {
+        animation: rail-grow 560ms 1000ms var(--ease) forwards;
+      }
+      .analysis-card:not([data-state='idle']):not(
+          [data-state='submitting']
+        ):not([data-state='error'])
+        .rail:nth-child(4)
+        .track::before {
+        animation: rail-grow 560ms 1120ms var(--ease) forwards;
+      }
+
+      .rail-status {
+        color: #686575;
+        letter-spacing: 0;
+        text-transform: lowercase;
+      }
+
+      .analysis-card[data-state='complete'] .track::before {
+        opacity: 1;
+        transform: scaleX(1);
+        animation: complete-rail 620ms ease-out both !important;
+      }
+
+      .analysis-card[data-state='complete'] .rail-status {
+        color: currentColor;
+      }
+
+      .completion-wipe {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        pointer-events: none;
+        opacity: 0;
+        background: linear-gradient(
+          100deg,
+          transparent 15%,
+          rgba(255, 255, 255, 0.52) 50%,
+          transparent 85%
+        );
+        mix-blend-mode: screen;
+        transform: translateX(-100%);
+      }
+
+      .analysis-card[data-state='complete'] .completion-wipe {
+        animation: optical-wipe 620ms ease-out both;
+      }
+
+      .error-message {
+        position: absolute;
+        left: 32px;
+        right: 16px;
+        bottom: 17px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        pointer-events: none;
+        opacity: 0;
+        color: #c9c5d2;
+        transform: translateY(8px);
+        transition:
+          opacity 260ms ease,
+          transform 300ms var(--ease);
+      }
+
+      .analysis-card[data-state='error'] .error-message {
+        pointer-events: auto;
+        opacity: 1;
+        transform: none;
+      }
+
+      .error-message strong {
+        display: block;
+        margin-bottom: 3px;
+        color: #f1d1cf;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .error-message span {
+        color: #8f8999;
+        font-size: 12px;
+      }
+
+      .try-again,
+      .demo-control {
+        min-height: 40px;
+        padding: 0 15px;
+        border: 1px solid var(--line-strong);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.035);
+        color: #d4d0dd;
+        cursor: pointer;
+      }
+
+      .try-again:hover,
+      .demo-control:hover {
+        border-color: rgba(255, 255, 255, 0.28);
+        color: #fff;
+      }
+
+      .advanced {
+        display: flex;
+        gap: 22px;
+        margin-top: 20px;
+        color: #666374;
+        font-size: 15px;
+      }
+
+      .demo-controls {
+        display: flex;
+        gap: 9px;
+        margin-top: 24px;
+      }
+
+      .demo-label {
+        align-self: center;
+        margin-right: 4px;
+        color: #565362;
+        font:
+          500 9px ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      @keyframes photon-travel {
+        0% {
+          left: 36px;
+          opacity: 0;
+        }
+        12% {
+          opacity: 1;
+        }
+        82% {
+          opacity: 1;
+        }
+        100% {
+          left: calc(100% - 154px);
+          opacity: 0;
+        }
+      }
+
+      @keyframes rail-grow {
+        from {
+          opacity: 0;
+          transform: scaleX(0.02);
+        }
+        to {
+          opacity: 1;
+          transform: scaleX(1);
+        }
+      }
+
+      @keyframes active-trace {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes complete-rail {
+        50% {
+          filter: brightness(1.7);
+          box-shadow: 0 0 22px var(--rail-color);
+        }
+      }
+
+      @keyframes optical-wipe {
+        0% {
+          opacity: 0;
+          transform: translateX(-100%);
+        }
+        35% {
+          opacity: 0.55;
+        }
+        100% {
+          opacity: 0;
+          transform: translateX(100%);
+        }
+      }
+
+      @media (max-width: 850px) {
+        .wrap {
+          padding: 10px;
+        }
+
+        .hero {
+          min-height: 760px;
+          padding: 42px 20px;
+          border-radius: 26px;
+        }
+
+        h1 {
+          margin: 28px 0 34px;
+          font-size: clamp(48px, 14vw, 58px);
+        }
+
+        .analysis-card {
+          height: 166px;
+          border-radius: 22px;
+        }
+
+        .url-row {
+          display: grid;
+          grid-template-columns: 24px minmax(0, 1fr);
+          align-content: center;
+          padding: 14px;
+        }
+
+        .url-input {
+          font-size: 16px;
+        }
+
+        .analyze-button {
+          grid-column: 1 / -1;
+          width: 100%;
+          height: 62px;
+          justify-content: center;
+          border-radius: 16px;
+        }
+
+        .analysis-card[data-state='validating'],
+        .analysis-card[data-state='transcript'],
+        .analysis-card[data-state='structuring'],
+        .analysis-card[data-state='artifacts'],
+        .analysis-card[data-state='complete'] {
+          height: 570px;
+        }
+
+        .analysis-card[data-state='error'] {
+          height: 250px;
+        }
+
+        .processing-ui {
+          grid-template-columns: 1fr;
+          gap: 28px;
+          overflow-y: auto;
+          padding: 28px 22px;
+        }
+
+        .rail-visual {
+          min-height: 180px;
+        }
+
+        .rail {
+          grid-template-columns: 80px minmax(0, 1fr) 38px;
+          gap: 9px;
+          font-size: 9px;
+        }
+
+        .error-message {
+          left: 15px;
+          right: 15px;
+          bottom: 15px;
+          align-items: stretch;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .advanced {
+          flex-wrap: wrap;
+          gap: 8px 15px;
+          font-size: 13px;
+        }
+
+        .demo-controls {
+          flex-wrap: wrap;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+          transition-delay: 0s !important;
+        }
+
+        .photon,
+        .completion-wipe,
+        .stage.active .stage-dot::after {
+          display: none;
+        }
+
+        .master-rail,
+        .track::before {
+          opacity: 1 !important;
+          transform: scaleX(1) !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="hero" aria-labelledby="page-title">
+        <div class="content">
+          <div class="kicker">NEW ANALYSIS</div>
+          <h1 id="page-title">Turn a video into something useful.</h1>
+
+          <div
+            class="analysis-card"
+            id="analysis-card"
+            data-state="idle"
+            aria-live="polite"
+          >
+            <div class="photon" aria-hidden="true"></div>
+            <div class="completion-wipe" aria-hidden="true"></div>
+
+            <form class="url-row" id="analysis-form">
+              <svg
+                class="link-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                aria-hidden="true"
+              >
+                <path
+                  d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"
+                />
+                <path
+                  d="M14 11a5 5 0 0 0-7.1-.1l-2 2a5 5 0 0 0 7.1 7.1l1.1-1.1"
+                />
+              </svg>
+              <input
+                class="url-input"
+                id="url-input"
+                type="url"
+                aria-label="YouTube URL"
+                value="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                required
+              />
+              <button class="analyze-button" id="analyze-button" type="submit">
+                Analyze video <span class="arrow" aria-hidden="true">→</span>
+              </button>
+            </form>
+
+            <div class="processing-ui">
+              <div class="status-copy">
+                <h2 id="status-title">Analyzing your video</h2>
+                <p id="status-description">Validating the source.</p>
+                <div class="stages" aria-label="Analysis stages">
+                  <div class="stage" data-stage="validating">
+                    <span class="stage-dot"></span><span>Validating video</span
+                    ><span class="stage-index">01</span>
+                  </div>
+                  <div class="stage" data-stage="transcript">
+                    <span class="stage-dot"></span
+                    ><span>Finding transcript</span
+                    ><span class="stage-index">02</span>
+                  </div>
+                  <div class="stage" data-stage="structuring">
+                    <span class="stage-dot"></span
+                    ><span>Structuring key ideas</span
+                    ><span class="stage-index">03</span>
+                  </div>
+                  <div class="stage" data-stage="artifacts">
+                    <span class="stage-dot"></span
+                    ><span>Creating artifacts</span
+                    ><span class="stage-index">04</span>
+                  </div>
+                </div>
+                <div class="leave-note">
+                  You can safely leave this page. The result will be saved to
+                  history.
+                </div>
+              </div>
+
+              <div class="rail-visual" aria-label="Knowledge artifacts">
+                <div class="rail-box">
+                  <div class="master-rail" aria-hidden="true"></div>
+                  <div class="rails">
+                    <div class="rail">
+                      <span>Summary</span><span class="track"></span
+                      ><span class="rail-status">queued</span>
+                    </div>
+                    <div class="rail">
+                      <span>Flashcards</span><span class="track"></span
+                      ><span class="rail-status">queued</span>
+                    </div>
+                    <div class="rail">
+                      <span>Timestamps</span><span class="track"></span
+                      ><span class="rail-status">queued</span>
+                    </div>
+                    <div class="rail">
+                      <span>Export</span><span class="track"></span
+                      ><span class="rail-status">queued</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="error-message" role="alert">
+              <div>
+                <strong>We couldn’t access this video.</strong>
+                <span>Check that it is public, then try again.</span>
+              </div>
+              <button class="try-again" id="try-again" type="button">
+                Try again
+              </button>
+            </div>
+          </div>
+
+          <div class="advanced">
+            <span>⚙ Advanced options</span
+            ><span>Summary, Timestamps, Transcript</span>
+          </div>
+          <div class="demo-controls" aria-label="Prototype controls">
+            <span class="demo-label">Prototype</span>
+            <button class="demo-control" id="replay-success" type="button">
+              Replay success
+            </button>
+            <button class="demo-control" id="preview-error" type="button">
+              Preview error
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const analysisStates = [
+        'idle',
+        'submitting',
+        'validating',
+        'transcript',
+        'structuring',
+        'artifacts',
+        'complete',
+        'error',
+      ];
+      const stageStates = [
+        'validating',
+        'transcript',
+        'structuring',
+        'artifacts',
+      ];
+      const stageCopy = {
+        validating: ['Analyzing your video', 'Validating the source.'],
+        transcript: ['Analyzing your video', 'Finding the transcript.'],
+        structuring: ['Finding the signal', 'Structuring key ideas.'],
+        artifacts: [
+          'Separating the spectrum',
+          'Creating your knowledge artifacts.',
+        ],
+        complete: ['Your artifacts are ready', 'Opening the result workspace'],
+      };
+
+      const card = document.getElementById('analysis-card');
+      const form = document.getElementById('analysis-form');
+      const urlInput = document.getElementById('url-input');
+      const analyzeButton = document.getElementById('analyze-button');
+      const title = document.getElementById('status-title');
+      const description = document.getElementById('status-description');
+      const stages = [...document.querySelectorAll('[data-stage]')];
+      const railStatuses = [...document.querySelectorAll('.rail-status')];
+      let analysisState = 'idle';
+      let timers = [];
+
+      function clearTimers() {
+        timers.forEach(window.clearTimeout);
+        timers = [];
+      }
+
+      function setAnalysisState(nextState) {
+        if (!analysisStates.includes(nextState)) return;
+        analysisState = nextState;
+        card.dataset.state = nextState;
+
+        const busy = nextState !== 'idle' && nextState !== 'error';
+        analyzeButton.disabled = busy;
+        urlInput.readOnly = busy;
+
+        const activeIndex = stageStates.indexOf(nextState);
+        stages.forEach((stage, index) => {
+          stage.classList.toggle('active', index === activeIndex);
+          stage.classList.toggle(
+            'done',
+            nextState === 'complete' ||
+              (activeIndex >= 0 && index < activeIndex),
+          );
+        });
+
+        if (stageCopy[nextState]) {
+          title.textContent = stageCopy[nextState][0];
+          description.textContent = stageCopy[nextState][1];
+        }
+
+        railStatuses.forEach((status) => {
+          status.textContent = nextState === 'complete' ? 'ready' : 'queued';
+        });
+      }
+
+      function schedule(nextState, delay) {
+        timers.push(
+          window.setTimeout(() => setAnalysisState(nextState), delay),
+        );
+      }
+
+      function runAnalysis() {
+        if (analysisState !== 'idle' && analysisState !== 'error') return;
+        clearTimers();
+        setAnalysisState('submitting');
+        schedule('validating', 780);
+        schedule('transcript', 2200);
+        schedule('structuring', 3600);
+        schedule('artifacts', 5000);
+        schedule('complete', 6500);
+      }
+
+      function resetToIdle() {
+        clearTimers();
+        setAnalysisState('idle');
+        urlInput.readOnly = false;
+        requestAnimationFrame(() => urlInput.focus());
+      }
+
+      function previewError() {
+        clearTimers();
+        setAnalysisState('error');
+        urlInput.readOnly = false;
+        requestAnimationFrame(() => urlInput.focus());
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        runAnalysis();
+      });
+      document.getElementById('try-again').addEventListener('click', () => {
+        resetToIdle();
+        window.setTimeout(runAnalysis, 100);
+      });
+      document
+        .getElementById('replay-success')
+        .addEventListener('click', () => {
+          resetToIdle();
+          window.setTimeout(runAnalysis, 100);
+        });
+      document
+        .getElementById('preview-error')
+        .addEventListener('click', previewError);
+    </script>
+  </body>
+</html>
