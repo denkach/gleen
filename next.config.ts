@@ -7,6 +7,7 @@ validatePublicEnv(process.env);
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['127.0.0.1'],
+  serverExternalPackages: ['@vercel/queue'],
   turbopack: {
     root: process.cwd(),
     resolveAlias:
