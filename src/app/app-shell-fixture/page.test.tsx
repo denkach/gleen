@@ -30,6 +30,15 @@ it('defines every deterministic intake fixture case', () => {
     'transcript-unavailable',
     'provider-outage',
     'reanalysis',
+    'pipeline-queued',
+    'pipeline-validating',
+    'pipeline-transcript',
+    'pipeline-structuring',
+    'pipeline-artifacts',
+    'pipeline-partial',
+    'pipeline-failed',
+    'pipeline-retrying',
+    'pipeline-complete',
   ]);
 });
 

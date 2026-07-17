@@ -599,3 +599,40 @@ test('reduced motion removes decorative motion while retaining truthful state', 
     }),
   ).toBeVisible();
 });
+
+test('durable processing survives reload and restores the persisted transcript stage', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture/app/video/pipeline-transcript');
+  const visual = page.getByTestId('analyze-processing-visual');
+  await expect(visual).toHaveAttribute('data-analysis-state', 'transcript');
+  await expect(page.getByText('Finding transcript')).toBeVisible();
+  await page.reload();
+  await expect(visual).toHaveAttribute('data-analysis-state', 'transcript');
+  await expect(page.getByText('Finding transcript')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test('durable partial result keeps ready artifacts and retries unfinished work', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture/app/video/pipeline-partial');
+  await expect(page.getByText('Summary ready')).toBeVisible();
+  await expect(page.getByText('Flashcards needs retry')).toBeVisible();
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveAttribute(
+    'data-analysis-state',
+    'artifacts',
+  );
+  await expect(page.getByText('Summary ready')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test('durable reduced motion reveals a completed result immediately', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/app-shell-fixture/app/video/pipeline-complete');
+  await expect(page.getByTestId('analysis-results')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});

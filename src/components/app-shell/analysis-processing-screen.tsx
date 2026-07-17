@@ -21,6 +21,7 @@ type Props = Readonly<{
   initialSnapshot: AnalysisSnapshot;
   retryAction(formData: FormData): Promise<RetryActionResult>;
   refreshAction(analysisId: string): Promise<AnalysisSnapshot | null>;
+  enableLiveUpdates?: boolean;
 }>;
 
 const artifactLabels: Record<ArtifactKind, string> = {
@@ -36,6 +37,7 @@ export function AnalysisProcessingScreen({
   initialSnapshot,
   retryAction,
   refreshAction,
+  enableLiveUpdates = true,
 }: Props) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [retryError, setRetryError] = useState<string>();
@@ -74,7 +76,7 @@ export function AnalysisProcessingScreen({
   }, [showResults, snapshot.job.status]);
 
   useEffect(() => {
-    if (isTerminal) return;
+    if (!enableLiveUpdates || isTerminal) return;
     const supabase = createBrowserSupabaseClient();
     let active = true;
     let fallback: ReturnType<typeof setInterval> | undefined;
@@ -130,7 +132,7 @@ export function AnalysisProcessingScreen({
       stopFallback();
       void supabase.removeChannel(channel);
     };
-  }, [intake.id, isTerminal, refresh, snapshot.job.id]);
+  }, [enableLiveUpdates, intake.id, isTerminal, refresh, snapshot.job.id]);
 
   const retry = () => {
     if (isRetryPending) return;

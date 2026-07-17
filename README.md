@@ -62,6 +62,17 @@ Enable YouTube Data API v3 in the linked Google Cloud project before creating
 the restricted key. Keep both provider values outside source control and never
 prefix them with `NEXT_PUBLIC_`.
 
+The durable analysis pipeline also requires two server-only variables:
+
+- `OPENROUTER_API_KEY` — the OpenRouter key used by the structured-output
+  adapter;
+- `OPENROUTER_MODEL` — one structured-output-capable model slug.
+
+Production generation requires parameter-compatible routing with data
+collection denied, zero-data-retention routing enabled, and compatible
+fallbacks allowed. Never prefix either variable with `NEXT_PUBLIC_`, and never
+log prompts, transcripts, generated content, or credentials.
+
 For DEN-14 account access:
 
 1. Create or link a Supabase project.
@@ -81,6 +92,11 @@ npx supabase db push
 This applies `supabase/migrations/202607120002_create_analysis_intakes.sql`.
 Verify the target project before running the command; migration and provider
 configuration are server-side setup and contain no credential values.
+
+For DEN-17, also apply
+`supabase/migrations/202607170001_create_analysis_pipeline.sql`. It creates the
+owned job, event, artifact, and reservation records, selective retry RPCs, and
+the Realtime publication used as a refetch notification channel.
 
 Start the application:
 

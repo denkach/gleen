@@ -6,4 +6,13 @@ export const fixtureCases = [
   'transcript-unavailable',
   'provider-outage',
   'reanalysis',
+  'pipeline-queued',
+  'pipeline-validating',
+  'pipeline-transcript',
+  'pipeline-structuring',
+  'pipeline-artifacts',
+  'pipeline-partial',
+  'pipeline-failed',
+  'pipeline-retrying',
+  'pipeline-complete',
 ] as const;
