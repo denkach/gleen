@@ -12,6 +12,7 @@ export type AnalyzeProcessingVisualProps = Readonly<{
   submittedUrl: string;
   errorMessage?: string;
   onRetry?: () => void;
+  retryDisabled?: boolean;
   idleContent?: ReactNode;
 }>;
 
@@ -21,6 +22,7 @@ export function AnalyzeProcessingVisual({
   submittedUrl,
   errorMessage,
   onRetry,
+  retryDisabled = false,
   idleContent,
 }: AnalyzeProcessingVisualProps) {
   const presentation = getAnalysisVisualPresentation(state);
@@ -90,8 +92,9 @@ export function AnalyzeProcessingVisual({
                   className="analyze-control"
                   type="button"
                   onClick={onRetry}
+                  disabled={retryDisabled}
                 >
-                  Try again
+                  {retryDisabled ? 'Retrying…' : 'Try again'}
                 </button>
               </div>
             ) : null}

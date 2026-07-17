@@ -1,0 +1,182 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+
+import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
+import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
+
+const realtime = vi.hoisted(() => {
+  const channel = { on: vi.fn(), subscribe: vi.fn() };
+  channel.on.mockReturnValue(channel);
+  channel.subscribe.mockReturnValue(channel);
+  return { channel, create: vi.fn(() => channel), remove: vi.fn() };
+});
+
+vi.mock('@/lib/supabase/browser', () => ({
+  createBrowserSupabaseClient: () => ({
+    channel: realtime.create,
+    removeChannel: realtime.remove,
+  }),
+}));
+
+import { AnalysisProcessingScreen } from './analysis-processing-screen';
+
+const intake = {
+  id: '550e8400-e29b-41d4-a716-446655440000',
+  userId: 'user-1',
+  youtubeVideoId: 'video-1',
+  canonicalUrl: 'https://youtube.com/watch?v=video-1',
+  title: 'Durable analysis',
+  channelTitle: 'Channel',
+  durationSeconds: 60,
+  thumbnailUrl: 'https://example.com/thumb.jpg',
+  transcriptLanguage: 'en',
+  transcriptSegments: [],
+  configuration: {
+    outputLocale: 'en',
+    summaryPreset: 'balanced',
+    flashcardPreset: null,
+    artifacts: ['summary', 'flashcards'],
+    analysisContractVersion: 1,
+  },
+  duplicateKey: 'a'.repeat(64),
+  attempt: 1,
+  status: 'ready',
+  reanalysisOf: null,
+  createdAt: '2026-07-17T00:00:00Z',
+} satisfies AnalysisIntake;
+
+function snapshot(
+  status: AnalysisSnapshot['job']['status'] = 'running',
+  revision = 2,
+): AnalysisSnapshot {
+  return {
+    job: {
+      id: 'job-1',
+      analysisId: intake.id,
+      userId: 'user-1',
+      workflowRunId: null,
+      status,
+      stage: status === 'complete' ? 'complete' : 'artifacts',
+      attempt: 1,
+      revision,
+      errorCode: status === 'failed' ? 'safe_failure' : null,
+      startedAt: null,
+      completedAt: null,
+      createdAt: '2026-07-17T00:00:00Z',
+      updatedAt: '2026-07-17T00:00:00Z',
+    },
+    events: [],
+    artifacts:
+      status === 'partial'
+        ? [
+            {
+              id: 'summary-1',
+              analysisId: intake.id,
+              userId: 'user-1',
+              kind: 'summary',
+              status: 'ready',
+              schemaVersion: 1,
+              content: { text: 'kept' },
+              errorCode: null,
+              generatedAt: '2026-07-17T00:00:00Z',
+              updatedAt: '2026-07-17T00:00:00Z',
+            },
+            {
+              id: 'flashcards-1',
+              analysisId: intake.id,
+              userId: 'user-1',
+              kind: 'flashcards',
+              status: 'failed',
+              schemaVersion: 1,
+              content: null,
+              errorCode: 'generation_failed',
+              generatedAt: null,
+              updatedAt: '2026-07-17T00:00:00Z',
+            },
+          ]
+        : [],
+    usageReservation: {
+      id: 'reservation-1',
+      jobId: 'job-1',
+      userId: 'user-1',
+      status: 'reserved',
+      updatedAt: '2026-07-17T00:00:00Z',
+    },
+  };
+}
+
+describe('AnalysisProcessingScreen', () => {
+  beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.useRealTimers());
+
+  test('retains ready partial artifacts and submits retry only once while pending', async () => {
+    let resolveRetry!: (result: { ok: true; attempt: number }) => void;
+    const retryAction = vi.fn(
+      () =>
+        new Promise<{ ok: true; attempt: number }>((resolve) => {
+          resolveRetry = resolve;
+        }),
+    );
+    render(
+      <AnalysisProcessingScreen
+        intake={intake}
+        initialSnapshot={snapshot('partial')}
+        retryAction={retryAction}
+        refreshAction={vi.fn(async () => snapshot('running', 3))}
+      />,
+    );
+
+    expect(screen.getByText('Summary ready')).toBeVisible();
+    expect(screen.getByText('Flashcards needs retry')).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(screen.getByRole('button', { name: 'Retrying…' })).toBeDisabled();
+    expect(retryAction).toHaveBeenCalledOnce();
+    resolveRetry({ ok: true, attempt: 2 });
+    await waitFor(() =>
+      expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+        'data-analysis-state',
+        'artifacts',
+      ),
+    );
+  });
+
+  test('scopes realtime notifications, refetches the snapshot, and cleans up', async () => {
+    const refreshAction = vi.fn(async () => snapshot('running', 3));
+    const { unmount } = render(
+      <AnalysisProcessingScreen
+        intake={intake}
+        initialSnapshot={snapshot()}
+        retryAction={vi.fn()}
+        refreshAction={refreshAction}
+      />,
+    );
+    expect(realtime.channel.on).toHaveBeenCalledTimes(3);
+    expect(realtime.channel.on).toHaveBeenCalledWith(
+      'postgres_changes',
+      expect.objectContaining({
+        table: 'analysis_jobs',
+        filter: 'id=eq.job-1',
+      }),
+      expect.any(Function),
+    );
+    const notify = realtime.channel.on.mock.calls[0]?.[2] as () => void;
+    notify();
+    await waitFor(() => expect(refreshAction).toHaveBeenCalledWith(intake.id));
+    unmount();
+    expect(realtime.remove).toHaveBeenCalledWith(realtime.channel);
+  });
+
+  test('shows an already complete server snapshot without decorative delay', () => {
+    render(
+      <AnalysisProcessingScreen
+        intake={intake}
+        initialSnapshot={snapshot('complete')}
+        retryAction={vi.fn()}
+        refreshAction={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('analysis-results')).toBeVisible();
+    expect(realtime.create).not.toHaveBeenCalled();
+  });
+});

@@ -76,6 +76,18 @@ describe('AnalyzeProcessingVisual', () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
+  it('disables retry while a new attempt is pending', () => {
+    render(
+      <AnalyzeProcessingVisual
+        state="error"
+        submittedUrl="https://youtu.be/dQw4w9WgXcQ"
+        onRetry={vi.fn()}
+        retryDisabled
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Retrying…' })).toBeDisabled();
+  });
+
   it('updates immediately when its controlled state changes', () => {
     const { container, rerender } = render(
       <AnalyzeProcessingVisual

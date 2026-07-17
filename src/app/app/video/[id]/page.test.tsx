@@ -3,16 +3,18 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 
-const { findOwned, getUser, notFound, redirect } = vi.hoisted(() => ({
-  findOwned: vi.fn(),
-  getUser: vi.fn(),
-  notFound: vi.fn((): never => {
-    throw new Error('NEXT_NOT_FOUND');
-  }),
-  redirect: vi.fn((path: string): never => {
-    throw new Error(`NEXT_REDIRECT:${path}`);
-  }),
-}));
+const { findOwned, findOwnedSnapshot, getUser, notFound, redirect } =
+  vi.hoisted(() => ({
+    findOwned: vi.fn(),
+    findOwnedSnapshot: vi.fn(),
+    getUser: vi.fn(),
+    notFound: vi.fn((): never => {
+      throw new Error('NEXT_NOT_FOUND');
+    }),
+    redirect: vi.fn((path: string): never => {
+      throw new Error(`NEXT_REDIRECT:${path}`);
+    }),
+  }));
 
 vi.mock('next/navigation', () => ({ notFound, redirect }));
 vi.mock('@/lib/supabase/server', () => ({
@@ -20,6 +22,14 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 vi.mock('@/lib/youtube-intake/supabase-repository', () => ({
   createSupabaseIntakeRepository: vi.fn(() => ({ findOwned })),
+}));
+vi.mock('@/lib/analysis-pipeline/supabase-repository', () => ({
+  createSupabaseAnalysisRepository: vi.fn(() => ({ findOwnedSnapshot })),
+}));
+vi.mock('@/components/app-shell/analysis-processing-screen', () => ({
+  AnalysisProcessingScreen: ({ intake }: { intake: AnalysisIntake }) => (
+    <h1>{intake.title}</h1>
+  ),
 }));
 
 import VideoIntakePage, { generateMetadata } from './page';
@@ -49,11 +59,39 @@ const intake = {
   createdAt: '2026-07-12T10:00:00.000Z',
 } satisfies AnalysisIntake;
 
+const snapshot = {
+  job: {
+    id: 'job-1',
+    analysisId: intake.id,
+    userId: 'user-1',
+    workflowRunId: null,
+    status: 'running',
+    stage: 'transcript',
+    attempt: 1,
+    revision: 2,
+    errorCode: null,
+    startedAt: null,
+    completedAt: null,
+    createdAt: '2026-07-17T00:00:00Z',
+    updatedAt: '2026-07-17T00:00:00Z',
+  },
+  events: [],
+  artifacts: [],
+  usageReservation: {
+    id: 'reservation-1',
+    jobId: 'job-1',
+    userId: 'user-1',
+    status: 'reserved',
+    updatedAt: '2026-07-17T00:00:00Z',
+  },
+} as const;
+
 describe('owned intake readiness page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
     findOwned.mockResolvedValue(intake);
+    findOwnedSnapshot.mockResolvedValue(snapshot);
   });
 
   test('loads the asynchronously addressed owned intake', async () => {
@@ -62,6 +100,7 @@ describe('owned intake readiness page', () => {
     );
 
     expect(findOwned).toHaveBeenCalledWith('user-1', intake.id);
+    expect(findOwnedSnapshot).toHaveBeenCalledWith('user-1', intake.id);
     expect(
       screen.getByRole('heading', { name: intake.title }),
     ).toBeInTheDocument();
