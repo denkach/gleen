@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { withWorkflow } from 'workflow/next';
 
 import { validatePublicEnv } from './src/env';
 
@@ -18,4 +19,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withWorkflow(nextConfig);
