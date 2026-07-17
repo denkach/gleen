@@ -316,6 +316,13 @@ describe('NewAnalysisForm', () => {
 
     await user.click(retry);
     expect(action).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-state',
+      'submitting',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Try again' }),
+    ).not.toBeInTheDocument();
     const retryFormData = action.mock.calls[1]?.[1] as FormData;
     expect(retryFormData.getAll('rawUrl')).toEqual([
       'https://youtu.be/abcdefghijk',

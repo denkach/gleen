@@ -159,6 +159,26 @@ for (const [scenario, rawUrl, message] of [
   });
 }
 
+test('shows renewed processing feedback when retrying a failed analysis', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture?intake=provider-outage');
+  await page.getByLabel('YouTube URL').fill(videoUrl);
+  await page.getByRole('button', { name: 'Analyze video' }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'temporarily unavailable' }),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Try again' }).click();
+  const visual = page.getByTestId('analyze-processing-visual');
+  await expect(visual).toHaveAttribute('data-analysis-state', 'submitting');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'temporarily unavailable' }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  await expect(page.getByLabel('YouTube URL')).toHaveValue(videoUrl);
+});
+
 test('keeps keyboard focus order and returns dialog focus', async ({
   page,
 }) => {

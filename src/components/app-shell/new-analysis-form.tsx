@@ -211,8 +211,9 @@ export function NewAnalysisForm({
     !pending &&
     !state.redirectTo &&
     ['idle', 'duplicate'].includes(state.status);
-  const displayVisualState =
-    state.status === 'error'
+  const displayVisualState = pending
+    ? visualState
+    : state.status === 'error'
       ? 'error'
       : resolvedWithoutRedirect
         ? 'idle'
