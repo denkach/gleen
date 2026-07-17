@@ -78,18 +78,8 @@ export function AnalysisProcessingScreen({
   useEffect(() => {
     if (!enableLiveUpdates || isTerminal) return;
     const supabase = createBrowserSupabaseClient();
-    let active = true;
-    let fallback: ReturnType<typeof setInterval> | undefined;
-    const startFallback = () => {
-      if (active && !fallback)
-        fallback = setInterval(() => void refresh(), pollingIntervalMs);
-    };
-    const stopFallback = () => {
-      if (fallback) clearInterval(fallback);
-      fallback = undefined;
-    };
+    const reconciliation = setInterval(() => void refresh(), pollingIntervalMs);
     const notify = () => void refresh();
-    startFallback();
     const channel = supabase
       .channel(`analysis:${snapshot.job.id}`)
       .on(
@@ -123,13 +113,11 @@ export function AnalysisProcessingScreen({
         notify,
       )
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') stopFallback();
-        else startFallback();
+        if (status === 'SUBSCRIBED') void refresh();
       });
 
     return () => {
-      active = false;
-      stopFallback();
+      clearInterval(reconciliation);
       void supabase.removeChannel(channel);
     };
   }, [enableLiveUpdates, intake.id, isTerminal, refresh, snapshot.job.id]);

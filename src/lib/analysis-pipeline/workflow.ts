@@ -79,6 +79,23 @@ export async function executeAnalysisPipeline({
     timestamps: generateTimestamps,
   } as const;
 
+  const transcript = snapshot.artifacts.find(
+    ({ kind }) => kind === 'transcript',
+  );
+  if (transcript && transcript.status !== 'ready') {
+    await repository.saveArtifactReady({
+      jobId,
+      analysisId: snapshot.job.analysisId,
+      kind: 'transcript',
+      schemaVersion: 1,
+      content: {
+        schemaVersion: 1,
+        language: context.transcriptLanguage,
+        segments: context.transcriptSegments,
+      },
+    });
+  }
+
   for (const artifact of snapshot.artifacts) {
     if (artifact.status === 'ready' || artifact.kind === 'transcript') continue;
     const generate = generators[artifact.kind];
@@ -107,9 +124,7 @@ export async function executeAnalysisPipeline({
   }
 
   snapshot = await repository.findSnapshotByJobId(jobId);
-  const generated = snapshot.artifacts.filter(
-    ({ kind }) => kind !== 'transcript',
-  );
+  const generated = snapshot.artifacts;
   const readyCount = generated.filter(
     ({ status }) => status === 'ready',
   ).length;
@@ -157,13 +172,14 @@ async function loadGeneratorContext(
   const { data, error } = await client
     .from('analysis_intakes')
     .select(
-      'output_locale,summary_preset,flashcard_preset,duration_seconds,transcript_segments',
+      'output_locale,summary_preset,flashcard_preset,duration_seconds,transcript_language,transcript_segments',
     )
     .eq('id', analysisId)
     .single();
   if (error || !data) throw new Error('Unable to load analysis context');
   return {
     outputLocale: data.output_locale as GeneratorContext['outputLocale'],
+    transcriptLanguage: data.transcript_language as string,
     summaryPreset: data.summary_preset as GeneratorContext['summaryPreset'],
     flashcardPreset:
       data.flashcard_preset as GeneratorContext['flashcardPreset'],

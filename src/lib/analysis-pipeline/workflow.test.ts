@@ -15,7 +15,12 @@ function harness(
   const ready = new Set(options.ready ?? []);
   const failed = new Set<ArtifactKind>();
   let jobStatus: AnalysisSnapshot['job']['status'] = 'queued';
-  const artifacts: ArtifactKind[] = ['summary', 'flashcards', 'timestamps'];
+  const artifacts: ArtifactKind[] = [
+    'transcript',
+    'summary',
+    'flashcards',
+    'timestamps',
+  ];
   const snapshot = (): AnalysisSnapshot =>
     ({
       job: {
@@ -100,6 +105,7 @@ function harness(
 
 const context = {
   outputLocale: 'en' as const,
+  transcriptLanguage: 'en',
   summaryPreset: 'balanced' as const,
   flashcardPreset: 18 as const,
   durationSeconds: 60,
@@ -107,6 +113,30 @@ const context = {
 };
 
 describe('analysis workflow orchestration', () => {
+  it('persists the validated transcript snapshot as a versioned artifact', async () => {
+    const { repository, provider, ledger } = harness();
+
+    await executeAnalysisPipeline({
+      jobId: 'job-id',
+      repository,
+      provider,
+      ledger,
+      context,
+    });
+
+    expect(repository.saveArtifactReady).toHaveBeenCalledWith({
+      jobId: 'job-id',
+      analysisId: 'analysis-id',
+      kind: 'transcript',
+      schemaVersion: 1,
+      content: {
+        schemaVersion: 1,
+        language: 'en',
+        segments: context.transcriptSegments,
+      },
+    });
+  });
+
   it('persists stages and settles after all requested artifacts succeed', async () => {
     const { repository, provider, ledger, snapshot } = harness();
 

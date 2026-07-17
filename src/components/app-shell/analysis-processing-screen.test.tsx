@@ -107,7 +107,13 @@ function snapshot(
 }
 
 describe('AnalysisProcessingScreen', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: false })),
+    );
+  });
   afterEach(() => vi.useRealTimers());
 
   test('retains ready partial artifacts and submits retry only once while pending', async () => {
@@ -165,6 +171,46 @@ describe('AnalysisProcessingScreen', () => {
     await waitFor(() => expect(refreshAction).toHaveBeenCalledWith(intake.id));
     unmount();
     expect(realtime.remove).toHaveBeenCalledWith(realtime.channel);
+  });
+
+  test('refetches once after subscribing so a change during connection is not missed', async () => {
+    const refreshAction = vi.fn(async () => snapshot('complete', 4));
+    render(
+      <AnalysisProcessingScreen
+        intake={intake}
+        initialSnapshot={snapshot('running', 2)}
+        retryAction={vi.fn()}
+        refreshAction={refreshAction}
+      />,
+    );
+
+    const onStatus = realtime.channel.subscribe.mock.calls[0]?.[0] as (
+      status: string,
+    ) => void;
+    onStatus('SUBSCRIBED');
+
+    await waitFor(() => expect(refreshAction).toHaveBeenCalledWith(intake.id));
+  });
+
+  test('keeps reconciliation polling active while realtime is subscribed', async () => {
+    vi.useFakeTimers();
+    const refreshAction = vi.fn(async () => snapshot('running', 3));
+    render(
+      <AnalysisProcessingScreen
+        intake={intake}
+        initialSnapshot={snapshot('running', 2)}
+        retryAction={vi.fn()}
+        refreshAction={refreshAction}
+      />,
+    );
+
+    const onStatus = realtime.channel.subscribe.mock.calls[0]?.[0] as (
+      status: string,
+    ) => void;
+    onStatus('SUBSCRIBED');
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    expect(refreshAction).toHaveBeenCalledTimes(2);
   });
 
   test('shows an already complete server snapshot without decorative delay', () => {

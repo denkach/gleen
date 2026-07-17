@@ -12,6 +12,7 @@ import type { StructuredGenerationProvider } from './provider';
 
 export type GeneratorContext = Readonly<{
   outputLocale: 'uk' | 'ru' | 'en' | 'es' | 'de';
+  transcriptLanguage: string;
   summaryPreset: 'balanced' | 'detailed' | null;
   flashcardPreset: 18 | 30 | null;
   durationSeconds: number;

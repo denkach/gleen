@@ -10,6 +10,7 @@ import {
 
 const context: GeneratorContext = {
   outputLocale: 'uk',
+  transcriptLanguage: 'en',
   summaryPreset: 'detailed',
   flashcardPreset: 18,
   durationSeconds: 120,
