@@ -19,6 +19,18 @@ export interface ResultCopy {
   readonly playerExitFullscreen: string;
   readonly playerChapters: string;
   readonly playerExpand: string;
+  readonly sourceLabel: string;
+  readonly sourceThumbnail: string;
+  readonly currentChapter: string;
+  readonly keyMomentsCount: string;
+  readonly playerUnavailable: string;
+  readonly playerPreviewUnavailable: string;
+  readonly metadataChannel: string;
+  readonly metadataDuration: string;
+  readonly metadataLanguage: string;
+  readonly playerProgress: string;
+  readonly playerProgressValue: string;
+  readonly playerVolumeValue: string;
   readonly tabsLabel: string;
   readonly tabOverview: string;
   readonly tabSummary: string;
@@ -115,6 +127,15 @@ export interface ResultCopy {
   readonly publicViewExpired: string;
 }
 
+export function formatResultCopy(
+  template: string,
+  values: Readonly<Record<string, string | number>>,
+): string {
+  return template.replace(/\{(\w+)\}/g, (token, key: string) =>
+    Object.hasOwn(values, key) ? String(values[key]) : token,
+  );
+}
+
 export const resultCopy = {
   en: {
     workspaceLabel: 'Analysis artifacts',
@@ -133,6 +154,18 @@ export const resultCopy = {
     playerExitFullscreen: 'Exit full screen',
     playerChapters: 'Chapters',
     playerExpand: 'Expand player',
+    sourceLabel: 'Video source',
+    sourceThumbnail: 'Thumbnail for {title}',
+    currentChapter: 'Current chapter',
+    keyMomentsCount: '{count} key moments',
+    playerUnavailable: 'Player unavailable',
+    playerPreviewUnavailable: 'Video preview unavailable',
+    metadataChannel: 'Channel',
+    metadataDuration: 'Duration',
+    metadataLanguage: 'Language',
+    playerProgress: 'Video progress',
+    playerProgressValue: '{current} of {duration}',
+    playerVolumeValue: '{percent}%',
     tabsLabel: 'Result artifacts',
     tabOverview: 'Overview',
     tabSummary: 'Summary',
@@ -246,6 +279,18 @@ export const resultCopy = {
     playerExitFullscreen: 'Вийти з повноекранного режиму',
     playerChapters: 'Розділи',
     playerExpand: 'Розгорнути програвач',
+    sourceLabel: 'Джерело відео',
+    sourceThumbnail: 'Мініатюра для {title}',
+    currentChapter: 'Поточний розділ',
+    keyMomentsCount: '{count} ключових моментів',
+    playerUnavailable: 'Програвач недоступний',
+    playerPreviewUnavailable: 'Попередній перегляд відео недоступний',
+    metadataChannel: 'Канал',
+    metadataDuration: 'Тривалість',
+    metadataLanguage: 'Мова',
+    playerProgress: 'Прогрес відео',
+    playerProgressValue: '{current} з {duration}',
+    playerVolumeValue: '{percent}%',
     tabsLabel: 'Матеріали результату',
     tabOverview: 'Огляд',
     tabSummary: 'Резюме',
@@ -359,6 +404,18 @@ export const resultCopy = {
     playerExitFullscreen: 'Выйти из полноэкранного режима',
     playerChapters: 'Главы',
     playerExpand: 'Развернуть плеер',
+    sourceLabel: 'Источник видео',
+    sourceThumbnail: 'Миниатюра для {title}',
+    currentChapter: 'Текущая глава',
+    keyMomentsCount: '{count} ключевых моментов',
+    playerUnavailable: 'Плеер недоступен',
+    playerPreviewUnavailable: 'Предпросмотр видео недоступен',
+    metadataChannel: 'Канал',
+    metadataDuration: 'Длительность',
+    metadataLanguage: 'Язык',
+    playerProgress: 'Прогресс видео',
+    playerProgressValue: '{current} из {duration}',
+    playerVolumeValue: '{percent}%',
     tabsLabel: 'Материалы результата',
     tabOverview: 'Обзор',
     tabSummary: 'Конспект',
@@ -472,6 +529,18 @@ export const resultCopy = {
     playerExitFullscreen: 'Salir de pantalla completa',
     playerChapters: 'Capítulos',
     playerExpand: 'Ampliar reproductor',
+    sourceLabel: 'Fuente de vídeo',
+    sourceThumbnail: 'Miniatura de {title}',
+    currentChapter: 'Capítulo actual',
+    keyMomentsCount: '{count} momentos clave',
+    playerUnavailable: 'Reproductor no disponible',
+    playerPreviewUnavailable: 'Vista previa del vídeo no disponible',
+    metadataChannel: 'Canal',
+    metadataDuration: 'Duración',
+    metadataLanguage: 'Idioma',
+    playerProgress: 'Progreso del vídeo',
+    playerProgressValue: '{current} de {duration}',
+    playerVolumeValue: '{percent}%',
     tabsLabel: 'Materiales del resultado',
     tabOverview: 'Vista general',
     tabSummary: 'Resumen',
@@ -586,6 +655,18 @@ export const resultCopy = {
     playerExitFullscreen: 'Vollbild beenden',
     playerChapters: 'Kapitel',
     playerExpand: 'Player vergrößern',
+    sourceLabel: 'Videoquelle',
+    sourceThumbnail: 'Vorschaubild für {title}',
+    currentChapter: 'Aktuelles Kapitel',
+    keyMomentsCount: '{count} Schlüsselmomente',
+    playerUnavailable: 'Player nicht verfügbar',
+    playerPreviewUnavailable: 'Videovorschau nicht verfügbar',
+    metadataChannel: 'Kanal',
+    metadataDuration: 'Dauer',
+    metadataLanguage: 'Sprache',
+    playerProgress: 'Videofortschritt',
+    playerProgressValue: '{current} von {duration}',
+    playerVolumeValue: '{percent}%',
     tabsLabel: 'Ergebnisartefakte',
     tabOverview: 'Übersicht',
     tabSummary: 'Zusammenfassung',

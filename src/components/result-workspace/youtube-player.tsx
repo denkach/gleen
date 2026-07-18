@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 
 import {
   loadingVideoPlayerSnapshot,
@@ -119,8 +119,10 @@ export type YouTubePlayerProps = Readonly<{
   videoId: string;
   lifecycleKey?: string;
   title: string;
+  unavailableLabel?: string;
   nativeControls?: boolean;
   initialPositionMs?: number;
+  fullscreenTargetRef?: RefObject<HTMLElement | null>;
   onReady?: (
     controller: VideoPlayerController | null,
     replaced?: VideoPlayerController,
@@ -133,8 +135,10 @@ export function YouTubePlayer({
   videoId,
   lifecycleKey = videoId,
   title,
+  unavailableLabel = 'Player unavailable',
   nativeControls = true,
   initialPositionMs = 0,
+  fullscreenTargetRef,
   onReady,
   onTimeChange,
   onUnavailable,
@@ -311,7 +315,8 @@ export function YouTubePlayer({
       async requestFullscreen() {
         if (!player) return;
         try {
-          await player.getIframe().requestFullscreen?.();
+          const target = fullscreenTargetRef?.current ?? player.getIframe();
+          await target.requestFullscreen?.();
         } catch {
           // A rejected browser fullscreen request is an unsupported no-op.
         }
@@ -392,7 +397,13 @@ export function YouTubePlayer({
       }
       stopPlayer();
     };
-  }, [lifecycleKey, nativeControls, playerInstanceKey, videoId]);
+  }, [
+    fullscreenTargetRef,
+    lifecycleKey,
+    nativeControls,
+    playerInstanceKey,
+    videoId,
+  ]);
 
   if (unavailableLifecycleKey === playerInstanceKey) {
     return (
@@ -400,7 +411,7 @@ export function YouTubePlayer({
         className="grid size-full min-h-44 place-items-center px-6 text-center text-sm text-[var(--text-secondary)]"
         role="status"
       >
-        Player unavailable
+        {unavailableLabel}
       </div>
     );
   }

@@ -1,10 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 
 import { resultCopy } from '@/lib/result-workspace/copy';
 
 import { PlayerProvider } from './player-context';
-import type { VideoPlayerController } from './player-controller';
+import type {
+  VideoPlayerController,
+  VideoPlayerSnapshot,
+} from './player-controller';
 import { SourcePanel } from './source-panel';
 
 const snapshot = {
@@ -73,4 +76,53 @@ test('marks the current chapter and chapter selection seeks then plays', () => {
   fireEvent.click(screen.getByRole('button', { name: /reusable artifacts/i }));
   expect(controller.seekTo).toHaveBeenCalledWith(120_000);
   expect(controller.play).toHaveBeenCalledOnce();
+});
+
+test('keeps chapters busy until the player becomes ready', () => {
+  let loadingSnapshot: VideoPlayerSnapshot = {
+    ...snapshot,
+    status: 'loading',
+  };
+  const listeners = new Set<() => void>();
+  const deferredController: VideoPlayerController = {
+    ...controller,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    getSnapshot: () => loadingSnapshot,
+    seekTo: vi.fn(),
+    play: vi.fn(),
+  };
+  render(
+    <PlayerProvider controller={deferredController}>
+      <SourcePanel
+        source={{
+          videoId: 'dQw4w9WgXcQ',
+          title: 'How light becomes reusable knowledge',
+          channel: 'Gleen Studio',
+          duration: '15:00',
+          language: 'English',
+          thumbnailUrl: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+        }}
+        copy={resultCopy.en}
+        chapters={[
+          { offsetMs: 0, title: 'Opening', description: 'Set the premise' },
+        ]}
+      />
+    </PlayerProvider>,
+  );
+
+  const chapter = screen.getByRole('button', { name: /opening/i });
+  expect(chapter).toBeDisabled();
+  expect(chapter).toHaveAttribute('aria-busy', 'true');
+
+  loadingSnapshot = { ...snapshot, status: 'ready' };
+  act(() => listeners.forEach((listener) => listener()));
+
+  expect(chapter).toBeEnabled();
+  expect(chapter).not.toHaveAttribute('aria-busy');
+  fireEvent.click(chapter);
+  expect(deferredController.seekTo).toHaveBeenCalledWith(0);
+  expect(deferredController.play).toHaveBeenCalledOnce();
 });

@@ -83,8 +83,7 @@ body:has(.result-page-layout) {
 }
 
 .result-source-column {
-  position: sticky;
-  top: calc(var(--result-shell-topbar) + 16px);
+  position: static;
   display: grid;
   gap: 13px;
   align-content: start;
@@ -296,7 +295,7 @@ body:has(.result-page-layout) {
 .result-progress-wrap {
   position: absolute;
   right: 18px;
-  bottom: -8px;
+  bottom: 64px;
   left: 18px;
   z-index: 6;
   height: 16px;
@@ -679,13 +678,32 @@ body:has(.result-page-layout) {
     --result-shell-sidebar: 80px;
   }
 
-  .result-page-layout {
-    grid-template-columns: 1fr;
+  .app-shell:has(.result-page-layout) .sidebar .app-brand span:last-child,
+  .app-shell:has(.result-page-layout) .side-link span,
+  .app-shell:has(.result-page-layout) .sidebar-section-label,
+  .app-shell:has(.result-page-layout) .usage-mini,
+  .app-shell:has(.result-page-layout) .user-chip-text,
+  .app-shell:has(.result-page-layout) .user-chip > .app-icon-sm {
+    display: none;
   }
 
-  .result-source-column {
-    position: relative;
-    top: 0;
+  .app-shell:has(.result-page-layout) > .sidebar {
+    padding-inline: 11px;
+  }
+
+  .app-shell:has(.result-page-layout) .sidebar .app-brand,
+  .app-shell:has(.result-page-layout) .side-link,
+  .app-shell:has(.result-page-layout) .user-chip {
+    justify-content: center;
+  }
+
+  .app-shell:has(.result-page-layout) .sidebar .app-brand,
+  .app-shell:has(.result-page-layout) .side-link {
+    padding-inline: 0;
+  }
+
+  .result-page-layout {
+    grid-template-columns: 1fr;
   }
 
   .result-workspace {
@@ -740,6 +758,25 @@ body:has(.result-page-layout) {
     --result-shell-topbar: 62px;
   }
 
+  .app-shell:has(.result-page-layout) {
+    display: block;
+    padding-bottom: 0;
+  }
+
+  .app-shell:has(.result-page-layout) > .sidebar,
+  .app-shell:has(.result-page-layout) :is(.mobile-topbar, .bottom-nav) {
+    display: none;
+  }
+
+  .app-shell:has(.result-page-layout) .app-main {
+    grid-column: 1;
+  }
+
+  .app-shell:has(.result-page-layout) .app-topbar {
+    height: 62px;
+    display: flex;
+  }
+
   .result-page-layout {
     display: block;
     padding: 8px;
@@ -776,6 +813,7 @@ body:has(.result-page-layout) {
 
   .result-progress-wrap {
     right: 10px;
+    bottom: 57px;
     left: 10px;
   }
 
@@ -824,6 +862,11 @@ body:has(.result-page-layout) {
   .result-control-button,
   .result-speed-control {
     min-width: 44px;
+    min-height: 44px;
+  }
+
+  .result-progress-input,
+  .result-volume-input {
     min-height: 44px;
   }
 }

@@ -7,6 +7,8 @@ import {
 } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 
+import { resultCopy } from '@/lib/result-workspace/copy';
+
 import { SourcePanel } from './source-panel';
 
 const source = {
@@ -124,4 +126,22 @@ test('falls back to the thumbnail when the player is unavailable and hides a bro
   fireEvent.error(thumbnail);
   expect(thumbnail).not.toBeVisible();
   expect(screen.getByText('Video preview unavailable')).toBeVisible();
+});
+
+test('uses localized source, chapter, unavailable, and metadata wording', () => {
+  render(
+    <SourcePanel
+      source={source}
+      copy={resultCopy.de}
+      playerAvailable={false}
+      chapters={[{ offsetMs: 0, title: 'Start', description: 'Einführung' }]}
+    />,
+  );
+
+  expect(screen.getByLabelText('Videoquelle')).toBeVisible();
+  expect(screen.getByText('Player nicht verfügbar')).toBeVisible();
+  expect(screen.getByText('1 Schlüsselmomente')).toBeVisible();
+  expect(screen.getByText('Kanal')).toBeVisible();
+  expect(screen.getByText('Dauer')).toBeVisible();
+  expect(screen.getByText('Sprache')).toBeVisible();
 });

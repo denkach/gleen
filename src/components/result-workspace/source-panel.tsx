@@ -1,9 +1,13 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Image from 'next/image';
 
-import { resultCopy, type ResultCopy } from '@/lib/result-workspace/copy';
+import {
+  formatResultCopy,
+  resultCopy,
+  type ResultCopy,
+} from '@/lib/result-workspace/copy';
 import type { TimestampsPresentation } from '@/lib/result-workspace/presentation';
 
 import { ChapterRail } from './chapter-rail';
@@ -44,6 +48,7 @@ export function SourcePanel({
   copy = resultCopy.en,
   chapters = [],
   favorite = false,
+  favoritePending = false,
   onFavorite,
   onShare,
   playerAvailable = true,
@@ -56,6 +61,7 @@ export function SourcePanel({
   copy?: ResultCopy;
   chapters?: TimestampsPresentation['chapters'];
   favorite?: boolean;
+  favoritePending?: boolean;
   onFavorite?: () => void;
   onShare?: () => void;
   playerAvailable?: boolean;
@@ -70,6 +76,7 @@ export function SourcePanel({
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [failedPlayerKey, setFailedPlayerKey] = useState<string | null>(null);
   const [customControlsMounted, setCustomControlsMounted] = useState(false);
+  const playerStageRef = useRef<HTMLDivElement>(null);
   const playerStatus = useVideoPlayerSnapshot(selectPlayerStatus);
   const currentTimeMs = useVideoPlayerSnapshot(selectCurrentTime);
   const playerKey = `${playerLifecycleKey}:${source.videoId}`;
@@ -87,7 +94,7 @@ export function SourcePanel({
   );
 
   return (
-    <aside className="result-source-column" aria-label="Video source">
+    <aside className="result-source-column" aria-label={copy.sourceLabel}>
       <article className="result-panel result-video-card">
         <header className="result-source-heading">
           <span className="result-source-avatar" aria-hidden="true">
@@ -104,6 +111,8 @@ export function SourcePanel({
                 type="button"
                 aria-label={favorite ? copy.favoriteRemove : copy.favoriteAdd}
                 aria-pressed={favorite}
+                aria-busy={favoritePending || undefined}
+                disabled={favoritePending}
                 onClick={onFavorite}
               >
                 <SourceIcon name="heart" />
@@ -121,12 +130,14 @@ export function SourcePanel({
             ) : null}
           </div>
         </header>
-        <div className="result-player-stage">
+        <div className="result-player-stage" ref={playerStageRef}>
           {!thumbnailFailed ? (
             <Image
               className="result-player-poster"
               src={source.thumbnailUrl}
-              alt={`Thumbnail for ${source.title}`}
+              alt={formatResultCopy(copy.sourceThumbnail, {
+                title: source.title,
+              })}
               fill
               sizes="(max-width: 1180px) 100vw, 50vw"
               priority
@@ -139,23 +150,25 @@ export function SourcePanel({
               videoId={source.videoId}
               lifecycleKey={playerLifecycleKey}
               title={source.title}
+              unavailableLabel={copy.playerUnavailable}
               nativeControls={false}
               initialPositionMs={initialPositionMs}
               onReady={onPlayerReady}
               onTimeChange={onTimeChange}
               onUnavailable={() => setFailedPlayerKey(playerKey)}
+              fullscreenTargetRef={playerStageRef}
             />
           ) : !showPlayer ? (
             <div className="result-player-unavailable" role="status">
-              Player unavailable
+              {copy.playerUnavailable}
               {thumbnailFailed ? (
-                <span className="sr-only">Video preview unavailable</span>
+                <span className="sr-only">{copy.playerPreviewUnavailable}</span>
               ) : null}
             </div>
           ) : null}
           {currentChapter && playerStatus === 'ready' ? (
             <div className="result-current-chapter">
-              <span>Current chapter</span>
+              <span>{copy.currentChapter}</span>
               <strong>{currentChapter.title}</strong>
             </div>
           ) : null}
@@ -176,9 +189,9 @@ export function SourcePanel({
         ) : null}
       </article>
       <dl className="result-panel result-source-meta">
-        <SourceMetadata label="Channel" value={source.channel} />
-        <SourceMetadata label="Duration" value={source.duration} />
-        <SourceMetadata label="Language" value={source.language} />
+        <SourceMetadata label={copy.metadataChannel} value={source.channel} />
+        <SourceMetadata label={copy.metadataDuration} value={source.duration} />
+        <SourceMetadata label={copy.metadataLanguage} value={source.language} />
       </dl>
     </aside>
   );

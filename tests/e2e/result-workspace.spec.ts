@@ -73,15 +73,27 @@ test('matches desktop, tablet, and mobile result geometry', async ({
   await gotoFixture(page, route);
   const layout = page.getByTestId('result-layout');
   await expect(layout).toHaveCSS('grid-template-columns', /\d+.*\d+/);
-  await expect(page.getByLabel('Video source')).toHaveCSS('position', 'sticky');
-
-  await page.setViewportSize({ width: 980, height: 768 });
-  await expect(page.getByLabel('Video source')).toHaveCSS(
-    'position',
-    'relative',
+  await expect(page.getByLabel('Video source')).toHaveCSS('position', 'static');
+  await expect(page.locator('.result-progress-wrap')).toHaveCSS(
+    'bottom',
+    '64px',
   );
 
+  await page.setViewportSize({ width: 1100, height: 768 });
+  await expect(page.locator('.side-link span').first()).toBeHidden();
+  await expect(page.locator('.usage-mini')).toBeHidden();
+  await expect(page.locator('.user-chip-text')).toBeHidden();
+  await expect(page.getByLabel('Video source')).toHaveCSS('position', 'static');
+
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('.app-topbar')).toHaveCSS('height', '62px');
+  await expect(page.locator('.app-topbar')).toBeVisible();
+  await expect(page.locator('.bottom-nav')).toBeHidden();
+  await expect(page.locator('.app-shell')).toHaveCSS('padding-bottom', '0px');
+  await expect(page.locator('.result-progress-wrap')).toHaveCSS(
+    'bottom',
+    '57px',
+  );
   const boxes = await page.evaluate(() => ({
     source: document
       .querySelector('[aria-label="Video source"]')!

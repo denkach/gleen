@@ -11,11 +11,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { resultArtifactEditSchema } from '@/lib/result-workspace/edit-schemas';
 import { resultCopy } from '@/lib/result-workspace/copy';
+import type { ResultMutationState } from '@/lib/result-workspace/actions';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
 import { PlayerProvider } from './player-context';
 import type { VideoPlayerController } from './player-controller';
 import { ResultWorkspace } from './result-workspace';
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
+}
 
 const controller: VideoPlayerController = {
   subscribe: () => () => undefined,
@@ -519,6 +528,91 @@ describe('ResultWorkspace', () => {
     expect(shareButtons).toHaveLength(2);
     await user.click(shareButtons[1]);
     expect(onShare).toHaveBeenCalledOnce();
+  });
+
+  it('shares Favorite pending state and ignores repeated actions', async () => {
+    const user = userEvent.setup();
+    const request = deferred<ResultMutationState>();
+    const savePreference = vi.fn(() => request.promise);
+    render(
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          model={model}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+          savePreference={savePreference}
+        />
+      </PlayerProvider>,
+    );
+
+    await user.click(
+      screen.getAllByRole('button', { name: 'Add to favorites' })[0]!,
+    );
+    const pendingButtons = screen.getAllByRole('button', {
+      name: 'Remove from favorites',
+    });
+    expect(pendingButtons).toHaveLength(2);
+    pendingButtons.forEach((button) => {
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('aria-busy', 'true');
+      fireEvent.click(button);
+    });
+    expect(savePreference).toHaveBeenCalledOnce();
+
+    request.resolve({ status: 'saved' });
+    await waitFor(() =>
+      pendingButtons.forEach((button) => expect(button).toBeEnabled()),
+    );
+  });
+
+  it('does not let a deferred Favorite request update a new lifecycle', async () => {
+    const user = userEvent.setup();
+    const requestA = deferred<ResultMutationState>();
+    const requestB = deferred<ResultMutationState>();
+    const savePreference = vi
+      .fn()
+      .mockImplementationOnce(() => requestA.promise)
+      .mockImplementationOnce(() => requestB.promise);
+    const renderResult = (nextModel: ResultWorkspaceModel) => (
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          model={nextModel}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+          savePreference={savePreference}
+        />
+      </PlayerProvider>
+    );
+    const view = render(renderResult(model));
+
+    await user.click(
+      screen.getAllByRole('button', { name: 'Add to favorites' })[0]!,
+    );
+    const modelB: ResultWorkspaceModel = {
+      ...model,
+      source: { ...model.source, intakeId: 'analysis-b' },
+      userState: { ...model.userState!, favorite: false },
+    };
+    view.rerender(renderResult(modelB));
+    await user.click(
+      screen.getAllByRole('button', { name: 'Add to favorites' })[0]!,
+    );
+
+    requestA.resolve({ status: 'saved' });
+    await act(async () => {});
+    expect(screen.queryByText('Added to favorites')).not.toBeInTheDocument();
+    screen
+      .getAllByRole('button', { name: 'Remove from favorites' })
+      .forEach((button) => expect(button).toBeDisabled());
+
+    requestB.resolve({ status: 'saved' });
+    await waitFor(() =>
+      expect(screen.getByText('Added to favorites')).toBeInTheDocument(),
+    );
+    expect(savePreference).toHaveBeenNthCalledWith(2, {
+      analysisId: 'analysis-b',
+      favorite: true,
+    });
   });
 
   it('maps the active artifact tab to its shared spectral accent', async () => {

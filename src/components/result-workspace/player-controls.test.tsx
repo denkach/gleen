@@ -74,6 +74,7 @@ test('exposes the prototype player controls through native semantic inputs', () 
   const seek = screen.getByRole('slider', { name: 'Video progress' });
   expect(seek).toHaveAttribute('min', '0');
   expect(seek).toHaveAttribute('max', '900000');
+  expect(seek).toHaveAttribute('aria-valuetext', '01:00 of 15:00');
   fireEvent.change(seek, { target: { value: '225000' } });
   expect(controller.seekTo).toHaveBeenCalledWith(225_000);
 
@@ -85,7 +86,9 @@ test('exposes the prototype player controls through native semantic inputs', () 
   fireEvent.change(speed, { target: { value: '1.5' } });
   expect(controller.setPlaybackRate).toHaveBeenCalledWith(1.5);
 
-  fireEvent.change(screen.getByRole('slider', { name: 'Volume' }), {
+  const volumeControl = screen.getByRole('slider', { name: 'Volume' });
+  expect(volumeControl).toHaveAttribute('aria-valuetext', '64%');
+  fireEvent.change(volumeControl, {
     target: { value: '35' },
   });
   expect(controller.setVolume).toHaveBeenCalledWith(35);
@@ -126,4 +129,26 @@ test('reflects reactive play, mute, and time state without inventing rates', () 
       (option) => option.value,
     ),
   ).toEqual(['1', '1.5']);
+  expect(screen.getByRole('combobox', { name: 'Playback speed' })).toHaveValue(
+    '1',
+  );
+});
+
+test('unmutes before setting a positive volume', () => {
+  snapshot = { ...snapshot, muted: true, volume: 64 };
+  render(
+    <PlayerProvider controller={controller}>
+      <SourcePanel source={source} copy={resultCopy.en} chapters={[]} />
+    </PlayerProvider>,
+  );
+
+  fireEvent.change(screen.getByRole('slider', { name: 'Volume' }), {
+    target: { value: '35' },
+  });
+
+  expect(controller.toggleMute).toHaveBeenCalledOnce();
+  expect(controller.setVolume).toHaveBeenCalledWith(35);
+  expect(
+    vi.mocked(controller.toggleMute).mock.invocationCallOrder[0],
+  ).toBeLessThan(vi.mocked(controller.setVolume).mock.invocationCallOrder[0]!);
 });

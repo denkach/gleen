@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { PlayerProvider, useVideoPlayerSnapshot } from './player-context';
@@ -32,6 +32,22 @@ const player = {
   mute: vi.fn(),
   unMute: vi.fn(),
 };
+
+function FullscreenTargetHarness({
+  onReady,
+}: Readonly<{ onReady: (controller: VideoPlayerController | null) => void }>) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  return (
+    <div ref={stageRef} data-testid="player-stage">
+      <YouTubePlayer
+        videoId="dQw4w9WgXcQ"
+        title="Source video"
+        fullscreenTargetRef={stageRef}
+        onReady={onReady}
+      />
+    </div>
+  );
+}
 
 function installYouTubeApi({
   ready = true,
@@ -339,6 +355,23 @@ describe('YouTubePlayer', () => {
     await expect(controller.requestFullscreen()).resolves.toBeUndefined();
   });
 
+  test('requests fullscreen on the composed player stage', async () => {
+    installYouTubeApi();
+    const onReady = vi.fn();
+    render(<FullscreenTargetHarness onReady={onReady} />);
+    await act(async () => {});
+    const controller = onReady.mock.calls[0]?.[0] as VideoPlayerController;
+    const stage = screen.getByTestId('player-stage');
+    const requestFullscreen = vi.fn(async () => undefined);
+    Object.assign(stage, { requestFullscreen });
+    const iframeLookupsBeforeRequest = player.getIframe.mock.calls.length;
+
+    await controller.requestFullscreen();
+
+    expect(requestFullscreen).toHaveBeenCalledOnce();
+    expect(player.getIframe).toHaveBeenCalledTimes(iframeLookupsBeforeRequest);
+  });
+
   test('seeks the saved position exactly once after ready', async () => {
     const Player = installYouTubeApi();
     const onTimeChange = vi.fn();
@@ -410,12 +443,18 @@ describe('YouTubePlayer', () => {
   });
 
   test('shows an unavailable fallback when the API script fails', async () => {
-    render(<YouTubePlayer videoId="dQw4w9WgXcQ" title="Source video" />);
+    render(
+      <YouTubePlayer
+        videoId="dQw4w9WgXcQ"
+        title="Source video"
+        unavailableLabel="Player nicht verfügbar"
+      />,
+    );
     const script = document.querySelector<HTMLScriptElement>(
       'script[src="https://www.youtube.com/iframe_api"]',
     );
     await act(async () => script?.dispatchEvent(new Event('error')));
-    expect(screen.getByText('Player unavailable')).toBeVisible();
+    expect(screen.getByText('Player nicht verfügbar')).toBeVisible();
   });
 
   test('removes its failed API script so a same-page remount can retry', async () => {

@@ -1,6 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type {
   ResultMutationState,
   ResultSaveState,
@@ -45,6 +52,7 @@ function ResultArtifacts({
   saveArtifact,
   copy,
   favorite,
+  favoritePending,
   onFavorite,
   onShare,
 }: Readonly<{
@@ -53,6 +61,7 @@ function ResultArtifacts({
   saveArtifact: SaveAction;
   copy: ResultCopy;
   favorite: boolean;
+  favoritePending: boolean;
   onFavorite?: () => void;
   onShare?: () => void;
 }>) {
@@ -149,6 +158,7 @@ function ResultArtifacts({
           }
           subtitle={model.source.channelTitle}
           favorite={favorite}
+          favoritePending={favoritePending}
           copy={copy}
           onFavorite={onFavorite}
           onShare={onShare}
@@ -346,33 +356,66 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
     lifecycleKey: string;
     value: boolean;
     pending: boolean;
-  }>({ lifecycleKey, value: initialFavorite, pending: false });
+    requestId: number;
+  }>({ lifecycleKey, value: initialFavorite, pending: false, requestId: 0 });
   const favorite =
     favoriteState.lifecycleKey === lifecycleKey
       ? favoriteState.value
       : initialFavorite;
   const favoritePending =
     favoriteState.lifecycleKey === lifecycleKey && favoriteState.pending;
-  const [favoriteMessage, setFavoriteMessage] = useState('');
+  const activeFavoriteLifecycleRef = useRef(lifecycleKey);
+  useLayoutEffect(() => {
+    activeFavoriteLifecycleRef.current = lifecycleKey;
+  }, [lifecycleKey]);
+  const favoriteRequestSequenceRef = useRef(0);
+  const favoriteRequestTokensRef = useRef(new Map<string, number>());
+  const [favoriteMessages, setFavoriteMessages] = useState<
+    Readonly<Record<string, string>>
+  >({});
+  const favoriteMessage = favoriteMessages[lifecycleKey] ?? '';
   const savePreference = props.savePreference;
   const toggleFavorite = useCallback(() => {
     if (!savePreference || favoritePending) return;
     const previous = favorite;
     const next = !previous;
-    setFavoriteState({ lifecycleKey, value: next, pending: true });
+    const requestId = ++favoriteRequestSequenceRef.current;
+    favoriteRequestTokensRef.current.set(lifecycleKey, requestId);
+    const requestIsCurrent = () =>
+      activeFavoriteLifecycleRef.current === lifecycleKey &&
+      favoriteRequestTokensRef.current.get(lifecycleKey) === requestId;
+    const settleFavorite = (value: boolean) =>
+      setFavoriteState((current) =>
+        current.lifecycleKey === lifecycleKey && current.requestId === requestId
+          ? { lifecycleKey, value, pending: false, requestId }
+          : current,
+      );
+    const announce = (value: string) =>
+      setFavoriteMessages((current) => ({
+        ...current,
+        [lifecycleKey]: value,
+      }));
+    setFavoriteState({
+      lifecycleKey,
+      value: next,
+      pending: true,
+      requestId,
+    });
     void savePreference({ analysisId: lifecycleKey, favorite: next })
       .then((result) => {
+        if (!requestIsCurrent()) return;
         if (result.status === 'saved') {
-          setFavoriteState({ lifecycleKey, value: next, pending: false });
-          setFavoriteMessage(next ? copy.favoriteAdded : copy.favoriteRemoved);
+          settleFavorite(next);
+          announce(next ? copy.favoriteAdded : copy.favoriteRemoved);
           return;
         }
-        setFavoriteState({ lifecycleKey, value: previous, pending: false });
-        setFavoriteMessage(copy.favoriteError);
+        settleFavorite(previous);
+        announce(copy.favoriteError);
       })
       .catch(() => {
-        setFavoriteState({ lifecycleKey, value: previous, pending: false });
-        setFavoriteMessage(copy.favoriteError);
+        if (!requestIsCurrent()) return;
+        settleFavorite(previous);
+        announce(copy.favoriteError);
       });
   }, [copy, favorite, favoritePending, lifecycleKey, savePreference]);
   const favoriteAction = savePreference ? toggleFavorite : undefined;
@@ -409,6 +452,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
               : []
           }
           favorite={favorite}
+          favoritePending={favoritePending}
           onFavorite={favoriteAction}
           onShare={props.onShare}
           playerLifecycleKey={lifecycleKey}
@@ -422,6 +466,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           saveTitle={props.saveTitle}
           saveArtifact={props.saveArtifact}
           favorite={favorite}
+          favoritePending={favoritePending}
           onFavorite={favoriteAction}
           onShare={props.onShare}
         />

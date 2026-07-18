@@ -20,6 +20,7 @@ export function ResultHeader({
   title,
   subtitle,
   favorite,
+  favoritePending = false,
   copy,
   onFavorite,
   onShare,
@@ -29,6 +30,7 @@ export function ResultHeader({
   title: ReactNode;
   subtitle: string;
   favorite: boolean;
+  favoritePending?: boolean;
   copy: ResultCopy;
   onFavorite?: () => void;
   onShare?: () => void;
@@ -50,6 +52,8 @@ export function ResultHeader({
               type="button"
               aria-label={favorite ? copy.favoriteRemove : copy.favoriteAdd}
               aria-pressed={favorite}
+              aria-busy={favoritePending || undefined}
+              disabled={favoritePending}
               onClick={onFavorite}
             >
               <HeaderIcon name="heart" />

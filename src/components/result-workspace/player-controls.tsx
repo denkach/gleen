@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-import type { ResultCopy } from '@/lib/result-workspace/copy';
+import { formatResultCopy, type ResultCopy } from '@/lib/result-workspace/copy';
 
 import { useVideoPlayer, useVideoPlayerSnapshot } from './player-context';
 
@@ -124,6 +124,15 @@ export function PlayerControls({
     playing ? controller.pause() : controller.play();
   const seekRelative = (deltaMs: number) =>
     controller.seekTo(Math.max(0, Math.min(maximum, current + deltaMs)));
+  const selectedRate = availableRates.reduce<number | undefined>(
+    (closest, candidate) =>
+      closest === undefined ||
+      Math.abs(candidate - playbackRate) < Math.abs(closest - playbackRate)
+        ? candidate
+        : closest,
+    undefined,
+  );
+  const displayedVolume = muted ? 0 : volume;
 
   return (
     <>
@@ -139,7 +148,11 @@ export function PlayerControls({
         <input
           className="result-progress-input"
           type="range"
-          aria-label="Video progress"
+          aria-label={copy.playerProgress}
+          aria-valuetext={formatResultCopy(copy.playerProgressValue, {
+            current: formatTime(current),
+            duration: formatTime(maximum),
+          })}
           min={0}
           max={maximum}
           step={1_000}
@@ -210,7 +223,7 @@ export function PlayerControls({
           <select
             className="result-speed-control"
             aria-label={copy.playerPlaybackRate}
-            value={playbackRate}
+            value={selectedRate}
             onChange={(event) =>
               controller.setPlaybackRate(Number(event.currentTarget.value))
             }
@@ -234,12 +247,17 @@ export function PlayerControls({
           className="result-volume-input"
           type="range"
           aria-label={copy.playerVolume}
+          aria-valuetext={formatResultCopy(copy.playerVolumeValue, {
+            percent: displayedVolume,
+          })}
           min={0}
           max={100}
-          value={muted ? 0 : volume}
-          onChange={(event) =>
-            controller.setVolume(event.currentTarget.valueAsNumber)
-          }
+          value={displayedVolume}
+          onChange={(event) => {
+            const nextVolume = event.currentTarget.valueAsNumber;
+            if (muted && nextVolume > 0) controller.toggleMute();
+            controller.setVolume(nextVolume);
+          }}
         />
         <button
           className="result-control-button"

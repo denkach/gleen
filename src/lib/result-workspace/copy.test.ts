@@ -21,5 +21,10 @@ describe('result workspace copy', () => {
     expect(copy.favoriteAdd).toBeTruthy();
     expect(copy.sharePublicReadOnly).toBeTruthy();
     expect(copy.stateMalformed).toBeTruthy();
+    expect(copy.sourceLabel).toBe('Джерело відео');
+    expect(copy.currentChapter).toBe('Поточний розділ');
+    expect(copy.keyMomentsCount).toContain('{count}');
+    expect(copy.playerProgressValue).toContain('{current}');
+    expect(copy.playerVolumeValue).toContain('{percent}');
   });
 });
