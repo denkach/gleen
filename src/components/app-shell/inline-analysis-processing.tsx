@@ -23,6 +23,7 @@ export type InlineAnalysisProcessingProps = Readonly<{
   refreshAction?: typeof refreshAnalysisSnapshot;
   retryAction?: typeof retryAnalysis;
   resultPathPrefix?: string;
+  enableRealtime?: boolean;
 }>;
 
 const pollingIntervalMs = 2_000;
@@ -49,6 +50,7 @@ export function InlineAnalysisProcessing({
   refreshAction = refreshAnalysisSnapshot,
   retryAction = retryAnalysis,
   resultPathPrefix = '/app/video',
+  enableRealtime = true,
 }: InlineAnalysisProcessingProps) {
   const router = useRouter();
   const push = router.push;
@@ -134,10 +136,11 @@ export function InlineAnalysisProcessing({
   useEffect(() => {
     if (!ownedSnapshot || (isTerminalAnalysis(ownedSnapshot) && !isReconciling))
       return;
-    const supabase = createBrowserSupabaseClient();
     const generation = controllerGeneration.current;
     const notify = () => void refresh(generation);
     const polling = window.setInterval(notify, pollingIntervalMs);
+    if (!enableRealtime) return () => window.clearInterval(polling);
+    const supabase = createBrowserSupabaseClient();
     const channel = supabase
       .channel(`analysis:${ownedSnapshot.job.id}`)
       .on(
@@ -176,7 +179,7 @@ export function InlineAnalysisProcessing({
       window.clearInterval(polling);
       void supabase.removeChannel(channel);
     };
-  }, [analysisId, isReconciling, ownedSnapshot, refresh]);
+  }, [analysisId, enableRealtime, isReconciling, ownedSnapshot, refresh]);
 
   useEffect(() => {
     if (

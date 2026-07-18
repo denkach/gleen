@@ -611,45 +611,55 @@ test('durable processing survives reload and restores the persisted transcript s
   await expectNoHorizontalOverflow(page);
 });
 
-test('queued and running stay on New analysis with exactly one spectrum', async ({
+test('durable queued and running stay on New analysis with exactly one spectrum before one result handoff', async ({
   page,
 }) => {
-  for (const state of ['queued', 'transcript'] as const) {
-    await page.goto(`/app-shell-fixture/app/video/pipeline-${state}`);
-    await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
-    await expect(page.getByTestId('result-layout')).toHaveCount(0);
-    expect(page.url()).toContain(`/pipeline-${state}`);
-  }
-});
-
-test('complete performs one navigation and the destination has zero spectra', async ({
-  page,
-}) => {
-  let resultNavigations = 0;
+  await page.goto('/app-shell-fixture?journey=complete');
+  const transitions: string[] = [];
   page.on('framenavigated', (frame) => {
-    if (
-      frame === page.mainFrame() &&
-      frame.url().includes('/app-shell-fixture/app/video/pipeline-complete')
-    )
-      resultNavigations += 1;
+    if (frame === page.mainFrame()) transitions.push(frame.url());
   });
-  await page.goto('/app-shell-fixture/app/video/pipeline-complete');
-  await expect(page).toHaveURL(/\/pipeline-complete$/);
+  await page.getByRole('button', { name: 'Start fixture analysis' }).click();
+  await expect(page).toHaveURL(/\/app\?analysis=result-complete$/);
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveAttribute(
+    'data-analysis-state',
+    /validating|queued/,
+  );
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveAttribute(
+    'data-analysis-state',
+    'transcript',
+  );
+  await expect(page).toHaveURL(
+    /\/app-shell-fixture\/app\/video\/result-complete$/,
+    { timeout: 7_000 },
+  );
   await expect(page.getByTestId('result-layout')).toBeVisible();
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
-  expect(resultNavigations).toBe(1);
+  await page.waitForTimeout(500);
+  expect(
+    transitions.filter((url) => url.includes('/app-shell-fixture/app/video/')),
+  ).toEqual([
+    expect.stringContaining('/app-shell-fixture/app/video/result-complete'),
+  ]);
 });
 
 test('partial exposes both actions and never navigates automatically', async ({
   page,
 }) => {
-  await page.goto('/app-shell-fixture/app/video/pipeline-partial');
+  await page.goto('/app-shell-fixture?journey=partial');
+  await page.getByRole('button', { name: 'Start fixture analysis' }).click();
   const initialUrl = page.url();
-  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Retry failed artifact' }),
+  ).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'View available results' }),
   ).toBeVisible();
-  await page.waitForTimeout(700);
+  await expect(page.getByTestId('fixture-settled')).toHaveAttribute(
+    'data-settled',
+    'true',
+  );
   expect(page.url()).toBe(initialUrl);
 });
 
@@ -684,24 +694,35 @@ test('retry preserves ready status while unfinished status resumes', async ({
   );
 });
 
-test('reload and History restore the active job truthfully', async ({
+test('durable reload and History restore the active job truthfully', async ({
   page,
 }) => {
-  await page.goto('/app-shell-fixture/app/video/pipeline-transcript');
+  await page.goto('/app-shell-fixture?journey=recover');
+  await page.getByRole('button', { name: 'Start fixture analysis' }).click();
   await expect(page.getByText('Finding transcript')).toBeVisible();
-  await page.reload();
+  await page.goto('/app-shell-fixture?journey=recover');
   await expect(page.getByText('Finding transcript')).toBeVisible();
-  await page.goto('/app-shell-fixture/app/video/result-complete');
-  await page.goBack();
+  await page
+    .locator('#app-content')
+    .getByRole('link', { name: 'History' })
+    .click();
+  await page.getByRole('link', { name: 'Resume active analysis' }).click();
   await expect(page.getByText('Finding transcript')).toBeVisible();
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
 });
 
-test('reduced motion keeps truthful completion without decorative delay', async ({
+test('durable reduced motion keeps truthful completion without decorative delay', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/app-shell-fixture/app/video/pipeline-complete');
+  await page.goto('/app-shell-fixture?journey=reduced');
+  const startedAt = Date.now();
+  await page.getByRole('button', { name: 'Start fixture analysis' }).click();
+  await expect(page).toHaveURL(
+    /\/app-shell-fixture\/app\/video\/result-complete$/,
+    { timeout: 2_700 },
+  );
+  expect(Date.now() - startedAt).toBeLessThan(2_700);
   await expect(page.getByTestId('result-layout')).toBeVisible();
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
 });

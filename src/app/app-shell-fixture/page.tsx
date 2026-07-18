@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 
 import { AppShell } from '@/components/app-shell/app-shell';
 import { NewAnalysisHome } from '@/components/app-shell/new-analysis-home';
+import { AnalysisHandoffFixture } from '@/components/app-shell/analysis-handoff-fixture';
 import { unavailableUsage } from '@/lib/app-shell';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import {
@@ -24,7 +25,11 @@ const fixtureIdentity = {
 } as const;
 
 type Props = Readonly<{
-  searchParams: Promise<{ continuation?: string; intake?: string }>;
+  searchParams: Promise<{
+    continuation?: string;
+    intake?: string;
+    journey?: 'complete' | 'partial' | 'recover' | 'reduced';
+  }>;
 }>;
 
 export default async function AppShellFixturePage({ searchParams }: Props) {
@@ -37,7 +42,7 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
     notFound();
   }
 
-  const { continuation, intake } = await searchParams;
+  const { continuation, intake, journey } = await searchParams;
   if (
     intake &&
     !fixtureCases.includes(intake as (typeof fixtureCases)[number])
@@ -61,12 +66,16 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
       usage={unavailableUsage}
       pathnameOverride="/app"
     >
-      <NewAnalysisHome
-        action={fixtureActions[scenario as keyof typeof fixtureActions]}
-        reanalyzeAction={reanalyzeFixture}
-        resultPathPrefix="/app-shell-fixture/app/video"
-        continuation={continuation ? { rawUrl: continuation } : undefined}
-      />
+      {journey ? (
+        <AnalysisHandoffFixture journey={journey} />
+      ) : (
+        <NewAnalysisHome
+          action={fixtureActions[scenario as keyof typeof fixtureActions]}
+          reanalyzeAction={reanalyzeFixture}
+          resultPathPrefix="/app-shell-fixture/app/video"
+          continuation={continuation ? { rawUrl: continuation } : undefined}
+        />
+      )}
     </AppShell>
   );
 }

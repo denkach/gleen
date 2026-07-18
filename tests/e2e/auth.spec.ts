@@ -38,15 +38,13 @@ test('landing URL preserves the normalized analysis continuation in sign in next
 test('authenticated continuation auto-submits exactly once with the default artifacts', async ({
   page,
 }) => {
-  let actionRequests = 0;
-  let submittedBody = '';
+  const actionRequests: string[] = [];
   page.on('request', (request) => {
     if (
       request.method() === 'POST' &&
       new URL(request.url()).pathname === '/app-shell-fixture'
     ) {
-      actionRequests += 1;
-      submittedBody += request.postData() ?? '';
+      actionRequests.push(request.postData() ?? '');
     }
   });
   await page.goto(
@@ -58,11 +56,24 @@ test('authenticated continuation auto-submits exactly once with the default arti
     'data-submitted-url',
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
   );
-  await expect.poll(() => actionRequests).toBe(1);
-  expect(submittedBody).toContain('summary');
-  expect(submittedBody).toContain('timestamps');
-  expect(submittedBody).toContain('transcript');
-  expect(submittedBody).not.toContain('flashcards');
+  await expect.poll(() => actionRequests.length).toBe(1);
+  await expect
+    .poll(async () => {
+      const before = actionRequests.length;
+      await page.waitForTimeout(500);
+      return actionRequests.length === before;
+    })
+    .toBe(true);
+  expect(actionRequests).toHaveLength(1);
+  const fields = [
+    ...actionRequests[0].matchAll(/name="([^"]+)"[^\n]*\n\r?\n([^\r\n]*)/g),
+  ].map(([, name, value]) => [name, value] as const);
+  expect(
+    fields
+      .filter(([name]) => name.endsWith('artifacts'))
+      .map(([, value]) => value),
+  ).toEqual(['summary', 'timestamps', 'transcript']);
+  expect(fields.some(([, value]) => value === 'flashcards')).toBe(false);
 });
 
 for (const viewport of authViewports) {
