@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   ResultMutationState,
   ResultSaveState,
@@ -50,18 +50,36 @@ function ResultArtifacts({
 }>) {
   const [tab, setTab] = useState<TabValue>('overview');
   const [draftModel, setDraftModel] = useState(model);
+  const availableArtifacts = useMemo<readonly ResultArtifact[]>(() => {
+    const artifacts: ResultArtifact[] = ['overview'];
+    if (model.tabs.summary.status === 'ready') artifacts.push('summary');
+    if (model.tabs.flashcards.status === 'ready') artifacts.push('flashcards');
+    if (model.tabs.timestamps.status === 'ready') artifacts.push('timestamps');
+    if (model.tabs.transcript.status === 'ready') artifacts.push('transcript');
+    artifacts.push('export');
+    return artifacts;
+  }, [
+    model.tabs.flashcards.status,
+    model.tabs.summary.status,
+    model.tabs.timestamps.status,
+    model.tabs.transcript.status,
+  ]);
   useEffect(() => {
     let subscribed = true;
-    const initialArtifact = initializeResultArtifactNavigation();
+    const initialArtifact =
+      initializeResultArtifactNavigation(availableArtifacts);
     queueMicrotask(() => {
       if (subscribed) setTab(initialArtifact);
     });
-    const unsubscribe = subscribeToResultArtifactNavigation(setTab);
+    const unsubscribe = subscribeToResultArtifactNavigation(
+      setTab,
+      availableArtifacts,
+    );
     return () => {
       subscribed = false;
       unsubscribe();
     };
-  }, []);
+  }, [availableArtifacts]);
 
   const selectTab = (value: string) => {
     const artifact = value as ResultArtifact;

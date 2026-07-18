@@ -7,7 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { resultArtifactEditSchema } from '@/lib/result-workspace/edit-schemas';
 import { resultCopy } from '@/lib/result-workspace/copy';
@@ -150,6 +150,19 @@ const model: ResultWorkspaceModel = {
   },
 };
 
+const partialModel: ResultWorkspaceModel = {
+  ...model,
+  tabs: {
+    ...model.tabs,
+    flashcards: {
+      status: 'unavailable',
+      reason: 'failed',
+      errorCode: 'generation_failed',
+    },
+    transcript: { status: 'unavailable', reason: 'pending' },
+  },
+};
+
 function renderWorkspace(value: ResultWorkspaceModel = model) {
   return render(
     <PlayerProvider controller={controller}>
@@ -191,6 +204,10 @@ function renderWorkspaceWithActions({
 }
 
 describe('ResultWorkspace', () => {
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+  });
+
   it('uses the supplied interface copy for result navigation', () => {
     render(
       <PlayerProvider controller={controller}>
@@ -253,6 +270,57 @@ describe('ResultWorkspace', () => {
     replaceState.mockRestore();
     pushState.mockRestore();
     window.history.replaceState(null, '', '/');
+  });
+
+  it('canonicalizes an unavailable initial artifact hash to Overview', async () => {
+    window.history.replaceState(null, '', '/app/video/result#flashcards');
+    const replaceState = vi.spyOn(window.history, 'replaceState');
+
+    renderWorkspace(partialModel);
+
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+    expect(replaceState).toHaveBeenLastCalledWith(
+      null,
+      '',
+      '/app/video/result#overview',
+    );
+  });
+
+  it('resolves history events for unavailable artifacts while keeping direct state panels reachable', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '/app/video/result#overview');
+    renderWorkspace(partialModel);
+
+    const unavailableFlashcards = screen.getByRole('tab', {
+      name: 'Flashcards',
+    });
+    await user.click(unavailableFlashcards);
+    expect(screen.getByText(/could not be generated/i)).toBeVisible();
+    expect(window.location.hash).toBe('#flashcards');
+
+    window.history.replaceState(null, '', '/app/video/result#transcript');
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')));
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+
+    await user.click(unavailableFlashcards);
+    window.history.replaceState(null, '', '/app/video/result#transcript');
+    act(() => window.dispatchEvent(new HashChangeEvent('hashchange')));
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
   });
 
   it('renders six accessible tabs with automatic arrow-key navigation', async () => {
