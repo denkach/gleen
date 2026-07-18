@@ -12,58 +12,144 @@ const migrationPath = join(
 
 const sql = readFileSync(migrationPath, 'utf8');
 
+const tableNames = [
+  'analysis_result_states',
+  'analysis_flashcard_reviews',
+  'analysis_shares',
+] as const;
+
+type TableName = (typeof tableNames)[number];
+type PolicyOperation = 'select' | 'insert' | 'update' | 'delete';
+
+const readTable = (table: TableName) => {
+  const match = sql.match(
+    new RegExp(`create table public\\.${table} \\(([\\s\\S]*?)\\n\\);`),
+  );
+
+  expect(match, `missing ${table} table`).not.toBeNull();
+  return match?.[1] ?? '';
+};
+
+const readPolicy = (table: TableName, operation: PolicyOperation) => {
+  const match = sql.match(
+    new RegExp(
+      `create policy "[^"]+"\\non public\\.${table} for ${operation}\\n[\\s\\S]*?;`,
+    ),
+  );
+
+  expect(match, `missing ${operation} policy for ${table}`).not.toBeNull();
+  return match?.[0] ?? '';
+};
+
+const expectOwnedIntakePredicate = (fragment: string, table: TableName) => {
+  expect(fragment).toContain('(select auth.uid()) = user_id');
+  expect(fragment).toContain('exists (');
+  expect(fragment).toContain('from public.analysis_intakes');
+  expect(fragment).toContain(`analysis_intakes.id = ${table}.analysis_id`);
+  expect(fragment).toContain('analysis_intakes.user_id = (select auth.uid())');
+};
+
 describe('DEN-25 result persistence migration', () => {
-  it('defines the constrained result state, flashcard review, and share tables', () => {
-    expect(sql).toContain('create table public.analysis_result_states');
-    expect(sql).toContain('create table public.analysis_flashcard_reviews');
-    expect(sql).toContain('create table public.analysis_shares');
-    expect(sql).toContain(
+  it('defines the exact constrained result state schema', () => {
+    const table = readTable('analysis_result_states');
+
+    expect(table).toContain(
+      'analysis_id uuid not null references public.analysis_intakes(id) on delete cascade',
+    );
+    expect(table).toContain(
+      'user_id uuid not null references auth.users(id) on delete cascade',
+    );
+    expect(table).toContain('favorite boolean not null default false');
+    expect(table).toContain(
+      'playback_position_ms bigint not null default 0 check (playback_position_ms >= 0)',
+    );
+    expect(table).toContain(
       "check (last_artifact in ('overview','summary','flashcards','timestamps','transcript','export'))",
     );
-    expect(sql).toContain(
+    expect(table).toContain(
       "check (last_study_action in ('summary_opened','flashcards_reviewed','transcript_used'))",
     );
-    expect(sql).toContain("check (rating in ('again','hard','got_it'))");
-    expect(sql).toContain("check (token ~ '^[A-Za-z0-9_-]{43}$')");
+    expect(table).toContain('primary key (analysis_id, user_id)');
   });
 
-  it('enables RLS and requires authenticated intake ownership for writes', () => {
-    expect(sql).toContain(
-      'alter table public.analysis_result_states enable row level security',
+  it('defines the exact constrained flashcard review schema', () => {
+    const table = readTable('analysis_flashcard_reviews');
+
+    expect(table).toContain(
+      'analysis_id uuid not null references public.analysis_intakes(id) on delete cascade',
     );
-    expect(sql).toContain(
-      'alter table public.analysis_flashcard_reviews enable row level security',
+    expect(table).toContain(
+      'user_id uuid not null references auth.users(id) on delete cascade',
     );
-    expect(sql).toContain(
-      'alter table public.analysis_shares enable row level security',
+    expect(table).toContain(
+      'card_index integer not null check (card_index >= 0)',
     );
-    expect(sql).toContain('using ((select auth.uid()) = user_id)');
-    expect(sql).toContain('with check ((select auth.uid()) = user_id');
-    expect(sql).toContain('from public.analysis_intakes');
-    expect(sql).toContain('analysis_intakes.user_id = (select auth.uid())');
+    expect(table).toContain("check (rating in ('again','hard','got_it'))");
+    expect(table).toContain(
+      'primary key (analysis_id, user_id, artifact_revision, card_index)',
+    );
   });
 
-  it('grants owner-scoped CRUD only to authenticated users', () => {
-    expect(sql).toContain(
-      'grant select, insert, update, delete on public.analysis_result_states to authenticated',
+  it('defines the exact constrained share schema', () => {
+    const table = readTable('analysis_shares');
+
+    expect(table).toContain(
+      "token text primary key check (token ~ '^[A-Za-z0-9_-]{43}$')",
     );
-    expect(sql).toContain(
-      'grant select, insert, update, delete on public.analysis_flashcard_reviews to authenticated',
+    expect(table).toContain(
+      'analysis_id uuid not null references public.analysis_intakes(id) on delete cascade',
     );
-    expect(sql).toContain(
-      'grant select, insert, update, delete on public.analysis_shares to authenticated',
+    expect(table).toContain(
+      'user_id uuid not null references auth.users(id) on delete cascade',
     );
-    expect(sql).toContain(
-      'revoke all on public.analysis_result_states from anon',
-    );
-    expect(sql).toContain(
-      'revoke all on public.analysis_flashcard_reviews from anon',
-    );
-    expect(sql).toContain('revoke all on public.analysis_shares from anon');
-    expect(sql).not.toMatch(/grant .*analysis_result_states.* to anon/);
-    expect(sql).not.toMatch(/grant .*analysis_flashcard_reviews.* to anon/);
-    expect(sql).not.toMatch(/grant .*analysis_shares.* to anon/);
+    expect(table).toContain('unique (analysis_id, user_id)');
   });
+
+  it.each(tableNames)('enables RLS on public.%s', (table) => {
+    expect(sql).toContain(
+      `alter table public.${table} enable row level security`,
+    );
+  });
+
+  it.each(tableNames)(
+    'requires authenticated intake ownership in every policy for public.%s',
+    (table) => {
+      for (const operation of ['select', 'insert', 'delete'] as const) {
+        const policy = readPolicy(table, operation);
+
+        expect(policy).toContain('to authenticated');
+        expectOwnedIntakePredicate(policy, table);
+      }
+
+      const updatePolicy = readPolicy(table, 'update');
+      const usingStart = updatePolicy.indexOf('using (');
+      const withCheckStart = updatePolicy.indexOf('with check (');
+
+      expect(updatePolicy).toContain('to authenticated');
+      expect(usingStart).toBeGreaterThan(-1);
+      expect(withCheckStart).toBeGreaterThan(usingStart);
+      expectOwnedIntakePredicate(
+        updatePolicy.slice(usingStart, withCheckStart),
+        table,
+      );
+      expectOwnedIntakePredicate(updatePolicy.slice(withCheckStart), table);
+    },
+  );
+
+  it.each(tableNames)(
+    'resets public.%s privileges before granting authenticated CRUD only',
+    (table) => {
+      const revoke = `revoke all on public.${table} from PUBLIC, anon, authenticated;`;
+      const grant = `grant select, insert, update, delete on public.${table} to authenticated;`;
+      const grants = sql.match(
+        new RegExp(`grant [^;]+ on public\\.${table} to [^;]+;`, 'g'),
+      );
+
+      expect(sql).toContain(revoke);
+      expect(grants).toEqual([grant]);
+      expect(sql.indexOf(revoke)).toBeLessThan(sql.indexOf(grant));
+    },
+  );
 
   it('adds mutable-row triggers and query indexes', () => {
     expect(sql).toContain(

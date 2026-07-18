@@ -221,9 +221,9 @@ using (((select auth.uid()) = user_id)
       and analysis_intakes.user_id = (select auth.uid())
   ));
 
-revoke all on public.analysis_result_states from anon;
-revoke all on public.analysis_flashcard_reviews from anon;
-revoke all on public.analysis_shares from anon;
+revoke all on public.analysis_result_states from PUBLIC, anon, authenticated;
+revoke all on public.analysis_flashcard_reviews from PUBLIC, anon, authenticated;
+revoke all on public.analysis_shares from PUBLIC, anon, authenticated;
 
 grant select, insert, update, delete on public.analysis_result_states to authenticated;
 grant select, insert, update, delete on public.analysis_flashcard_reviews to authenticated;
