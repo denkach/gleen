@@ -248,6 +248,29 @@ describe('ResultWorkspace', () => {
     expect(screen.getByText('1 / 1')).toBeVisible();
   });
 
+  it('preserves a local artifact draft across same-revision parent rerenders', async () => {
+    const user = userEvent.setup();
+    const view = renderWorkspace();
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    const title = screen.getByRole('textbox', { name: 'Summary title' });
+    await user.clear(title);
+    await user.type(title, 'Unsaved local summary');
+
+    view.rerender(
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          model={{ ...model, revision: model.revision + 1 }}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+        />
+      </PlayerProvider>,
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Summary title' })).toHaveValue(
+      'Unsaved local summary',
+    );
+  });
+
   it('seeks timestamps and exposes the active chapter', async () => {
     const user = userEvent.setup();
     renderWorkspace();

@@ -42,13 +42,7 @@ function ResultArtifacts({
   saveArtifact: SaveAction;
 }>) {
   const [tab, setTab] = useState<TabValue>('overview');
-  const modelKey = `${model.revisions.title}:${model.revisions.summary ?? ''}:${model.revisions.flashcards ?? ''}:${model.revisions.timestamps ?? ''}`;
-  const [draftModelKey, setDraftModelKey] = useState(modelKey);
   const [draftModel, setDraftModel] = useState(model);
-  if (draftModelKey !== modelKey) {
-    setDraftModelKey(modelKey);
-    setDraftModel(model);
-  }
   const accent: TabsAccent =
     tab === 'summary' ||
     tab === 'flashcards' ||
@@ -248,6 +242,7 @@ export function ResultWorkspace(
   const duration = new Date(model.source.durationSeconds * 1_000)
     .toISOString()
     .slice(model.source.durationSeconds >= 3600 ? 11 : 14, 19);
+  const artifactRevisionKey = `${model.source.intakeId}:${model.revisions.title}:${model.revisions.summary ?? ''}:${model.revisions.flashcards ?? ''}:${model.revisions.timestamps ?? ''}`;
 
   return (
     <PlayerProvider
@@ -268,7 +263,7 @@ export function ResultWorkspace(
           }}
           onPlayerReady={setController}
         />
-        <ResultArtifacts {...props} />
+        <ResultArtifacts key={artifactRevisionKey} {...props} />
       </div>
     </PlayerProvider>
   );

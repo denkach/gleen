@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/app-shell/app-shell';
 import { AnalysisProcessingFixtureScreen } from '@/components/app-shell/analysis-processing-fixture-screen';
 import { IntakeReadiness } from '@/components/app-shell/intake-readiness';
-import { ResultWorkspace } from '@/components/result-workspace/result-workspace';
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import { unavailableUsage } from '@/lib/app-shell';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
@@ -13,6 +12,8 @@ import {
   outputLocaleSchema,
   summaryPresetSchema,
 } from '@/lib/onboarding/preferences';
+
+import { FixtureResultWorkspace } from './fixture-result-workspace';
 
 const allowedIds = new Set([
   fixtureSavedIntake.id,
@@ -41,6 +42,14 @@ const resultIds = new Set([
   'result-corrupted',
   'result-empty',
 ]);
+
+const resultAnalysisIds: Record<string, string> = {
+  'result-complete': '60000000-0000-4000-8000-000000000001',
+  'result-legacy': '60000000-0000-4000-8000-000000000002',
+  'result-partial': '60000000-0000-4000-8000-000000000003',
+  'result-corrupted': '60000000-0000-4000-8000-000000000004',
+  'result-empty': '60000000-0000-4000-8000-000000000005',
+};
 
 const pipelineStages = {
   'pipeline-queued': ['queued', 'validating'],
@@ -289,7 +298,7 @@ export default async function FixtureReadinessPage({
   if (!allowedIds.has(id)) notFound();
   const intake = {
     ...fixtureSavedIntake,
-    id,
+    id: resultAnalysisIds[id] ?? id,
     configuration: {
       ...fixtureSavedIntake.configuration,
       outputLocale:
@@ -346,16 +355,8 @@ export default async function FixtureReadinessPage({
       pathnameOverride="/app"
     >
       {result ? (
-        <ResultWorkspace
-          model={normalizeResultWorkspace(intake, result)}
-          saveTitle={async () => {
-            'use server';
-            return { status: 'saved', updatedAt: new Date().toISOString() };
-          }}
-          saveArtifact={async () => {
-            'use server';
-            return { status: 'saved', updatedAt: new Date().toISOString() };
-          }}
+        <FixtureResultWorkspace
+          initialModel={normalizeResultWorkspace(intake, result)}
         />
       ) : snapshot ? (
         <AnalysisProcessingFixtureScreen

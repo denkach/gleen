@@ -11,7 +11,9 @@ export function TranscriptTab({
 }: Readonly<{ transcript: TranscriptPresentation }>) {
   const player = useVideoPlayer();
   const [query, setQuery] = useState('');
-  const [copyError, setCopyError] = useState(false);
+  const [copyMessage, setCopyMessage] = useState<
+    { kind: 'success' | 'error'; text: string } | undefined
+  >();
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const segments = useMemo(
     () =>
@@ -21,14 +23,18 @@ export function TranscriptTab({
     [normalizedQuery, transcript.segments],
   );
   const copy = async () => {
-    setCopyError(false);
+    setCopyMessage(undefined);
     try {
       if (!navigator.clipboard) throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(
         transcript.segments.map((segment) => segment.text).join('\n'),
       );
+      setCopyMessage({ kind: 'success', text: 'Transcript copied' });
     } catch {
-      setCopyError(true);
+      setCopyMessage({
+        kind: 'error',
+        text: 'Transcript could not be copied. Select the text and copy it manually.',
+      });
     }
   };
   return (
@@ -53,9 +59,9 @@ export function TranscriptTab({
           Copy transcript
         </button>
       </div>
-      {copyError && (
+      {copyMessage && (
         <p role="status" className="mb-4 text-sm text-[var(--text-secondary)]">
-          Transcript could not be copied. Select the text and copy it manually.
+          {copyMessage.text}
         </p>
       )}
       {segments.length === 0 ? (
