@@ -56,9 +56,7 @@ export type AnalysisRepository = Readonly<{
     userId: string,
     analysisId: string,
   ): Promise<AnalysisSnapshot | null>;
-  findMostRecentOwnedActive(
-    userId: string,
-  ): Promise<Readonly<{
+  findMostRecentOwnedActive(userId: string): Promise<Readonly<{
     intake: AnalysisIntake;
     snapshot: AnalysisSnapshot;
   }> | null>;
