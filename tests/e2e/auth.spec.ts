@@ -41,6 +41,7 @@ test('landing continuation survives switching from sign in to sign up', async ({
   await page.goto('/');
   await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
   await page.getByRole('button', { name: 'Transform video' }).click();
+  await expect(page).toHaveURL(/\/sign-in\?next=/);
   const next = new URL(page.url()).searchParams.get('next');
   await page.getByRole('link', { name: 'Create an account' }).click();
   await expect(page).toHaveURL(/\/sign-up\?next=/);

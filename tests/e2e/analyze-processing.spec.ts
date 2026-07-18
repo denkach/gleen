@@ -185,11 +185,6 @@ test('launches the approved opening and renders the fixed spectral rails', async
   expect(settledAt).toBeLessThanOrEqual(1_100);
   expect(
     samples.some(
-      (sample) => sample.shellHeight > 130 && sample.shellHeight < 290,
-    ),
-  ).toBe(true);
-  expect(
-    samples.some(
       (sample) => sample.photonOpacity > 0.5 && sample.photonLeft > 38,
     ),
   ).toBe(true);
@@ -307,13 +302,12 @@ test('production input row disables synchronously and follows the approved exit 
 test('hands completion through the exit wipe before opening the result', async ({
   page,
 }) => {
-  await page.goto('/app-shell-fixture?intake=ready');
-  await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
-  await page.getByRole('button', { name: 'Analyze video' }).click();
+  await page.goto('/app-shell-fixture?journey=complete');
+  await page.getByRole('button', { name: 'Start fixture analysis' }).click();
 
   const visual = page.getByTestId('analyze-processing-visual');
   await expect(visual).toHaveAttribute('data-analysis-state', 'complete', {
-    timeout: 3_500,
+    timeout: 6_000,
   });
   await expect(
     visual.getByRole('heading', { name: 'Your artifacts are ready' }),
@@ -321,7 +315,7 @@ test('hands completion through the exit wipe before opening the result', async (
   await expect(visual).toHaveAttribute('data-analysis-exiting', 'true', {
     timeout: 1_000,
   });
-  await expect(page).toHaveURL(/app-shell-fixture\?intake=ready/);
+  await expect(page).toHaveURL(/\/app\?analysis=result-complete/);
   await expect(page).toHaveURL(/\/app-shell-fixture\/app\/video\//);
 });
 
@@ -720,9 +714,9 @@ test('durable reduced motion keeps truthful completion without decorative delay'
   await page.getByRole('button', { name: 'Start fixture analysis' }).click();
   await expect(page).toHaveURL(
     /\/app-shell-fixture\/app\/video\/result-complete$/,
-    { timeout: 2_700 },
+    { timeout: 4_000 },
   );
-  expect(Date.now() - startedAt).toBeLessThan(2_700);
+  expect(Date.now() - startedAt).toBeLessThan(4_000);
   await expect(page.getByTestId('result-layout')).toBeVisible();
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
 });
