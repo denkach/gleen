@@ -3,7 +3,13 @@
 import { useState } from 'react';
 import type { ResultSaveState } from '@/lib/result-workspace/actions';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  type TabsAccent,
+} from '@/components/ui/tabs';
 
 import { ArtifactState } from './artifact-state';
 import { FlashcardsTab } from './flashcards-tab';
@@ -29,6 +35,13 @@ export function ResultWorkspace({
   saveArtifact: SaveAction;
 }>) {
   const [tab, setTab] = useState<TabValue>('overview');
+  const accent: TabsAccent =
+    tab === 'summary' ||
+    tab === 'flashcards' ||
+    tab === 'timestamps' ||
+    tab === 'export'
+      ? tab
+      : 'neutral';
   const triggers: readonly {
     value: TabValue;
     label: string;
@@ -64,6 +77,7 @@ export function ResultWorkspace({
     >
       <Tabs value={tab} onValueChange={(value) => setTab(value as TabValue)}>
         <TabsList
+          accent={accent}
           aria-label="Result artifacts"
           className="sticky top-0 z-10 w-full overflow-x-auto bg-[var(--background-elevated)] px-3 max-[720px]:px-1"
         >

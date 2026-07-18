@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -102,6 +102,22 @@ describe('ResultWorkspace', () => {
     );
   });
 
+  it('maps the active artifact tab to its shared spectral accent', async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+    const tablist = screen.getByRole('tablist', { name: 'Result artifacts' });
+
+    for (const [label, accent] of [
+      ['Summary', 'summary'],
+      ['Flashcards', 'flashcards'],
+      ['Timestamps', 'timestamps'],
+      ['Export', 'export'],
+    ] as const) {
+      await user.click(screen.getByRole('tab', { name: label }));
+      expect(tablist).toHaveAttribute('data-accent', accent);
+    }
+  });
+
   it('keeps unavailable tabs reachable and explains failed and corrupted states', async () => {
     const user = userEvent.setup();
     renderWorkspace({
@@ -139,8 +155,20 @@ describe('ResultWorkspace', () => {
     renderWorkspace();
     await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
     const card = screen.getByRole('button', { name: /show answer/i });
+    const scene = card.querySelector('[data-flashcard-scene]');
+    expect(scene).toHaveClass('[transform-style:preserve-3d]');
+    expect(scene).not.toHaveClass('[transform:rotateY(180deg)]');
+    expect(
+      within(card).getByText('Separates light.').closest('[aria-hidden]'),
+    ).toHaveClass(
+      '[backface-visibility:hidden]',
+      '[transform:rotateY(180deg)]',
+    );
     await user.click(card);
-    expect(screen.getByText('Separates light.')).toBeVisible();
+    expect(scene).toHaveClass('[transform:rotateY(180deg)]');
+    expect(card).toHaveClass(
+      'motion-reduce:[&_[data-flashcard-scene]]:transition-none',
+    );
     await user.click(screen.getByRole('button', { name: 'Next card' }));
     expect(screen.getByText('What stays grounded?')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Previous card' }));
@@ -150,6 +178,38 @@ describe('ResultWorkspace', () => {
     await user.click(screen.getByRole('button', { name: 'Got it' }));
     expect(screen.getByText(/1 studied/i)).toBeVisible();
     expect(card.closest('[data-reduced-motion]')).toBeTruthy();
+  });
+
+  it('clamps the current flashcard when a refreshed deck is shorter', async () => {
+    const user = userEvent.setup();
+    const view = renderWorkspace();
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+    await user.click(screen.getByRole('button', { name: 'Next card' }));
+
+    view.rerender(
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          model={{
+            ...model,
+            tabs: {
+              ...model.tabs,
+              flashcards: {
+                status: 'ready',
+                data: {
+                  schemaVersion: 1,
+                  cards: [{ front: 'Refreshed card', back: 'Fresh answer' }],
+                },
+              },
+            },
+          }}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+        />
+      </PlayerProvider>,
+    );
+
+    expect(screen.getByText('Refreshed card')).toBeVisible();
+    expect(screen.getByText('1 / 1')).toBeVisible();
   });
 
   it('seeks timestamps and exposes the active chapter', async () => {
@@ -162,6 +222,41 @@ describe('ResultWorkspace', () => {
       'aria-current',
       'true',
     );
+  });
+
+  it('updates the active timestamp from controller time polling', async () => {
+    const user = userEvent.setup();
+    const interval = vi
+      .spyOn(window, 'setInterval')
+      .mockImplementation((handler) => {
+        expect(typeof handler).toBe('function');
+        return {} as ReturnType<typeof setInterval>;
+      });
+    try {
+      vi.mocked(controller.getCurrentTimeMs).mockReturnValue(0);
+      renderWorkspace();
+      await user.click(screen.getByRole('tab', { name: 'Timestamps' }));
+      expect(screen.getByText('Opening').closest('li')).toHaveAttribute(
+        'aria-current',
+        'true',
+      );
+
+      vi.mocked(controller.getCurrentTimeMs).mockReturnValue(755_000);
+      await act(async () => {
+        const synchronize = interval.mock.calls.find(
+          ([, delay]) => delay === 500,
+        )?.[0];
+        if (typeof synchronize === 'function') synchronize();
+      });
+
+      expect(screen.getByText('Sources').closest('li')).toHaveAttribute(
+        'aria-current',
+        'true',
+      );
+    } finally {
+      interval.mockRestore();
+      vi.mocked(controller.getCurrentTimeMs).mockReturnValue(0);
+    }
   });
 
   it('searches, reports zero results, copies, and seeks the read-only transcript', async () => {
