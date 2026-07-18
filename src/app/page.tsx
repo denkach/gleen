@@ -1,5 +1,6 @@
 import { ReferenceFacets } from '@/components/marketing/reference-facets';
 import { ReferenceHeaderBehavior } from '@/components/marketing/reference-header';
+import { LandingAnalysisForm } from '@/components/marketing/landing-analysis-form';
 import { ReferenceMotion } from '@/components/marketing/reference-motion';
 import {
   ReferenceFooter,
@@ -12,13 +13,6 @@ const Arrow = () => (
     <path d="m13 6 6 6-6 6" />
   </svg>
 );
-const LinkIcon = () => (
-  <svg className="icon link-icon" viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1" />
-    <path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1" />
-  </svg>
-);
-
 export default function HomePage() {
   return (
     <div className="landing-reference">
@@ -82,22 +76,7 @@ export default function HomePage() {
                 Turn any YouTube video into a structured summary, smart
                 flashcards, precise timestamps, and export-ready knowledge.
               </p>
-              <form className="beam-form" aria-label="Analyze a YouTube video">
-                <label className="sr-only" htmlFor="youtube-url">
-                  YouTube URL
-                </label>
-                <LinkIcon />
-                <input
-                  id="youtube-url"
-                  type="url"
-                  placeholder="Paste a YouTube link"
-                  defaultValue="https://youtube.com/watch?v=knowledge"
-                />
-                <button className="btn btn-primary" type="submit">
-                  <span>Transform video</span>
-                  <Arrow />
-                </button>
-              </form>
+              <LandingAnalysisForm />
               <div className="hero-caption">
                 <span className="ray" />
                 <span>
