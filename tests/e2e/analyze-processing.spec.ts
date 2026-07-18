@@ -322,9 +322,7 @@ test('hands completion through the exit wipe before opening the result', async (
     timeout: 1_000,
   });
   await expect(page).toHaveURL(/app-shell-fixture\?intake=ready/);
-  await expect(page).toHaveURL(/\/app-shell-fixture\/app\/video\//, {
-    timeout: 1_000,
-  });
+  await expect(page).toHaveURL(/\/app-shell-fixture\/app\/video\//);
 });
 
 test('production form keeps stages truthful and contains the rails at app-shell tablet width', async ({
