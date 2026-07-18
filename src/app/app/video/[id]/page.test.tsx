@@ -7,14 +7,22 @@ const {
   findOwned,
   findOwnedState,
   findOwnedSnapshot,
+  getOnboardingState,
   getUser,
   normalizeResultWorkspace,
   notFound,
   redirect,
+  resultWorkspace,
+  saveFlashcardReview,
+  savePlaybackPosition,
+  saveResultArtifact,
+  saveResultPreference,
+  saveResultTitle,
 } = vi.hoisted(() => ({
   findOwned: vi.fn(),
   findOwnedState: vi.fn(),
   findOwnedSnapshot: vi.fn(),
+  getOnboardingState: vi.fn(),
   getUser: vi.fn(),
   normalizeResultWorkspace: vi.fn(),
   notFound: vi.fn((): never => {
@@ -23,6 +31,12 @@ const {
   redirect: vi.fn((path: string): never => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
+  resultWorkspace: vi.fn(),
+  saveFlashcardReview: vi.fn(),
+  savePlaybackPosition: vi.fn(),
+  saveResultArtifact: vi.fn(),
+  saveResultPreference: vi.fn(),
+  saveResultTitle: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ notFound, redirect }));
@@ -40,24 +54,33 @@ vi.mock('@/lib/result-workspace/user-state-repository', () => ({
     findOwned: findOwnedState,
   })),
 }));
+vi.mock('@/lib/onboarding/repository', () => ({ getOnboardingState }));
+vi.mock('@/lib/onboarding/supabase-storage', () => ({
+  createSupabaseOnboardingStorage: vi.fn(() => 'profile-storage'),
+}));
 vi.mock('@/components/app-shell/analysis-processing-screen', () => ({
   AnalysisProcessingScreen: ({ intake }: { intake: AnalysisIntake }) => (
     <h1>{intake.title}</h1>
   ),
 }));
 vi.mock('@/components/result-workspace/result-workspace', () => ({
-  ResultWorkspace: ({ model }: { model: { source: { title: string } } }) => (
-    <div data-testid="result-workspace">{model.source.title}</div>
-  ),
+  ResultWorkspace: (props: { model: { source: { title: string } } }) => {
+    resultWorkspace(props);
+    return <div data-testid="result-workspace">{props.model.source.title}</div>;
+  },
 }));
 vi.mock('@/lib/result-workspace/presentation', () => ({
   normalizeResultWorkspace,
 }));
 vi.mock('@/lib/result-workspace/actions', () => ({
-  saveResultTitle: vi.fn(),
-  saveResultArtifact: vi.fn(),
+  saveResultTitle,
+  saveResultArtifact,
+  saveResultPreference,
+  savePlaybackPosition,
+  saveFlashcardReview,
 }));
 
+import { resultCopy } from '@/lib/result-workspace/copy';
 import VideoIntakePage, { generateMetadata } from './page';
 
 const intake = {
@@ -127,6 +150,17 @@ describe('owned intake readiness page', () => {
     findOwned.mockResolvedValue(intake);
     findOwnedSnapshot.mockResolvedValue(snapshot);
     findOwnedState.mockResolvedValue(userState);
+    getOnboardingState.mockResolvedValue({
+      ok: true,
+      data: {
+        interfaceLocale: 'de',
+        outputLocale: 'en',
+        summaryPreset: 'balanced',
+        flashcardPreset: 18,
+        onboardingStep: 3,
+        onboardingCompletedAt: '2026-07-12T10:00:00.000Z',
+      },
+    });
     normalizeResultWorkspace.mockReturnValue({
       source: { title: intake.title },
     });
@@ -157,8 +191,34 @@ describe('owned intake readiness page', () => {
       expect(screen.getByTestId('result-workspace')).toHaveTextContent(
         intake.title,
       );
+      expect(resultWorkspace).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          copy: resultCopy.de,
+          saveTitle: saveResultTitle,
+          saveArtifact: saveResultArtifact,
+          savePreference: saveResultPreference,
+          savePlaybackPosition,
+          saveFlashcardReview,
+        }),
+      );
     },
   );
+
+  test('falls back to English copy when profile storage is unavailable', async () => {
+    findOwnedSnapshot.mockResolvedValue({
+      ...snapshot,
+      job: { ...snapshot.job, status: 'complete', stage: 'complete' },
+    });
+    getOnboardingState.mockResolvedValue({ ok: false, code: 'storage' });
+
+    render(
+      await VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
+    );
+
+    expect(resultWorkspace).toHaveBeenLastCalledWith(
+      expect.objectContaining({ copy: resultCopy.en }),
+    );
+  });
 
   test('renders with unavailable owner state without fabricating progress', async () => {
     const terminalSnapshot = {

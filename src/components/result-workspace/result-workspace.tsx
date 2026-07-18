@@ -1,7 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import type { ResultSaveState } from '@/lib/result-workspace/actions';
+import { useEffect, useState } from 'react';
+import type {
+  ResultMutationState,
+  ResultSaveState,
+} from '@/lib/result-workspace/actions';
+import { resultCopy, type ResultCopy } from '@/lib/result-workspace/copy';
+import {
+  initializeResultArtifactNavigation,
+  navigateToResultArtifact,
+  subscribeToResultArtifactNavigation,
+  type ResultArtifact,
+} from '@/lib/result-workspace/navigation';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 import {
   Tabs,
@@ -24,25 +34,40 @@ import type { VideoPlayerController } from './player-controller';
 import { SourcePanel } from './source-panel';
 
 type SaveAction = (input: unknown) => Promise<ResultSaveState>;
-type TabValue =
-  | 'overview'
-  | 'summary'
-  | 'flashcards'
-  | 'timestamps'
-  | 'transcript'
-  | 'export';
+type MutationAction = (input: unknown) => Promise<ResultMutationState>;
+type TabValue = ResultArtifact;
 
 function ResultArtifacts({
   model,
   saveTitle,
   saveArtifact,
+  copy,
 }: Readonly<{
   model: ResultWorkspaceModel;
   saveTitle: SaveAction;
   saveArtifact: SaveAction;
+  copy: ResultCopy;
 }>) {
   const [tab, setTab] = useState<TabValue>('overview');
   const [draftModel, setDraftModel] = useState(model);
+  useEffect(() => {
+    let subscribed = true;
+    const initialArtifact = initializeResultArtifactNavigation();
+    queueMicrotask(() => {
+      if (subscribed) setTab(initialArtifact);
+    });
+    const unsubscribe = subscribeToResultArtifactNavigation(setTab);
+    return () => {
+      subscribed = false;
+      unsubscribe();
+    };
+  }, []);
+
+  const selectTab = (value: string) => {
+    const artifact = value as ResultArtifact;
+    setTab(artifact);
+    navigateToResultArtifact(artifact);
+  };
   const accent: TabsAccent =
     tab === 'summary' ||
     tab === 'flashcards' ||
@@ -55,31 +80,31 @@ function ResultArtifacts({
     label: string;
     unavailable?: boolean;
   }[] = [
-    { value: 'overview', label: 'Overview' },
+    { value: 'overview', label: copy.tabOverview },
     {
       value: 'summary',
-      label: 'Summary',
+      label: copy.tabSummary,
       unavailable: model.tabs.summary.status !== 'ready',
     },
     {
       value: 'flashcards',
-      label: 'Flashcards',
+      label: copy.tabFlashcards,
       unavailable: model.tabs.flashcards.status !== 'ready',
     },
     {
       value: 'timestamps',
-      label: 'Timestamps',
+      label: copy.tabTimestamps,
       unavailable: model.tabs.timestamps.status !== 'ready',
     },
     {
       value: 'transcript',
-      label: 'Transcript',
+      label: copy.tabTranscript,
       unavailable: model.tabs.transcript.status !== 'ready',
     },
-    { value: 'export', label: 'Export' },
+    { value: 'export', label: copy.tabExport },
   ];
   return (
-    <section className="result-workspace" aria-label="Analysis artifacts">
+    <section className="result-workspace" aria-label={copy.workspaceLabel}>
       <EditableTitle
         analysisId={model.source.intakeId}
         title={draftModel.source.title}
@@ -92,10 +117,10 @@ function ResultArtifacts({
         revision={model.revisions.title}
         saveTitle={saveTitle}
       />
-      <Tabs value={tab} onValueChange={(value) => setTab(value as TabValue)}>
+      <Tabs value={tab} onValueChange={selectTab}>
         <TabsList
           accent={accent}
-          aria-label="Result artifacts"
+          aria-label={copy.tabsLabel}
           className="sticky top-0 z-10 w-full overflow-x-auto bg-[var(--background-elevated)] px-3 max-[720px]:px-1"
         >
           {triggers.map((trigger) => (
@@ -111,7 +136,7 @@ function ResultArtifacts({
         </TabsList>
         <div className="p-6 max-[720px]:p-4">
           <TabsContent value="overview">
-            <OverviewTab model={model} openTab={setTab} />
+            <OverviewTab model={model} openTab={selectTab} />
           </TabsContent>
           <TabsContent
             value="summary"
@@ -229,14 +254,18 @@ const inactiveController: VideoPlayerController = {
   getCurrentTimeMs: () => 0,
 };
 
-export function ResultWorkspace(
-  props: Readonly<{
-    model: ResultWorkspaceModel;
-    saveTitle: SaveAction;
-    saveArtifact: SaveAction;
-  }>,
-) {
-  const { model } = props;
+export type ResultWorkspaceProps = Readonly<{
+  model: ResultWorkspaceModel;
+  copy?: ResultCopy;
+  saveTitle: SaveAction;
+  saveArtifact: SaveAction;
+  savePreference?: MutationAction;
+  savePlaybackPosition?: MutationAction;
+  saveFlashcardReview?: MutationAction;
+}>;
+
+export function ResultWorkspace(props: ResultWorkspaceProps) {
+  const { model, copy = resultCopy.en } = props;
   const parentController = useVideoPlayer();
   const [controller, setController] = useState<VideoPlayerController>();
   const duration = new Date(model.source.durationSeconds * 1_000)
@@ -263,7 +292,13 @@ export function ResultWorkspace(
           }}
           onPlayerReady={setController}
         />
-        <ResultArtifacts key={artifactRevisionKey} {...props} />
+        <ResultArtifacts
+          key={artifactRevisionKey}
+          model={model}
+          copy={copy}
+          saveTitle={props.saveTitle}
+          saveArtifact={props.saveArtifact}
+        />
       </div>
     </PlayerProvider>
   );

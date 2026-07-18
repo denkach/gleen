@@ -1,8 +1,16 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { resultArtifactEditSchema } from '@/lib/result-workspace/edit-schemas';
+import { resultCopy } from '@/lib/result-workspace/copy';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
 import { PlayerProvider } from './player-context';
@@ -183,6 +191,70 @@ function renderWorkspaceWithActions({
 }
 
 describe('ResultWorkspace', () => {
+  it('uses the supplied interface copy for result navigation', () => {
+    render(
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          model={model}
+          copy={resultCopy.de}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+        />
+      </PlayerProvider>,
+    );
+
+    expect(
+      screen.getByRole('tablist', { name: resultCopy.de.tabsLabel }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('tab', { name: resultCopy.de.tabOverview }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('tab', { name: resultCopy.de.tabTranscript }),
+    ).toBeVisible();
+  });
+
+  it('initializes from the hash, pushes user navigation, and follows browser history', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '/app/video/result#summary');
+    const replaceState = vi.spyOn(window.history, 'replaceState');
+    const pushState = vi.spyOn(window.history, 'pushState');
+
+    const view = renderWorkspace();
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Summary' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+    expect(replaceState).toHaveBeenCalledWith(
+      null,
+      '',
+      '/app/video/result#summary',
+    );
+
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+    expect(pushState).toHaveBeenLastCalledWith(
+      null,
+      '',
+      '/app/video/result#flashcards',
+    );
+
+    window.history.replaceState(null, '', '/app/video/result#overview');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+
+    view.unmount();
+    replaceState.mockRestore();
+    pushState.mockRestore();
+    window.history.replaceState(null, '', '/');
+  });
+
   it('renders six accessible tabs with automatic arrow-key navigation', async () => {
     const user = userEvent.setup();
     renderWorkspace();
