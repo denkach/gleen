@@ -6,12 +6,38 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import { resolveOwnedActiveAnalysis } from '@/lib/analysis-pipeline/recovery';
 import { createSessionRecoveryRepositories } from '@/lib/analysis-pipeline/session-recovery-repository';
-import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
+import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 
 import { InlineAnalysisProcessing } from './inline-analysis-processing';
 
 const analysisId = 'result-complete';
 const fixtureUserId = 'fixture-user';
+const fixtureIntake: AnalysisIntake = {
+  id: analysisId,
+  userId: fixtureUserId,
+  youtubeVideoId: 'dQw4w9WgXcQ',
+  canonicalUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  title: 'Durable handoff fixture',
+  channelTitle: 'Gleen Fixture Channel',
+  durationSeconds: 212,
+  thumbnailUrl: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+  transcriptLanguage: 'en',
+  transcriptSegments: [
+    { text: 'Fixture transcript segment', offsetMs: 0, durationMs: 1_200 },
+  ],
+  configuration: {
+    outputLocale: 'en',
+    summaryPreset: 'balanced',
+    flashcardPreset: null,
+    artifacts: ['summary', 'timestamps', 'transcript'],
+    analysisContractVersion: 1,
+  },
+  duplicateKey: 'fixture-only',
+  attempt: 1,
+  status: 'processing',
+  reanalysisOf: null,
+  createdAt: '2026-07-18T00:00:00.000Z',
+};
 
 type Journey = 'complete' | 'partial' | 'recover' | 'reduced';
 
@@ -123,9 +149,7 @@ export function AnalysisHandoffFixture({
     );
     void repositories.saveActive({
       intake: {
-        ...fixtureSavedIntake,
-        id: analysisId,
-        userId: fixtureUserId,
+        ...fixtureIntake,
       },
       snapshot: snapshot('running', 2),
     });
@@ -168,9 +192,7 @@ export function AnalysisHandoffFixture({
               window.sessionStorage,
             ).saveActive({
               intake: {
-                ...fixtureSavedIntake,
-                id: analysisId,
-                userId: fixtureUserId,
+                ...fixtureIntake,
               },
               snapshot: next,
             });
