@@ -218,11 +218,13 @@ describe('Supabase result user-state repository', () => {
       positionMs: 20_000,
       revision: 2,
     });
-    await repository.savePlaybackPosition({
-      analysisId,
-      positionMs: 10_000,
-      revision: 1,
-    });
+    await expect(
+      repository.savePlaybackPosition({
+        analysisId,
+        positionMs: 10_000,
+        revision: 1,
+      }),
+    ).resolves.toBe(false);
 
     expect(stored).toEqual({ positionMs: 20_000, revision: 2 });
   });

@@ -138,6 +138,7 @@ describe('result owner-state server actions', () => {
     vi.clearAllMocks();
     getUser.mockResolvedValue({ data: { user: { id: userId } } });
     findOwned.mockResolvedValue({ durationSeconds: 213 });
+    savePlaybackPositionRepository.mockResolvedValue(true);
   });
 
   it('rejects unauthenticated preference updates', async () => {
@@ -201,6 +202,18 @@ describe('result owner-state server actions', () => {
       positionMs: 213_000,
       revision: 1_752_844_800_001,
     });
+  });
+
+  it('returns conflict when ordered playback rejects a stale revision', async () => {
+    savePlaybackPositionRepository.mockResolvedValue(false);
+
+    await expect(
+      savePlaybackPosition({
+        analysisId,
+        positionMs: 12_000,
+        revision: 1_752_844_800_001,
+      }),
+    ).resolves.toEqual({ status: 'conflict' });
   });
 
   it('strictly rejects a missing playback revision', async () => {

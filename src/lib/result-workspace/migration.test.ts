@@ -197,4 +197,38 @@ describe('DEN-25 ordered playback migration', () => {
       'grant execute on function public.save_owned_playback_position(uuid, bigint, bigint) to authenticated;',
     );
   });
+
+  it('guards every direct playback update with a strict revision trigger', () => {
+    const migrationsDirectory = join(process.cwd(), 'supabase', 'migrations');
+    const filename = readdirSync(migrationsDirectory).find((entry) =>
+      entry.endsWith('_den_25_ordered_playback_position.sql'),
+    );
+    const orderedSql = readFileSync(
+      join(migrationsDirectory, filename!),
+      'utf8',
+    );
+
+    expect(orderedSql).toContain(
+      'create or replace function public.enforce_monotonic_playback_position()',
+    );
+    expect(orderedSql).toContain('security invoker');
+    expect(orderedSql).toContain("set search_path = ''");
+    expect(orderedSql).toContain(
+      'if NEW.playback_revision <= OLD.playback_revision then',
+    );
+    expect(orderedSql).toContain("errcode = '23514'");
+    expect(orderedSql).toContain(
+      "constraint = 'analysis_result_states_playback_revision_monotonic'",
+    );
+    expect(orderedSql).toContain(
+      'before update of playback_position_ms, playback_revision',
+    );
+    expect(orderedSql).toContain('on public.analysis_result_states');
+    expect(orderedSql).toContain(
+      'execute function public.enforce_monotonic_playback_position()',
+    );
+    expect(orderedSql).toContain(
+      '-- Inserts have no prior row to compare; the nonnegative column check governs initial revisions.',
+    );
+  });
 });

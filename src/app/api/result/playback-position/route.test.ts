@@ -12,26 +12,15 @@ vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(async () => supabase),
 }));
 
-vi.mock('@/lib/result-workspace/playback-persistence-server', () => ({
-  persistOwnedPlaybackPosition,
-  playbackPositionSchema: {
-    safeParse(input: unknown) {
-      const value = input as Record<string, unknown>;
-      const valid =
-        value !== null &&
-        typeof value === 'object' &&
-        Object.keys(value).length === 3 &&
-        typeof value.analysisId === 'string' &&
-        typeof value.positionMs === 'number' &&
-        Number.isSafeInteger(value.positionMs) &&
-        value.positionMs >= 0 &&
-        typeof value.revision === 'number' &&
-        Number.isSafeInteger(value.revision) &&
-        value.revision >= 0;
-      return valid ? { success: true, data: value } : { success: false };
-    },
-  },
-}));
+vi.mock(
+  '@/lib/result-workspace/playback-persistence-server',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/lib/result-workspace/playback-persistence-server')
+    >()),
+    persistOwnedPlaybackPosition,
+  }),
+);
 
 import { POST } from './route';
 
@@ -84,5 +73,14 @@ describe('ordered playback pagehide route', () => {
       userId,
       input,
     );
+  });
+
+  it('returns conflict when the ordered write is stale or equal', async () => {
+    persistOwnedPlaybackPosition.mockResolvedValue({ status: 'conflict' });
+
+    const response = await POST(request(input));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({ status: 'conflict' });
   });
 });

@@ -38,12 +38,14 @@ export async function persistOwnedPlaybackPosition(
     );
     if (!intake) return { status: 'conflict' };
 
-    await createSupabaseResultUserStateRepository(client).savePlaybackPosition({
+    const applied = await createSupabaseResultUserStateRepository(
+      client,
+    ).savePlaybackPosition({
       analysisId: input.analysisId,
       positionMs: Math.min(input.positionMs, intake.durationSeconds * 1000),
       revision: input.revision,
     });
-    return { status: 'saved' };
+    return applied ? { status: 'saved' } : { status: 'conflict' };
   } catch {
     return { status: 'error' };
   }
