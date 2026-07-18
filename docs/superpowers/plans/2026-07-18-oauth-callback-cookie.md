@@ -30,7 +30,7 @@
 - Produces: `createCallbackSupabaseClient(request: NextRequest, response: NextResponse)`
 - Consumes: the callback request cookies and the exact successful redirect response
 
-- [ ] **Step 1: Write the failing callback cookie test**
+- [x] **Step 1: Write the failing callback cookie test**
 
 Mock `createCallbackSupabaseClient` in `route.test.ts`. During `exchangeCodeForSession`, write a representative cookie to the supplied response and assert the successful route response contains it:
 
@@ -51,7 +51,7 @@ expect(response.headers.get('set-cookie')).toContain(
 );
 ```
 
-- [ ] **Step 2: Verify the regression test fails**
+- [x] **Step 2: Verify the regression test fails**
 
 Run:
 
@@ -61,7 +61,7 @@ npm test -- src/app/auth/callback/route.test.ts
 
 Expected: FAIL because the current route does not create or pass the returned response to a callback-specific client.
 
-- [ ] **Step 3: Implement the response-bound callback client**
+- [x] **Step 3: Implement the response-bound callback client**
 
 Create `src/lib/supabase/callback.ts`:
 
@@ -96,7 +96,7 @@ export function createCallbackSupabaseClient(
 
 Update the route to accept `NextRequest`, construct the successful redirect before the exchange, pass the request and response into `createCallbackSupabaseClient`, and return that same response when no error occurs.
 
-- [ ] **Step 4: Verify the focused tests pass**
+- [x] **Step 4: Verify the focused tests pass**
 
 Run:
 
@@ -106,7 +106,7 @@ npm test -- src/app/auth/callback/route.test.ts
 
 Expected: all callback tests pass and the successful test observes `Set-Cookie`.
 
-- [ ] **Step 5: Run repository verification**
+- [x] **Step 5: Run repository verification**
 
 Run formatting on the three task files, then run:
 
@@ -119,7 +119,7 @@ npm run build
 
 Expected: all commands exit successfully.
 
-- [ ] **Step 6: Verify the real OAuth flow and commit**
+- [x] **Step 6: Verify the real OAuth flow and commit**
 
 With the staging server on `http://127.0.0.1:3017`, sign in through Google and confirm the callback reaches `/onboarding`, `/auth/v1/user` returns `200`, and the user no longer returns to `/sign-in`. Commit only the scoped files:
 
