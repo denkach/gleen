@@ -119,7 +119,12 @@ export function ResultWorkspace({
           <TabsContent value="overview">
             <OverviewTab model={model} openTab={setTab} />
           </TabsContent>
-          <TabsContent value="summary">
+          <TabsContent
+            value="summary"
+            forceMount
+            aria-hidden={tab !== 'summary'}
+            className="data-[state=inactive]:hidden"
+          >
             {model.tabs.summary.status === 'ready' ? (
               <SummaryTab
                 key={model.revisions.summary}
@@ -145,7 +150,12 @@ export function ResultWorkspace({
               <ArtifactState state={model.tabs.summary} />
             )}
           </TabsContent>
-          <TabsContent value="flashcards">
+          <TabsContent
+            value="flashcards"
+            forceMount
+            aria-hidden={tab !== 'flashcards'}
+            className="data-[state=inactive]:hidden"
+          >
             {model.tabs.flashcards.status === 'ready' ? (
               <FlashcardsTab
                 key={model.revisions.flashcards}
@@ -171,7 +181,12 @@ export function ResultWorkspace({
               <ArtifactState state={model.tabs.flashcards} />
             )}
           </TabsContent>
-          <TabsContent value="timestamps">
+          <TabsContent
+            value="timestamps"
+            forceMount
+            aria-hidden={tab !== 'timestamps'}
+            className="data-[state=inactive]:hidden"
+          >
             {model.tabs.timestamps.status === 'ready' ? (
               <TimestampsTab
                 key={model.revisions.timestamps}

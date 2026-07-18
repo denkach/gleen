@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -87,8 +87,8 @@ function renderWorkspace(value: ResultWorkspaceModel = model) {
     <PlayerProvider controller={controller}>
       <ResultWorkspace
         model={value}
-        saveTitle={vi.fn()}
-        saveArtifact={vi.fn()}
+        saveTitle={vi.fn().mockResolvedValue({ status: 'error' })}
+        saveArtifact={vi.fn().mockResolvedValue({ status: 'error' })}
       />
     </PlayerProvider>,
   );
@@ -366,6 +366,35 @@ describe('ResultWorkspace', () => {
       content: expect.objectContaining({ overview: 'Edited overview' }),
     });
     expect(screen.getByText('Saved')).toBeVisible();
+  });
+
+  it('finishes artifact autosave after switching tabs during the debounce', async () => {
+    const user = userEvent.setup();
+    const saveArtifact = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:02:00.000Z',
+    });
+    const view = renderWorkspaceWithActions({ saveArtifact });
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Summary overview' }),
+      { target: { value: 'Save after navigation' } },
+    );
+    await user.click(screen.getByRole('tab', { name: 'Overview' }));
+
+    expect(
+      view.container.querySelector('[id$="content-summary"]'),
+    ).toHaveAttribute('aria-hidden', 'true');
+
+    await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
+
+    expect(saveArtifact).toHaveBeenCalledTimes(1);
+    expect(saveArtifact).toHaveBeenCalledWith({
+      analysisId: model.source.intakeId,
+      expectedUpdatedAt: model.revisions.summary,
+      kind: 'summary',
+      content: expect.objectContaining({ overview: 'Save after navigation' }),
+    });
   });
 
   it('copies and downloads local exports and leaves Notion unavailable', async () => {
