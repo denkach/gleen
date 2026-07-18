@@ -10,6 +10,7 @@ const POLL_INTERVAL_MS = 250;
 type YouTubePlayerInstance = {
   destroy(): void;
   getCurrentTime(): number;
+  getIframe(): HTMLIFrameElement;
   pauseVideo(): void;
   playVideo(): void;
   seekTo(seconds: number, allowSeekAhead: boolean): void;
@@ -84,6 +85,7 @@ export type YouTubePlayerProps = Readonly<{
   title: string;
   onReady?: (controller: VideoPlayerController) => void;
   onTimeChange?: (offsetMs: number) => void;
+  onUnavailable?: () => void;
 }>;
 
 export function YouTubePlayer({
@@ -91,21 +93,43 @@ export function YouTubePlayer({
   title,
   onReady,
   onTimeChange,
+  onUnavailable,
 }: YouTubePlayerProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const onReadyRef = useRef(onReady);
   const onTimeChangeRef = useRef(onTimeChange);
-  const [unavailable, setUnavailable] = useState(false);
+  const onUnavailableRef = useRef(onUnavailable);
+  const [unavailableVideoId, setUnavailableVideoId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     onReadyRef.current = onReady;
     onTimeChangeRef.current = onTimeChange;
-  }, [onReady, onTimeChange]);
+    onUnavailableRef.current = onUnavailable;
+  }, [onReady, onTimeChange, onUnavailable]);
 
   useEffect(() => {
     let active = true;
     let player: YouTubePlayerInstance | null = null;
     let pollingId: number | null = null;
+
+    const stopPlayer = () => {
+      if (pollingId !== null) {
+        window.clearInterval(pollingId);
+        pollingId = null;
+      }
+      const stalePlayer = player;
+      player = null;
+      stalePlayer?.destroy();
+    };
+
+    const reportUnavailable = () => {
+      if (!active) return;
+      stopPlayer();
+      setUnavailableVideoId(videoId);
+      onUnavailableRef.current?.();
+    };
 
     void loadYouTubeApi()
       .then((api) => {
@@ -116,6 +140,7 @@ export function YouTubePlayer({
           events: {
             onReady: () => {
               if (!active || !player) return;
+              player.getIframe().title = `Play ${title}`;
               const controller: VideoPlayerController = {
                 seekTo: (offsetMs) =>
                   player?.seekTo(Math.max(0, offsetMs) / 1_000, true),
@@ -133,20 +158,19 @@ export function YouTubePlayer({
                 }
               }, POLL_INTERVAL_MS);
             },
-            onError: () => active && setUnavailable(true),
+            onError: reportUnavailable,
           },
         });
       })
-      .catch(() => active && setUnavailable(true));
+      .catch(reportUnavailable);
 
     return () => {
       active = false;
-      if (pollingId !== null) window.clearInterval(pollingId);
-      player?.destroy();
+      stopPlayer();
     };
-  }, [videoId]);
+  }, [title, videoId]);
 
-  if (unavailable) {
+  if (unavailableVideoId === videoId) {
     return (
       <div
         className="grid size-full min-h-44 place-items-center px-6 text-center text-sm text-[var(--text-secondary)]"
@@ -157,5 +181,9 @@ export function YouTubePlayer({
     );
   }
 
-  return <div ref={mountRef} className="size-full" title={`Play ${title}`} />;
+  return (
+    <div className="size-full" title={`Play ${title}`}>
+      <div ref={mountRef} className="size-full" />
+    </div>
+  );
 }

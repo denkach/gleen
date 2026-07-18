@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { expect, test } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { expect, test, vi } from 'vitest';
 
 import { SourcePanel } from './source-panel';
 
@@ -19,6 +19,39 @@ test('renders the approved source metadata and accessible player', () => {
   expect(screen.getByText(source.duration)).toBeVisible();
   expect(screen.getByText(source.language)).toBeVisible();
   expect(screen.getByTitle(`Play ${source.title}`)).toBeInTheDocument();
+});
+
+test('falls back to the thumbnail when the embedded player reports a runtime failure', async () => {
+  let reportError: (() => void) | undefined;
+  Object.assign(window, {
+    YT: {
+      Player: vi.fn(function Player(
+        element: HTMLElement,
+        options: { events: { onError(): void } },
+      ) {
+        reportError = options.events.onError;
+        const iframe = document.createElement('iframe');
+        element.replaceWith(iframe);
+        return {
+          destroy: vi.fn(),
+          getCurrentTime: vi.fn(() => 0),
+          getIframe: () => iframe,
+          pauseVideo: vi.fn(),
+          playVideo: vi.fn(),
+          seekTo: vi.fn(),
+        };
+      }),
+    },
+  });
+
+  render(<SourcePanel source={source} />);
+  await act(async () => {});
+  act(() => reportError?.());
+
+  expect(
+    screen.getByRole('img', { name: `Thumbnail for ${source.title}` }),
+  ).toBeVisible();
+  expect(screen.getByText('Player unavailable')).toBeVisible();
 });
 
 test('falls back to the thumbnail when the player is unavailable and hides a broken thumbnail', () => {

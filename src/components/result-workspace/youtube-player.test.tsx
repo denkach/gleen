@@ -3,20 +3,22 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { YouTubePlayer } from './youtube-player';
 
+const iframe = document.createElement('iframe');
 const player = {
   destroy: vi.fn(),
+  getIframe: vi.fn(() => iframe),
   getCurrentTime: vi.fn(() => 12.25),
   pauseVideo: vi.fn(),
   playVideo: vi.fn(),
   seekTo: vi.fn(),
 };
 
-function installYouTubeApi() {
+function installYouTubeApi({ ready = true }: { ready?: boolean } = {}) {
   const Player = vi.fn(function Player(
     _element: HTMLElement,
-    options: { events: { onReady(): void } },
+    options: { events: { onReady(): void; onError(): void } },
   ) {
-    queueMicrotask(() => options.events.onReady());
+    if (ready) queueMicrotask(() => options.events.onReady());
     return player;
   });
   Object.assign(window, { YT: { Player } });
@@ -27,6 +29,7 @@ describe('YouTubePlayer', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    iframe.removeAttribute('title');
     Reflect.deleteProperty(window, 'YT');
     Reflect.deleteProperty(window, 'onYouTubeIframeAPIReady');
     document
@@ -58,6 +61,7 @@ describe('YouTubePlayer', () => {
     expect(player.playVideo).toHaveBeenCalledOnce();
     expect(player.pauseVideo).toHaveBeenCalledOnce();
     expect(controller.getCurrentTimeMs()).toBe(12_250);
+    expect(player.getIframe()).toHaveAttribute('title', 'Play Source video');
   });
 
   test('loads the official API script and initializes after its callback', async () => {
@@ -100,5 +104,32 @@ describe('YouTubePlayer', () => {
     const calls = onTimeChange.mock.calls.length;
     act(() => vi.advanceTimersByTime(1_000));
     expect(onTimeChange).toHaveBeenCalledTimes(calls);
+  });
+
+  test('reports runtime failure and stops the ready player safely', async () => {
+    const Player = installYouTubeApi();
+    const onUnavailable = vi.fn();
+    const onTimeChange = vi.fn();
+    const { unmount } = render(
+      <YouTubePlayer
+        videoId="dQw4w9WgXcQ"
+        title="Source video"
+        onUnavailable={onUnavailable}
+        onTimeChange={onTimeChange}
+      />,
+    );
+    await act(async () => {});
+    const options = Player.mock.calls[0]?.[1];
+
+    act(() => options.events.onError());
+    expect(onUnavailable).toHaveBeenCalledOnce();
+    expect(player.destroy).toHaveBeenCalledOnce();
+
+    const calls = onTimeChange.mock.calls.length;
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(onTimeChange).toHaveBeenCalledTimes(calls);
+
+    unmount();
+    expect(player.destroy).toHaveBeenCalledOnce();
   });
 });

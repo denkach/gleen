@@ -27,6 +27,10 @@ export function SourcePanel({
   onTimeChange?: (offsetMs: number) => void;
 }>) {
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const [failedPlayerVideoId, setFailedPlayerVideoId] = useState<string | null>(
+    null,
+  );
+  const showPlayer = playerAvailable && failedPlayerVideoId !== source.videoId;
 
   return (
     <aside
@@ -34,12 +38,13 @@ export function SourcePanel({
       aria-label="Video source"
     >
       <div className="relative grid aspect-video place-items-center overflow-hidden border-b border-[var(--border-default)] bg-[radial-gradient(circle_at_70%_30%,color-mix(in_srgb,var(--artifact-timestamps)_13%,transparent),transparent_35%),linear-gradient(145deg,var(--surface-raised),var(--background-deep))]">
-        {playerAvailable ? (
+        {showPlayer ? (
           <YouTubePlayer
             videoId={source.videoId}
             title={source.title}
             onReady={onPlayerReady}
             onTimeChange={onTimeChange}
+            onUnavailable={() => setFailedPlayerVideoId(source.videoId)}
           />
         ) : (
           <div className="relative grid size-full place-items-center">
