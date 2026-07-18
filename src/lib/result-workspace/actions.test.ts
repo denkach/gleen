@@ -1,22 +1,47 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getUser, saveOwnedTitle, saveOwnedArtifact } = vi.hoisted(() => ({
+const {
+  getUser,
+  saveOwnedTitle,
+  saveOwnedArtifact,
+  findOwned,
+  savePreference,
+  savePlaybackPositionRepository,
+  saveFlashcardReviewRepository,
+} = vi.hoisted(() => ({
   getUser: vi.fn(),
   saveOwnedTitle: vi.fn(),
   saveOwnedArtifact: vi.fn(),
+  findOwned: vi.fn(),
+  savePreference: vi.fn(),
+  savePlaybackPositionRepository: vi.fn(),
+  saveFlashcardReviewRepository: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(async () => ({ auth: { getUser } })),
 }));
 vi.mock('@/lib/youtube-intake/supabase-repository', () => ({
-  createSupabaseIntakeRepository: vi.fn(() => ({ saveOwnedTitle })),
+  createSupabaseIntakeRepository: vi.fn(() => ({ saveOwnedTitle, findOwned })),
 }));
 vi.mock('@/lib/analysis-pipeline/supabase-repository', () => ({
   createSupabaseAnalysisRepository: vi.fn(() => ({ saveOwnedArtifact })),
 }));
+vi.mock('./user-state-repository', () => ({
+  createSupabaseResultUserStateRepository: vi.fn(() => ({
+    savePreference,
+    savePlaybackPosition: savePlaybackPositionRepository,
+    saveFlashcardReview: saveFlashcardReviewRepository,
+  })),
+}));
 
-import { saveResultArtifact, saveResultTitle } from './actions';
+import {
+  saveFlashcardReview,
+  savePlaybackPosition,
+  saveResultArtifact,
+  saveResultPreference,
+  saveResultTitle,
+} from './actions';
 
 const userId = '11111111-1111-4111-8111-111111111111';
 const analysisId = '22222222-2222-4222-8222-222222222222';
@@ -26,6 +51,7 @@ describe('result editing server actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getUser.mockResolvedValue({ data: { user: { id: userId } } });
+    findOwned.mockResolvedValue({ durationSeconds: 213 });
   });
 
   it('rejects unauthenticated edits without touching persistence', async () => {
@@ -103,6 +129,111 @@ describe('result editing server actions', () => {
         },
         expectedUpdatedAt,
       }),
+    ).resolves.toEqual({ status: 'error' });
+  });
+});
+
+describe('result owner-state server actions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getUser.mockResolvedValue({ data: { user: { id: userId } } });
+    findOwned.mockResolvedValue({ durationSeconds: 213 });
+  });
+
+  it('rejects unauthenticated preference updates', async () => {
+    getUser.mockResolvedValue({ data: { user: null } });
+
+    await expect(
+      saveResultPreference({ analysisId, favorite: true }),
+    ).resolves.toEqual({ status: 'error' });
+    expect(savePreference).not.toHaveBeenCalled();
+  });
+
+  it('requires an explicit boolean favorite', async () => {
+    await expect(
+      saveResultPreference({ analysisId, favorite: 'toggle' }),
+    ).resolves.toEqual({ status: 'error' });
+    expect(getUser).not.toHaveBeenCalled();
+    expect(savePreference).not.toHaveBeenCalled();
+  });
+
+  it('uses the authenticated identity for a valid preference', async () => {
+    await expect(
+      saveResultPreference({ analysisId, favorite: false }),
+    ).resolves.toEqual({ status: 'saved' });
+    expect(savePreference).toHaveBeenCalledWith({
+      userId,
+      analysisId,
+      favorite: false,
+    });
+  });
+
+  it('rejects invalid playback before authentication or persistence', async () => {
+    await expect(
+      savePlaybackPosition({ analysisId, positionMs: -1 }),
+    ).resolves.toEqual({ status: 'error' });
+    expect(getUser).not.toHaveBeenCalled();
+    expect(findOwned).not.toHaveBeenCalled();
+    expect(savePlaybackPositionRepository).not.toHaveBeenCalled();
+  });
+
+  it('returns conflict for a foreign analysis', async () => {
+    findOwned.mockResolvedValue(null);
+
+    await expect(
+      savePlaybackPosition({ analysisId, positionMs: 12_000 }),
+    ).resolves.toEqual({ status: 'conflict' });
+    expect(findOwned).toHaveBeenCalledWith(userId, analysisId);
+    expect(savePlaybackPositionRepository).not.toHaveBeenCalled();
+  });
+
+  it('loads the owned intake and clamps playback to its duration', async () => {
+    await expect(
+      savePlaybackPosition({ analysisId, positionMs: 999_000 }),
+    ).resolves.toEqual({ status: 'saved' });
+    expect(findOwned).toHaveBeenCalledWith(userId, analysisId);
+    expect(savePlaybackPositionRepository).toHaveBeenCalledWith({
+      userId,
+      analysisId,
+      positionMs: 213_000,
+    });
+  });
+
+  it('persists the current revision and card index for a review', async () => {
+    await expect(
+      saveFlashcardReview({
+        analysisId,
+        artifactRevision: expectedUpdatedAt,
+        cardIndex: 2,
+        rating: 'got_it',
+      }),
+    ).resolves.toEqual({ status: 'saved' });
+    expect(saveFlashcardReviewRepository).toHaveBeenCalledWith({
+      userId,
+      analysisId,
+      artifactRevision: expectedUpdatedAt,
+      cardIndex: 2,
+      rating: 'got_it',
+    });
+  });
+
+  it('strictly rejects invalid reviews', async () => {
+    await expect(
+      saveFlashcardReview({
+        analysisId,
+        artifactRevision: 'not-a-revision',
+        cardIndex: -1,
+        rating: 'easy',
+      }),
+    ).resolves.toEqual({ status: 'error' });
+    expect(saveFlashcardReviewRepository).not.toHaveBeenCalled();
+  });
+
+  it('does not expose owner-state storage failures', async () => {
+    savePreference.mockRejectedValue(new Error('provider detail'));
+
+    await expect(
+      saveResultPreference({ analysisId, favorite: true }),
     ).resolves.toEqual({ status: 'error' });
   });
 });
