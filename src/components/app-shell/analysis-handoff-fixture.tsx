@@ -4,11 +4,14 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
+import { resolveOwnedActiveAnalysis } from '@/lib/analysis-pipeline/recovery';
+import { createSessionRecoveryRepositories } from '@/lib/analysis-pipeline/session-recovery-repository';
+import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
 
 import { InlineAnalysisProcessing } from './inline-analysis-processing';
 
 const analysisId = 'result-complete';
-const storageKey = 'gleen:handoff-fixture';
+const fixtureUserId = 'fixture-user';
 
 type Journey = 'complete' | 'partial' | 'recover' | 'reduced';
 
@@ -83,7 +86,8 @@ function snapshot(
 
 export function AnalysisHandoffFixture({
   journey,
-}: Readonly<{ journey: Journey }>) {
+  requestedAnalysisId = null,
+}: Readonly<{ journey: Journey; requestedAnalysisId?: string | null }>) {
   const [recovered, setRecovered] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [settled, setSettled] = useState(false);
@@ -96,21 +100,35 @@ export function AnalysisHandoffFixture({
   );
 
   useEffect(() => {
-    if (
-      journey === 'recover' &&
-      window.sessionStorage.getItem(storageKey) === 'running'
-    ) {
-      const restore = window.setTimeout(() => {
-        setRecovered(true);
-        setStartedAt(Date.now() - 600);
-      }, 0);
-      return () => window.clearTimeout(restore);
-    }
-  }, [journey]);
+    if (journey !== 'recover') return;
+    const repositories = createSessionRecoveryRepositories(
+      window.sessionStorage,
+    );
+    void resolveOwnedActiveAnalysis({
+      userId: fixtureUserId,
+      requestedAnalysisId,
+      continuation: null,
+      ...repositories,
+    }).then((recovery) => {
+      if (!recovery.initialAnalysis) return;
+      setRecovered(true);
+      setStartedAt(Date.now() - 600);
+    });
+  }, [journey, requestedAnalysisId]);
 
   function start(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    window.sessionStorage.setItem(storageKey, 'running');
+    const repositories = createSessionRecoveryRepositories(
+      window.sessionStorage,
+    );
+    void repositories.saveActive({
+      intake: {
+        ...fixtureSavedIntake,
+        id: analysisId,
+        userId: fixtureUserId,
+      },
+      snapshot: snapshot('running', 2),
+    });
     setStartedAt(Date.now());
   }
 
@@ -146,7 +164,16 @@ export function AnalysisHandoffFixture({
                       ? snapshot('running', 2)
                       : snapshot('complete', 3);
           if (next.job.status === 'running')
-            window.sessionStorage.setItem(storageKey, 'running');
+            void createSessionRecoveryRepositories(
+              window.sessionStorage,
+            ).saveActive({
+              intake: {
+                ...fixtureSavedIntake,
+                id: analysisId,
+                userId: fixtureUserId,
+              },
+              snapshot: next,
+            });
           if (['partial', 'complete'].includes(next.job.status))
             setSettled(true);
           return next;

@@ -6,19 +6,12 @@ import {
   createSupabaseAnalysisRepository,
   type SupabaseAnalysisClient,
 } from '@/lib/analysis-pipeline/supabase-repository';
+import { historyEntryPresentation } from '@/lib/analysis-pipeline/recovery';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'History — Gleen',
 };
-
-const statusLabel = {
-  queued: 'Processing',
-  running: 'Processing',
-  partial: 'Partial',
-  complete: 'Complete',
-  failed: 'Failed',
-} as const;
 
 export default async function HistoryPage() {
   const supabase = await createServerSupabaseClient();
@@ -44,19 +37,12 @@ export default async function HistoryPage() {
         ) : (
           <ul>
             {rows.map((row) => {
-              const active =
-                row.status === 'queued' || row.status === 'running';
+              const presentation = historyEntryPresentation(row);
               return (
                 <li key={row.id}>
-                  <Link
-                    href={
-                      active
-                        ? `/app?analysis=${row.id}`
-                        : `/app/video/${row.id}`
-                    }
-                  >
+                  <Link href={presentation.href}>
                     <strong>{row.title}</strong>{' '}
-                    <span>{statusLabel[row.status]}</span>
+                    <span>{presentation.statusLabel}</span>
                   </Link>
                 </li>
               );

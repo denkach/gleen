@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { FixtureHistory } from '@/components/app-shell/fixture-history';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 
 export default function FixtureHistoryPage() {
@@ -13,9 +13,7 @@ export default function FixtureHistoryPage() {
   return (
     <main>
       <h1>History</h1>
-      <Link href="/app-shell-fixture?journey=recover">
-        Resume active analysis
-      </Link>
+      <FixtureHistory />
     </main>
   );
 }

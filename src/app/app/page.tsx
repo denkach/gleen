@@ -5,6 +5,7 @@ import {
   createSupabaseAnalysisRepository,
   type SupabaseAnalysisClient,
 } from '@/lib/analysis-pipeline/supabase-repository';
+import { resolveOwnedActiveAnalysis } from '@/lib/analysis-pipeline/recovery';
 import { defaultOnboardingState } from '@/lib/onboarding/preferences';
 import { getOnboardingState } from '@/lib/onboarding/repository';
 import { createSupabaseOnboardingStorage } from '@/lib/onboarding/supabase-storage';
@@ -36,6 +37,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
   const params = await searchParams;
   const continuation = parseAnalysisContinuation(params.continuation ?? null);
   let initialAnalysis;
+  let resolvedContinuation = continuation;
 
   if (user) {
     const intakeRepository = createSupabaseIntakeRepository(
@@ -44,22 +46,15 @@ export default async function AppPage({ searchParams }: AppPageProps) {
     const analysisRepository = createSupabaseAnalysisRepository(
       supabase as unknown as SupabaseAnalysisClient,
     );
-    if (params.analysis) {
-      const intake = await intakeRepository.findOwned(user.id, params.analysis);
-      const snapshot = intake
-        ? await analysisRepository.findOwnedSnapshot(user.id, intake.id)
-        : null;
-      if (
-        intake &&
-        snapshot &&
-        (snapshot.job.status === 'queued' || snapshot.job.status === 'running')
-      )
-        initialAnalysis = { intake, snapshot };
-    }
-    if (!initialAnalysis && !continuation)
-      initialAnalysis = await analysisRepository.findMostRecentOwnedActive(
-        user.id,
-      );
+    const recovery = await resolveOwnedActiveAnalysis({
+      userId: user.id,
+      requestedAnalysisId: params.analysis ?? null,
+      continuation,
+      intakeRepository,
+      analysisRepository,
+    });
+    initialAnalysis = recovery.initialAnalysis ?? undefined;
+    resolvedContinuation = recovery.continuation;
   }
 
   return (
@@ -70,7 +65,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
         flashcardPreset: preferences.flashcardPreset,
       }}
       initialAnalysis={initialAnalysis ?? undefined}
-      continuation={initialAnalysis ? undefined : (continuation ?? undefined)}
+      continuation={resolvedContinuation ?? undefined}
     />
   );
 }

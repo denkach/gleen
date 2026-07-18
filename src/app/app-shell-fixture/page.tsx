@@ -29,6 +29,7 @@ type Props = Readonly<{
     continuation?: string;
     intake?: string;
     journey?: 'complete' | 'partial' | 'recover' | 'reduced';
+    analysis?: string;
   }>;
 }>;
 
@@ -42,7 +43,8 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
     notFound();
   }
 
-  const { continuation, intake, journey } = await searchParams;
+  const { continuation, intake, journey, analysis } = await searchParams;
+  const resolvedJourney = journey ?? (analysis ? 'recover' : undefined);
   if (
     intake &&
     !fixtureCases.includes(intake as (typeof fixtureCases)[number])
@@ -66,8 +68,11 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
       usage={unavailableUsage}
       pathnameOverride="/app"
     >
-      {journey ? (
-        <AnalysisHandoffFixture journey={journey} />
+      {resolvedJourney ? (
+        <AnalysisHandoffFixture
+          journey={resolvedJourney}
+          requestedAnalysisId={analysis}
+        />
       ) : (
         <NewAnalysisHome
           action={fixtureActions[scenario as keyof typeof fixtureActions]}
