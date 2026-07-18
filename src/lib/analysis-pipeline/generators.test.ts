@@ -24,19 +24,25 @@ describe('artifact generators', () => {
   it('passes locale and preset to focused summary generation', async () => {
     const provider = createDeterministicProvider({
       gleen_summary_v1: {
-        schemaVersion: 1,
+        schemaVersion: 2,
         title: 'Title',
         overview: 'Overview',
-        keyPoints: ['Point'],
+        keyPoints: [{ text: 'Point', sourceOffsetMs: 1_000 }],
       },
     });
 
     await generateSummary(provider, context);
 
-    expect(provider.requests[0]).toMatchObject({ name: 'gleen_summary_v1' });
+    expect(provider.requests[0]).toMatchObject({
+      name: 'gleen_summary_v1',
+      jsonSchema: {
+        properties: { schemaVersion: { type: 'integer', const: 2 } },
+      },
+    });
     expect(provider.requests[0]?.input).toContain('Output locale: uk');
     expect(provider.requests[0]?.input).toContain('Preset: detailed');
     expect(provider.requests[0]?.input).toContain('[0ms] First idea');
+    expect(provider.requests[0]?.system).toContain('sourceOffsetMs');
   });
 
   it('passes the requested card count to flashcard generation', async () => {

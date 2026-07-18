@@ -20,7 +20,7 @@ export type GeneratorContext = Readonly<{
 }>;
 
 const SUMMARY_SYSTEM_PROMPT =
-  'Create only a faithful structured summary from the supplied transcript.';
+  'Create only a faithful structured summary from the supplied transcript. Return schemaVersion 2 and ground each key point with sourceOffsetMs from the nearest supplied transcript segment offset.';
 const FLASHCARDS_SYSTEM_PROMPT =
   'Create only concise study flashcards grounded in the supplied transcript.';
 const TIMESTAMPS_SYSTEM_PROMPT =
