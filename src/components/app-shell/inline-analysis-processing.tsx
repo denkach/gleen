@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   chooseNewestSnapshot,
@@ -31,46 +31,74 @@ export function InlineAnalysisProcessing({
   analysisId,
   initialSnapshot,
   refreshAction = refreshAnalysisSnapshot,
-  retryAction = retryAnalysis,
   resultPathPrefix = '/app/video',
 }: InlineAnalysisProcessingProps) {
   const router = useRouter();
-  const [snapshot, setSnapshot] = useState(initialSnapshot);
-  const [retryError, setRetryError] = useState<string>();
-  const [isRetryPending, startRetryTransition] = useTransition();
-  const mounted = useRef(false);
+  const [snapshotState, setSnapshotState] = useState(() => ({
+    analysisId,
+    snapshot:
+      initialSnapshot?.job.analysisId === analysisId
+        ? initialSnapshot
+        : undefined,
+  }));
+  const controllerGeneration = useRef(0);
 
-  const refresh = useCallback(async () => {
-    const incoming = await refreshAction(analysisId);
-    if (!incoming || !mounted.current) return;
-    setSnapshot((current) =>
-      current ? chooseNewestSnapshot(current, incoming) : incoming,
-    );
-  }, [analysisId, refreshAction]);
+  const ownedSnapshot =
+    snapshotState.analysisId === analysisId
+      ? snapshotState.snapshot
+      : initialSnapshot?.job.analysisId === analysisId
+        ? initialSnapshot
+        : undefined;
+
+  const refresh = useCallback(
+    async (generation?: number) => {
+      const requestedAnalysisId = analysisId;
+      const requestedGeneration = generation ?? controllerGeneration.current;
+      const incoming = await refreshAction(requestedAnalysisId);
+      if (
+        !incoming ||
+        controllerGeneration.current !== requestedGeneration ||
+        incoming.job.analysisId !== requestedAnalysisId
+      )
+        return;
+      setSnapshotState((current) => {
+        if (current.analysisId !== requestedAnalysisId)
+          return { analysisId: requestedAnalysisId, snapshot: incoming };
+        return {
+          analysisId: requestedAnalysisId,
+          snapshot: current.snapshot
+            ? chooseNewestSnapshot(current.snapshot, incoming)
+            : incoming,
+        };
+      });
+    },
+    [analysisId, refreshAction],
+  );
 
   useEffect(() => {
-    mounted.current = true;
+    const generation = ++controllerGeneration.current;
     window.history.replaceState(null, '', `/app?analysis=${analysisId}`);
-    void refresh();
+    void refresh(generation);
     return () => {
-      mounted.current = false;
+      if (controllerGeneration.current === generation)
+        controllerGeneration.current += 1;
     };
   }, [analysisId, refresh]);
 
   useEffect(() => {
-    if (!snapshot || isTerminalAnalysis(snapshot)) return;
+    if (!ownedSnapshot || isTerminalAnalysis(ownedSnapshot)) return;
     const supabase = createBrowserSupabaseClient();
     const notify = () => void refresh();
     const polling = window.setInterval(notify, pollingIntervalMs);
     const channel = supabase
-      .channel(`analysis:${snapshot.job.id}`)
+      .channel(`analysis:${ownedSnapshot.job.id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'analysis_jobs',
-          filter: `id=eq.${snapshot.job.id}`,
+          filter: `id=eq.${ownedSnapshot.job.id}`,
         },
         notify,
       )
@@ -80,7 +108,7 @@ export function InlineAnalysisProcessing({
           event: '*',
           schema: 'public',
           table: 'analysis_job_events',
-          filter: `job_id=eq.${snapshot.job.id}`,
+          filter: `job_id=eq.${ownedSnapshot.job.id}`,
         },
         notify,
       )
@@ -100,45 +128,27 @@ export function InlineAnalysisProcessing({
       window.clearInterval(polling);
       void supabase.removeChannel(channel);
     };
-  }, [analysisId, refresh, snapshot]);
+  }, [analysisId, ownedSnapshot, refresh]);
 
   useEffect(() => {
-    if (snapshot?.job.status === 'complete')
+    if (ownedSnapshot?.job.status === 'complete')
       router.push(`${resultPathPrefix}/${analysisId}`);
-  }, [analysisId, resultPathPrefix, router, snapshot?.job.status]);
+  }, [analysisId, ownedSnapshot?.job.status, resultPathPrefix, router]);
 
-  const retry = () => {
-    if (isRetryPending) return;
-    setRetryError(undefined);
-    const formData = new FormData();
-    formData.set('analysisId', analysisId);
-    startRetryTransition(async () => {
-      const result = await retryAction(formData);
-      if (!result.ok) {
-        if (mounted.current)
-          setRetryError('We couldn’t restart the analysis. Please try again.');
-        return;
-      }
-      await refresh();
-    });
-  };
-
-  const state = snapshot ? toAnalysisVisualState(snapshot) : 'validating';
-  const canRetry =
-    snapshot && ['partial', 'failed'].includes(snapshot.job.status);
+  const state = ownedSnapshot
+    ? toAnalysisVisualState(ownedSnapshot)
+    : 'validating';
 
   return (
     <AnalyzeProcessingVisual
       state={state}
       submittedUrl=""
       errorMessage={
-        retryError ??
-        (canRetry
+        ownedSnapshot &&
+        ['partial', 'failed'].includes(ownedSnapshot.job.status)
           ? 'Analysis stopped safely. Your completed work has been kept.'
-          : undefined)
+          : undefined
       }
-      onRetry={canRetry ? retry : undefined}
-      retryDisabled={isRetryPending}
     />
   );
 }

@@ -29,11 +29,12 @@ const analysisId = '550e8400-e29b-41d4-a716-446655440000';
 function snapshot(
   status: AnalysisSnapshot['job']['status'] = 'running',
   revision = 1,
+  ownedAnalysisId = analysisId,
 ): AnalysisSnapshot {
   return {
     job: {
-      id: 'job-1',
-      analysisId,
+      id: `job-${ownedAnalysisId}`,
+      analysisId: ownedAnalysisId,
       userId: 'user-1',
       workflowRunId: null,
       status,
@@ -56,6 +57,14 @@ function snapshot(
       updatedAt: '2026-07-17T00:00:00Z',
     },
   };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
 }
 
 describe('InlineAnalysisProcessing', () => {
@@ -99,7 +108,7 @@ describe('InlineAnalysisProcessing', () => {
       'postgres_changes',
       expect.objectContaining({
         table: 'analysis_jobs',
-        filter: 'id=eq.job-1',
+        filter: `id=eq.job-${analysisId}`,
       }),
       expect.any(Function),
     );
@@ -140,4 +149,66 @@ describe('InlineAnalysisProcessing', () => {
       expect(routerPush).toHaveBeenCalledWith(`/app/video/${analysisId}`),
     );
   });
+
+  test('ignores a previous analysis refresh that resolves after the identity switches', async () => {
+    const nextAnalysisId = '660e8400-e29b-41d4-a716-446655440000';
+    const firstRefresh = deferred<AnalysisSnapshot | null>();
+    const refreshAction = vi.fn((requestedAnalysisId: string) =>
+      requestedAnalysisId === analysisId
+        ? firstRefresh.promise
+        : Promise.resolve(snapshot('running', 1, nextAnalysisId)),
+    );
+    const { rerender } = render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        initialSnapshot={snapshot('running', 5)}
+        refreshAction={refreshAction}
+        retryAction={vi.fn()}
+      />,
+    );
+
+    rerender(
+      <InlineAnalysisProcessing
+        analysisId={nextAnalysisId}
+        refreshAction={refreshAction}
+        retryAction={vi.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(refreshAction).toHaveBeenCalledWith(nextAnalysisId),
+    );
+
+    await act(async () =>
+      firstRefresh.resolve(snapshot('complete', 99, analysisId)),
+    );
+
+    expect(routerPush).not.toHaveBeenCalled();
+    expect(realtime.channel.on).toHaveBeenCalledWith(
+      'postgres_changes',
+      expect.objectContaining({
+        table: 'analysis_jobs',
+        filter: `id=eq.job-${nextAnalysisId}`,
+      }),
+      expect.any(Function),
+    );
+  });
+
+  test.each(['partial', 'failed'] as const)(
+    'keeps %s terminal state inline without exposing retry controls',
+    async (status) => {
+      const retryAction = vi.fn();
+      render(
+        <InlineAnalysisProcessing
+          analysisId={analysisId}
+          initialSnapshot={snapshot(status)}
+          refreshAction={vi.fn(async () => snapshot(status))}
+          retryAction={retryAction}
+        />,
+      );
+
+      expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+      expect(retryAction).not.toHaveBeenCalled();
+      expect(routerPush).not.toHaveBeenCalled();
+    },
+  );
 });
