@@ -39,6 +39,13 @@ export function ResultWorkspace({
   saveArtifact: SaveAction;
 }>) {
   const [tab, setTab] = useState<TabValue>('overview');
+  const modelKey = `${model.revisions.title}:${model.revisions.summary ?? ''}:${model.revisions.flashcards ?? ''}:${model.revisions.timestamps ?? ''}`;
+  const [draftModelKey, setDraftModelKey] = useState(modelKey);
+  const [draftModel, setDraftModel] = useState(model);
+  if (draftModelKey !== modelKey) {
+    setDraftModelKey(modelKey);
+    setDraftModel(model);
+  }
   const accent: TabsAccent =
     tab === 'summary' ||
     tab === 'flashcards' ||
@@ -81,7 +88,13 @@ export function ResultWorkspace({
     >
       <EditableTitle
         analysisId={model.source.intakeId}
-        initialTitle={model.source.title}
+        title={draftModel.source.title}
+        onTitleChange={(title) =>
+          setDraftModel((current) => ({
+            ...current,
+            source: { ...current.source, title },
+          }))
+        }
         revision={model.revisions.title}
         saveTitle={saveTitle}
       />
@@ -111,7 +124,20 @@ export function ResultWorkspace({
               <SummaryTab
                 key={model.revisions.summary}
                 analysisId={model.source.intakeId}
-                summary={model.tabs.summary.data}
+                summary={
+                  draftModel.tabs.summary.status === 'ready'
+                    ? draftModel.tabs.summary.data
+                    : model.tabs.summary.data
+                }
+                onSummaryChange={(summary) =>
+                  setDraftModel((current) => ({
+                    ...current,
+                    tabs: {
+                      ...current.tabs,
+                      summary: { status: 'ready', data: summary },
+                    },
+                  }))
+                }
                 revision={model.revisions.summary!}
                 saveArtifact={saveArtifact}
               />
@@ -124,7 +150,20 @@ export function ResultWorkspace({
               <FlashcardsTab
                 key={model.revisions.flashcards}
                 analysisId={model.source.intakeId}
-                artifact={model.tabs.flashcards.data}
+                artifact={
+                  draftModel.tabs.flashcards.status === 'ready'
+                    ? draftModel.tabs.flashcards.data
+                    : model.tabs.flashcards.data
+                }
+                onArtifactChange={(flashcards) =>
+                  setDraftModel((current) => ({
+                    ...current,
+                    tabs: {
+                      ...current.tabs,
+                      flashcards: { status: 'ready', data: flashcards },
+                    },
+                  }))
+                }
                 revision={model.revisions.flashcards!}
                 saveArtifact={saveArtifact}
               />
@@ -137,7 +176,20 @@ export function ResultWorkspace({
               <TimestampsTab
                 key={model.revisions.timestamps}
                 analysisId={model.source.intakeId}
-                artifact={model.tabs.timestamps.data}
+                artifact={
+                  draftModel.tabs.timestamps.status === 'ready'
+                    ? draftModel.tabs.timestamps.data
+                    : model.tabs.timestamps.data
+                }
+                onArtifactChange={(timestamps) =>
+                  setDraftModel((current) => ({
+                    ...current,
+                    tabs: {
+                      ...current.tabs,
+                      timestamps: { status: 'ready', data: timestamps },
+                    },
+                  }))
+                }
                 revision={model.revisions.timestamps!}
                 saveArtifact={saveArtifact}
               />
@@ -153,7 +205,7 @@ export function ResultWorkspace({
             )}
           </TabsContent>
           <TabsContent value="export">
-            <ExportTab model={model} />
+            <ExportTab model={draftModel} />
           </TabsContent>
         </div>
       </Tabs>

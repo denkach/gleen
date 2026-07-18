@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import type { ResultSaveState } from '@/lib/result-workspace/actions';
 import type { SummaryPresentation } from '@/lib/result-workspace/presentation';
 
@@ -21,16 +21,21 @@ export function formatOffset(offsetMs: number): string {
 export function SummaryTab({
   analysisId,
   summary,
+  onSummaryChange,
   revision,
   saveArtifact,
 }: Readonly<{
   analysisId: string;
   summary: SummaryPresentation;
+  onSummaryChange: (summary: SummaryPresentation) => void;
   revision: string;
   saveArtifact: (input: unknown) => Promise<ResultSaveState>;
 }>) {
   const player = useVideoPlayer();
-  const [value, setValue] = useState(summary);
+  const value = summary;
+  const setValue = (
+    update: (current: SummaryPresentation) => SummaryPresentation,
+  ) => onSummaryChange(update(value));
   const save = useCallback(
     (content: SummaryPresentation, expectedUpdatedAt: string) =>
       saveArtifact({

@@ -341,6 +341,7 @@ describe('ResultWorkspace', () => {
       title: 'Edited result',
     });
     expect(screen.getByText(/newer version is available/i)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
     expect(title).toHaveValue('Edited result');
   });
 
@@ -400,6 +401,42 @@ describe('ResultWorkspace', () => {
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
     expect(click).toHaveBeenCalled();
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:result');
+  });
+
+  it('exports the current visible title and artifact edits', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    renderWorkspace();
+
+    const title = screen.getByRole('textbox', { name: 'Result title' });
+    await user.clear(title);
+    await user.type(title, 'Draft export title');
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    const overview = screen.getByRole('textbox', { name: 'Summary overview' });
+    await user.clear(overview);
+    await user.type(overview, 'Draft export overview');
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+    const question = screen.getByRole('textbox', {
+      name: 'Flashcard question',
+    });
+    await user.clear(question);
+    await user.type(question, 'Draft export question?');
+    await user.click(screen.getByRole('tab', { name: 'Timestamps' }));
+    const chapter = screen.getByRole('textbox', { name: 'Chapter 1 title' });
+    await user.clear(chapter);
+    await user.type(chapter, 'Draft export chapter');
+    await user.click(screen.getByRole('tab', { name: 'Export' }));
+    await user.click(screen.getByRole('button', { name: 'Copy Markdown' }));
+
+    const markdown = writeText.mock.calls[0]?.[0] as string;
+    expect(markdown).toContain('# Draft export title');
+    expect(markdown).toContain('Draft export overview');
+    expect(markdown).toContain('Draft export question?');
+    expect(markdown).toContain('Draft export chapter');
   });
 
   it.each([

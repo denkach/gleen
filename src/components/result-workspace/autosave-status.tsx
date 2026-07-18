@@ -4,7 +4,8 @@ const labels: Record<AutosaveState, string> = {
   idle: '',
   saving: 'Saving…',
   saved: 'Saved',
-  conflict: 'A newer version is available. Your edit was not overwritten.',
+  conflict:
+    'A newer version is available. Your draft is still here; reload to reconcile before saving.',
   error: 'Couldn’t save. Your edit is still here.',
   offline: 'Offline. Your edit has not been saved.',
 };
@@ -14,8 +15,7 @@ export function AutosaveStatus({
   retry,
 }: Readonly<{ status: AutosaveState; retry: () => void }>) {
   if (status === 'idle') return null;
-  const retryable =
-    status === 'conflict' || status === 'error' || status === 'offline';
+  const retryable = status === 'error' || status === 'offline';
   return (
     <div className="flex min-h-6 flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
       <p role="status" aria-live="polite">

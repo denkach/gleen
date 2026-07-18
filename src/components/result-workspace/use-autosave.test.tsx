@@ -84,25 +84,51 @@ describe('useAutosave', () => {
     expect(save).toHaveBeenCalledWith('Latest', '2026-07-18T00:00:00.000Z');
   });
 
-  it('shows a conflict and retry keeps the current input', async () => {
-    const save = vi
-      .fn()
-      .mockResolvedValueOnce({ status: 'conflict' })
-      .mockResolvedValueOnce({
+  it('advances the CAS revision before saving an edit made during an in-flight save', async () => {
+    let resolveFirst!: (value: SaveResult) => void;
+    const first = new Promise<SaveResult>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const save = vi.fn().mockReturnValueOnce(first).mockResolvedValueOnce({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:02:00.000Z',
+    });
+    render(<Harness save={save} />);
+    const input = screen.getByRole('textbox', { name: 'Title' });
+
+    fireEvent.change(input, { target: { value: 'First' } });
+    await act(() => vi.advanceTimersByTimeAsync(700));
+    fireEvent.change(input, { target: { value: 'Latest' } });
+    await act(() => vi.advanceTimersByTimeAsync(700));
+    expect(save).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveFirst({
         status: 'saved',
         updatedAt: '2026-07-18T00:01:00.000Z',
       });
+      await Promise.resolve();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(700));
+
+    expect(save).toHaveBeenNthCalledWith(
+      2,
+      'Latest',
+      '2026-07-18T00:01:00.000Z',
+    );
+    expect(input).toHaveValue('Latest');
+  });
+
+  it('shows a conflict without offering a stale-revision retry', async () => {
+    const save = vi.fn().mockResolvedValueOnce({ status: 'conflict' });
     render(<Harness save={save} />);
     const input = screen.getByRole('textbox', { name: 'Title' });
 
     fireEvent.change(input, { target: { value: 'Keep me' } });
     await act(() => vi.advanceTimersByTimeAsync(700));
     expect(screen.getByText('conflict')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-    await act(() => vi.advanceTimersByTimeAsync(700));
-
     expect(input).toHaveValue('Keep me');
-    expect(save).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenCalledTimes(1);
   });
 
   it('never claims an offline edit was saved', async () => {

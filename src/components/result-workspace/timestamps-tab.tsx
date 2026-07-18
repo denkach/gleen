@@ -12,16 +12,21 @@ import { useAutosave } from './use-autosave';
 export function TimestampsTab({
   analysisId,
   artifact,
+  onArtifactChange,
   revision,
   saveArtifact,
 }: Readonly<{
   analysisId: string;
   artifact: TimestampsArtifact;
+  onArtifactChange: (artifact: TimestampsArtifact) => void;
   revision: string;
   saveArtifact: (input: unknown) => Promise<ResultSaveState>;
 }>) {
   const player = useVideoPlayer();
-  const [value, setValue] = useState(artifact);
+  const value = artifact;
+  const setValue = (
+    update: (current: TimestampsArtifact) => TimestampsArtifact,
+  ) => onArtifactChange(update(value));
   const [activeOffset, setActiveOffset] = useState(
     artifact.chapters[0]?.offsetMs ?? 0,
   );

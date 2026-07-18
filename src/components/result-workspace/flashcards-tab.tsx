@@ -10,15 +10,20 @@ import { useAutosave } from './use-autosave';
 export function FlashcardsTab({
   analysisId,
   artifact,
+  onArtifactChange,
   revision,
   saveArtifact,
 }: Readonly<{
   analysisId: string;
   artifact: FlashcardsArtifact;
+  onArtifactChange: (artifact: FlashcardsArtifact) => void;
   revision: string;
   saveArtifact: (input: unknown) => Promise<ResultSaveState>;
 }>) {
-  const [value, setValue] = useState(artifact);
+  const value = artifact;
+  const setValue = (
+    update: (current: FlashcardsArtifact) => FlashcardsArtifact,
+  ) => onArtifactChange(update(value));
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [studied, setStudied] = useState(0);
