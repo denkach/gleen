@@ -60,6 +60,19 @@ describe('authentication callback', () => {
     );
   });
 
+  it('preserves an internal analysis continuation after email authentication', async () => {
+    exchangeCodeForSession.mockResolvedValue({ error: null });
+    const { GET } = await import('./route');
+    const response = await GET(
+      new NextRequest(
+        'https://gleen.example/auth/callback?code=valid&next=%2Fapp%3Fcontinuation%3Dnormalized',
+      ),
+    );
+    expect(response.headers.get('location')).toBe(
+      'https://gleen.example/app?continuation=normalized',
+    );
+  });
+
   it('returns to sign in when code exchange fails', async () => {
     exchangeCodeForSession.mockResolvedValue({
       error: { message: 'expired' },

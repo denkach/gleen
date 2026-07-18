@@ -37,7 +37,7 @@ describe('resolveOwnedActiveAnalysis', () => {
     expect(findMostRecentOwnedActive).not.toHaveBeenCalled();
   });
 
-  test.each(['partial', 'complete', 'failed'] as const)(
+  test.each(['partial', 'complete'] as const)(
     'rejects an explicitly owned %s analysis',
     async (status) => {
       const result = await resolveOwnedActiveAnalysis({
@@ -58,6 +58,24 @@ describe('resolveOwnedActiveAnalysis', () => {
       expect(result.initialAnalysis).toBeNull();
     },
   );
+
+  test('restores an explicitly owned failed analysis for retry', async () => {
+    const result = await resolveOwnedActiveAnalysis({
+      userId: 'owner',
+      requestedAnalysisId: 'failed',
+      continuation: null,
+      intakeRepository: {
+        findOwned: vi.fn().mockResolvedValue(intake('failed')),
+      },
+      analysisRepository: {
+        findOwnedSnapshot: vi
+          .fn()
+          .mockResolvedValue(snapshot('failed', 'failed')),
+        findMostRecentOwnedActive: vi.fn(),
+      },
+    });
+    expect(result.initialAnalysis?.snapshot.job.status).toBe('failed');
+  });
 
   test('does not load a snapshot when the requested analysis is not owned', async () => {
     const findOwnedSnapshot = vi.fn();
@@ -129,5 +147,8 @@ describe('historyEntryPresentation', () => {
       href: '/app/video/done',
       statusLabel: 'Complete',
     });
+    expect(
+      historyEntryPresentation({ id: 'failed', status: 'failed' }).href,
+    ).toBe('/app?analysis=failed');
   });
 });

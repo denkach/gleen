@@ -1,10 +1,12 @@
+'use client';
+
 import {
   artifactRailDefinitions,
   getAnalysisVisualPresentation,
   orderedAnalysisStages,
   type AnalysisVisualState,
 } from '@/lib/analyze-processing/analysis-visual-state';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 type ArtifactRailState = 'queued' | 'ready' | 'failed';
 
@@ -34,6 +36,21 @@ export function AnalyzeProcessingVisual({
   const presentation = getAnalysisVisualPresentation(state);
   const isError = presentation.mode === 'error';
   const isComplete = presentation.mode === 'complete';
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const previousMode = useRef<'idle' | 'processing' | 'complete' | 'error'>(
+    'idle',
+  );
+
+  useEffect(() => {
+    const previous = previousMode.current;
+    previousMode.current = presentation.mode;
+    if (presentation.mode === 'error' && previous !== 'error') {
+      terminalRef.current?.focus();
+    } else if (presentation.mode === 'processing' && previous === 'idle') {
+      titleRef.current?.focus();
+    }
+  }, [presentation.mode]);
 
   return (
     <div
@@ -65,10 +82,25 @@ export function AnalyzeProcessingVisual({
             <div className="analyze-status-kicker">
               {isError ? 'ANALYSIS INTERRUPTED' : 'ANALYSIS IN PROGRESS'}
             </div>
-            <h2 className="analyze-status-title">{presentation.title}</h2>
-            <div className="analyze-status-subtitle">
+            <h2 ref={titleRef} tabIndex={-1} className="analyze-status-title">
+              {presentation.title}
+            </h2>
+            <div
+              ref={terminalRef}
+              tabIndex={isError ? -1 : undefined}
+              className="analyze-status-subtitle"
+            >
               {errorMessage ?? presentation.subtitle}
             </div>
+            <ul className="sr-only" aria-label="Artifact status">
+              {artifactRailDefinitions.map((rail) => (
+                <li key={rail.id}>
+                  {rail.label.charAt(0) + rail.label.slice(1).toLowerCase()}{' '}
+                  {artifactStates?.[rail.id] ??
+                    (isComplete ? 'ready' : 'queued')}
+                </li>
+              ))}
+            </ul>
             <div className="analyze-steps">
               {orderedAnalysisStages.map((stage) => {
                 const stageState = presentation.completedStages.includes(

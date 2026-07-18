@@ -85,6 +85,19 @@ describe('AppPage', () => {
     expect(findMostRecentOwnedActive).not.toHaveBeenCalled();
   });
 
+  test('restores an explicitly owned failed analysis', async () => {
+    findOwned.mockResolvedValue({ id: 'failed-id' });
+    findOwnedSnapshot.mockResolvedValue({
+      job: { analysisId: 'failed-id', status: 'failed' },
+    });
+    render(
+      await AppPage({
+        searchParams: Promise.resolve({ analysis: 'failed-id' }),
+      }),
+    );
+    expect(screen.getByTestId('analysis')).toHaveTextContent('failed-id');
+  });
+
   test('falls back to the most recent owned active analysis', async () => {
     findMostRecentOwnedActive.mockResolvedValue({
       intake: { id: 'recent-id' },

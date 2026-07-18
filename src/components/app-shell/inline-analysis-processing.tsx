@@ -77,6 +77,9 @@ export function InlineAnalysisProcessing({
     analysisId: string;
     message: string;
   } | null>(null);
+  const [refreshUnavailableFor, setRefreshUnavailableFor] = useState<
+    string | null
+  >(null);
   const isExiting = exitingAnalysisId === analysisId;
   const isRetrying = retryingAnalysisId === analysisId;
   const isReconciling = reconciliation?.analysisId === analysisId;
@@ -92,13 +95,27 @@ export function InlineAnalysisProcessing({
     async (generation?: number) => {
       const requestedAnalysisId = analysisId;
       const requestedGeneration = generation ?? controllerGeneration.current;
-      const incoming = await refreshAction(requestedAnalysisId);
+      let incoming: AnalysisSnapshot | null;
+      try {
+        incoming = await refreshAction(requestedAnalysisId);
+      } catch {
+        if (controllerGeneration.current === requestedGeneration) {
+          setRefreshUnavailableFor(requestedAnalysisId);
+          setReconciliation((current) =>
+            current?.analysisId === requestedAnalysisId ? null : current,
+          );
+        }
+        return;
+      }
       if (
         !incoming ||
         controllerGeneration.current !== requestedGeneration ||
         incoming.job.analysisId !== requestedAnalysisId
       )
         return;
+      setRefreshUnavailableFor((current) =>
+        current === requestedAnalysisId ? null : current,
+      );
       setReconciliation((current) =>
         current?.analysisId === requestedAnalysisId &&
         incoming.job.revision > current.revision
@@ -134,7 +151,12 @@ export function InlineAnalysisProcessing({
   }, [analysisId, refresh]);
 
   useEffect(() => {
-    if (!ownedSnapshot || (isTerminalAnalysis(ownedSnapshot) && !isReconciling))
+    if (
+      !ownedSnapshot ||
+      (isTerminalAnalysis(ownedSnapshot) &&
+        !isReconciling &&
+        refreshUnavailableFor !== analysisId)
+    )
       return;
     const generation = controllerGeneration.current;
     const notify = () => void refresh(generation);
@@ -179,7 +201,14 @@ export function InlineAnalysisProcessing({
       window.clearInterval(polling);
       void supabase.removeChannel(channel);
     };
-  }, [analysisId, enableRealtime, isReconciling, ownedSnapshot, refresh]);
+  }, [
+    analysisId,
+    enableRealtime,
+    isReconciling,
+    ownedSnapshot,
+    refresh,
+    refreshUnavailableFor,
+  ]);
 
   useEffect(() => {
     if (
@@ -211,6 +240,7 @@ export function InlineAnalysisProcessing({
 
   const resultPath = `${resultPathPrefix}/${analysisId}`;
   const isPartial = ownedSnapshot?.job.status === 'partial';
+  const isFailed = ownedSnapshot?.job.status === 'failed';
   const ownedRevision = ownedSnapshot?.job.revision;
   const retryFailed = useCallback(async () => {
     if (isRetrying) return;
@@ -269,22 +299,26 @@ export function InlineAnalysisProcessing({
       errorMessage={
         retryError?.analysisId === analysisId
           ? retryError.message
-          : ownedSnapshot &&
-              ['partial', 'failed'].includes(ownedSnapshot.job.status)
-            ? 'Analysis stopped safely. Your completed work has been kept.'
-            : undefined
+          : refreshUnavailableFor === analysisId
+            ? 'Status refresh is temporarily unavailable. Retrying…'
+            : ownedSnapshot &&
+                ['partial', 'failed'].includes(ownedSnapshot.job.status)
+              ? 'Analysis stopped safely. Your completed work has been kept.'
+              : undefined
       }
       artifactStates={artifactStates}
       controls={
-        isPartial && !isRetrying && !isReconciling ? (
+        (isPartial || isFailed) && !isRetrying && !isReconciling ? (
           <>
-            <button
-              className="analyze-control"
-              type="button"
-              onClick={() => push(resultPath)}
-            >
-              View available results
-            </button>
+            {isPartial ? (
+              <button
+                className="analyze-control"
+                type="button"
+                onClick={() => push(resultPath)}
+              >
+                View available results
+              </button>
+            ) : null}
             <button
               className="analyze-control"
               type="button"

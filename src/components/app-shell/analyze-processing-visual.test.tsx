@@ -114,6 +114,32 @@ describe('AnalyzeProcessingVisual', () => {
     expect(screen.getByText('TIMESTAMPS').parentElement).toHaveTextContent(
       'failed',
     );
+    expect(
+      screen.getByRole('list', { name: 'Artifact status' }),
+    ).toHaveTextContent('Summary ready');
+  });
+
+  it('moves focus to processing and then terminal context only on transitions', () => {
+    const { rerender } = render(
+      <AnalyzeProcessingVisual
+        state="idle"
+        submittedUrl=""
+        idleContent={<input aria-label="URL" />}
+      />,
+    );
+    screen.getByLabelText('URL').focus();
+    rerender(<AnalyzeProcessingVisual state="submitting" submittedUrl="" />);
+    expect(
+      screen.getByRole('heading', { name: 'Analyzing your video' }),
+    ).toHaveFocus();
+    rerender(
+      <AnalyzeProcessingVisual
+        state="error"
+        submittedUrl=""
+        errorMessage="Stopped safely."
+      />,
+    );
+    expect(screen.getByText('Stopped safely.')).toHaveFocus();
   });
 
   it('updates immediately when its controlled state changes', () => {

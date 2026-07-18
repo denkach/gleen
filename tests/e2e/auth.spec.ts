@@ -35,6 +35,18 @@ test('landing URL preserves the normalized analysis continuation in sign in next
   );
 });
 
+test('landing continuation survives switching from sign in to sign up', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
+  await page.getByRole('button', { name: 'Transform video' }).click();
+  const next = new URL(page.url()).searchParams.get('next');
+  await page.getByRole('link', { name: 'Create an account' }).click();
+  await expect(page).toHaveURL(/\/sign-up\?next=/);
+  expect(new URL(page.url()).searchParams.get('next')).toBe(next);
+});
+
 test('authenticated continuation auto-submits exactly once with the default artifacts', async ({
   page,
 }) => {

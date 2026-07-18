@@ -143,7 +143,7 @@ describe('owned intake readiness page', () => {
     },
   );
 
-  test.each(['queued', 'running'] as const)(
+  test.each(['queued', 'running', 'failed'] as const)(
     'redirects a %s snapshot to the normalized resumable analysis route',
     async (status) => {
       findOwnedSnapshot.mockResolvedValue({

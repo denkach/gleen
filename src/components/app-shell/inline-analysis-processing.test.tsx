@@ -446,4 +446,89 @@ describe('InlineAnalysisProcessing', () => {
     expect(routerPush).toHaveBeenCalledTimes(1);
     expect(routerPush).toHaveBeenCalledWith(`/app/video/${analysisId}`);
   });
+
+  test('shows retry only for a failed analysis', () => {
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        initialSnapshot={snapshot('failed')}
+        refreshAction={vi.fn(async () => snapshot('failed'))}
+        retryAction={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Retry failed artifact' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'View available results' }),
+    ).toBeNull();
+  });
+
+  test.each(['initial', 'poll', 'realtime'] as const)(
+    'contains a rejected %s refresh and later recovers',
+    async (caller) => {
+      vi.useFakeTimers();
+      const refreshAction = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValue(snapshot('running', 2));
+      render(
+        <InlineAnalysisProcessing
+          analysisId={analysisId}
+          initialSnapshot={snapshot('queued')}
+          refreshAction={refreshAction}
+          retryAction={vi.fn()}
+        />,
+      );
+      await act(async () => Promise.resolve());
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Status refresh is temporarily unavailable. Retrying…',
+      );
+      if (caller === 'realtime') {
+        const notify = realtime.channel.on.mock.calls[0]?.[2] as () => void;
+        await act(async () => {
+          notify();
+          await Promise.resolve();
+        });
+      } else {
+        await act(async () => vi.advanceTimersByTimeAsync(2_000));
+      }
+      expect(refreshAction).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+        'data-analysis-state',
+        'transcript',
+      );
+    },
+  );
+
+  test('restores failed controls when the post-retry refresh rejects and later polling recovers', async () => {
+    vi.useFakeTimers();
+    const refreshAction = vi
+      .fn()
+      .mockResolvedValueOnce(snapshot('failed'))
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue(snapshot('running', 2));
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        initialSnapshot={snapshot('failed')}
+        refreshAction={refreshAction}
+        retryAction={vi.fn(async () => ({ ok: true, attempt: 2 }) as const)}
+      />,
+    );
+    await act(async () => Promise.resolve());
+    await act(async () => {
+      screen.getByRole('button', { name: 'Retry failed artifact' }).click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(
+      screen.getByRole('button', { name: 'Retry failed artifact' }),
+    ).toBeVisible();
+    await act(async () => vi.advanceTimersByTimeAsync(2_000));
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-state',
+      'transcript',
+    );
+  });
 });

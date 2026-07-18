@@ -28,6 +28,12 @@ function isActiveStatus(status: AnalysisSnapshot['job']['status']): boolean {
   return activeStatuses.has(status);
 }
 
+function isResumableRequestedStatus(
+  status: AnalysisSnapshot['job']['status'],
+): boolean {
+  return isActiveStatus(status) || status === 'failed';
+}
+
 export async function resolveOwnedActiveAnalysis(
   input: Readonly<{
     userId: string;
@@ -53,7 +59,7 @@ export async function resolveOwnedActiveAnalysis(
           intake.id,
         )
       : null;
-    if (intake && snapshot && isActiveStatus(snapshot.job.status))
+    if (intake && snapshot && isResumableRequestedStatus(snapshot.job.status))
       return { initialAnalysis: { intake, snapshot }, continuation: null };
   }
 
@@ -90,9 +96,10 @@ export function historyEntryPresentation(
 ): Readonly<{ href: string; statusLabel: string }> {
   const id = encodeURIComponent(row.id);
   return {
-    href: isActiveStatus(row.status)
-      ? `${paths.app}?analysis=${id}`
-      : `${paths.result}/${id}`,
+    href:
+      isActiveStatus(row.status) || row.status === 'failed'
+        ? `${paths.app}?analysis=${id}`
+        : `${paths.result}/${id}`,
     statusLabel: statusLabels[row.status],
   };
 }

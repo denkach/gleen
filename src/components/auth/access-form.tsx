@@ -46,6 +46,7 @@ export function AccessForm({
   }, [state.redirectTo]);
 
   const isSignIn = intent === 'sign-in';
+  const alternatePath = `${isSignIn ? '/sign-up' : '/sign-in'}?next=${encodeURIComponent(nextPath)}`;
   const submitLabel =
     mode === 'password'
       ? isSignIn
@@ -137,7 +138,7 @@ export function AccessForm({
       ) : null}
       <p className="auth-footer">
         {isSignIn ? 'New to Gleen? ' : 'Already have an account? '}
-        <Link href={isSignIn ? '/sign-up' : '/sign-in'}>
+        <Link href={alternatePath}>
           {isSignIn ? 'Create an account' : 'Sign in'}
         </Link>
       </p>

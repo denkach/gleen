@@ -60,7 +60,7 @@ describe('HistoryPage', () => {
     ).toHaveAttribute('href', '/app/video/complete');
     expect(screen.getByRole('link', { name: /Failed Failed/ })).toHaveAttribute(
       'href',
-      '/app/video/failed',
+      '/app?analysis=failed',
     );
     expect(listOwnedHistory).toHaveBeenCalledWith('user-1', 50);
   });
