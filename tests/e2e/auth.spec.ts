@@ -20,6 +20,51 @@ test('opens account access from the landing-page sign-in action', async ({
   ).toBeVisible();
 });
 
+test('landing URL preserves the normalized analysis continuation in sign in next', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
+  await page.getByRole('button', { name: 'Transform video' }).click();
+
+  await expect(page).toHaveURL(/\/sign-in\?next=/);
+  const next = new URL(page.url()).searchParams.get('next');
+  expect(next).toBe(
+    '/app?continuation=' +
+      encodeURIComponent('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+  );
+});
+
+test('authenticated continuation auto-submits exactly once with the default artifacts', async ({
+  page,
+}) => {
+  let actionRequests = 0;
+  let submittedBody = '';
+  page.on('request', (request) => {
+    if (
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/app-shell-fixture'
+    ) {
+      actionRequests += 1;
+      submittedBody += request.postData() ?? '';
+    }
+  });
+  await page.goto(
+    '/app-shell-fixture?continuation=' +
+      encodeURIComponent('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+  );
+
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveAttribute(
+    'data-submitted-url',
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  );
+  await expect.poll(() => actionRequests).toBe(1);
+  expect(submittedBody).toContain('summary');
+  expect(submittedBody).toContain('timestamps');
+  expect(submittedBody).toContain('transcript');
+  expect(submittedBody).not.toContain('flashcards');
+});
+
 for (const viewport of authViewports) {
   test(`renders approved account access at ${viewport.name}`, async ({
     page,

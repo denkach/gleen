@@ -21,20 +21,35 @@ export function AnalysisProcessingFixtureScreen({
   const retried = useRef(false);
 
   return (
-    <AnalysisProcessingScreen
-      intake={intake}
-      initialSnapshot={initialSnapshot}
-      enableLiveUpdates={false}
-      reconcileOnMount={Boolean(transitionSnapshot)}
-      retryAction={async () => {
-        retried.current = true;
-        return { ok: true, attempt: retrySnapshot?.job.attempt ?? 2 };
-      }}
-      refreshAction={async () =>
-        retried.current
-          ? (retrySnapshot ?? transitionSnapshot ?? initialSnapshot)
-          : (transitionSnapshot ?? initialSnapshot)
-      }
-    />
+    <>
+      {initialSnapshot.job.status === 'partial' ? (
+        <button
+          type="button"
+          className="analyze-control"
+          onClick={() =>
+            window.location.assign(
+              '/app-shell-fixture/app/video/result-partial',
+            )
+          }
+        >
+          View available results
+        </button>
+      ) : null}
+      <AnalysisProcessingScreen
+        intake={intake}
+        initialSnapshot={initialSnapshot}
+        enableLiveUpdates={false}
+        reconcileOnMount={Boolean(transitionSnapshot)}
+        retryAction={async () => {
+          retried.current = true;
+          return { ok: true, attempt: retrySnapshot?.job.attempt ?? 2 };
+        }}
+        refreshAction={async () =>
+          retried.current
+            ? (retrySnapshot ?? transitionSnapshot ?? initialSnapshot)
+            : (transitionSnapshot ?? initialSnapshot)
+        }
+      />
+    </>
   );
 }

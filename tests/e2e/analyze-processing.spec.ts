@@ -611,6 +611,48 @@ test('durable processing survives reload and restores the persisted transcript s
   await expectNoHorizontalOverflow(page);
 });
 
+test('queued and running stay on New analysis with exactly one spectrum', async ({
+  page,
+}) => {
+  for (const state of ['queued', 'transcript'] as const) {
+    await page.goto(`/app-shell-fixture/app/video/pipeline-${state}`);
+    await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
+    await expect(page.getByTestId('result-layout')).toHaveCount(0);
+    expect(page.url()).toContain(`/pipeline-${state}`);
+  }
+});
+
+test('complete performs one navigation and the destination has zero spectra', async ({
+  page,
+}) => {
+  let resultNavigations = 0;
+  page.on('framenavigated', (frame) => {
+    if (
+      frame === page.mainFrame() &&
+      frame.url().includes('/app-shell-fixture/app/video/pipeline-complete')
+    )
+      resultNavigations += 1;
+  });
+  await page.goto('/app-shell-fixture/app/video/pipeline-complete');
+  await expect(page).toHaveURL(/\/pipeline-complete$/);
+  await expect(page.getByTestId('result-layout')).toBeVisible();
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
+  expect(resultNavigations).toBe(1);
+});
+
+test('partial exposes both actions and never navigates automatically', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture/app/video/pipeline-partial');
+  const initialUrl = page.url();
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'View available results' }),
+  ).toBeVisible();
+  await page.waitForTimeout(700);
+  expect(page.url()).toBe(initialUrl);
+});
+
 test('durable partial result keeps ready artifacts and retries unfinished work', async ({
   page,
 }) => {
@@ -624,6 +666,44 @@ test('durable partial result keeps ready artifacts and retries unfinished work',
   );
   await expect(page.getByText('Summary ready')).toBeVisible();
   await expectNoHorizontalOverflow(page);
+});
+
+test('retry preserves ready status while unfinished status resumes', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture/app/video/pipeline-partial');
+  await expect(page.getByText('Summary ready')).toBeVisible();
+  await expect(page.getByText('Flashcards needs retry')).toBeVisible();
+  const retryFailedArtifact = page.getByRole('button', { name: 'Try again' });
+  await retryFailedArtifact.click();
+  await expect(page.getByText('Summary ready')).toBeVisible();
+  await expect(page.getByText('Flashcards needs retry')).toHaveCount(0);
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveAttribute(
+    'data-analysis-state',
+    'artifacts',
+  );
+});
+
+test('reload and History restore the active job truthfully', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture/app/video/pipeline-transcript');
+  await expect(page.getByText('Finding transcript')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('Finding transcript')).toBeVisible();
+  await page.goto('/app-shell-fixture/app/video/result-complete');
+  await page.goBack();
+  await expect(page.getByText('Finding transcript')).toBeVisible();
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
+});
+
+test('reduced motion keeps truthful completion without decorative delay', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/app-shell-fixture/app/video/pipeline-complete');
+  await expect(page.getByTestId('result-layout')).toBeVisible();
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
 });
 
 test('durable reduced motion reveals a completed result immediately', async ({

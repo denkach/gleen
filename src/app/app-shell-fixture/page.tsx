@@ -23,7 +23,9 @@ const fixtureIdentity = {
   initials: 'TU',
 } as const;
 
-type Props = Readonly<{ searchParams: Promise<{ intake?: string }> }>;
+type Props = Readonly<{
+  searchParams: Promise<{ continuation?: string; intake?: string }>;
+}>;
 
 export default async function AppShellFixturePage({ searchParams }: Props) {
   if (
@@ -35,7 +37,7 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
     notFound();
   }
 
-  const { intake } = await searchParams;
+  const { continuation, intake } = await searchParams;
   if (
     intake &&
     !fixtureCases.includes(intake as (typeof fixtureCases)[number])
@@ -63,6 +65,7 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
         action={fixtureActions[scenario as keyof typeof fixtureActions]}
         reanalyzeAction={reanalyzeFixture}
         resultPathPrefix="/app-shell-fixture/app/video"
+        continuation={continuation ? { rawUrl: continuation } : undefined}
       />
     </AppShell>
   );

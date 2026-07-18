@@ -88,6 +88,14 @@ test('matches desktop, tablet, and mobile result geometry', async ({
   expect(boxes.overflow).toBe(false);
 });
 
+test('result workspace is result-only with zero processing spectra', async ({
+  page,
+}) => {
+  await gotoFixture(page, route);
+  await expect(page.getByTestId('result-layout')).toBeVisible();
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
+});
+
 test('supports keyboard tab navigation and summary seeking', async ({
   page,
 }) => {
