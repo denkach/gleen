@@ -78,10 +78,10 @@ function harness(
   const provider = createDeterministicProvider(
     {
       gleen_summary_v1: {
-        schemaVersion: 1,
+        schemaVersion: 2,
         title: 'Title',
         overview: 'Overview',
-        keyPoints: ['Point'],
+        keyPoints: [{ text: 'Point', sourceOffsetMs: 0 }],
       },
       gleen_flashcards_v1: {
         schemaVersion: 1,
@@ -135,6 +135,31 @@ describe('analysis workflow orchestration', () => {
         segments: context.transcriptSegments,
       },
     });
+  });
+
+  it('persists each generated artifact with its content schema version', async () => {
+    const { repository, provider, ledger } = harness();
+
+    await executeAnalysisPipeline({
+      jobId: 'job-id',
+      repository,
+      provider,
+      ledger,
+      context,
+    });
+
+    expect(repository.saveArtifactReady).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'transcript', schemaVersion: 1 }),
+    );
+    expect(repository.saveArtifactReady).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'summary', schemaVersion: 2 }),
+    );
+    expect(repository.saveArtifactReady).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'flashcards', schemaVersion: 1 }),
+    );
+    expect(repository.saveArtifactReady).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'timestamps', schemaVersion: 1 }),
+    );
   });
 
   it('persists stages and settles after all requested artifacts succeed', async () => {

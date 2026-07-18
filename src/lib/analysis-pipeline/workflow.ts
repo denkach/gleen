@@ -106,7 +106,7 @@ export async function executeAnalysisPipeline({
         jobId,
         analysisId: snapshot.job.analysisId,
         kind: artifact.kind,
-        schemaVersion: 1,
+        schemaVersion: result.value.schemaVersion,
         content: result.value,
       });
     } catch (error) {
