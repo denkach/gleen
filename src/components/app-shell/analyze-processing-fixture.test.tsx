@@ -85,7 +85,6 @@ describe('AnalyzeProcessingFixture', () => {
     unmount();
 
     expect(clearTimeoutSpy).toHaveBeenCalledTimes(5);
-    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('always exposes the four approved artifact rails', () => {

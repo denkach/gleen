@@ -77,7 +77,7 @@ function harness(
   } as unknown as AnalysisRepository;
   const provider = createDeterministicProvider(
     {
-      gleen_summary_v1: {
+      gleen_summary_v2: {
         schemaVersion: 2,
         title: 'Title',
         overview: 'Overview',
@@ -210,7 +210,7 @@ describe('analysis workflow orchestration', () => {
     });
 
     expect(provider.requests.map(({ name }) => name)).not.toContain(
-      'gleen_summary_v1',
+      'gleen_summary_v2',
     );
   });
 });
