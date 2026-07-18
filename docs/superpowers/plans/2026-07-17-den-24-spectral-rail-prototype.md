@@ -22,10 +22,12 @@
 ### Task 1: Lock the standalone prototype contract
 
 **Files:**
+
 - Create: `src/lib/spectral-prototype.test.ts`
 - Test: `design/prototypes/spectral/index.html`
 
 **Interfaces:**
+
 - Consumes: the standalone prototype file as UTF-8 text.
 - Produces: regression assertions for required state names, labels, controls, accessibility hooks, and forbidden concepts.
 
@@ -49,10 +51,12 @@ git commit -m "test(DEN-24): define spectral rail prototype contract"
 ### Task 2: Build the exact Spectral Rail interaction
 
 **Files:**
+
 - Modify: `design/prototypes/spectral/index.html`
 - Test: `src/lib/spectral-prototype.test.ts`
 
 **Interfaces:**
+
 - Consumes: `AnalysisState = 'idle' | 'submitting' | 'validating' | 'transcript' | 'structuring' | 'artifacts' | 'complete' | 'error'`.
 - Produces: `setAnalysisState(nextState)` and `runAnalysis()` demo behavior; stable DOM hooks `#analysis-card`, `#url-input`, `#analyze-button`, `#try-again`, `#preview-error`, and `[data-stage]`.
 
@@ -84,9 +88,11 @@ git commit -m "feat(DEN-24): complete spectral rail prototype"
 ### Task 3: Verify quality and visual states
 
 **Files:**
+
 - Modify only if verification finds an issue: `design/prototypes/spectral/index.html`
 
 **Interfaces:**
+
 - Consumes: completed standalone prototype.
 - Produces: verified desktop, mobile, reduced-motion, keyboard, processing, completion, and error states.
 
