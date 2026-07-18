@@ -69,4 +69,34 @@ describe('result workspace edit schemas', () => {
       expectedUpdatedAt,
     });
   });
+
+  it('accepts the same strict summary v3 contract for owner autosave', () => {
+    const input = {
+      analysisId,
+      kind: 'summary' as const,
+      content: {
+        schemaVersion: 3 as const,
+        title: 'Edited summary',
+        outcome: 'Apply the grounded outcome.',
+        sections: [
+          {
+            title: 'Grounding',
+            summary: 'Use the original source.',
+            details: 'The source provides the decision context.',
+            supportingQuote: null,
+            sourceOffsetMs: null,
+          },
+        ],
+      },
+      expectedUpdatedAt,
+    };
+
+    expect(resultArtifactEditSchema.parse(input)).toEqual(input);
+    expect(
+      resultArtifactEditSchema.safeParse({
+        ...input,
+        content: { ...input.content, unexpected: true },
+      }).success,
+    ).toBe(false);
+  });
 });

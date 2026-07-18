@@ -152,13 +152,32 @@ function normalizeSummary(
     { kind: 'summary' }
   >['content'],
 ): SummaryPresentation {
+  if (content.schemaVersion === 3) {
+    return {
+      ...content,
+      overview: content.outcome,
+      keyPoints: content.sections.map((section) => ({
+        text: section.summary,
+        sourceOffsetMs: section.sourceOffsetMs,
+      })),
+    };
+  }
+  const keyPoints = content.keyPoints.map((point) =>
+    typeof point === 'string'
+      ? { text: point, sourceOffsetMs: null }
+      : { text: point.text, sourceOffsetMs: point.sourceOffsetMs ?? null },
+  );
   return {
     ...content,
-    keyPoints: content.keyPoints.map((point) =>
-      typeof point === 'string'
-        ? { text: point, sourceOffsetMs: null }
-        : { text: point.text, sourceOffsetMs: point.sourceOffsetMs ?? null },
-    ),
+    outcome: content.overview,
+    sections: keyPoints.map((point) => ({
+      title: point.text,
+      summary: point.text,
+      details: point.text,
+      supportingQuote: null,
+      sourceOffsetMs: point.sourceOffsetMs,
+    })),
+    keyPoints,
   };
 }
 

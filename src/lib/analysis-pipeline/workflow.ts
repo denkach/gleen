@@ -10,11 +10,13 @@ import {
 } from './generators';
 import { ProviderError, type StructuredGenerationProvider } from './provider';
 import type { AnalysisRepository } from './repository';
+import { transcriptArtifactV2Schema } from './artifact-schemas';
 import {
   createSupabaseAnalysisRepository,
   type SupabaseAnalysisClient,
 } from './supabase-repository';
 import { createNoopUsageLedger, type UsageLedger } from './usage-ledger';
+import { enrichTranscriptSegments } from './transcript-enrichment';
 
 type PipelineDependencies = Readonly<{
   jobId: string;
@@ -22,6 +24,7 @@ type PipelineDependencies = Readonly<{
   provider: StructuredGenerationProvider;
   ledger: UsageLedger;
   context: GeneratorContext;
+  transcriptEnricher?: typeof enrichTranscriptSegments;
 }>;
 
 const stages = [
@@ -61,6 +64,7 @@ export async function executeAnalysisPipeline({
   provider,
   ledger,
   context,
+  transcriptEnricher = enrichTranscriptSegments,
 }: PipelineDependencies): Promise<void> {
   let snapshot = await repository.findSnapshotByJobId(jobId);
   for (const stage of stages) {
@@ -83,16 +87,39 @@ export async function executeAnalysisPipeline({
     ({ kind }) => kind === 'transcript',
   );
   if (transcript && transcript.status !== 'ready') {
+    let transcriptContent:
+      | ReturnType<typeof transcriptArtifactV2Schema.parse>
+      | {
+          schemaVersion: 1;
+          language: string;
+          segments: readonly TranscriptSegment[];
+        };
+    try {
+      const enrichedSegments = transcriptEnricher(context.transcriptSegments);
+      if (enrichedSegments.length !== context.transcriptSegments.length)
+        throw new Error('Transcript enrichment changed segment count');
+      transcriptContent = transcriptArtifactV2Schema.parse({
+        schemaVersion: 2,
+        language: context.transcriptLanguage,
+        segments: context.transcriptSegments.map((segment, index) => ({
+          ...segment,
+          segmentType: enrichedSegments[index]?.segmentType,
+          speakerLabel: null,
+        })),
+      });
+    } catch {
+      transcriptContent = {
+        schemaVersion: 1,
+        language: context.transcriptLanguage,
+        segments: context.transcriptSegments,
+      };
+    }
     await repository.saveArtifactReady({
       jobId,
       analysisId: snapshot.job.analysisId,
       kind: 'transcript',
-      schemaVersion: 1,
-      content: {
-        schemaVersion: 1,
-        language: context.transcriptLanguage,
-        segments: context.transcriptSegments,
-      },
+      schemaVersion: transcriptContent.schemaVersion,
+      content: transcriptContent,
     });
   }
 

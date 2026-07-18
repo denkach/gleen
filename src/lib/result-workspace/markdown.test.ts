@@ -19,13 +19,54 @@ const model: ResultWorkspaceModel = {
     flashcards: '2026-07-18T00:01:00.000Z',
     timestamps: '2026-07-18T00:01:00.000Z',
   },
+  overview: {
+    outcome: 'One source becomes useful outputs.',
+    durationSeconds: 900,
+    summarySectionCount: 2,
+    flashcardCount: 1,
+    reviewedFlashcardCount: 0,
+    keyMomentCount: 2,
+    transcriptWordCount: 7,
+    currentTimeSeconds: 0,
+    currentChapter: {
+      id: 'chapter-0',
+      title: 'Opening',
+      startSeconds: 0,
+      endSeconds: 755,
+    },
+    availableExports: ['markdown', 'obsidian', 'notebooklm'],
+  },
+  userState: {
+    favorite: false,
+    playbackPositionMs: 0,
+    lastArtifact: 'overview',
+    lastStudyAction: null,
+    reviews: [],
+  },
   tabs: {
     summary: {
       status: 'ready',
       data: {
         schemaVersion: 2,
         title: 'A structured summary',
+        outcome: 'One source becomes useful outputs.',
         overview: 'One source becomes useful outputs.',
+        sections: [
+          {
+            title: 'Legacy text remains readable.',
+            summary: 'Legacy text remains readable.',
+            details: 'Legacy text remains readable.',
+            supportingQuote: null,
+            sourceOffsetMs: null,
+          },
+          {
+            title: 'Sources remain grounded.',
+            summary: 'Sources remain grounded.',
+            details: 'Sources remain grounded.',
+            supportingQuote: null,
+            sourceOffsetMs: 755_000,
+          },
+        ],
         keyPoints: [
           { text: 'Legacy text remains readable.', sourceOffsetMs: null },
           { text: 'Sources remain grounded.', sourceOffsetMs: 755_000 },
@@ -44,8 +85,18 @@ const model: ResultWorkspaceModel = {
       data: {
         schemaVersion: 1,
         chapters: [
-          { offsetMs: 0, title: 'Opening', description: 'The premise' },
-          { offsetMs: 755_000, title: 'Sources', description: 'Grounding' },
+          {
+            offsetMs: 0,
+            title: 'Opening',
+            description: 'The premise',
+            durationMs: 755_000,
+          },
+          {
+            offsetMs: 755_000,
+            title: 'Sources',
+            description: 'Grounding',
+            durationMs: 145_000,
+          },
         ],
       },
     },
@@ -55,11 +106,19 @@ const model: ResultWorkspaceModel = {
         schemaVersion: 1,
         language: 'en',
         segments: [
-          { text: 'A prism separates light.', offsetMs: 0, durationMs: 3_000 },
+          {
+            text: 'A prism separates light.',
+            offsetMs: 0,
+            durationMs: 3_000,
+            segmentType: 'other',
+            speakerLabel: null,
+          },
           {
             text: 'Sources stay grounded.',
             offsetMs: 755_000,
             durationMs: 2_000,
+            segmentType: 'other',
+            speakerLabel: null,
           },
         ],
       },
