@@ -220,6 +220,7 @@ export function createSupabaseAnalysisRepository(
         .eq('analysis_intakes.user_id', userId)
         .in('status', ['queued', 'running'])
         .order('updated_at', { ascending: false })
+        .order('analysis_id', { ascending: false })
         .limit(1)
         .maybeSingle();
       const row = ensureSuccess(result);
@@ -237,6 +238,8 @@ export function createSupabaseAnalysisRepository(
         userId,
       );
       if (!snapshot) throw new AnalysisRepositoryError();
+      if (snapshot.job.status !== 'queued' && snapshot.job.status !== 'running')
+        return null;
       try {
         return { intake: parseIntakeRow(row.analysis_intakes), snapshot };
       } catch {
@@ -251,6 +254,7 @@ export function createSupabaseAnalysisRepository(
         .eq('user_id', userId)
         .eq('analysis_intakes.user_id', userId)
         .order('updated_at', { ascending: false })
+        .order('analysis_id', { ascending: false })
         .limit(Math.min(Math.max(Math.trunc(requestedLimit), 0), 50));
       const data = ensureSuccess(result);
       if (!Array.isArray(data)) throw new AnalysisRepositoryError();

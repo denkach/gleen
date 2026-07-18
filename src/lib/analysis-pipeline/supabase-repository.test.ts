@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createSupabaseAnalysisRepository,
   type ResultArtifactRepository,
+  type SupabaseAnalysisClient,
 } from './supabase-repository';
 
 function queryReturning(result: unknown) {
@@ -55,10 +56,93 @@ describe('Supabase analysis repository', () => {
       'user-id',
     );
     expect(active.in).toHaveBeenCalledWith('status', ['queued', 'running']);
-    expect(active.order).toHaveBeenCalledWith('updated_at', {
+    expect(active.order).toHaveBeenNthCalledWith(1, 'updated_at', {
+      ascending: false,
+    });
+    expect(active.order).toHaveBeenNthCalledWith(2, 'analysis_id', {
       ascending: false,
     });
     expect(active.limit).toHaveBeenCalledWith(1);
+  });
+
+  it('ignores an active candidate that hydrates as terminal', async () => {
+    const analysisId = '22222222-2222-4222-8222-222222222222';
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const active = chainReturning({
+      data: {
+        analysis_id: analysisId,
+        analysis_intakes: {
+          id: analysisId,
+          user_id: userId,
+          youtube_video_id: 'dQw4w9WgXcQ',
+          canonical_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          title: 'Terminal race',
+          channel_title: 'Channel',
+          duration_seconds: 213,
+          thumbnail_url: 'https://i.ytimg.com/example.jpg',
+          transcript_language: 'en',
+          transcript_segments: [],
+          output_locale: 'en',
+          summary_preset: 'balanced',
+          flashcard_preset: null,
+          selected_artifacts: ['summary'],
+          analysis_contract_version: 1,
+          duplicate_key: 'a'.repeat(64),
+          attempt: 1,
+          status: 'ready',
+          reanalysis_of: null,
+          created_at: '2026-07-18T10:00:00.000Z',
+          updated_at: '2026-07-18T10:00:00.000Z',
+        },
+      },
+      error: null,
+    });
+    const job = chainReturning({
+      data: {
+        id: 'job-1',
+        analysis_id: analysisId,
+        user_id: userId,
+        workflow_run_id: null,
+        status: 'complete',
+        stage: 'complete',
+        attempt: 1,
+        revision: 2,
+        error_code: null,
+        started_at: '2026-07-18T10:00:00.000Z',
+        completed_at: '2026-07-18T10:01:00.000Z',
+        created_at: '2026-07-18T10:00:00.000Z',
+        updated_at: '2026-07-18T10:01:00.000Z',
+      },
+      error: null,
+    });
+    const events = chainReturning({ data: [], error: null });
+    const artifacts = chainReturning({ data: [], error: null });
+    const reservation = chainReturning({
+      data: {
+        id: 'reservation-1',
+        job_id: 'job-1',
+        user_id: userId,
+        status: 'settled',
+        updated_at: '2026-07-18T10:01:00.000Z',
+      },
+      error: null,
+    });
+    const client = {
+      from: vi.fn((table: string) => {
+        if (table === 'analysis_jobs')
+          return client.from.mock.calls.length === 1 ? active : job;
+        if (table === 'analysis_job_events') return events;
+        if (table === 'analysis_artifacts') return artifacts;
+        return reservation;
+      }),
+      rpc: vi.fn(),
+    };
+
+    await expect(
+      createSupabaseAnalysisRepository(
+        client as unknown as SupabaseAnalysisClient,
+      ).findMostRecentOwnedActive(userId),
+    ).resolves.toBeNull();
   });
 
   it('lists only owned history newest first and caps the request at 50', async () => {
@@ -91,7 +175,10 @@ describe('Supabase analysis repository', () => {
       'analysis_intakes.user_id',
       'user-id',
     );
-    expect(history.order).toHaveBeenCalledWith('updated_at', {
+    expect(history.order).toHaveBeenNthCalledWith(1, 'updated_at', {
+      ascending: false,
+    });
+    expect(history.order).toHaveBeenNthCalledWith(2, 'analysis_id', {
       ascending: false,
     });
     expect(history.limit).toHaveBeenCalledWith(50);
