@@ -13,13 +13,7 @@ import {
   type ResultArtifact,
 } from '@/lib/result-workspace/navigation';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  type TabsAccent,
-} from '@/components/ui/tabs';
+import { Tabs, TabsContent, type TabsAccent } from '@/components/ui/tabs';
 
 import { ArtifactState } from './artifact-state';
 import { EditableTitle } from './editable-title';
@@ -36,6 +30,8 @@ import {
   useVideoPlayerSnapshot,
 } from './player-context';
 import type { VideoPlayerController } from './player-controller';
+import { ResultHeader } from './result-header';
+import { ResultNavigation } from './result-navigation';
 import { SourcePanel } from './source-panel';
 import { usePlaybackPersistence } from './use-playback-persistence';
 
@@ -48,11 +44,17 @@ function ResultArtifacts({
   saveTitle,
   saveArtifact,
   copy,
+  favorite,
+  onFavorite,
+  onShare,
 }: Readonly<{
   model: ResultWorkspaceModel;
   saveTitle: SaveAction;
   saveArtifact: SaveAction;
   copy: ResultCopy;
+  favorite: boolean;
+  onFavorite?: () => void;
+  onShare?: () => void;
 }>) {
   const [tab, setTab] = useState<TabValue>('overview');
   const [draftModel, setDraftModel] = useState(model);
@@ -129,36 +131,32 @@ function ResultArtifacts({
   ];
   return (
     <section className="result-workspace" aria-label={copy.workspaceLabel}>
-      <EditableTitle
-        analysisId={model.source.intakeId}
-        title={draftModel.source.title}
-        onTitleChange={(title) =>
-          setDraftModel((current) => ({
-            ...current,
-            source: { ...current.source, title },
-          }))
-        }
-        revision={model.revisions.title}
-        saveTitle={saveTitle}
-      />
       <Tabs value={tab} onValueChange={selectTab}>
-        <TabsList
-          accent={accent}
-          aria-label={copy.tabsLabel}
-          className="sticky top-0 z-10 w-full overflow-x-auto bg-[var(--background-elevated)] px-3 max-[720px]:px-1"
-        >
-          {triggers.map((trigger) => (
-            <TabsTrigger
-              key={trigger.value}
-              value={trigger.value}
-              data-artifact-unavailable={trigger.unavailable || undefined}
-              className="min-h-11 shrink-0"
-            >
-              {trigger.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        <div className="p-6 max-[720px]:p-4">
+        <ResultHeader
+          title={
+            <EditableTitle
+              analysisId={model.source.intakeId}
+              title={draftModel.source.title}
+              onTitleChange={(title) =>
+                setDraftModel((current) => ({
+                  ...current,
+                  source: { ...current.source, title },
+                }))
+              }
+              revision={model.revisions.title}
+              saveTitle={saveTitle}
+            />
+          }
+          subtitle={model.source.channelTitle}
+          favorite={favorite}
+          copy={copy}
+          onFavorite={onFavorite}
+          onShare={onShare}
+          navigation={
+            <ResultNavigation accent={accent} copy={copy} items={triggers} />
+          }
+        />
+        <div className="result-artifact-content">
           <TabsContent value="overview">
             <OverviewTab model={model} openTab={selectTab} />
           </TabsContent>
@@ -279,6 +277,7 @@ export type ResultWorkspaceProps = Readonly<{
   savePreference?: MutationAction;
   savePlaybackPosition?: MutationAction;
   saveFlashcardReview?: MutationAction;
+  onShare?: () => void;
 }>;
 
 function PlaybackPersistence({
@@ -306,7 +305,7 @@ function ResultLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 
   return (
     <div
-      className="result-layout"
+      className="result-page-layout"
       data-testid="result-layout"
       data-player-status={playerStatus}
     >
@@ -342,6 +341,41 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
     .slice(model.source.durationSeconds >= 3600 ? 11 : 14, 19);
   const playbackPositionMs = model.userState?.playbackPositionMs ?? 0;
   const artifactRevisionKey = `${model.source.intakeId}:${model.revisions.title}:${model.revisions.summary ?? ''}:${model.revisions.flashcards ?? ''}:${model.revisions.timestamps ?? ''}`;
+  const initialFavorite = model.userState?.favorite ?? false;
+  const [favoriteState, setFavoriteState] = useState<{
+    lifecycleKey: string;
+    value: boolean;
+    pending: boolean;
+  }>({ lifecycleKey, value: initialFavorite, pending: false });
+  const favorite =
+    favoriteState.lifecycleKey === lifecycleKey
+      ? favoriteState.value
+      : initialFavorite;
+  const favoritePending =
+    favoriteState.lifecycleKey === lifecycleKey && favoriteState.pending;
+  const [favoriteMessage, setFavoriteMessage] = useState('');
+  const savePreference = props.savePreference;
+  const toggleFavorite = useCallback(() => {
+    if (!savePreference || favoritePending) return;
+    const previous = favorite;
+    const next = !previous;
+    setFavoriteState({ lifecycleKey, value: next, pending: true });
+    void savePreference({ analysisId: lifecycleKey, favorite: next })
+      .then((result) => {
+        if (result.status === 'saved') {
+          setFavoriteState({ lifecycleKey, value: next, pending: false });
+          setFavoriteMessage(next ? copy.favoriteAdded : copy.favoriteRemoved);
+          return;
+        }
+        setFavoriteState({ lifecycleKey, value: previous, pending: false });
+        setFavoriteMessage(copy.favoriteError);
+      })
+      .catch(() => {
+        setFavoriteState({ lifecycleKey, value: previous, pending: false });
+        setFavoriteMessage(copy.favoriteError);
+      });
+  }, [copy, favorite, favoritePending, lifecycleKey, savePreference]);
+  const favoriteAction = savePreference ? toggleFavorite : undefined;
 
   return (
     <PlayerProvider controller={parentController ?? controller ?? null}>
@@ -351,6 +385,11 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
         savePlaybackPosition={props.savePlaybackPosition}
       />
       <ResultLayout>
+        {favoriteMessage ? (
+          <span className="sr-only" role="status" aria-live="polite">
+            {favoriteMessage}
+          </span>
+        ) : null}
         <SourcePanel
           source={{
             videoId: model.source.youtubeVideoId,
@@ -363,6 +402,15 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
                 : '—',
             thumbnailUrl: model.source.thumbnailUrl,
           }}
+          copy={copy}
+          chapters={
+            model.tabs.timestamps.status === 'ready'
+              ? model.tabs.timestamps.data.chapters
+              : []
+          }
+          favorite={favorite}
+          onFavorite={favoriteAction}
+          onShare={props.onShare}
           playerLifecycleKey={lifecycleKey}
           initialPositionMs={playbackPositionMs}
           onPlayerReady={updateController}
@@ -373,6 +421,9 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           copy={copy}
           saveTitle={props.saveTitle}
           saveArtifact={props.saveArtifact}
+          favorite={favorite}
+          onFavorite={favoriteAction}
+          onShare={props.onShare}
         />
       </ResultLayout>
     </PlayerProvider>

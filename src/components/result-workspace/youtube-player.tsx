@@ -119,6 +119,7 @@ export type YouTubePlayerProps = Readonly<{
   videoId: string;
   lifecycleKey?: string;
   title: string;
+  nativeControls?: boolean;
   initialPositionMs?: number;
   onReady?: (
     controller: VideoPlayerController | null,
@@ -132,6 +133,7 @@ export function YouTubePlayer({
   videoId,
   lifecycleKey = videoId,
   title,
+  nativeControls = true,
   initialPositionMs = 0,
   onReady,
   onTimeChange,
@@ -347,7 +349,11 @@ export function YouTubePlayer({
         if (!active || !mountRef.current) return;
         player = new api.Player(mountRef.current, {
           videoId,
-          playerVars: { playsinline: 1, rel: 0, controls: 1 },
+          playerVars: {
+            playsinline: 1,
+            rel: 0,
+            controls: nativeControls ? 1 : 0,
+          },
           events: {
             onReady: () => {
               if (!active || !player || ready) return;
@@ -386,7 +392,7 @@ export function YouTubePlayer({
       }
       stopPlayer();
     };
-  }, [lifecycleKey, playerInstanceKey, videoId]);
+  }, [lifecycleKey, nativeControls, playerInstanceKey, videoId]);
 
   if (unavailableLifecycleKey === playerInstanceKey) {
     return (
@@ -400,7 +406,7 @@ export function YouTubePlayer({
   }
 
   return (
-    <div className="size-full" title={`Play ${title}`}>
+    <div className="result-youtube-player" title={`Play ${title}`}>
       <div ref={mountRef} className="size-full" />
     </div>
   );

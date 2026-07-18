@@ -479,6 +479,48 @@ describe('ResultWorkspace', () => {
     );
   });
 
+  it('shares repeated owner actions and rolls Favorite back after a failed mutation', async () => {
+    const user = userEvent.setup();
+    const savePreference = vi.fn().mockResolvedValue({ status: 'error' });
+    const onShare = vi.fn();
+    render(
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          model={model}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+          savePreference={savePreference}
+          onShare={onShare}
+        />
+      </PlayerProvider>,
+    );
+
+    const favoriteButtons = screen.getAllByRole('button', {
+      name: 'Add to favorites',
+    });
+    expect(favoriteButtons).toHaveLength(2);
+    await user.click(favoriteButtons[0]);
+    expect(savePreference).toHaveBeenCalledWith({
+      analysisId: model.source.intakeId,
+      favorite: true,
+    });
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: 'Add to favorites' }),
+      ).toHaveLength(2),
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Favorite could not be updated',
+    );
+
+    const shareButtons = screen.getAllByRole('button', {
+      name: 'Share result',
+    });
+    expect(shareButtons).toHaveLength(2);
+    await user.click(shareButtons[1]);
+    expect(onShare).toHaveBeenCalledOnce();
+  });
+
   it('maps the active artifact tab to its shared spectral accent', async () => {
     const user = userEvent.setup();
     renderWorkspace();
@@ -622,10 +664,10 @@ describe('ResultWorkspace', () => {
     await user.click(screen.getByRole('tab', { name: 'Timestamps' }));
     await user.click(screen.getByRole('button', { name: '12:35' }));
     expect(controller.seekTo).toHaveBeenCalledWith(755_000);
-    expect(screen.getByText('Sources').closest('li')).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
+    const timestamps = screen.getByRole('tabpanel', { name: 'Timestamps' });
+    expect(
+      within(timestamps).getByText('Sources').closest('li'),
+    ).toHaveAttribute('aria-current', 'true');
   });
 
   it('updates the active timestamp from controller time polling', async () => {
@@ -640,10 +682,10 @@ describe('ResultWorkspace', () => {
       vi.mocked(controller.getCurrentTimeMs).mockReturnValue(0);
       renderWorkspace();
       await user.click(screen.getByRole('tab', { name: 'Timestamps' }));
-      expect(screen.getByText('Opening').closest('li')).toHaveAttribute(
-        'aria-current',
-        'true',
-      );
+      const timestamps = screen.getByRole('tabpanel', { name: 'Timestamps' });
+      expect(
+        within(timestamps).getByText('Opening').closest('li'),
+      ).toHaveAttribute('aria-current', 'true');
 
       vi.mocked(controller.getCurrentTimeMs).mockReturnValue(755_000);
       await act(async () => {
@@ -653,10 +695,9 @@ describe('ResultWorkspace', () => {
         if (typeof synchronize === 'function') synchronize();
       });
 
-      expect(screen.getByText('Sources').closest('li')).toHaveAttribute(
-        'aria-current',
-        'true',
-      );
+      expect(
+        within(timestamps).getByText('Sources').closest('li'),
+      ).toHaveAttribute('aria-current', 'true');
     } finally {
       interval.mockRestore();
       vi.mocked(controller.getCurrentTimeMs).mockReturnValue(0);
