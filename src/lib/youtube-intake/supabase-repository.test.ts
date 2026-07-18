@@ -79,7 +79,60 @@ function insertQuery(result: unknown) {
   return query;
 }
 
+function updateQuery(result: unknown) {
+  const query = {
+    update: vi.fn(),
+    eq: vi.fn(),
+    select: vi.fn(),
+    maybeSingle: vi.fn().mockResolvedValue(result),
+  };
+  for (const method of ['update', 'eq', 'select'] as const) {
+    query[method].mockReturnValue(query);
+  }
+  return query;
+}
+
 describe('Supabase intake repository', () => {
+  it('updates a title only for the owner at the expected revision', async () => {
+    const updatedAt = '2026-07-18T10:00:01.000Z';
+    const query = updateQuery({
+      data: { updated_at: updatedAt },
+      error: null,
+    });
+    const client = { from: vi.fn().mockReturnValue(query), rpc: vi.fn() };
+
+    await expect(
+      createSupabaseIntakeRepository(client).saveOwnedTitle({
+        userId,
+        analysisId: intakeId,
+        title: 'Edited title',
+        expectedUpdatedAt: '2026-07-18T10:00:00.000Z',
+      }),
+    ).resolves.toBe(updatedAt);
+
+    expect(query.update).toHaveBeenCalledWith({ title: 'Edited title' });
+    expect(query.eq).toHaveBeenCalledWith('id', intakeId);
+    expect(query.eq).toHaveBeenCalledWith('user_id', userId);
+    expect(query.eq).toHaveBeenCalledWith(
+      'updated_at',
+      '2026-07-18T10:00:00.000Z',
+    );
+    expect(query.select).toHaveBeenCalledWith('updated_at');
+  });
+
+  it('returns null when an owned title compare-and-set finds no row', async () => {
+    const query = updateQuery({ data: null, error: null });
+    const client = { from: vi.fn().mockReturnValue(query), rpc: vi.fn() };
+
+    await expect(
+      createSupabaseIntakeRepository(client).saveOwnedTitle({
+        userId,
+        analysisId: intakeId,
+        title: 'Edited title',
+        expectedUpdatedAt: '2026-07-18T10:00:00.000Z',
+      }),
+    ).resolves.toBeNull();
+  });
   it('filters reusable rows by owner and excludes failed attempts', async () => {
     const query = selectQuery({ data: row, error: null });
     const client = { from: vi.fn().mockReturnValue(query), rpc: vi.fn() };

@@ -1,5 +1,10 @@
 import { parseAnalysisSnapshot, type ArtifactKind } from './domain';
 import type {
+  FlashcardsArtifact,
+  SummaryArtifact,
+  TimestampsArtifact,
+} from './artifact-schemas';
+import type {
   AnalysisRepository,
   FailedArtifactWrite,
   JobStateUpdate,
@@ -41,6 +46,18 @@ export type SupabaseAnalysisClient = Readonly<{
   ): PromiseLike<SupabaseResult>;
 }>;
 
+export type ResultArtifactRepository = Readonly<{
+  saveOwnedArtifact(
+    input: Readonly<{
+      userId: string;
+      analysisId: string;
+      kind: 'summary' | 'flashcards' | 'timestamps';
+      content: SummaryArtifact | FlashcardsArtifact | TimestampsArtifact;
+      expectedUpdatedAt: string;
+    }>,
+  ): Promise<string | null>;
+}>;
+
 export class AnalysisRepositoryError extends Error {
   readonly code = 'persistence_failure' as const;
 
@@ -61,9 +78,22 @@ function ensureRequired(result: SupabaseResult): unknown {
   return data;
 }
 
+function updatedAtOrConflict(result: SupabaseResult): string | null {
+  const data = ensureSuccess(result);
+  if (data === null) return null;
+  if (
+    typeof data !== 'object' ||
+    !('updated_at' in data) ||
+    typeof data.updated_at !== 'string'
+  ) {
+    throw new AnalysisRepositoryError();
+  }
+  return data.updated_at;
+}
+
 export function createSupabaseAnalysisRepository(
   client: SupabaseAnalysisClient,
-): AnalysisRepository {
+): AnalysisRepository & ResultArtifactRepository {
   async function findSnapshot(
     column: 'analysis_id' | 'id',
     value: string,
@@ -169,6 +199,20 @@ export function createSupabaseAnalysisRepository(
   }
 
   return {
+    async saveOwnedArtifact(input): Promise<string | null> {
+      const result = await client
+        .from('analysis_artifacts')
+        .update({ content: input.content })
+        .eq('analysis_id', input.analysisId)
+        .eq('user_id', input.userId)
+        .eq('kind', input.kind)
+        .eq('status', 'ready')
+        .eq('updated_at', input.expectedUpdatedAt)
+        .select('updated_at')
+        .maybeSingle();
+      return updatedAtOrConflict(result);
+    },
+
     createForAnalysis: (userId, analysisId) =>
       createOrRetry('create_analysis_pipeline', userId, analysisId),
 

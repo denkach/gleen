@@ -17,6 +17,60 @@ function queryReturning(result: unknown) {
 }
 
 describe('Supabase analysis repository', () => {
+  it('updates ready artifact content only for the owner and expected revision', async () => {
+    const updatedAt = '2026-07-18T10:00:01.000Z';
+    const query = queryReturning({
+      data: { updated_at: updatedAt },
+      error: null,
+    });
+    const client = { from: vi.fn().mockReturnValue(query), rpc: vi.fn() };
+    const repository = createSupabaseAnalysisRepository(client);
+    const content = {
+      schemaVersion: 1 as const,
+      cards: [{ front: 'Question', back: 'Answer' }],
+    };
+
+    await expect(
+      repository.saveOwnedArtifact({
+        userId: 'user-id',
+        analysisId: 'analysis-id',
+        kind: 'flashcards',
+        content,
+        expectedUpdatedAt: '2026-07-18T10:00:00.000Z',
+      }),
+    ).resolves.toBe(updatedAt);
+
+    expect(query.update).toHaveBeenCalledWith({ content });
+    expect(query.eq).toHaveBeenCalledWith('analysis_id', 'analysis-id');
+    expect(query.eq).toHaveBeenCalledWith('user_id', 'user-id');
+    expect(query.eq).toHaveBeenCalledWith('kind', 'flashcards');
+    expect(query.eq).toHaveBeenCalledWith('status', 'ready');
+    expect(query.eq).toHaveBeenCalledWith(
+      'updated_at',
+      '2026-07-18T10:00:00.000Z',
+    );
+    expect(query.select).toHaveBeenCalledWith('updated_at');
+  });
+
+  it('returns null for a stale or cross-user artifact update', async () => {
+    const query = queryReturning({ data: null, error: null });
+    const client = { from: vi.fn().mockReturnValue(query), rpc: vi.fn() };
+
+    await expect(
+      createSupabaseAnalysisRepository(client).saveOwnedArtifact({
+        userId: 'other-user',
+        analysisId: 'analysis-id',
+        kind: 'summary',
+        content: {
+          schemaVersion: 1,
+          title: 'T',
+          overview: 'O',
+          keyPoints: ['P'],
+        },
+        expectedUpdatedAt: '2026-07-18T10:00:00.000Z',
+      }),
+    ).resolves.toBeNull();
+  });
   it('does not replace an already ready artifact', async () => {
     const query = queryReturning({
       data: {
