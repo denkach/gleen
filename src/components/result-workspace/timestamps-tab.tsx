@@ -36,7 +36,16 @@ export function TimestampsTab({
         analysisId,
         expectedUpdatedAt,
         kind: 'timestamps',
-        content,
+        content: {
+          schemaVersion: 1,
+          chapters: content.chapters.map(
+            ({ offsetMs, title, description }) => ({
+              offsetMs,
+              title,
+              description,
+            }),
+          ),
+        },
       }),
     [analysisId, saveArtifact],
   );

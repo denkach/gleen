@@ -29,6 +29,14 @@ describe('transcript enrichment', () => {
     );
   });
 
+  it.each([
+    'When in doubt, verify the source.',
+    'AI remembers context across the prompt.',
+    'Una vez concluida la etapa, revisa el resultado.',
+  ])('keeps non-first-person narrative-like text conservative: %s', (text) => {
+    expect(classifyTranscriptSegment(text)).toBe('other');
+  });
+
   it('adds deterministic metadata without rewriting text or naming a speaker', () => {
     const segments = [
       {

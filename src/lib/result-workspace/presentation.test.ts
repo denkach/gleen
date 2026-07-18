@@ -84,6 +84,16 @@ const userState: ResultUserState = {
       cardIndex: 0,
       rating: 'got_it',
     },
+    {
+      artifactRevision: '2026-07-18T00:00:00.000Z',
+      cardIndex: -1,
+      rating: 'hard',
+    },
+    {
+      artifactRevision: '2026-07-18T00:00:00.000Z',
+      cardIndex: 0.5,
+      rating: 'again',
+    },
   ],
 };
 
@@ -142,7 +152,13 @@ describe('normalizeResultWorkspace', () => {
     });
 
     const model = normalizeResultWorkspace(
-      fixtureSavedIntake,
+      {
+        ...fixtureSavedIntake,
+        transcriptSegments: [
+          ...fixtureSavedIntake.transcriptSegments,
+          { text: 'A sourced point', offsetMs: 12_000, durationMs: 1_000 },
+        ],
+      },
       snapshot([summary]),
     );
 
@@ -183,6 +199,20 @@ describe('normalizeResultWorkspace', () => {
           supportingQuote: 'This was not in the transcript',
           sourceOffsetMs: null,
         },
+        {
+          title: 'Fabricated offset',
+          summary: 'Summary',
+          details: 'Details',
+          supportingQuote: null,
+          sourceOffsetMs: 500,
+        },
+        {
+          title: 'Real source start',
+          summary: 'Summary',
+          details: 'Details',
+          supportingQuote: null,
+          sourceOffsetMs: 0,
+        },
       ],
     });
 
@@ -202,6 +232,8 @@ describe('normalizeResultWorkspace', () => {
             sourceOffsetMs: null,
           },
           { supportingQuote: null, sourceOffsetMs: null },
+          { supportingQuote: null, sourceOffsetMs: null },
+          { supportingQuote: null, sourceOffsetMs: 0 },
         ],
       },
     });
@@ -257,7 +289,13 @@ describe('normalizeResultWorkspace', () => {
     });
 
     const model = normalizeResultWorkspace(
-      fixtureSavedIntake,
+      {
+        ...fixtureSavedIntake,
+        transcriptSegments: [
+          ...fixtureSavedIntake.transcriptSegments,
+          { text: 'At the boundary', offsetMs: 212_000, durationMs: 0 },
+        ],
+      },
       snapshot([summary]),
     );
 
@@ -379,7 +417,7 @@ describe('normalizeResultWorkspace', () => {
       },
       availableExports: ['markdown', 'obsidian', 'notebooklm'],
     });
-    expect(model.userState.reviews).toEqual([
+    expect(model.userState?.reviews).toEqual([
       {
         artifactRevision: '2026-07-18T00:00:00.000Z',
         cardIndex: 0,
@@ -416,6 +454,86 @@ describe('normalizeResultWorkspace', () => {
       keyMomentCount: null,
       transcriptWordCount: null,
       currentChapter: null,
+    });
+  });
+
+  it('reports reviewed count as unknown when owner state is unavailable', () => {
+    const flashcards = artifact('flashcards', 'ready', {
+      schemaVersion: 1,
+      cards: [{ front: 'Question?', back: 'Answer.' }],
+    });
+    const intake = {
+      ...fixtureSavedIntake,
+      configuration: {
+        ...fixtureSavedIntake.configuration,
+        artifacts: ['summary', 'flashcards'] as const,
+        flashcardPreset: 18 as const,
+      },
+    };
+
+    const model = normalizeResultWorkspace(
+      intake,
+      snapshot([legacySummary, flashcards]),
+      null,
+    );
+
+    expect(model.overview.flashcardCount).toBe(1);
+    expect(model.overview.reviewedFlashcardCount).toBeNull();
+    expect(model.userState).toBeNull();
+  });
+
+  it('rejects unsorted chapters and excludes chapters beyond video duration', () => {
+    const unsorted = artifact('timestamps', 'ready', {
+      schemaVersion: 1,
+      chapters: [
+        { offsetMs: 1_000, title: 'Later', description: 'Later' },
+        { offsetMs: 0, title: 'Earlier', description: 'Earlier' },
+      ],
+    });
+    const bounded = artifact('timestamps', 'ready', {
+      schemaVersion: 1,
+      chapters: [
+        { offsetMs: 0, title: 'Start', description: 'Opening' },
+        { offsetMs: 211_000, title: 'End', description: 'Closing' },
+        { offsetMs: 212_001, title: 'Beyond', description: 'Invalid' },
+      ],
+    });
+    const stateAtEnd: ResultUserState = {
+      ...userState,
+      playbackPositionMs: 999_000,
+      reviews: [],
+    };
+
+    const unsortedModel = normalizeResultWorkspace(
+      fixtureSavedIntake,
+      snapshot([unsorted]),
+      stateAtEnd,
+    );
+    const boundedModel = normalizeResultWorkspace(
+      fixtureSavedIntake,
+      snapshot([bounded]),
+      stateAtEnd,
+    );
+
+    expect(unsortedModel.tabs.timestamps).toEqual({
+      status: 'unavailable',
+      reason: 'malformed',
+    });
+    expect(unsortedModel.overview.keyMomentCount).toBeNull();
+    expect(boundedModel.tabs.timestamps).toMatchObject({
+      status: 'ready',
+      data: {
+        chapters: [
+          { title: 'Start', durationMs: 211_000 },
+          { title: 'End', durationMs: 1_000 },
+        ],
+      },
+    });
+    expect(boundedModel.overview.keyMomentCount).toBe(2);
+    expect(boundedModel.overview.currentChapter).toMatchObject({
+      title: 'End',
+      startSeconds: 211,
+      endSeconds: 212,
     });
   });
 });

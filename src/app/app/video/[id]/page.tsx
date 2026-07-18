@@ -13,6 +13,10 @@ import {
 } from '@/lib/result-workspace/actions';
 import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
 import {
+  createSupabaseResultUserStateRepository,
+  type SupabaseResultUserStateClient,
+} from '@/lib/result-workspace/user-state-repository';
+import {
   createSupabaseIntakeRepository,
   type SupabaseIntakeClient,
 } from '@/lib/youtube-intake/supabase-repository';
@@ -54,14 +58,23 @@ export default async function VideoIntakePage(props: VideoIntakePageProps) {
   const snapshot = await repository.findOwnedSnapshot(userId, intake.id);
   if (!snapshot) notFound();
 
-  if (snapshot.job.status === 'complete' || snapshot.job.status === 'partial')
+  if (snapshot.job.status === 'complete' || snapshot.job.status === 'partial') {
+    let userState = null;
+    try {
+      userState = await createSupabaseResultUserStateRepository(
+        supabase as unknown as SupabaseResultUserStateClient,
+      ).findOwned(userId, intake.id);
+    } catch {
+      // Artifact data remains usable, but private progress must stay unknown.
+    }
     return (
       <ResultWorkspace
-        model={normalizeResultWorkspace(intake, snapshot)}
+        model={normalizeResultWorkspace(intake, snapshot, userState)}
         saveTitle={saveResultTitle}
         saveArtifact={saveResultArtifact}
       />
     );
+  }
 
   redirect(`/app?analysis=${encodeURIComponent(intake.id)}`);
 }

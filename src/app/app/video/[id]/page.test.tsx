@@ -5,6 +5,7 @@ import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 
 const {
   findOwned,
+  findOwnedState,
   findOwnedSnapshot,
   getUser,
   normalizeResultWorkspace,
@@ -12,6 +13,7 @@ const {
   redirect,
 } = vi.hoisted(() => ({
   findOwned: vi.fn(),
+  findOwnedState: vi.fn(),
   findOwnedSnapshot: vi.fn(),
   getUser: vi.fn(),
   normalizeResultWorkspace: vi.fn(),
@@ -32,6 +34,11 @@ vi.mock('@/lib/youtube-intake/supabase-repository', () => ({
 }));
 vi.mock('@/lib/analysis-pipeline/supabase-repository', () => ({
   createSupabaseAnalysisRepository: vi.fn(() => ({ findOwnedSnapshot })),
+}));
+vi.mock('@/lib/result-workspace/user-state-repository', () => ({
+  createSupabaseResultUserStateRepository: vi.fn(() => ({
+    findOwned: findOwnedState,
+  })),
 }));
 vi.mock('@/components/app-shell/analysis-processing-screen', () => ({
   AnalysisProcessingScreen: ({ intake }: { intake: AnalysisIntake }) => (
@@ -105,12 +112,21 @@ const snapshot = {
   },
 } as const;
 
+const userState = {
+  favorite: true,
+  playbackPositionMs: 12_000,
+  lastArtifact: 'flashcards' as const,
+  lastStudyAction: 'flashcards_reviewed' as const,
+  reviews: [],
+};
+
 describe('owned intake readiness page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
     findOwned.mockResolvedValue(intake);
     findOwnedSnapshot.mockResolvedValue(snapshot);
+    findOwnedState.mockResolvedValue(userState);
     normalizeResultWorkspace.mockReturnValue({
       source: { title: intake.title },
     });
@@ -136,12 +152,33 @@ describe('owned intake readiness page', () => {
       expect(normalizeResultWorkspace).toHaveBeenCalledWith(
         intake,
         terminalSnapshot,
+        userState,
       );
       expect(screen.getByTestId('result-workspace')).toHaveTextContent(
         intake.title,
       );
     },
   );
+
+  test('renders with unavailable owner state without fabricating progress', async () => {
+    const terminalSnapshot = {
+      ...snapshot,
+      job: { ...snapshot.job, status: 'complete', stage: 'complete' },
+    };
+    findOwnedSnapshot.mockResolvedValue(terminalSnapshot);
+    findOwnedState.mockRejectedValue(new Error('state unavailable'));
+
+    render(
+      await VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
+    );
+
+    expect(normalizeResultWorkspace).toHaveBeenCalledWith(
+      intake,
+      terminalSnapshot,
+      null,
+    );
+    expect(screen.getByTestId('result-workspace')).toBeVisible();
+  });
 
   test.each(['queued', 'running', 'failed'] as const)(
     'redirects a %s snapshot to the normalized resumable analysis route',

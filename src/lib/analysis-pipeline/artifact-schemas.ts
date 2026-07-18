@@ -53,9 +53,13 @@ export const summaryArtifactSchema = z.discriminatedUnion('schemaVersion', [
   summaryArtifactV3Schema,
 ]);
 
+const transcriptSourceTextSchema = z
+  .string()
+  .refine((text) => text.trim().length > 0, 'Transcript text is required');
+
 export const transcriptSegmentV1Schema = z
   .object({
-    text: z.string().trim().min(1),
+    text: transcriptSourceTextSchema,
     offsetMs: z.number().int().nonnegative(),
     durationMs: z.number().int().nonnegative(),
   })
@@ -63,7 +67,7 @@ export const transcriptSegmentV1Schema = z
 
 export const transcriptSegmentV2Schema = z
   .object({
-    text: z.string().trim().min(1),
+    text: transcriptSourceTextSchema,
     offsetMs: z.number().int().nonnegative(),
     durationMs: z.number().int().nonnegative(),
     segmentType: z.enum(['insight', 'question', 'example', 'story', 'other']),
@@ -124,7 +128,19 @@ export const timestampsArtifactSchema = z
       )
       .min(1),
   })
-  .strict();
+  .strict()
+  .superRefine((artifact, context) => {
+    artifact.chapters.forEach((chapter, index) => {
+      const previous = artifact.chapters[index - 1];
+      if (previous && chapter.offsetMs <= previous.offsetMs) {
+        context.addIssue({
+          code: 'custom',
+          path: ['chapters', index, 'offsetMs'],
+          message: 'Chapter offsets must be strictly increasing',
+        });
+      }
+    });
+  });
 
 export type SummaryArtifact = z.infer<typeof summaryArtifactSchema>;
 export type FlashcardsArtifact = z.infer<typeof flashcardsArtifactSchema>;

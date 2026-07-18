@@ -11,7 +11,7 @@ import type {
   ArtifactKind,
 } from '@/lib/analysis-pipeline/domain';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
-import { defaultResultUserState, type ResultUserState } from './user-state';
+import type { ResultUserState } from './user-state';
 
 export type NormalizedSummaryKeyPoint = Readonly<{
   text: string;
@@ -108,7 +108,7 @@ export type ResultWorkspaceModel = Readonly<{
     timestamps?: string;
   }>;
   overview: ResultOverviewData;
-  userState: ResultUserState;
+  userState: ResultUserState | null;
   tabs: Readonly<{
     summary: ResultTab<SummaryPresentation>;
     flashcards: ResultTab<FlashcardsArtifact>;
@@ -152,29 +152,45 @@ function normalizeArtifact<T>(
 function normalizeSummary(
   content: unknown,
   durationMs: number,
-  sourceTranscriptText: string,
+  sourceTranscriptSegments: AnalysisIntake['transcriptSegments'],
 ): SummaryPresentation {
   const summary = summaryArtifactSchema.parse(content);
+  const normalizeTranscriptText = (text: string) =>
+    text.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLocaleLowerCase();
+  const normalizedSegments = sourceTranscriptSegments.map((segment) => ({
+    offsetMs: segment.offsetMs,
+    text: normalizeTranscriptText(segment.text),
+  }));
+  const sourceOffsets = new Set(
+    sourceTranscriptSegments.map((segment) => segment.offsetMs),
+  );
   if (summary.schemaVersion === 3) {
-    const normalizedTranscript = sourceTranscriptText
-      .normalize('NFKC')
-      .trim()
-      .replace(/\s+/gu, ' ')
-      .toLocaleLowerCase();
+    const normalizedTranscript = normalizeTranscriptText(
+      sourceTranscriptSegments.map((segment) => segment.text).join(' '),
+    );
     const sections = summary.sections.map((section) => {
       const normalizedQuote = section.supportingQuote
-        ?.normalize('NFKC')
-        .trim()
-        .replace(/\s+/gu, ' ')
-        .toLocaleLowerCase();
+        ? normalizeTranscriptText(section.supportingQuote)
+        : undefined;
+      const supportingQuote =
+        normalizedQuote && normalizedTranscript.includes(normalizedQuote)
+          ? section.supportingQuote
+          : null;
+      const groundedOffsets =
+        supportingQuote === null || normalizedQuote === undefined
+          ? sourceOffsets
+          : new Set(
+              normalizedSegments
+                .filter((segment) => segment.text.includes(normalizedQuote))
+                .map((segment) => segment.offsetMs),
+            );
       return {
         ...section,
-        supportingQuote:
-          normalizedQuote && normalizedTranscript.includes(normalizedQuote)
-            ? section.supportingQuote
-            : null,
+        supportingQuote,
         sourceOffsetMs:
-          section.sourceOffsetMs !== null && section.sourceOffsetMs > durationMs
+          section.sourceOffsetMs !== null &&
+          (section.sourceOffsetMs > durationMs ||
+            !groundedOffsets.has(section.sourceOffsetMs))
             ? null
             : section.sourceOffsetMs,
       };
@@ -198,7 +214,10 @@ function normalizeSummary(
     return {
       text: keyPoint.text,
       sourceOffsetMs:
-        keyPoint.sourceOffsetMs > durationMs ? null : keyPoint.sourceOffsetMs,
+        keyPoint.sourceOffsetMs > durationMs ||
+        !sourceOffsets.has(keyPoint.sourceOffsetMs)
+          ? null
+          : keyPoint.sourceOffsetMs,
     };
   });
   return {
@@ -236,10 +255,13 @@ function normalizeTimestamps(
   durationMs: number,
 ): TimestampsPresentation {
   const timestamps = timestampsArtifactSchema.parse(content);
+  const chapters = timestamps.chapters.filter(
+    (chapter) => chapter.offsetMs <= durationMs,
+  );
   return {
     ...timestamps,
-    chapters: timestamps.chapters.map((chapter, index) => {
-      const nextOffset = timestamps.chapters[index + 1]?.offsetMs ?? durationMs;
+    chapters: chapters.map((chapter, index) => {
+      const nextOffset = chapters[index + 1]?.offsetMs ?? durationMs;
       return {
         ...chapter,
         durationMs: Math.max(
@@ -261,7 +283,7 @@ function countTranscriptWords(transcript: TranscriptPresentation): number {
 export function normalizeResultWorkspace(
   intake: AnalysisIntake,
   snapshot: AnalysisSnapshot,
-  userState: ResultUserState = defaultResultUserState,
+  userState: ResultUserState | null = null,
 ): ResultWorkspaceModel {
   const artifacts = new Map<ArtifactKind, AnalysisArtifact>(
     snapshot.artifacts.map((artifact) => [artifact.kind, artifact]),
@@ -272,13 +294,11 @@ export function normalizeResultWorkspace(
   const flashcardsArtifact = artifacts.get('flashcards');
   const timestampsArtifact = artifacts.get('timestamps');
   const transcriptArtifact = artifacts.get('transcript');
-  const sourceTranscriptText = intake.transcriptSegments
-    .map((segment) => segment.text)
-    .join(' ');
   const summaryTab = normalizeArtifact(
     requested.has('summary'),
     summaryArtifact,
-    (content) => normalizeSummary(content, durationMs, sourceTranscriptText),
+    (content) =>
+      normalizeSummary(content, durationMs, intake.transcriptSegments),
   );
   const flashcardsTab = normalizeArtifact(
     requested.has('flashcards'),
@@ -297,13 +317,15 @@ export function normalizeResultWorkspace(
   );
   const flashcardRevision = flashcardsArtifact?.updatedAt;
   const currentReviews =
-    flashcardsTab.status === 'ready' && flashcardRevision
+    userState && flashcardsTab.status === 'ready' && flashcardRevision
       ? [
           ...new Map(
             userState.reviews
               .filter(
                 (review) =>
                   review.artifactRevision === flashcardRevision &&
+                  Number.isSafeInteger(review.cardIndex) &&
+                  review.cardIndex >= 0 &&
                   review.cardIndex < flashcardsTab.data.cards.length,
               )
               .map((review) => [review.cardIndex, review]),
@@ -312,7 +334,7 @@ export function normalizeResultWorkspace(
       : [];
   const normalizedPlaybackPositionMs = Math.min(
     durationMs,
-    Math.max(0, userState.playbackPositionMs),
+    Math.max(0, userState?.playbackPositionMs ?? 0),
   );
   const currentChapterIndex =
     timestampsTab.status === 'ready'
@@ -330,11 +352,13 @@ export function normalizeResultWorkspace(
     timestampsTab,
     transcriptTab,
   ].some((tab) => tab.status === 'ready');
-  const normalizedUserState: ResultUserState = {
-    ...userState,
-    playbackPositionMs: normalizedPlaybackPositionMs,
-    reviews: currentReviews,
-  };
+  const normalizedUserState: ResultUserState | null = userState
+    ? {
+        ...userState,
+        playbackPositionMs: normalizedPlaybackPositionMs,
+        reviews: currentReviews,
+      }
+    : null;
 
   return {
     source: {
@@ -363,7 +387,9 @@ export function normalizeResultWorkspace(
           ? flashcardsTab.data.cards.length
           : null,
       reviewedFlashcardCount:
-        flashcardsTab.status === 'ready' ? currentReviews.length : null,
+        flashcardsTab.status === 'ready' && userState
+          ? currentReviews.length
+          : null,
       keyMomentCount:
         timestampsTab.status === 'ready'
           ? timestampsTab.data.chapters.length

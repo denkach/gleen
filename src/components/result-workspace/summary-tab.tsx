@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import type { SummaryArtifact } from '@/lib/analysis-pipeline/artifact-schemas';
 import type { ResultSaveState } from '@/lib/result-workspace/actions';
 import type { SummaryPresentation } from '@/lib/result-workspace/presentation';
 
@@ -16,6 +17,45 @@ export function formatOffset(offsetMs: number): string {
   return hours > 0
     ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
     : `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function serializeSummary(content: SummaryPresentation): SummaryArtifact {
+  if (content.schemaVersion === 1) {
+    return {
+      schemaVersion: 1,
+      title: content.title,
+      overview: content.overview,
+      keyPoints: content.keyPoints.map((point) => point.text),
+    };
+  }
+  if (content.schemaVersion === 2) {
+    if (content.keyPoints.some((point) => point.sourceOffsetMs === null)) {
+      return {
+        schemaVersion: 1,
+        title: content.title,
+        overview: content.overview,
+        keyPoints: content.keyPoints.map((point) => point.text),
+      };
+    }
+    return {
+      schemaVersion: 2,
+      title: content.title,
+      overview: content.overview,
+      keyPoints: content.keyPoints.map((point) => ({
+        text: point.text,
+        sourceOffsetMs: point.sourceOffsetMs!,
+      })),
+    };
+  }
+  return {
+    schemaVersion: 3,
+    title: content.title,
+    outcome: content.overview,
+    sections: content.sections.map((section, index) => ({
+      ...section,
+      summary: content.keyPoints[index]?.text ?? section.summary,
+    })),
+  };
 }
 
 export function SummaryTab({
@@ -42,25 +82,7 @@ export function SummaryTab({
         analysisId,
         expectedUpdatedAt,
         kind: 'summary',
-        content:
-          content.schemaVersion === 1
-            ? {
-                schemaVersion: 1,
-                title: content.title,
-                overview: content.overview,
-                keyPoints: content.keyPoints.map((point) => point.text),
-              }
-            : {
-                schemaVersion: 2,
-                title: content.title,
-                overview: content.overview,
-                keyPoints: content.keyPoints.map((point) => ({
-                  text: point.text,
-                  ...(point.sourceOffsetMs === null
-                    ? {}
-                    : { sourceOffsetMs: point.sourceOffsetMs }),
-                })),
-              },
+        content: serializeSummary(content),
       }),
     [analysisId, saveArtifact],
   );

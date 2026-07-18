@@ -98,6 +98,27 @@ describe('versioned artifact schemas', () => {
     ).toBe(false);
   });
 
+  it('rejects timestamp chapters that are not strictly chronological', () => {
+    expect(
+      timestampsArtifactSchema.safeParse({
+        schemaVersion: 1,
+        chapters: [
+          { offsetMs: 10_000, title: 'Later', description: 'Later chapter' },
+          { offsetMs: 5_000, title: 'Earlier', description: 'Out of order' },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      timestampsArtifactSchema.safeParse({
+        schemaVersion: 1,
+        chapters: [
+          { offsetMs: 5_000, title: 'First', description: 'First chapter' },
+          { offsetMs: 5_000, title: 'Duplicate', description: 'Same offset' },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
   it('strictly accepts summary v3 sections with nullable grounding', () => {
     const summary = {
       schemaVersion: 3,
@@ -160,6 +181,47 @@ describe('versioned artifact schemas', () => {
       transcriptArtifactV2Schema.safeParse({
         ...current,
         segments: [{ ...current.segments[0], speakerLabel: '' }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('validates transcript source text without trimming or rewriting it', () => {
+    const sourceText = '  Keep source spacing exactly.  ';
+    const current = transcriptArtifactV2Schema.parse({
+      schemaVersion: 2,
+      language: 'en',
+      segments: [
+        {
+          text: sourceText,
+          offsetMs: 0,
+          durationMs: 1_000,
+          segmentType: 'other',
+          speakerLabel: null,
+        },
+      ],
+    });
+
+    expect(current.segments[0]?.text).toBe(sourceText);
+    expect(
+      transcriptArtifactV1Schema.safeParse({
+        schemaVersion: 1,
+        language: 'en',
+        segments: [{ text: '   ', offsetMs: 0, durationMs: 1_000 }],
+      }).success,
+    ).toBe(false);
+    expect(
+      transcriptArtifactV2Schema.safeParse({
+        schemaVersion: 2,
+        language: 'en',
+        segments: [
+          {
+            text: '\n\t',
+            offsetMs: 0,
+            durationMs: 1_000,
+            segmentType: 'other',
+            speakerLabel: null,
+          },
+        ],
       }).success,
     ).toBe(false);
   });

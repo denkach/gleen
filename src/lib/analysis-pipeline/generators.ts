@@ -58,6 +58,13 @@ export async function generateSummary(
   const normalizedTranscript = normalizeGroundingText(
     context.transcriptSegments.map((segment) => segment.text).join(' '),
   );
+  const normalizedSegments = context.transcriptSegments.map((segment) => ({
+    offsetMs: segment.offsetMs,
+    text: normalizeGroundingText(segment.text),
+  }));
+  const sourceOffsets = new Set(
+    context.transcriptSegments.map((segment) => segment.offsetMs),
+  );
   const durationMs = context.durationSeconds * 1_000;
   return {
     ...result,
@@ -68,16 +75,28 @@ export async function generateSummary(
           section.supportingQuote === null
             ? null
             : normalizeGroundingText(section.supportingQuote);
+        const supportingQuote =
+          normalizedQuote !== null &&
+          normalizedTranscript.includes(normalizedQuote)
+            ? section.supportingQuote
+            : null;
+        const groundedOffsets =
+          supportingQuote === null
+            ? sourceOffsets
+            : new Set(
+                normalizedSegments
+                  .filter((segment) =>
+                    segment.text.includes(normalizedQuote ?? ''),
+                  )
+                  .map((segment) => segment.offsetMs),
+              );
         return {
           ...section,
-          supportingQuote:
-            normalizedQuote !== null &&
-            normalizedTranscript.includes(normalizedQuote)
-              ? section.supportingQuote
-              : null,
+          supportingQuote,
           sourceOffsetMs:
             section.sourceOffsetMs !== null &&
-            section.sourceOffsetMs > durationMs
+            (section.sourceOffsetMs > durationMs ||
+              !groundedOffsets.has(section.sourceOffsetMs))
               ? null
               : section.sourceOffsetMs,
         };

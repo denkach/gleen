@@ -178,6 +178,40 @@ describe('analysis workflow orchestration', () => {
     });
   });
 
+  it('persists successful enrichment with source text byte-for-byte', async () => {
+    const { repository, provider, ledger } = harness();
+    const sourceText = '  Transcript spacing stays unchanged.  ';
+
+    await executeAnalysisPipeline({
+      jobId: 'job-id',
+      repository,
+      provider,
+      ledger,
+      context: {
+        ...context,
+        transcriptSegments: [
+          { text: sourceText, offsetMs: 0, durationMs: 1_000 },
+        ],
+      },
+    });
+
+    expect(repository.saveArtifactReady).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'transcript',
+        schemaVersion: 2,
+        content: expect.objectContaining({
+          segments: [
+            expect.objectContaining({
+              text: sourceText,
+              segmentType: 'other',
+              speakerLabel: null,
+            }),
+          ],
+        }),
+      }),
+    );
+  });
+
   it('persists each generated artifact with its content schema version', async () => {
     const { repository, provider, ledger } = harness();
 

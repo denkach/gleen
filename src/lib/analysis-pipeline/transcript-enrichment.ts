@@ -16,27 +16,26 @@ const exampleMarkers = [
   'beispielsweise',
 ] as const;
 
-const storyMarkers = [
-  'i remember',
-  'i once',
-  'when i',
-  'my experience',
-  "я пам'ятаю",
-  'колись я',
-  'коли я',
-  'мій досвід',
-  'я помню',
-  'однажды я',
-  'когда я',
-  'мой опыт',
-  'recuerdo que',
-  'una vez',
-  'cuando yo',
-  'mi experiencia',
-  'ich erinnere mich',
-  'einmal habe ich',
-  'als ich',
-  'meine erfahrung',
+const storyPatterns = [
+  /(?:^|[^\p{L}\p{N}_])i remember(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])i once(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])when i(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])my experience(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])я пам'ятаю(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])колись я(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])коли я(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])мій досвід(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])я помню(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])однажды я(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])когда я(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])мой опыт(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])recuerdo que(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])cuando yo(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])mi experiencia(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])ich erinnere mich(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])einmal habe ich(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])als ich(?=$|[^\p{L}\p{N}_])/u,
+  /(?:^|[^\p{L}\p{N}_])meine erfahrung(?=$|[^\p{L}\p{N}_])/u,
 ] as const;
 
 function normalizedForClassification(text: string): string {
@@ -53,8 +52,7 @@ export function classifyTranscriptSegment(text: string): TranscriptSegmentType {
   if (normalized.includes('?')) return 'question';
   if (exampleMarkers.some((marker) => normalized.includes(marker)))
     return 'example';
-  if (storyMarkers.some((marker) => normalized.includes(marker)))
-    return 'story';
+  if (storyPatterns.some((pattern) => pattern.test(normalized))) return 'story';
   return 'other';
 }
 

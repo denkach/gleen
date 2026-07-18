@@ -79,6 +79,20 @@ describe('artifact generators', () => {
             supportingQuote: '  SECOND   IDEA ',
             sourceOffsetMs: null,
           },
+          {
+            title: 'Fabricated in-range offset',
+            summary: 'A summary',
+            details: 'Details',
+            supportingQuote: null,
+            sourceOffsetMs: 500,
+          },
+          {
+            title: 'Quote at the wrong real segment',
+            summary: 'A summary',
+            details: 'Details',
+            supportingQuote: 'Second idea',
+            sourceOffsetMs: 0,
+          },
         ],
       },
     });
@@ -92,6 +106,14 @@ describe('artifact generators', () => {
       }),
       expect.objectContaining({
         supportingQuote: 'SECOND   IDEA',
+        sourceOffsetMs: null,
+      }),
+      expect.objectContaining({
+        supportingQuote: null,
+        sourceOffsetMs: null,
+      }),
+      expect.objectContaining({
+        supportingQuote: 'Second idea',
         sourceOffsetMs: null,
       }),
     ]);

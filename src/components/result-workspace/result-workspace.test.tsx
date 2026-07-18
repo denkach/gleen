@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { resultArtifactEditSchema } from '@/lib/result-workspace/edit-schemas';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
 import { PlayerProvider } from './player-context';
@@ -156,6 +157,7 @@ function renderWorkspace(value: ResultWorkspaceModel = model) {
 function renderWorkspaceWithActions({
   saveTitle = vi.fn(),
   saveArtifact = vi.fn(),
+  value = model,
 }: Readonly<{
   saveTitle?: (
     input: unknown,
@@ -167,11 +169,12 @@ function renderWorkspaceWithActions({
   ) => Promise<
     { status: 'saved'; updatedAt: string } | { status: 'conflict' | 'error' }
   >;
+  value?: ResultWorkspaceModel;
 }>) {
   return render(
     <PlayerProvider controller={controller}>
       <ResultWorkspace
-        model={model}
+        model={value}
         saveTitle={saveTitle}
         saveArtifact={saveArtifact}
       />
@@ -491,7 +494,125 @@ describe('ResultWorkspace', () => {
       kind: 'summary',
       content: expect.objectContaining({ overview: 'Edited overview' }),
     });
+    const payload = saveArtifact.mock.calls.at(-1)?.[0];
+    expect(resultArtifactEditSchema.parse(payload)).toMatchObject({
+      kind: 'summary',
+      content: {
+        schemaVersion: 1,
+        title: 'A structured summary',
+        overview: 'Edited overview',
+        keyPoints: [
+          'Legacy text remains readable.',
+          'Sources remain grounded.',
+        ],
+      },
+    });
     expect(screen.getByText('Saved')).toBeVisible();
+  });
+
+  it('autosaves normalized summary v3 without downgrade or section data loss', async () => {
+    const user = userEvent.setup();
+    const saveArtifact = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:02:00.000Z',
+    });
+    const value: ResultWorkspaceModel = {
+      ...model,
+      tabs: {
+        ...model.tabs,
+        summary: {
+          status: 'ready',
+          data: {
+            schemaVersion: 3,
+            title: 'Summary v3',
+            outcome: 'Original outcome',
+            overview: 'Original outcome',
+            sections: [
+              {
+                title: 'Stable section title',
+                summary: 'Original section summary',
+                details: 'Preserve these details.',
+                supportingQuote: 'A prism separates light.',
+                sourceOffsetMs: 0,
+              },
+            ],
+            keyPoints: [
+              { text: 'Original section summary', sourceOffsetMs: 0 },
+            ],
+          },
+        },
+      },
+    };
+    renderWorkspaceWithActions({ saveArtifact, value });
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Summary overview' }),
+      { target: { value: 'Edited outcome' } },
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'Summary point 1' }), {
+      target: { value: 'Edited section summary' },
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
+
+    const payload = saveArtifact.mock.calls.at(-1)?.[0];
+    expect(resultArtifactEditSchema.parse(payload)).toEqual({
+      analysisId: model.source.intakeId,
+      expectedUpdatedAt: model.revisions.summary,
+      kind: 'summary',
+      content: {
+        schemaVersion: 3,
+        title: 'Summary v3',
+        outcome: 'Edited outcome',
+        sections: [
+          {
+            title: 'Stable section title',
+            summary: 'Edited section summary',
+            details: 'Preserve these details.',
+            supportingQuote: 'A prism separates light.',
+            sourceOffsetMs: 0,
+          },
+        ],
+      },
+    });
+  });
+
+  it('strips derived chapter duration before strict timestamps autosave', async () => {
+    const user = userEvent.setup();
+    const saveArtifact = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:02:00.000Z',
+    });
+    renderWorkspaceWithActions({ saveArtifact });
+    await user.click(screen.getByRole('tab', { name: 'Timestamps' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Chapter 1 title' }), {
+      target: { value: 'Edited opening' },
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
+
+    const payload = saveArtifact.mock.calls.at(-1)?.[0];
+    const parsed = resultArtifactEditSchema.parse(payload);
+    expect(parsed).toMatchObject({
+      kind: 'timestamps',
+      content: {
+        schemaVersion: 1,
+        chapters: [
+          {
+            offsetMs: 0,
+            title: 'Edited opening',
+            description: 'The premise',
+          },
+          {
+            offsetMs: 755_000,
+            title: 'Sources',
+            description: 'Grounding',
+          },
+        ],
+      },
+    });
+    if (parsed.kind === 'timestamps') {
+      expect(parsed.content.chapters[0]).not.toHaveProperty('durationMs');
+    }
   });
 
   it('finishes artifact autosave after switching tabs during the debounce', async () => {
