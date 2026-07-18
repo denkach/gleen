@@ -142,6 +142,26 @@ describe('AnalyzeProcessingVisual', () => {
     expect(statuses).toHaveTextContent('Summary not selected');
   });
 
+  it.each(['ready', 'failed'] as const)(
+    'maps a %s Transcript artifact to the visible and semantic Export rail',
+    (status) => {
+      render(
+        <AnalyzeProcessingVisual
+          state="error"
+          submittedUrl=""
+          selectedArtifactKinds={['transcript']}
+          artifactStates={{ transcript: status }}
+        />,
+      );
+      expect(screen.getByText('EXPORT').parentElement).toHaveTextContent(
+        status,
+      );
+      expect(
+        screen.getByRole('list', { name: 'Artifact status' }),
+      ).toHaveTextContent(`Export ${status}`);
+    },
+  );
+
   it('moves focus to processing and then terminal context only on transitions', () => {
     const { rerender } = render(
       <AnalyzeProcessingVisual

@@ -13,6 +13,15 @@ import {
 import { useEffect, useRef, type ReactNode } from 'react';
 
 type ArtifactRailState = 'queued' | 'ready' | 'failed' | 'not selected';
+type ArtifactKind = IntakeConfiguration['artifacts'][number];
+type ArtifactRailId = (typeof artifactRailDefinitions)[number]['id'];
+
+const artifactKindByRail = {
+  summary: 'summary',
+  timestamps: 'timestamps',
+  flashcards: 'flashcards',
+  export: 'transcript',
+} as const satisfies Record<ArtifactRailId, ArtifactKind>;
 
 export type AnalyzeProcessingVisualProps = Readonly<{
   state: AnalysisVisualState;
@@ -47,17 +56,13 @@ export function AnalyzeProcessingVisual({
   const previousMode = useRef<'idle' | 'processing' | 'complete' | 'error'>(
     'idle',
   );
-  const selectedRails = new Set(
-    selectedArtifactKinds.map((kind) =>
-      kind === 'transcript' ? 'export' : kind,
-    ),
-  );
-  const railState = (
-    railId: (typeof artifactRailDefinitions)[number]['id'],
-  ): ArtifactRailState =>
-    selectedRails.has(railId)
-      ? (artifactStates?.[railId] ?? (isComplete ? 'ready' : 'queued'))
+  const selectedArtifacts = new Set(selectedArtifactKinds);
+  const railState = (railId: ArtifactRailId): ArtifactRailState => {
+    const artifactKind = artifactKindByRail[railId];
+    return selectedArtifacts.has(artifactKind)
+      ? (artifactStates?.[artifactKind] ?? (isComplete ? 'ready' : 'queued'))
       : 'not selected';
+  };
 
   useEffect(() => {
     const previous = previousMode.current;
