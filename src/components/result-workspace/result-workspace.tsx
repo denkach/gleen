@@ -32,6 +32,7 @@ import { TranscriptTab } from './transcript-tab';
 import { PlayerProvider, useVideoPlayer } from './player-context';
 import type { VideoPlayerController } from './player-controller';
 import { SourcePanel } from './source-panel';
+import { usePlaybackPersistence } from './use-playback-persistence';
 
 type SaveAction = (input: unknown) => Promise<ResultSaveState>;
 type MutationAction = (input: unknown) => Promise<ResultMutationState>;
@@ -265,13 +266,6 @@ function ResultArtifacts({
   );
 }
 
-const inactiveController: VideoPlayerController = {
-  seekTo: () => undefined,
-  play: () => undefined,
-  pause: () => undefined,
-  getCurrentTimeMs: () => 0,
-};
-
 export type ResultWorkspaceProps = Readonly<{
   model: ResultWorkspaceModel;
   copy?: ResultCopy;
@@ -282,6 +276,23 @@ export type ResultWorkspaceProps = Readonly<{
   saveFlashcardReview?: MutationAction;
 }>;
 
+function PlaybackPersistence({
+  analysisId,
+  initialPositionMs,
+  savePlaybackPosition,
+}: Readonly<{
+  analysisId: string;
+  initialPositionMs: number;
+  savePlaybackPosition?: MutationAction;
+}>) {
+  usePlaybackPersistence({
+    analysisId,
+    initialPositionMs,
+    savePlaybackPosition,
+  });
+  return null;
+}
+
 export function ResultWorkspace(props: ResultWorkspaceProps) {
   const { model, copy = resultCopy.en } = props;
   const parentController = useVideoPlayer();
@@ -289,12 +300,16 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
   const duration = new Date(model.source.durationSeconds * 1_000)
     .toISOString()
     .slice(model.source.durationSeconds >= 3600 ? 11 : 14, 19);
+  const playbackPositionMs = model.userState?.playbackPositionMs ?? 0;
   const artifactRevisionKey = `${model.source.intakeId}:${model.revisions.title}:${model.revisions.summary ?? ''}:${model.revisions.flashcards ?? ''}:${model.revisions.timestamps ?? ''}`;
 
   return (
-    <PlayerProvider
-      controller={controller ?? parentController ?? inactiveController}
-    >
+    <PlayerProvider controller={controller ?? parentController}>
+      <PlaybackPersistence
+        analysisId={model.source.intakeId}
+        initialPositionMs={playbackPositionMs}
+        savePlaybackPosition={props.savePlaybackPosition}
+      />
       <div className="result-layout" data-testid="result-layout">
         <SourcePanel
           source={{
@@ -308,6 +323,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
                 : '—',
             thumbnailUrl: model.source.thumbnailUrl,
           }}
+          initialPositionMs={playbackPositionMs}
           onPlayerReady={setController}
         />
         <ResultArtifacts

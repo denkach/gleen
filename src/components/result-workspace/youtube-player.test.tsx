@@ -1,25 +1,58 @@
 import { act, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
+import { PlayerProvider, useVideoPlayerSnapshot } from './player-context';
+import type { VideoPlayerController } from './player-controller';
 import { YouTubePlayer } from './youtube-player';
 
 const iframe = document.createElement('iframe');
+let currentTime = 12.25;
+let duration = 900;
+let playbackRate = 1.25;
+let volume = 80;
+let muted = false;
 const player = {
   destroy: vi.fn(),
   getIframe: vi.fn(() => iframe),
-  getCurrentTime: vi.fn(() => 12.25),
+  getCurrentTime: vi.fn(() => currentTime),
+  getDuration: vi.fn(() => duration),
+  getPlaybackRate: vi.fn(() => playbackRate),
+  getAvailablePlaybackRates: vi.fn(() => [0.5, 1, 1.25, 1.5, 2]),
+  getVolume: vi.fn(() => volume),
+  isMuted: vi.fn(() => muted),
+  getOptions: vi.fn(() => ['captions']),
+  getOption: vi.fn(() => ({ languageCode: 'en' })),
+  setOption: vi.fn(),
   pauseVideo: vi.fn(),
   playVideo: vi.fn(),
   seekTo: vi.fn(),
+  setPlaybackRate: vi.fn(),
+  setVolume: vi.fn(),
+  mute: vi.fn(),
+  unMute: vi.fn(),
 };
 
-function installYouTubeApi({ ready = true }: { ready?: boolean } = {}) {
+function installYouTubeApi({
+  ready = true,
+  instance = player,
+}: {
+  ready?: boolean;
+  instance?: object;
+} = {}) {
   const Player = vi.fn(function Player(
     _element: HTMLElement,
-    options: { events: { onReady(): void; onError(): void } },
+    options: {
+      playerVars: { controls?: 0 | 1 };
+      events: {
+        onReady(): void;
+        onError(): void;
+        onStateChange(event: { data: number }): void;
+      };
+    },
   ) {
     if (ready) queueMicrotask(() => options.events.onReady());
-    return player;
+    return instance;
   });
   Object.assign(window, { YT: { Player } });
   return Player;
@@ -29,6 +62,11 @@ describe('YouTubePlayer', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    currentTime = 12.25;
+    duration = 900;
+    playbackRate = 1.25;
+    volume = 80;
+    muted = false;
     iframe.removeAttribute('title');
     Reflect.deleteProperty(window, 'YT');
     Reflect.deleteProperty(window, 'onYouTubeIframeAPIReady');
@@ -57,11 +95,161 @@ describe('YouTubePlayer', () => {
     controller.pause();
 
     expect(Player).toHaveBeenCalledOnce();
+    expect(Player.mock.calls[0]?.[1].playerVars.controls).toBe(1);
     expect(player.seekTo).toHaveBeenCalledWith(75.5, true);
     expect(player.playVideo).toHaveBeenCalledOnce();
     expect(player.pauseVideo).toHaveBeenCalledOnce();
     expect(controller.getCurrentTimeMs()).toBe(12_250);
     expect(player.getIframe()).toHaveAttribute('title', 'Play Source video');
+  });
+
+  test('synchronizes a reactive snapshot and clamps supported commands', async () => {
+    currentTime = 370;
+    const Player = installYouTubeApi();
+    const onReady = vi.fn();
+    render(
+      <YouTubePlayer
+        videoId="dQw4w9WgXcQ"
+        title="Source video"
+        onReady={onReady}
+      />,
+    );
+
+    await act(async () => {});
+    const controller = onReady.mock.calls[0]?.[0] as VideoPlayerController;
+    expect(controller.getSnapshot()).toMatchObject({
+      status: 'ready',
+      currentTimeMs: 370_000,
+      durationMs: 900_000,
+      playing: false,
+      playbackRate: 1.25,
+      availableRates: [0.5, 1, 1.25, 1.5, 2],
+      volume: 80,
+      muted: false,
+      captionsAvailable: true,
+    });
+
+    const events = Player.mock.calls[0]?.[1].events;
+    act(() => events.onStateChange?.({ data: 1 }));
+    expect(controller.getSnapshot().playing).toBe(true);
+
+    controller.seekTo(999_000);
+    controller.setPlaybackRate(1.4);
+    controller.setVolume(120);
+    controller.toggleMute();
+
+    expect(player.seekTo).toHaveBeenCalledWith(900, true);
+    expect(player.setPlaybackRate).toHaveBeenCalledWith(1.5);
+    expect(player.setVolume).toHaveBeenCalledWith(100);
+    expect(player.mute).toHaveBeenCalledOnce();
+
+    currentTime = 420;
+    duration = 800;
+    playbackRate = 2;
+    volume = 45;
+    muted = true;
+    act(() => vi.advanceTimersByTime(250));
+    expect(controller.getSnapshot()).toMatchObject({
+      currentTimeMs: 420_000,
+      durationMs: 800_000,
+      playbackRate: 2,
+      volume: 45,
+      muted: true,
+    });
+  });
+
+  test('reports unsupported optional capabilities truthfully and no-ops safely', async () => {
+    const limitedPlayer = {
+      destroy: vi.fn(),
+      getIframe: vi.fn(() => iframe),
+      getCurrentTime: vi.fn(() => 2),
+      pauseVideo: vi.fn(),
+      playVideo: vi.fn(),
+      seekTo: vi.fn(),
+    };
+    installYouTubeApi({ instance: limitedPlayer });
+    const onReady = vi.fn();
+    render(
+      <YouTubePlayer
+        videoId="dQw4w9WgXcQ"
+        title="Source video"
+        onReady={onReady}
+      />,
+    );
+    await act(async () => {});
+    const controller = onReady.mock.calls[0]?.[0] as VideoPlayerController;
+
+    expect(controller.getSnapshot()).toMatchObject({
+      availableRates: [],
+      captionsAvailable: false,
+      volume: 100,
+      muted: false,
+    });
+    expect(() => {
+      controller.setPlaybackRate(1.5);
+      controller.setVolume(40);
+      controller.toggleMute();
+      controller.toggleCaptions();
+    }).not.toThrow();
+    await expect(controller.requestFullscreen()).resolves.toBeUndefined();
+  });
+
+  test('seeks the saved position exactly once after ready', async () => {
+    const Player = installYouTubeApi();
+    const onTimeChange = vi.fn();
+    render(
+      <YouTubePlayer
+        videoId="dQw4w9WgXcQ"
+        title="Source video"
+        initialPositionMs={370_000}
+        onTimeChange={onTimeChange}
+      />,
+    );
+    await act(async () => {});
+
+    const events = Player.mock.calls[0]?.[1].events;
+    act(() => events.onReady());
+
+    expect(player.seekTo).toHaveBeenCalledTimes(1);
+    expect(player.seekTo).toHaveBeenCalledWith(370, true);
+    act(() => vi.advanceTimersByTime(250));
+    expect(onTimeChange).toHaveBeenCalledOnce();
+  });
+
+  test('constructs one IFrame player when full and mini controls subscribe', async () => {
+    const Player = installYouTubeApi();
+
+    function Control({ label }: Readonly<{ label: string }>) {
+      const status = useVideoPlayerSnapshot((snapshot) => snapshot.status);
+      return <output aria-label={label}>{status}</output>;
+    }
+
+    function Harness() {
+      const [controller, setController] =
+        useState<VideoPlayerController | null>(null);
+      return (
+        <PlayerProvider controller={controller}>
+          <YouTubePlayer
+            videoId="dQw4w9WgXcQ"
+            title="Source video"
+            onReady={setController}
+          />
+          <Control label="Full player state" />
+          <Control label="Mini player state" />
+        </PlayerProvider>
+      );
+    }
+
+    render(<Harness />);
+    await act(async () => {});
+
+    expect(screen.getByLabelText('Full player state')).toHaveTextContent(
+      'ready',
+    );
+    expect(screen.getByLabelText('Mini player state')).toHaveTextContent(
+      'ready',
+    );
+    expect(Player).toHaveBeenCalledOnce();
   });
 
   test('loads the official API script and initializes after its callback', async () => {

@@ -18,11 +18,13 @@ export type SourcePanelSource = Readonly<{
 export function SourcePanel({
   source,
   playerAvailable = true,
+  initialPositionMs = 0,
   onPlayerReady,
   onTimeChange,
 }: Readonly<{
   source: SourcePanelSource;
   playerAvailable?: boolean;
+  initialPositionMs?: number;
   onPlayerReady?: (controller: VideoPlayerController) => void;
   onTimeChange?: (offsetMs: number) => void;
 }>) {
@@ -42,6 +44,7 @@ export function SourcePanel({
           <YouTubePlayer
             videoId={source.videoId}
             title={source.title}
+            initialPositionMs={initialPositionMs}
             onReady={onPlayerReady}
             onTimeChange={onTimeChange}
             onUnavailable={() => setFailedPlayerVideoId(source.videoId)}

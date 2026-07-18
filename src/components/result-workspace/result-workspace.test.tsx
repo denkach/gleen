@@ -18,10 +18,27 @@ import type { VideoPlayerController } from './player-controller';
 import { ResultWorkspace } from './result-workspace';
 
 const controller: VideoPlayerController = {
+  subscribe: () => () => undefined,
+  getSnapshot: () => ({
+    status: 'ready',
+    currentTimeMs: 0,
+    durationMs: 900_000,
+    playing: false,
+    playbackRate: 1,
+    availableRates: [1],
+    volume: 100,
+    muted: false,
+    captionsAvailable: false,
+  }),
   seekTo: vi.fn(),
   play: vi.fn(),
   pause: vi.fn(),
   getCurrentTimeMs: vi.fn(() => 0),
+  setPlaybackRate: vi.fn(),
+  setVolume: vi.fn(),
+  toggleMute: vi.fn(),
+  toggleCaptions: vi.fn(),
+  requestFullscreen: vi.fn(async () => undefined),
 };
 
 const model: ResultWorkspaceModel = {
@@ -229,6 +246,49 @@ describe('ResultWorkspace', () => {
     expect(
       screen.getByRole('tab', { name: resultCopy.de.tabTranscript }),
     ).toBeVisible();
+  });
+
+  it('consumes the typed playback mutation for the active analysis', async () => {
+    vi.useFakeTimers();
+    let snapshot = {
+      ...controller.getSnapshot(),
+      currentTimeMs: 0,
+      playing: true,
+    };
+    const listeners = new Set<() => void>();
+    const reactiveController: VideoPlayerController = {
+      ...controller,
+      subscribe(listener) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      getSnapshot: () => snapshot,
+    };
+    const savePlaybackPosition = vi.fn(async () => ({
+      status: 'saved' as const,
+    }));
+
+    render(
+      <PlayerProvider controller={reactiveController}>
+        <ResultWorkspace
+          model={model}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+          savePlaybackPosition={savePlaybackPosition}
+        />
+      </PlayerProvider>,
+    );
+
+    await act(async () => {
+      snapshot = { ...snapshot, currentTimeMs: 2_000, playing: false };
+      listeners.forEach((listener) => listener());
+    });
+
+    expect(savePlaybackPosition).toHaveBeenCalledExactlyOnceWith({
+      analysisId: model.source.intakeId,
+      positionMs: 2_000,
+    });
+    vi.useRealTimers();
   });
 
   it('initializes from the hash, pushes user navigation, and follows browser history', async () => {
