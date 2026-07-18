@@ -182,7 +182,7 @@ describe('intake server actions', () => {
     });
   });
 
-  test('ready state returns deterministic client navigation data', async () => {
+  test('ready state returns the durable analysis identity', async () => {
     submit.mockResolvedValue({
       kind: 'ready',
       intake: { id: '33333333-3333-4333-8333-333333333333' },
@@ -192,7 +192,7 @@ describe('intake server actions', () => {
       submitYouTubeIntake(previousState, form()),
     ).resolves.toMatchObject({
       status: 'ready',
-      redirectTo: '/app/video/33333333-3333-4333-8333-333333333333',
+      analysisId: '33333333-3333-4333-8333-333333333333',
     });
     expect(createIntakeService).toHaveBeenCalledWith(
       expect.objectContaining({

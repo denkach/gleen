@@ -11,6 +11,7 @@ export type IntakeActionState = Readonly<{
   message?: string;
   existingId?: string;
   duplicateConfiguration?: NormalizedIntakeConfiguration;
+  analysisId?: string;
   redirectTo?: string;
 }>;
 

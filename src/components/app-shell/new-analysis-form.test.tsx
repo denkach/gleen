@@ -20,6 +20,15 @@ const routerPush = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: routerPush }),
 }));
+vi.mock('./inline-analysis-processing', () => ({
+  InlineAnalysisProcessing: ({ analysisId }: { analysisId: string }) => (
+    <div
+      data-testid="analyze-processing-visual"
+      data-analysis-state="queued"
+      data-analysis-id={analysisId}
+    />
+  ),
+}));
 
 afterEach(() => {
   routerPush.mockClear();
@@ -345,7 +354,7 @@ describe('NewAnalysisForm', () => {
     );
   });
 
-  test('shows a four-second processing, completion, and exit handoff before navigation', async () => {
+  test('keeps queued processing inline without router navigation or a second spectrum', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(10_000);
     let resolveAction!: (state: IntakeActionState) => void;
@@ -369,44 +378,15 @@ describe('NewAnalysisForm', () => {
       resolveAction({
         ...createInitialIntakeActionState(defaults),
         status: 'ready',
-        redirectTo: '/app/video/ready-123',
+        analysisId: '550e8400-e29b-41d4-a716-446655440000',
       });
       await vi.runAllTicks();
     });
     expect(routerPush).not.toHaveBeenCalled();
-
-    await act(async () => vi.advanceTimersByTime(2_749));
-    expect(routerPush).not.toHaveBeenCalled();
-    await act(async () => vi.advanceTimersByTime(1));
-    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
-      'data-analysis-state',
-      'complete',
-    );
-    expect(routerPush).not.toHaveBeenCalled();
-
-    expect(screen.getByText('Your artifacts are ready')).toBeInTheDocument();
-    expect(
-      screen.getByText('Opening the result workspace'),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('analyze-processing-visual')).not.toHaveAttribute(
-      'data-analysis-exiting',
-      'true',
-    );
-    await act(async () => vi.advanceTimersByTime(399));
-    expect(routerPush).not.toHaveBeenCalled();
-    await act(async () => vi.advanceTimersByTime(1));
-    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
-      'data-analysis-exiting',
-      'true',
-    );
-    await act(async () => vi.advanceTimersByTime(599));
-    expect(routerPush).not.toHaveBeenCalled();
-
-    await act(async () => vi.advanceTimersByTime(1));
-    expect(routerPush).toHaveBeenCalledWith('/app/video/ready-123');
+    expect(screen.getAllByTestId('analyze-processing-visual')).toHaveLength(1);
   });
 
-  test('navigates immediately on readiness when reduced motion is requested', async () => {
+  test('does not navigate early when reduced motion is requested', async () => {
     vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }));
     let resolveAction!: (state: IntakeActionState) => void;
     const action = vi.fn(
@@ -427,11 +407,11 @@ describe('NewAnalysisForm', () => {
       resolveAction({
         ...createInitialIntakeActionState(defaults),
         status: 'ready',
-        redirectTo: '/app/video/ready-123',
+        analysisId: '550e8400-e29b-41d4-a716-446655440000',
       }),
     );
 
-    expect(routerPush).toHaveBeenCalledWith('/app/video/ready-123');
+    expect(routerPush).not.toHaveBeenCalled();
   });
 
   test('cancels a pending readiness navigation when the form unmounts', async () => {
