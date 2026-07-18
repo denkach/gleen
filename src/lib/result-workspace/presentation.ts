@@ -69,6 +69,12 @@ export type ResultWorkspaceModel = Readonly<{
     thumbnailUrl: string;
   }>;
   revision: number;
+  revisions: Readonly<{
+    title: string;
+    summary?: string;
+    flashcards?: string;
+    timestamps?: string;
+  }>;
   tabs: Readonly<{
     summary: ResultTab<SummaryPresentation>;
     flashcards: ResultTab<FlashcardsArtifact>;
@@ -140,6 +146,9 @@ export function normalizeResultWorkspace(
   );
   const requested = new Set(intake.configuration.artifacts);
   const durationMs = intake.durationSeconds * 1_000;
+  const summaryArtifact = artifacts.get('summary');
+  const flashcardsArtifact = artifacts.get('flashcards');
+  const timestampsArtifact = artifacts.get('timestamps');
 
   return {
     source: {
@@ -151,20 +160,26 @@ export function normalizeResultWorkspace(
       thumbnailUrl: intake.thumbnailUrl,
     },
     revision: snapshot.job.revision,
+    revisions: {
+      title: intake.updatedAt ?? intake.createdAt,
+      summary: summaryArtifact?.updatedAt,
+      flashcards: flashcardsArtifact?.updatedAt,
+      timestamps: timestampsArtifact?.updatedAt,
+    },
     tabs: {
       summary: normalizeArtifact(
         requested.has('summary'),
-        artifacts.get('summary'),
+        summaryArtifact,
         (content) => normalizeSummary(content, durationMs),
       ),
       flashcards: normalizeArtifact(
         requested.has('flashcards'),
-        artifacts.get('flashcards'),
+        flashcardsArtifact,
         (content) => flashcardsArtifactSchema.parse(content),
       ),
       timestamps: normalizeArtifact(
         requested.has('timestamps'),
-        artifacts.get('timestamps'),
+        timestampsArtifact,
         (content) => timestampsArtifactSchema.parse(content),
       ),
       transcript: normalizeArtifact(

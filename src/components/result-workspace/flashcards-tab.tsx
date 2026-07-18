@@ -1,16 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { FlashcardsArtifact } from '@/lib/analysis-pipeline/artifact-schemas';
+import type { ResultSaveState } from '@/lib/result-workspace/actions';
+
+import { AutosaveStatus } from './autosave-status';
+import { useAutosave } from './use-autosave';
 
 export function FlashcardsTab({
+  analysisId,
   artifact,
-}: Readonly<{ artifact: FlashcardsArtifact }>) {
+  revision,
+  saveArtifact,
+}: Readonly<{
+  analysisId: string;
+  artifact: FlashcardsArtifact;
+  revision: string;
+  saveArtifact: (input: unknown) => Promise<ResultSaveState>;
+}>) {
+  const [value, setValue] = useState(artifact);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [studied, setStudied] = useState(0);
-  const safeIndex = Math.min(index, artifact.cards.length - 1);
-  const card = artifact.cards[safeIndex];
+  const safeIndex = Math.min(index, value.cards.length - 1);
+  const card = value.cards[safeIndex];
+  const save = useCallback(
+    (content: FlashcardsArtifact, expectedUpdatedAt: string) =>
+      saveArtifact({
+        analysisId,
+        expectedUpdatedAt,
+        kind: 'flashcards',
+        content,
+      }),
+    [analysisId, saveArtifact],
+  );
+  const autosave = useAutosave({ value, revision, save });
   const move = (next: number) => {
     setIndex(next);
     setFlipped(false);
@@ -19,10 +43,35 @@ export function FlashcardsTab({
     <section className="result-flashcards" data-artifact="flashcards">
       <div className="mb-4 flex items-center justify-between text-xs text-[var(--text-secondary)]">
         <span>
-          {safeIndex + 1} / {artifact.cards.length}
+          {safeIndex + 1} / {value.cards.length}
         </span>
         <span aria-live="polite">{studied} studied</span>
       </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {(['front', 'back'] as const).map((side) => (
+          <label key={side} className="text-xs text-[var(--text-secondary)]">
+            {side === 'front' ? 'Question text' : 'Answer text'}
+            <input
+              aria-label={
+                side === 'front' ? 'Flashcard question' : 'Flashcard answer'
+              }
+              value={card[side]}
+              onChange={(event) =>
+                setValue((current) => ({
+                  ...current,
+                  cards: current.cards.map((item, itemIndex) =>
+                    itemIndex === safeIndex
+                      ? { ...item, [side]: event.target.value }
+                      : item,
+                  ),
+                }))
+              }
+              className="mt-1 min-h-11 w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-panel)] p-3 text-sm text-[var(--text-primary)] focus:border-[var(--artifact-flashcards)] focus:outline-none"
+            />
+          </label>
+        ))}
+      </div>
+      <AutosaveStatus {...autosave} />
       <div
         data-reduced-motion="instant"
         className="motion-reduce:transition-none"
@@ -88,7 +137,7 @@ export function FlashcardsTab({
         <button
           type="button"
           className="min-h-11 px-4 text-sm text-[var(--text-secondary)] disabled:opacity-40"
-          disabled={safeIndex === artifact.cards.length - 1}
+          disabled={safeIndex === value.cards.length - 1}
           onClick={() => move(safeIndex + 1)}
           aria-label="Next card"
         >

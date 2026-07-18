@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/tabs';
 
 import { ArtifactState } from './artifact-state';
+import { EditableTitle } from './editable-title';
+import { ExportTab } from './export-tab';
 import { FlashcardsTab } from './flashcards-tab';
 import { OverviewTab } from './overview-tab';
 import { SummaryTab } from './summary-tab';
@@ -29,6 +31,8 @@ type TabValue =
 
 export function ResultWorkspace({
   model,
+  saveTitle,
+  saveArtifact,
 }: Readonly<{
   model: ResultWorkspaceModel;
   saveTitle: SaveAction;
@@ -75,6 +79,12 @@ export function ResultWorkspace({
       className="min-w-0 overflow-hidden rounded-[20px] border border-[var(--border-default)] bg-[var(--background-elevated)]"
       aria-label="Analysis artifacts"
     >
+      <EditableTitle
+        analysisId={model.source.intakeId}
+        initialTitle={model.source.title}
+        revision={model.revisions.title}
+        saveTitle={saveTitle}
+      />
       <Tabs value={tab} onValueChange={(value) => setTab(value as TabValue)}>
         <TabsList
           accent={accent}
@@ -98,21 +108,39 @@ export function ResultWorkspace({
           </TabsContent>
           <TabsContent value="summary">
             {model.tabs.summary.status === 'ready' ? (
-              <SummaryTab summary={model.tabs.summary.data} />
+              <SummaryTab
+                key={model.revisions.summary}
+                analysisId={model.source.intakeId}
+                summary={model.tabs.summary.data}
+                revision={model.revisions.summary!}
+                saveArtifact={saveArtifact}
+              />
             ) : (
               <ArtifactState state={model.tabs.summary} />
             )}
           </TabsContent>
           <TabsContent value="flashcards">
             {model.tabs.flashcards.status === 'ready' ? (
-              <FlashcardsTab artifact={model.tabs.flashcards.data} />
+              <FlashcardsTab
+                key={model.revisions.flashcards}
+                analysisId={model.source.intakeId}
+                artifact={model.tabs.flashcards.data}
+                revision={model.revisions.flashcards!}
+                saveArtifact={saveArtifact}
+              />
             ) : (
               <ArtifactState state={model.tabs.flashcards} />
             )}
           </TabsContent>
           <TabsContent value="timestamps">
             {model.tabs.timestamps.status === 'ready' ? (
-              <TimestampsTab artifact={model.tabs.timestamps.data} />
+              <TimestampsTab
+                key={model.revisions.timestamps}
+                analysisId={model.source.intakeId}
+                artifact={model.tabs.timestamps.data}
+                revision={model.revisions.timestamps!}
+                saveArtifact={saveArtifact}
+              />
             ) : (
               <ArtifactState state={model.tabs.timestamps} />
             )}
@@ -125,17 +153,7 @@ export function ResultWorkspace({
             )}
           </TabsContent>
           <TabsContent value="export">
-            <section className="rounded-2xl border border-[color-mix(in_srgb,var(--artifact-export)_22%,transparent)] p-6">
-              <p className="font-[var(--font-mono)] text-[10px] uppercase tracking-[0.14em] text-[var(--artifact-export)]">
-                Export
-              </p>
-              <h2 className="mt-2 font-[var(--font-display)] text-xl text-[var(--text-primary)]">
-                Prepare reusable artifacts
-              </h2>
-              <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                Export actions are prepared in the next focused workspace task.
-              </p>
-            </section>
+            <ExportTab model={model} />
           </TabsContent>
         </div>
       </Tabs>

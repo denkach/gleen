@@ -85,6 +85,12 @@ describe('normalizeResultWorkspace', () => {
       status: 'unavailable',
       reason: 'not_requested',
     });
+    expect(model.revisions).toEqual({
+      title: fixtureSavedIntake.updatedAt ?? fixtureSavedIntake.createdAt,
+      summary: legacySummary.updatedAt,
+      flashcards: undefined,
+      timestamps: timestamps.updatedAt,
+    });
   });
 
   it('normalizes legacy key points without inventing source offsets', () => {

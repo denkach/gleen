@@ -82,6 +82,7 @@ const intakeRowSchema = z.object({
   status: z.enum(['ready', 'processing', 'complete', 'failed']),
   reanalysis_of: z.uuid().nullable(),
   created_at: z.iso.datetime({ offset: true }),
+  updated_at: z.iso.datetime({ offset: true }),
 });
 
 export class IntakeRepositoryError extends Error {
@@ -121,6 +122,7 @@ function parseIntakeRow(input: unknown): AnalysisIntake {
     status: row.status,
     reanalysisOf: row.reanalysis_of,
     createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 

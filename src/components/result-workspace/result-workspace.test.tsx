@@ -25,6 +25,12 @@ const model: ResultWorkspaceModel = {
     thumbnailUrl: 'https://example.com/thumb.jpg',
   },
   revision: 1,
+  revisions: {
+    title: '2026-07-18T00:00:00.000Z',
+    summary: '2026-07-18T00:01:00.000Z',
+    flashcards: '2026-07-18T00:01:00.000Z',
+    timestamps: '2026-07-18T00:01:00.000Z',
+  },
   tabs: {
     summary: {
       status: 'ready',
@@ -83,6 +89,32 @@ function renderWorkspace(value: ResultWorkspaceModel = model) {
         model={value}
         saveTitle={vi.fn()}
         saveArtifact={vi.fn()}
+      />
+    </PlayerProvider>,
+  );
+}
+
+function renderWorkspaceWithActions({
+  saveTitle = vi.fn(),
+  saveArtifact = vi.fn(),
+}: Readonly<{
+  saveTitle?: (
+    input: unknown,
+  ) => Promise<
+    { status: 'saved'; updatedAt: string } | { status: 'conflict' | 'error' }
+  >;
+  saveArtifact?: (
+    input: unknown,
+  ) => Promise<
+    { status: 'saved'; updatedAt: string } | { status: 'conflict' | 'error' }
+  >;
+}>) {
+  return render(
+    <PlayerProvider controller={controller}>
+      <ResultWorkspace
+        model={model}
+        saveTitle={saveTitle}
+        saveArtifact={saveArtifact}
       />
     </PlayerProvider>,
   );
@@ -191,6 +223,10 @@ describe('ResultWorkspace', () => {
         <ResultWorkspace
           model={{
             ...model,
+            revisions: {
+              ...model.revisions,
+              flashcards: '2026-07-18T00:02:00.000Z',
+            },
             tabs: {
               ...model.tabs,
               flashcards: {
@@ -286,6 +322,84 @@ describe('ResultWorkspace', () => {
     const transcript = screen.getByRole('tabpanel', { name: 'Transcript' });
     await user.click(within(transcript).getByRole('button', { name: '12:35' }));
     expect(controller.seekTo).toHaveBeenCalledWith(755_000);
+  });
+
+  it('keeps the result title controlled and saves with compare-and-set data', async () => {
+    const user = userEvent.setup();
+    const saveTitle = vi.fn().mockResolvedValue({ status: 'conflict' });
+    renderWorkspaceWithActions({ saveTitle });
+
+    const title = screen.getByRole('textbox', { name: 'Result title' });
+    await user.clear(title);
+    await user.type(title, 'Edited result');
+    expect(title).toHaveValue('Edited result');
+    await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
+
+    expect(saveTitle).toHaveBeenCalledWith({
+      analysisId: model.source.intakeId,
+      expectedUpdatedAt: model.revisions.title,
+      title: 'Edited result',
+    });
+    expect(screen.getByText(/newer version is available/i)).toBeVisible();
+    expect(title).toHaveValue('Edited result');
+  });
+
+  it('autosaves edited summary content through the artifact action', async () => {
+    const user = userEvent.setup();
+    const saveArtifact = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:02:00.000Z',
+    });
+    renderWorkspaceWithActions({ saveArtifact });
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+
+    const overview = screen.getByRole('textbox', { name: 'Summary overview' });
+    await user.clear(overview);
+    await user.type(overview, 'Edited overview');
+    await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
+
+    expect(saveArtifact).toHaveBeenCalledWith({
+      analysisId: model.source.intakeId,
+      expectedUpdatedAt: model.revisions.summary,
+      kind: 'summary',
+      content: expect.objectContaining({ overview: 'Edited overview' }),
+    });
+    expect(screen.getByText('Saved')).toBeVisible();
+  });
+
+  it('copies and downloads local exports and leaves Notion unavailable', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+    const createObjectURL = vi.fn(() => 'blob:result');
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: createObjectURL,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: revokeObjectURL,
+    });
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    renderWorkspace();
+    await user.click(screen.getByRole('tab', { name: 'Export' }));
+
+    expect(screen.getByText('Connection required')).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: /export to notion/i }),
+    ).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Copy Markdown' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(/could not copy/i);
+    await user.click(screen.getByRole('button', { name: 'Download Markdown' }));
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+    expect(click).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:result');
   });
 
   it.each([

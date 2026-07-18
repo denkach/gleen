@@ -18,11 +18,12 @@ export type AnalysisIntake = Readonly<{
   status: 'ready' | 'processing' | 'complete' | 'failed';
   reanalysisOf: string | null;
   createdAt: string;
+  updatedAt?: string;
 }>;
 
 export type NewAnalysisIntake = Omit<
   AnalysisIntake,
-  'id' | 'attempt' | 'status' | 'reanalysisOf' | 'createdAt'
+  'id' | 'attempt' | 'status' | 'reanalysisOf' | 'createdAt' | 'updatedAt'
 >;
 
 export type InsertReadyResult =
