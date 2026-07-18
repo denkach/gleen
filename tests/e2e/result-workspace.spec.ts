@@ -4,7 +4,14 @@ const route = '/app-shell-fixture/app/video/result-complete';
 
 type FixtureWindow = Window & {
   __fixtureClipboard?: string;
-  __fixturePlayer: { currentTime: number; seeks: number[] };
+  __fixturePlayer: {
+    currentTime: number;
+    playing: boolean;
+    seeks: number[];
+    commands: { type: string; offsetMs?: number }[];
+    pause(): void;
+    play(): void;
+  };
 };
 
 async function gotoFixture(page: import('@playwright/test').Page, url: string) {
@@ -108,6 +115,36 @@ test('DEN-25 fixture renders one current workspace and one local player mount', 
   await expect(page.getByLabel('Analysis artifacts')).toHaveCount(1);
   await expect(page.locator('[data-fixture-player-mount]')).toHaveCount(1);
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
+
+  await page.getByRole('tab', { name: 'Summary' }).click();
+  await page.getByRole('button', { name: '1:15' }).click();
+  await page.evaluate(() => {
+    const player = (window as unknown as FixtureWindow).__fixturePlayer;
+    player.play();
+    player.pause();
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const player = (window as unknown as FixtureWindow).__fixturePlayer;
+        return {
+          commands: player.commands,
+          currentTime: player.currentTime,
+          playing: player.playing,
+          seeks: player.seeks,
+        };
+      }),
+    )
+    .toEqual({
+      commands: [
+        { type: 'seek', offsetMs: 75_000 },
+        { type: 'play' },
+        { type: 'pause' },
+      ],
+      currentTime: 75,
+      playing: false,
+      seeks: [75],
+    });
 });
 
 test('supports keyboard tab navigation and summary seeking', async ({

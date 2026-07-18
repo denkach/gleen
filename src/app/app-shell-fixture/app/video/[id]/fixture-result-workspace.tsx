@@ -24,6 +24,8 @@ type FixturePlayerState = {
   playing: boolean;
   seeks: number[];
   commands: FixturePlayerCommand[];
+  pause(): void;
+  play(): void;
 };
 
 declare global {
@@ -33,7 +35,13 @@ declare global {
 }
 
 function installFixturePlayer(fixtureId: string, initialOffsetMs: number) {
-  if (window.__fixturePlayer?.fixtureId === fixtureId) return;
+  const hadPreviousApi = Object.prototype.hasOwnProperty.call(window, 'YT');
+  const hadPreviousState = Object.prototype.hasOwnProperty.call(
+    window,
+    '__fixturePlayer',
+  );
+  const previousApi = window.YT;
+  const previousState = window.__fixturePlayer;
 
   const state: FixturePlayerState = {
     fixtureId,
@@ -41,6 +49,14 @@ function installFixturePlayer(fixtureId: string, initialOffsetMs: number) {
     playing: false,
     seeks: [],
     commands: [],
+    pause() {
+      state.playing = false;
+      state.commands.push({ type: 'pause' });
+    },
+    play() {
+      state.playing = true;
+      state.commands.push({ type: 'play' });
+    },
   };
 
   class Player {
@@ -69,13 +85,11 @@ function installFixturePlayer(fixtureId: string, initialOffsetMs: number) {
     }
 
     pauseVideo() {
-      state.playing = false;
-      state.commands.push({ type: 'pause' });
+      state.pause();
     }
 
     playVideo() {
-      state.playing = true;
-      state.commands.push({ type: 'play' });
+      state.play();
     }
 
     seekTo(seconds: number) {
@@ -88,7 +102,20 @@ function installFixturePlayer(fixtureId: string, initialOffsetMs: number) {
     }
   }
 
-  Object.assign(window, { __fixturePlayer: state, YT: { Player } });
+  const api = { Player } as unknown as NonNullable<Window['YT']>;
+  window.YT = api;
+  window.__fixturePlayer = state;
+
+  return () => {
+    if (window.YT === api) {
+      if (hadPreviousApi) window.YT = previousApi;
+      else delete window.YT;
+    }
+    if (window.__fixturePlayer === state) {
+      if (hadPreviousState) window.__fixturePlayer = previousState;
+      else delete window.__fixturePlayer;
+    }
+  };
 }
 
 function useFixturePlayerReady(
@@ -98,8 +125,9 @@ function useFixturePlayerReady(
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
       if (initialOffsetMs !== undefined) {
-        installFixturePlayer(fixtureId, initialOffsetMs);
+        const cleanup = installFixturePlayer(fixtureId, initialOffsetMs);
         onStoreChange();
+        return cleanup;
       }
       return () => undefined;
     },
