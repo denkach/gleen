@@ -94,7 +94,7 @@ export class IntakeRepositoryError extends Error {
   }
 }
 
-function parseIntakeRow(input: unknown): AnalysisIntake {
+export function parseIntakeRow(input: unknown): AnalysisIntake {
   const parsed = intakeRowSchema.safeParse(input);
   if (!parsed.success) throw new IntakeRepositoryError();
   const row = parsed.data;

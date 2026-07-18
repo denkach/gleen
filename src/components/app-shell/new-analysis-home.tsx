@@ -8,6 +8,8 @@ import { defaultOnboardingState } from '@/lib/onboarding/preferences';
 
 import { NewAnalysisForm } from './new-analysis-form';
 import type { ComponentProps } from 'react';
+import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
+import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 
 type ProfileDefaults = Pick<
   IntakeActionState['configuration'],
@@ -19,19 +21,39 @@ export function NewAnalysisHome({
   action,
   reanalyzeAction,
   resultPathPrefix,
+  initialAnalysis,
+  continuation,
 }: Readonly<{
   profileDefaults?: ProfileDefaults;
   action?: ComponentProps<typeof NewAnalysisForm>['action'];
   reanalyzeAction?: ComponentProps<typeof NewAnalysisForm>['reanalyzeAction'];
   resultPathPrefix?: string;
+  initialAnalysis?: Readonly<{
+    intake: AnalysisIntake;
+    snapshot: AnalysisSnapshot;
+  }>;
+  continuation?: Readonly<{ rawUrl: string }>;
 }>) {
+  const initialState = createInitialIntakeActionState(profileDefaults);
   return (
     <>
       <section className="analysis-hero" aria-labelledby="new-analysis-title">
         <span className="eyebrow">New analysis</span>
         <h1 id="new-analysis-title">Turn a video into something useful.</h1>
         <NewAnalysisForm
-          initialState={createInitialIntakeActionState(profileDefaults)}
+          initialState={
+            initialAnalysis
+              ? {
+                  ...initialState,
+                  status: 'ready',
+                  analysisId: initialAnalysis.intake.id,
+                }
+              : continuation
+                ? { ...initialState, rawUrl: continuation.rawUrl }
+                : initialState
+          }
+          initialSnapshot={initialAnalysis?.snapshot}
+          autoSubmit={Boolean(continuation)}
           action={action}
           reanalyzeAction={reanalyzeAction}
           resultPathPrefix={resultPathPrefix}

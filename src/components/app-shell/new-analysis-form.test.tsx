@@ -58,6 +58,54 @@ function renderForm(
 }
 
 describe('NewAnalysisForm', () => {
+  test('cleans a continuation from the URL before one automatic submit', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/app?continuation=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ',
+    );
+    const action = vi.fn(
+      async (state: IntakeActionState, formData: FormData) => {
+        void formData;
+        expect(window.location.pathname).toBe('/app');
+        expect(window.location.search).toBe('');
+        return state;
+      },
+    );
+    const initialState = {
+      ...createInitialIntakeActionState(defaults),
+      rawUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    };
+
+    const { rerender } = render(
+      <NewAnalysisForm
+        initialState={initialState}
+        action={action}
+        reanalyzeAction={action}
+        autoSubmit
+      />,
+    );
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <NewAnalysisForm
+        initialState={initialState}
+        action={action}
+        reanalyzeAction={action}
+        autoSubmit
+      />,
+    );
+    await act(async () => Promise.resolve());
+    expect(action).toHaveBeenCalledTimes(1);
+    const formData = action.mock.calls[0]?.[1] as FormData;
+    expect(formData.get('rawUrl')).toBe(initialState.rawUrl);
+    expect(formData.getAll('artifacts')).toEqual([
+      'summary',
+      'timestamps',
+      'transcript',
+    ]);
+  });
+
   test('persists output language and summary preset and submits each named value once', async () => {
     const user = userEvent.setup();
     const action = vi.fn(

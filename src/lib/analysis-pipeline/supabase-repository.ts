@@ -1,4 +1,9 @@
-import { parseAnalysisSnapshot, type ArtifactKind } from './domain';
+import {
+  jobStatusSchema,
+  parseAnalysisSnapshot,
+  type ArtifactKind,
+} from './domain';
+import { parseIntakeRow } from '@/lib/youtube-intake/supabase-repository';
 import type {
   FlashcardsArtifact,
   SummaryArtifact,
@@ -27,8 +32,10 @@ type Query = Readonly<{
   ): PromiseLike<SupabaseResult>;
   update(values: Record<string, unknown>): Query;
   eq(column: string, value: unknown): Query;
+  in(column: string, values: readonly unknown[]): Query;
   neq(column: string, value: unknown): Query;
   order(column: string, options: Readonly<{ ascending: boolean }>): Query;
+  limit(count: number): Query;
   maybeSingle(): PromiseLike<SupabaseResult>;
   single(): PromiseLike<SupabaseResult>;
   then<TResult1 = SupabaseResult, TResult2 = never>(
@@ -122,16 +129,19 @@ export function createSupabaseAnalysisRepository(
           .from('analysis_job_events')
           .select('*')
           .eq('job_id', jobId)
+          .eq('user_id', userId ?? jobRow.user_id)
           .order('created_at', { ascending: true }),
         client
           .from('analysis_artifacts')
           .select('*')
           .eq('analysis_id', analysisId)
+          .eq('user_id', userId ?? jobRow.user_id)
           .order('kind', { ascending: true }),
         client
           .from('analysis_usage_reservations')
           .select('*')
           .eq('job_id', jobId)
+          .eq('user_id', userId ?? jobRow.user_id)
           .single(),
       ]);
 
@@ -202,6 +212,75 @@ export function createSupabaseAnalysisRepository(
   }
 
   return {
+    async findMostRecentOwnedActive(userId) {
+      const result = await client
+        .from('analysis_jobs')
+        .select('*, analysis_intakes(*)')
+        .eq('user_id', userId)
+        .eq('analysis_intakes.user_id', userId)
+        .in('status', ['queued', 'running'])
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const row = ensureSuccess(result);
+      if (row === null) return null;
+      if (
+        typeof row !== 'object' ||
+        !('analysis_id' in row) ||
+        typeof row.analysis_id !== 'string' ||
+        !('analysis_intakes' in row)
+      )
+        throw new AnalysisRepositoryError();
+      const snapshot = await findSnapshot(
+        'analysis_id',
+        row.analysis_id,
+        userId,
+      );
+      if (!snapshot) throw new AnalysisRepositoryError();
+      try {
+        return { intake: parseIntakeRow(row.analysis_intakes), snapshot };
+      } catch {
+        throw new AnalysisRepositoryError();
+      }
+    },
+
+    async listOwnedHistory(userId, requestedLimit) {
+      const result = await client
+        .from('analysis_jobs')
+        .select('analysis_id,status,updated_at,analysis_intakes(title)')
+        .eq('user_id', userId)
+        .eq('analysis_intakes.user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(Math.min(Math.max(Math.trunc(requestedLimit), 0), 50));
+      const data = ensureSuccess(result);
+      if (!Array.isArray(data)) throw new AnalysisRepositoryError();
+      try {
+        return data.map((candidate) => {
+          if (typeof candidate !== 'object' || candidate === null)
+            throw new AnalysisRepositoryError();
+          const row = candidate as Record<string, unknown>;
+          const intake = row.analysis_intakes;
+          if (
+            typeof row.analysis_id !== 'string' ||
+            typeof row.updated_at !== 'string' ||
+            typeof intake !== 'object' ||
+            intake === null ||
+            !('title' in intake) ||
+            typeof intake.title !== 'string'
+          )
+            throw new AnalysisRepositoryError();
+          return {
+            id: row.analysis_id,
+            title: intake.title,
+            status: jobStatusSchema.parse(row.status),
+            updatedAt: row.updated_at,
+          };
+        });
+      } catch {
+        throw new AnalysisRepositoryError();
+      }
+    },
+
     async saveOwnedArtifact(input): Promise<string | null> {
       const result = await client
         .from('analysis_artifacts')

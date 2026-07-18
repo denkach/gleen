@@ -24,6 +24,7 @@ import {
   type IntakeActionState,
 } from '@/lib/youtube-intake/actions';
 import type { AnalysisVisualState } from '@/lib/analyze-processing/analysis-visual-state';
+import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import {
   supportedLocales,
   type OnboardingState,
@@ -43,6 +44,8 @@ type NewAnalysisFormProps = Readonly<{
   action?: IntakeAction;
   reanalyzeAction?: IntakeAction;
   resultPathPrefix?: string;
+  initialSnapshot?: AnalysisSnapshot;
+  autoSubmit?: boolean;
 }>;
 
 const artifactOptions = [
@@ -83,6 +86,8 @@ export function NewAnalysisForm({
   initialState,
   reanalyzeAction = reanalyzeIntake,
   resultPathPrefix = '/app/video',
+  initialSnapshot,
+  autoSubmit = false,
 }: NewAnalysisFormProps) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -113,6 +118,7 @@ export function NewAnalysisForm({
   const [submittedUrl, setSubmittedUrl] = useState(initialState.rawUrl);
   const [visualState, setVisualState] = useState<AnalysisVisualState>('idle');
   const formRef = useRef<HTMLFormElement>(null);
+  const autoSubmitted = useRef(false);
 
   const startVisualTimeline = useCallback(() => {
     setVisualState('submitting');
@@ -121,6 +127,13 @@ export function NewAnalysisForm({
   useEffect(() => {
     if (reanalyzeState.redirectTo) router.push(reanalyzeState.redirectTo);
   }, [reanalyzeState.redirectTo, router]);
+
+  useEffect(() => {
+    if (!autoSubmit || autoSubmitted.current || !formRef.current) return;
+    autoSubmitted.current = true;
+    window.history.replaceState(window.history.state, '', '/app');
+    formRef.current.requestSubmit();
+  }, [autoSubmit]);
 
   const selectionSummary = artifactOptions
     .filter(([value]) => selectedArtifacts.includes(value))
@@ -160,6 +173,7 @@ export function NewAnalysisForm({
       {state.analysisId ? (
         <InlineAnalysisProcessing
           analysisId={state.analysisId}
+          initialSnapshot={initialSnapshot}
           resultPathPrefix={resultPathPrefix}
         />
       ) : (

@@ -1,9 +1,18 @@
 import type {
+  AnalysisJob,
   AnalysisJobStage,
   AnalysisJobStatus,
   AnalysisSnapshot,
   ArtifactKind,
 } from './domain';
+import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
+
+export type AnalysisHistoryRow = Readonly<{
+  id: string;
+  title: string;
+  status: AnalysisJob['status'];
+  updatedAt: string;
+}>;
 
 export type NewAnalysisEvent = Readonly<{
   jobId: string;
@@ -47,6 +56,16 @@ export type AnalysisRepository = Readonly<{
     userId: string,
     analysisId: string,
   ): Promise<AnalysisSnapshot | null>;
+  findMostRecentOwnedActive(
+    userId: string,
+  ): Promise<Readonly<{
+    intake: AnalysisIntake;
+    snapshot: AnalysisSnapshot;
+  }> | null>;
+  listOwnedHistory(
+    userId: string,
+    limit: number,
+  ): Promise<readonly AnalysisHistoryRow[]>;
   findSnapshotByJobId(jobId: string): Promise<AnalysisSnapshot>;
   attachWorkflowRun(jobId: string, runId: string): Promise<void>;
   recordEvent(input: NewAnalysisEvent): Promise<void>;

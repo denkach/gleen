@@ -19,7 +19,83 @@ function queryReturning(result: unknown) {
   return query;
 }
 
+function chainReturning(result: unknown) {
+  const query = {
+    select: vi.fn(),
+    eq: vi.fn(),
+    in: vi.fn(),
+    order: vi.fn(),
+    limit: vi.fn(),
+    maybeSingle: vi.fn().mockResolvedValue(result),
+    single: vi.fn().mockResolvedValue(result),
+    then: (resolve: (value: unknown) => unknown) =>
+      Promise.resolve(result).then(resolve),
+  };
+  for (const method of ['select', 'eq', 'in', 'order', 'limit'] as const) {
+    query[method].mockReturnValue(query);
+  }
+  return query;
+}
+
 describe('Supabase analysis repository', () => {
+  it('selects the newest owned queued or running analysis', async () => {
+    const active = chainReturning({ data: null, error: null });
+    const client = { from: vi.fn().mockReturnValue(active), rpc: vi.fn() };
+
+    await expect(
+      createSupabaseAnalysisRepository(client).findMostRecentOwnedActive(
+        'user-id',
+      ),
+    ).resolves.toBeNull();
+
+    expect(client.from).toHaveBeenCalledWith('analysis_jobs');
+    expect(active.eq).toHaveBeenCalledWith('user_id', 'user-id');
+    expect(active.eq).toHaveBeenCalledWith(
+      'analysis_intakes.user_id',
+      'user-id',
+    );
+    expect(active.in).toHaveBeenCalledWith('status', ['queued', 'running']);
+    expect(active.order).toHaveBeenCalledWith('updated_at', {
+      ascending: false,
+    });
+    expect(active.limit).toHaveBeenCalledWith(1);
+  });
+
+  it('lists only owned history newest first and caps the request at 50', async () => {
+    const history = chainReturning({
+      data: [
+        {
+          analysis_id: 'analysis-id',
+          status: 'complete',
+          updated_at: '2026-07-18T10:00:00.000Z',
+          analysis_intakes: { title: 'Owned analysis' },
+        },
+      ],
+      error: null,
+    });
+    const client = { from: vi.fn().mockReturnValue(history), rpc: vi.fn() };
+
+    await expect(
+      createSupabaseAnalysisRepository(client).listOwnedHistory('user-id', 75),
+    ).resolves.toEqual([
+      {
+        id: 'analysis-id',
+        title: 'Owned analysis',
+        status: 'complete',
+        updatedAt: '2026-07-18T10:00:00.000Z',
+      },
+    ]);
+
+    expect(history.eq).toHaveBeenCalledWith('user_id', 'user-id');
+    expect(history.eq).toHaveBeenCalledWith(
+      'analysis_intakes.user_id',
+      'user-id',
+    );
+    expect(history.order).toHaveBeenCalledWith('updated_at', {
+      ascending: false,
+    });
+    expect(history.limit).toHaveBeenCalledWith(50);
+  });
   it('exposes a kind-discriminated artifact save contract', () => {
     type SaveInput = Parameters<
       ResultArtifactRepository['saveOwnedArtifact']
