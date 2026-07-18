@@ -5,6 +5,7 @@ import {
   summaryArtifactV1Schema,
   summaryArtifactV2Schema,
   summaryArtifactSchema,
+  summaryJsonSchema,
   timestampsArtifactSchema,
 } from './artifact-schemas';
 
@@ -31,6 +32,30 @@ describe('versioned artifact schemas', () => {
 
     expect(summaryArtifactV2Schema.parse(summary)).toBeDefined();
     expect(summaryArtifactSchema.parse(summary)).toBeDefined();
+  });
+
+  it('requires summary v2 key point source offsets while accepting zero', () => {
+    expect(() =>
+      summaryArtifactV2Schema.parse({
+        schemaVersion: 2,
+        title: 'Title',
+        overview: 'Overview',
+        keyPoints: [{ text: 'Grounded point' }],
+      }),
+    ).toThrow();
+
+    expect(
+      summaryArtifactV2Schema.parse({
+        schemaVersion: 2,
+        title: 'Title',
+        overview: 'Overview',
+        keyPoints: [{ text: 'Grounded point', sourceOffsetMs: 0 }],
+      }),
+    ).toBeDefined();
+    expect(summaryJsonSchema.properties.keyPoints.items.required).toEqual([
+      'text',
+      'sourceOffsetMs',
+    ]);
   });
 
   it('rejects invalid summary v2 source offsets', () => {

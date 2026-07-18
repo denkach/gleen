@@ -19,7 +19,7 @@ export const summaryArtifactV2Schema = z
         z
           .object({
             text: z.string().trim().min(1),
-            sourceOffsetMs: z.number().int().nonnegative().optional(),
+            sourceOffsetMs: z.number().int().nonnegative(),
           })
           .strict(),
       )
@@ -86,7 +86,7 @@ export const summaryJsonSchema = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['text'],
+        required: ['text', 'sourceOffsetMs'],
         properties: {
           text: { type: 'string', minLength: 1 },
           sourceOffsetMs: { type: 'integer', minimum: 0 },

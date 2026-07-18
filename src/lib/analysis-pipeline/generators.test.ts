@@ -23,7 +23,7 @@ const context: GeneratorContext = {
 describe('artifact generators', () => {
   it('passes locale and preset to focused summary generation', async () => {
     const provider = createDeterministicProvider({
-      gleen_summary_v1: {
+      gleen_summary_v2: {
         schemaVersion: 2,
         title: 'Title',
         overview: 'Overview',
@@ -34,7 +34,7 @@ describe('artifact generators', () => {
     await generateSummary(provider, context);
 
     expect(provider.requests[0]).toMatchObject({
-      name: 'gleen_summary_v1',
+      name: 'gleen_summary_v2',
       jsonSchema: {
         properties: { schemaVersion: { type: 'integer', const: 2 } },
       },

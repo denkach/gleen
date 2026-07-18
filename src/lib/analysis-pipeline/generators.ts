@@ -41,7 +41,7 @@ export function generateSummary(
   context: GeneratorContext,
 ) {
   return provider.generate({
-    name: 'gleen_summary_v1',
+    name: 'gleen_summary_v2',
     system: SUMMARY_SYSTEM_PROMPT,
     input: `Preset: ${context.summaryPreset ?? 'balanced'}\n${commonInput(context)}`,
     jsonSchema: summaryJsonSchema,
