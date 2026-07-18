@@ -28,6 +28,7 @@ type Props = Readonly<{
   retryAction(formData: FormData): Promise<RetryActionResult>;
   refreshAction(analysisId: string): Promise<AnalysisSnapshot | null>;
   enableLiveUpdates?: boolean;
+  reconcileOnMount?: boolean;
 }>;
 
 const artifactLabels: Record<ArtifactKind, string> = {
@@ -44,12 +45,16 @@ export function AnalysisProcessingScreen({
   retryAction,
   refreshAction,
   enableLiveUpdates = true,
+  reconcileOnMount = false,
 }: Props) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [retryError, setRetryError] = useState<string>();
   const [isRetryPending, startRetryTransition] = useTransition();
   const [showResults, setShowResults] = useState(
     initialSnapshot.job.status === 'complete',
+  );
+  const startedNonTerminal = useRef(
+    !['partial', 'complete', 'failed'].includes(initialSnapshot.job.status),
   );
   const mounted = useRef(true);
   const isTerminal = ['partial', 'complete', 'failed'].includes(
@@ -70,7 +75,19 @@ export function AnalysisProcessingScreen({
   }, []);
 
   useEffect(() => {
-    if (snapshot.job.status !== 'complete' || showResults) return;
+    if (reconcileOnMount) void refresh();
+  }, [reconcileOnMount, refresh]);
+
+  useEffect(() => {
+    const hasUsablePartialResult =
+      snapshot.job.status === 'partial' &&
+      startedNonTerminal.current &&
+      snapshot.artifacts.some(({ status }) => status === 'ready');
+    if (
+      (snapshot.job.status !== 'complete' && !hasUsablePartialResult) ||
+      showResults
+    )
+      return;
     const reduced = window.matchMedia(
       '(prefers-reduced-motion: reduce)',
     ).matches;
@@ -79,7 +96,7 @@ export function AnalysisProcessingScreen({
       reduced ? 0 : 500,
     );
     return () => window.clearTimeout(timer);
-  }, [showResults, snapshot.job.status]);
+  }, [showResults, snapshot.artifacts, snapshot.job.status]);
 
   useEffect(() => {
     if (!enableLiveUpdates || isTerminal) return;
@@ -141,6 +158,7 @@ export function AnalysisProcessingScreen({
         );
         return;
       }
+      setShowResults(false);
       await refresh();
     });
   };
@@ -165,7 +183,10 @@ export function AnalysisProcessingScreen({
         <AnalyzeProcessingVisual
           state={toAnalysisVisualState(snapshot)}
           submittedUrl={intake.canonicalUrl}
-          isExiting={snapshot.job.status === 'complete'}
+          isExiting={
+            snapshot.job.status === 'complete' ||
+            (snapshot.job.status === 'partial' && readyArtifacts.length > 0)
+          }
           errorMessage={
             retryError ??
             (snapshot.job.status === 'partial'
@@ -182,11 +203,28 @@ export function AnalysisProcessingScreen({
           retryDisabled={isRetryPending}
         />
       ) : (
-        <ResultWorkspace
-          model={normalizeResultWorkspace(intake, snapshot)}
-          saveTitle={saveResultTitle}
-          saveArtifact={saveResultArtifact}
-        />
+        <>
+          {snapshot.job.status === 'partial' ? (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border-default)] bg-white/[0.015] p-4">
+              <p role="status" className="text-sm text-[var(--text-secondary)]">
+                Some artifacts need attention. Your ready results remain usable.
+              </p>
+              <button
+                type="button"
+                className="min-h-11 rounded-lg border border-[var(--border-default)] px-4 text-sm text-[var(--text-primary)]"
+                onClick={retry}
+                disabled={isRetryPending}
+              >
+                {isRetryPending ? 'Retrying…' : 'Try again'}
+              </button>
+            </div>
+          ) : null}
+          <ResultWorkspace
+            model={normalizeResultWorkspace(intake, snapshot)}
+            saveTitle={saveResultTitle}
+            saveArtifact={saveResultArtifact}
+          />
+        </>
       )}
       {readyArtifacts.length || failedArtifacts.length ? (
         <ul className="analysis-artifact-status" aria-label="Artifact status">

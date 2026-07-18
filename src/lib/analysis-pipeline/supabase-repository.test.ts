@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createSupabaseAnalysisRepository } from './supabase-repository';
+import {
+  createSupabaseAnalysisRepository,
+  type ResultArtifactRepository,
+} from './supabase-repository';
 
 function queryReturning(result: unknown) {
   const query = {
@@ -17,6 +20,35 @@ function queryReturning(result: unknown) {
 }
 
 describe('Supabase analysis repository', () => {
+  it('exposes a kind-discriminated artifact save contract', () => {
+    type SaveInput = Parameters<
+      ResultArtifactRepository['saveOwnedArtifact']
+    >[0];
+    const identity = {
+      userId: 'user-id',
+      analysisId: 'analysis-id',
+      expectedUpdatedAt: '2026-07-18T10:00:00.000Z',
+    };
+    const valid: SaveInput = {
+      ...identity,
+      kind: 'summary',
+      content: {
+        schemaVersion: 1,
+        title: 'T',
+        overview: 'O',
+        keyPoints: ['P'],
+      },
+    };
+    expect(valid.kind).toBe('summary');
+
+    const mismatched: SaveInput = {
+      ...identity,
+      kind: 'summary',
+      // @ts-expect-error flashcard content cannot be saved under the summary kind
+      content: { schemaVersion: 1, cards: [{ front: 'Q', back: 'A' }] },
+    };
+    expect(mismatched.kind).toBe('summary');
+  });
   it('updates ready artifact content only for the owner and expected revision', async () => {
     const updatedAt = '2026-07-18T10:00:01.000Z';
     const query = queryReturning({

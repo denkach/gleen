@@ -51,10 +51,13 @@ export type ResultArtifactRepository = Readonly<{
     input: Readonly<{
       userId: string;
       analysisId: string;
-      kind: 'summary' | 'flashcards' | 'timestamps';
-      content: SummaryArtifact | FlashcardsArtifact | TimestampsArtifact;
       expectedUpdatedAt: string;
-    }>,
+    }> &
+      (
+        | Readonly<{ kind: 'summary'; content: SummaryArtifact }>
+        | Readonly<{ kind: 'flashcards'; content: FlashcardsArtifact }>
+        | Readonly<{ kind: 'timestamps'; content: TimestampsArtifact }>
+      ),
   ): Promise<string | null>;
 }>;
 

@@ -302,9 +302,9 @@ describe('ResultWorkspace', () => {
 
       vi.mocked(controller.getCurrentTimeMs).mockReturnValue(755_000);
       await act(async () => {
-        const synchronize = interval.mock.calls.find(
-          ([, delay]) => delay === 500,
-        )?.[0];
+        const synchronize = interval.mock.calls
+          .filter(([, delay]) => delay === 500)
+          .at(-1)?.[0];
         if (typeof synchronize === 'function') synchronize();
       });
 
@@ -345,6 +345,36 @@ describe('ResultWorkspace', () => {
     const transcript = screen.getByRole('tabpanel', { name: 'Transcript' });
     await user.click(within(transcript).getByRole('button', { name: '12:35' }));
     expect(controller.seekTo).toHaveBeenCalledWith(755_000);
+  });
+
+  it('tracks player time and marks the active transcript segment accessibly', async () => {
+    const interval = vi.spyOn(window, 'setInterval');
+    try {
+      renderWorkspace();
+      await userEvent.click(screen.getByRole('tab', { name: 'Transcript' }));
+      const transcript = screen.getByRole('tabpanel', { name: 'Transcript' });
+      expect(
+        within(transcript).getByText('A prism separates light.').closest('li'),
+      ).toHaveAttribute('aria-current', 'true');
+
+      vi.mocked(controller.getCurrentTimeMs).mockReturnValue(755_500);
+      await act(async () => {
+        const synchronize = interval.mock.calls
+          .filter(([, delay]) => delay === 500)
+          .at(-1)?.[0];
+        if (typeof synchronize === 'function') synchronize();
+      });
+
+      expect(
+        within(transcript).getByText('Sources stay grounded.').closest('li'),
+      ).toHaveAttribute('aria-current', 'true');
+      expect(
+        within(transcript).getByText('A prism separates light.').closest('li'),
+      ).not.toHaveAttribute('aria-current');
+    } finally {
+      interval.mockRestore();
+      vi.mocked(controller.getCurrentTimeMs).mockReturnValue(0);
+    }
   });
 
   it('reports clipboard rejection without leaking an unhandled error', async () => {

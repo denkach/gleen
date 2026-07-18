@@ -4,7 +4,7 @@ const route = '/app-shell-fixture/app/video/result-complete';
 
 type FixtureWindow = Window & {
   __fixtureClipboard?: string;
-  __fixturePlayer: { seeks: number[] };
+  __fixturePlayer: { currentTime: number; seeks: number[] };
 };
 
 async function gotoFixture(page: import('@playwright/test').Page, url: string) {
@@ -129,6 +129,34 @@ test('seeks from timestamps and transcript controls', async ({ page }) => {
       ),
     )
     .toBe(0);
+});
+
+test('hands live partial artifacts to the workspace without a page reload', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture/app/video/pipeline-live-partial');
+  await expect(page.getByLabel('Analysis artifacts')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  await expect(page.getByText('Flashcards needs retry')).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => performance.getEntriesByType('navigation').length,
+    ),
+  ).toBe(1);
+  expect(page.url()).toContain('/pipeline-live-partial');
+});
+
+test('highlights the transcript segment for the current player time', async ({
+  page,
+}) => {
+  await gotoFixture(page, route);
+  await page.getByRole('tab', { name: 'Transcript' }).click();
+  await page.evaluate(() => {
+    (window as unknown as FixtureWindow).__fixturePlayer.currentTime = 63.5;
+  });
+  await expect(
+    page.getByText('Important claims remain grounded.').locator('..'),
+  ).toHaveAttribute('aria-current', 'true');
 });
 
 test('persists title and summary artifact autosaves across reload', async ({

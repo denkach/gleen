@@ -24,6 +24,7 @@ const allowedIds = new Set([
   'pipeline-transcript',
   'pipeline-structuring',
   'pipeline-artifacts',
+  'pipeline-live-partial',
   'pipeline-partial',
   'pipeline-failed',
   'pipeline-retrying',
@@ -57,6 +58,7 @@ const pipelineStages = {
   'pipeline-transcript': ['running', 'transcript'],
   'pipeline-structuring': ['running', 'structuring'],
   'pipeline-artifacts': ['running', 'artifacts'],
+  'pipeline-live-partial': ['running', 'artifacts'],
   'pipeline-partial': ['partial', 'artifacts'],
   'pipeline-failed': ['failed', 'artifacts'],
   'pipeline-retrying': ['running', 'artifacts'],
@@ -363,6 +365,18 @@ export default async function FixtureReadinessPage({
           intake={intake}
           initialSnapshot={snapshot}
           retrySnapshot={retrySnapshot}
+          transitionSnapshot={
+            pipelineFixture === 'pipeline-live-partial'
+              ? {
+                  ...pipelineSnapshot(id, 'pipeline-partial'),
+                  job: {
+                    ...pipelineSnapshot(id, 'pipeline-partial').job,
+                    revision: 8,
+                    updatedAt: '2026-07-17T00:02:00.000Z',
+                  },
+                }
+              : undefined
+          }
         />
       ) : (
         <IntakeReadiness intake={intake} />

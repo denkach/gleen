@@ -258,4 +258,56 @@ describe('AnalysisProcessingScreen', () => {
       'revision 4',
     );
   });
+
+  test('hands a live partial snapshot with usable artifacts to the workspace without reload', async () => {
+    vi.useFakeTimers();
+    const refreshAction = vi.fn(async () => snapshot('partial', 4));
+    render(
+      <AnalysisProcessingScreen
+        intake={intake}
+        initialSnapshot={snapshot('running', 2)}
+        retryAction={vi.fn()}
+        refreshAction={refreshAction}
+      />,
+    );
+
+    const onStatus = realtime.channel.subscribe.mock.calls[0]?.[0] as (
+      status: string,
+    ) => void;
+    await act(async () => onStatus('SUBSCRIBED'));
+
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-exiting',
+      'true',
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+    expect(screen.getByTestId('result-workspace')).toHaveTextContent(
+      'revision 4',
+    );
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
+    expect(screen.getByText('Flashcards needs retry')).toBeVisible();
+  });
+
+  test('hands live partial results over immediately with reduced motion', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: true })),
+    );
+    const refreshAction = vi.fn(async () => snapshot('partial', 4));
+    render(
+      <AnalysisProcessingScreen
+        intake={intake}
+        initialSnapshot={snapshot('running', 2)}
+        retryAction={vi.fn()}
+        refreshAction={refreshAction}
+      />,
+    );
+    const onStatus = realtime.channel.subscribe.mock.calls[0]?.[0] as (
+      status: string,
+    ) => void;
+    await act(async () => onStatus('SUBSCRIBED'));
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(screen.getByTestId('result-workspace')).toBeVisible();
+  });
 });

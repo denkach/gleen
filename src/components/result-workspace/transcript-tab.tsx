@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { TranscriptPresentation } from '@/lib/result-workspace/presentation';
 
 import { useVideoPlayer } from './player-context';
@@ -11,6 +11,9 @@ export function TranscriptTab({
 }: Readonly<{ transcript: TranscriptPresentation }>) {
   const player = useVideoPlayer();
   const [query, setQuery] = useState('');
+  const [activeOffset, setActiveOffset] = useState<number | null>(
+    transcript.segments[0]?.offsetMs ?? null,
+  );
   const [copyMessage, setCopyMessage] = useState<
     { kind: 'success' | 'error'; text: string } | undefined
   >();
@@ -37,6 +40,19 @@ export function TranscriptTab({
       });
     }
   };
+  useEffect(() => {
+    if (!player) return;
+    const synchronize = () => {
+      const currentTime = player.getCurrentTimeMs();
+      const active = transcript.segments.findLast(
+        (segment) => segment.offsetMs <= currentTime,
+      );
+      setActiveOffset(active?.offsetMs ?? null);
+    };
+    synchronize();
+    const interval = window.setInterval(synchronize, 500);
+    return () => window.clearInterval(interval);
+  }, [player, transcript.segments]);
   return (
     <section data-artifact="transcript">
       <div className="mb-5 flex flex-wrap gap-3">
@@ -76,12 +92,18 @@ export function TranscriptTab({
           {segments.map((segment, index) => (
             <li
               key={`${segment.offsetMs}-${index}`}
-              className="grid grid-cols-[72px_1fr] gap-3 py-4"
+              aria-current={
+                activeOffset === segment.offsetMs ? 'true' : undefined
+              }
+              className="grid grid-cols-[72px_1fr] gap-3 rounded-lg px-2 py-4 aria-[current=true]:bg-[color-mix(in_srgb,var(--text-primary)_4%,transparent)]"
             >
               <button
                 type="button"
                 className="min-h-11 self-start font-[var(--font-mono)] text-xs text-[var(--artifact-timestamps)]"
-                onClick={() => player?.seekTo(segment.offsetMs)}
+                onClick={() => {
+                  setActiveOffset(segment.offsetMs);
+                  player?.seekTo(segment.offsetMs);
+                }}
               >
                 {formatOffset(segment.offsetMs)}
               </button>
