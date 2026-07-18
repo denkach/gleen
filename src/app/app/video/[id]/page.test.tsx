@@ -3,18 +3,25 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 
-const { findOwned, findOwnedSnapshot, getUser, notFound, redirect } =
-  vi.hoisted(() => ({
-    findOwned: vi.fn(),
-    findOwnedSnapshot: vi.fn(),
-    getUser: vi.fn(),
-    notFound: vi.fn((): never => {
-      throw new Error('NEXT_NOT_FOUND');
-    }),
-    redirect: vi.fn((path: string): never => {
-      throw new Error(`NEXT_REDIRECT:${path}`);
-    }),
-  }));
+const {
+  findOwned,
+  findOwnedSnapshot,
+  getUser,
+  normalizeResultWorkspace,
+  notFound,
+  redirect,
+} = vi.hoisted(() => ({
+  findOwned: vi.fn(),
+  findOwnedSnapshot: vi.fn(),
+  getUser: vi.fn(),
+  normalizeResultWorkspace: vi.fn(),
+  notFound: vi.fn((): never => {
+    throw new Error('NEXT_NOT_FOUND');
+  }),
+  redirect: vi.fn((path: string): never => {
+    throw new Error(`NEXT_REDIRECT:${path}`);
+  }),
+}));
 
 vi.mock('next/navigation', () => ({ notFound, redirect }));
 vi.mock('@/lib/supabase/server', () => ({
@@ -30,6 +37,18 @@ vi.mock('@/components/app-shell/analysis-processing-screen', () => ({
   AnalysisProcessingScreen: ({ intake }: { intake: AnalysisIntake }) => (
     <h1>{intake.title}</h1>
   ),
+}));
+vi.mock('@/components/result-workspace/result-workspace', () => ({
+  ResultWorkspace: ({ model }: { model: { source: { title: string } } }) => (
+    <div data-testid="result-workspace">{model.source.title}</div>
+  ),
+}));
+vi.mock('@/lib/result-workspace/presentation', () => ({
+  normalizeResultWorkspace,
+}));
+vi.mock('@/lib/result-workspace/actions', () => ({
+  saveResultTitle: vi.fn(),
+  saveResultArtifact: vi.fn(),
 }));
 
 import VideoIntakePage, { generateMetadata } from './page';
@@ -92,7 +111,37 @@ describe('owned intake readiness page', () => {
     getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
     findOwned.mockResolvedValue(intake);
     findOwnedSnapshot.mockResolvedValue(snapshot);
+    normalizeResultWorkspace.mockReturnValue({
+      source: { title: intake.title },
+    });
   });
+
+  test.each(['complete', 'partial'] as const)(
+    'renders a normalized workspace directly for a %s terminal snapshot',
+    async (status) => {
+      const terminalSnapshot = {
+        ...snapshot,
+        job: {
+          ...snapshot.job,
+          status,
+          stage: status === 'complete' ? 'complete' : 'artifacts',
+        },
+      };
+      findOwnedSnapshot.mockResolvedValue(terminalSnapshot);
+
+      render(
+        await VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
+      );
+
+      expect(normalizeResultWorkspace).toHaveBeenCalledWith(
+        intake,
+        terminalSnapshot,
+      );
+      expect(screen.getByTestId('result-workspace')).toHaveTextContent(
+        intake.title,
+      );
+    },
+  );
 
   test('loads the asynchronously addressed owned intake', async () => {
     render(

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
 import { AnalysisProcessingScreen } from '@/components/app-shell/analysis-processing-screen';
+import { ResultWorkspace } from '@/components/result-workspace/result-workspace';
 import {
   refreshAnalysisSnapshot,
   retryAnalysis,
@@ -11,6 +12,11 @@ import {
   type SupabaseAnalysisClient,
 } from '@/lib/analysis-pipeline/supabase-repository';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import {
+  saveResultArtifact,
+  saveResultTitle,
+} from '@/lib/result-workspace/actions';
+import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
 import {
   createSupabaseIntakeRepository,
   type SupabaseIntakeClient,
@@ -52,6 +58,15 @@ export default async function VideoIntakePage(props: VideoIntakePageProps) {
   );
   const snapshot = await repository.findOwnedSnapshot(userId, intake.id);
   if (!snapshot) notFound();
+
+  if (snapshot.job.status === 'complete' || snapshot.job.status === 'partial')
+    return (
+      <ResultWorkspace
+        model={normalizeResultWorkspace(intake, snapshot)}
+        saveTitle={saveResultTitle}
+        saveArtifact={saveResultArtifact}
+      />
+    );
 
   return (
     <AnalysisProcessingScreen

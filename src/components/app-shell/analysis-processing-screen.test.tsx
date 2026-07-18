@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -16,6 +16,16 @@ vi.mock('@/lib/supabase/browser', () => ({
   createBrowserSupabaseClient: () => ({
     channel: realtime.create,
     removeChannel: realtime.remove,
+  }),
+}));
+vi.mock('@/components/result-workspace/result-workspace', () => ({
+  ResultWorkspace: ({ model }: { model: { revision: number } }) => (
+    <div data-testid="result-workspace">revision {model.revision}</div>
+  ),
+}));
+vi.mock('@/lib/result-workspace/presentation', () => ({
+  normalizeResultWorkspace: (_intake: unknown, value: AnalysisSnapshot) => ({
+    revision: value.job.revision,
   }),
 }));
 
@@ -222,7 +232,30 @@ describe('AnalysisProcessingScreen', () => {
         refreshAction={vi.fn()}
       />,
     );
-    expect(screen.getByTestId('analysis-results')).toBeVisible();
+    expect(screen.getByTestId('result-workspace')).toHaveTextContent(
+      'revision 2',
+    );
     expect(realtime.create).not.toHaveBeenCalled();
+  });
+
+  test('hands live completion to the newest workspace after the restrained exit', async () => {
+    vi.useFakeTimers();
+    const refreshAction = vi.fn(async () => snapshot('complete', 4));
+    render(
+      <AnalysisProcessingScreen
+        intake={intake}
+        initialSnapshot={snapshot('running', 2)}
+        retryAction={vi.fn()}
+        refreshAction={refreshAction}
+      />,
+    );
+    const onStatus = realtime.channel.subscribe.mock.calls[0]?.[0] as (
+      status: string,
+    ) => void;
+    await act(async () => onStatus('SUBSCRIBED'));
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+    expect(screen.getByTestId('result-workspace')).toHaveTextContent(
+      'revision 4',
+    );
   });
 });

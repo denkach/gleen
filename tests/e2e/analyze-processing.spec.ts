@@ -633,6 +633,6 @@ test('durable reduced motion reveals a completed result immediately', async ({
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/app-shell-fixture/app/video/pipeline-complete');
-  await expect(page.getByTestId('analysis-results')).toBeVisible();
+  await expect(page.getByTestId('result-layout')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });

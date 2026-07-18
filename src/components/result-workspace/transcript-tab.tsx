@@ -11,6 +11,7 @@ export function TranscriptTab({
 }: Readonly<{ transcript: TranscriptPresentation }>) {
   const player = useVideoPlayer();
   const [query, setQuery] = useState('');
+  const [copyError, setCopyError] = useState(false);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const segments = useMemo(
     () =>
@@ -19,10 +20,17 @@ export function TranscriptTab({
       ),
     [normalizedQuery, transcript.segments],
   );
-  const copy = () =>
-    navigator.clipboard?.writeText(
-      transcript.segments.map((segment) => segment.text).join('\n'),
-    );
+  const copy = async () => {
+    setCopyError(false);
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(
+        transcript.segments.map((segment) => segment.text).join('\n'),
+      );
+    } catch {
+      setCopyError(true);
+    }
+  };
   return (
     <section data-artifact="transcript">
       <div className="mb-5 flex flex-wrap gap-3">
@@ -45,6 +53,11 @@ export function TranscriptTab({
           Copy transcript
         </button>
       </div>
+      {copyError && (
+        <p role="status" className="mb-4 text-sm text-[var(--text-secondary)]">
+          Transcript could not be copied. Select the text and copy it manually.
+        </p>
+      )}
       {segments.length === 0 ? (
         <p
           role="status"

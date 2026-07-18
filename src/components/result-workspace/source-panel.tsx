@@ -34,7 +34,7 @@ export function SourcePanel({
 
   return (
     <aside
-      className="sticky top-[92px] overflow-hidden rounded-[18px] border border-[var(--border-default)] bg-white/[0.015] max-[1024px]:relative max-[1024px]:top-0"
+      className="source-panel sticky top-[92px] overflow-hidden rounded-[18px] border border-[var(--border-default)] bg-white/[0.015] max-[1024px]:relative max-[1024px]:top-0"
       aria-label="Video source"
     >
       <div className="relative grid aspect-video place-items-center overflow-hidden border-b border-[var(--border-default)] bg-[radial-gradient(circle_at_70%_30%,color-mix(in_srgb,var(--artifact-timestamps)_13%,transparent),transparent_35%),linear-gradient(145deg,var(--surface-raised),var(--background-deep))]">

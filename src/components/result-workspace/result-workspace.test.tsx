@@ -165,7 +165,7 @@ describe('ResultWorkspace', () => {
       },
     });
     const flashcards = screen.getByRole('tab', { name: 'Flashcards' });
-    expect(flashcards).toHaveAttribute('aria-disabled', 'true');
+    expect(flashcards).toHaveAttribute('data-artifact-unavailable', 'true');
     await user.click(flashcards);
     expect(screen.getByText(/could not be generated/i)).toBeVisible();
     await user.click(screen.getByRole('tab', { name: 'Timestamps' }));
@@ -322,6 +322,20 @@ describe('ResultWorkspace', () => {
     const transcript = screen.getByRole('tabpanel', { name: 'Transcript' });
     await user.click(within(transcript).getByRole('button', { name: '12:35' }));
     expect(controller.seekTo).toHaveBeenCalledWith(755_000);
+  });
+
+  it('reports clipboard rejection without leaking an unhandled error', async () => {
+    const user = userEvent.setup();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    renderWorkspace();
+    await user.click(screen.getByRole('tab', { name: 'Transcript' }));
+    await user.click(screen.getByRole('button', { name: 'Copy transcript' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Transcript could not be copied',
+    );
   });
 
   it('keeps the result title controlled and saves with compare-and-set data', async () => {

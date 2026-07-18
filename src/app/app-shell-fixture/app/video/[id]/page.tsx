@@ -3,10 +3,12 @@ import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/app-shell/app-shell';
 import { AnalysisProcessingFixtureScreen } from '@/components/app-shell/analysis-processing-fixture-screen';
 import { IntakeReadiness } from '@/components/app-shell/intake-readiness';
+import { ResultWorkspace } from '@/components/result-workspace/result-workspace';
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import { unavailableUsage } from '@/lib/app-shell';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
+import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
 import {
   outputLocaleSchema,
   summaryPresetSchema,
@@ -25,6 +27,19 @@ const allowedIds = new Set([
   'pipeline-failed',
   'pipeline-retrying',
   'pipeline-complete',
+  'result-complete',
+  'result-legacy',
+  'result-partial',
+  'result-corrupted',
+  'result-empty',
+]);
+
+const resultIds = new Set([
+  'result-complete',
+  'result-legacy',
+  'result-partial',
+  'result-corrupted',
+  'result-empty',
 ]);
 
 const pipelineStages = {
@@ -107,6 +122,150 @@ function pipelineSnapshot(
   };
 }
 
+function resultSnapshot(analysisId: string): AnalysisSnapshot {
+  const complete = analysisId === 'result-complete';
+  const legacy = analysisId === 'result-legacy';
+  const partial = analysisId === 'result-partial';
+  const corrupted = analysisId === 'result-corrupted';
+  const empty = analysisId === 'result-empty';
+  const ready = (
+    kind: 'summary' | 'flashcards' | 'timestamps' | 'transcript',
+    content: unknown,
+  ) => ({
+    id: `fixture-${kind}`,
+    analysisId,
+    userId: 'fixture-user',
+    kind,
+    status: 'ready' as const,
+    schemaVersion: 1,
+    content,
+    errorCode: null,
+    generatedAt: '2026-07-18T00:00:30.000Z',
+    updatedAt: '2026-07-18T00:00:30.000Z',
+  });
+  const artifacts = empty
+    ? []
+    : [
+        ready(
+          'summary',
+          corrupted
+            ? {
+                schemaVersion: 2,
+                title: 'Broken',
+                overview: 'Isolated',
+                keyPoints: [{ text: 'Invalid', sourceOffsetMs: -1 }],
+              }
+            : legacy
+              ? {
+                  schemaVersion: 1,
+                  title: 'Legacy knowledge',
+                  overview: 'Readable without fabricated links.',
+                  keyPoints: ['Legacy point'],
+                }
+              : {
+                  schemaVersion: 2,
+                  title: 'Reusable knowledge',
+                  overview: 'A video becomes grounded artifacts.',
+                  keyPoints: [
+                    {
+                      text: 'Jump to the central idea',
+                      sourceOffsetMs: 63_000,
+                    },
+                  ],
+                },
+        ),
+        ...(partial
+          ? [
+              {
+                id: 'fixture-flashcards',
+                analysisId,
+                userId: 'fixture-user',
+                kind: 'flashcards' as const,
+                status: 'failed' as const,
+                schemaVersion: 1,
+                content: null,
+                errorCode: 'generation_failed',
+                generatedAt: null,
+                updatedAt: '2026-07-18T00:00:30.000Z',
+              },
+            ]
+          : complete
+            ? [
+                ready('flashcards', {
+                  schemaVersion: 1,
+                  cards: [
+                    {
+                      front: 'What does Gleen create?',
+                      back: 'Reusable knowledge artifacts.',
+                    },
+                    {
+                      front: 'Why source links?',
+                      back: 'To verify important claims.',
+                    },
+                  ],
+                }),
+                ready('timestamps', {
+                  schemaVersion: 1,
+                  chapters: [
+                    {
+                      offsetMs: 0,
+                      title: 'Opening',
+                      description: 'The premise',
+                    },
+                    {
+                      offsetMs: 63_000,
+                      title: 'Central idea',
+                      description: 'Grounded learning',
+                    },
+                  ],
+                }),
+                ready('transcript', {
+                  schemaVersion: 1,
+                  language: 'en',
+                  segments: [
+                    {
+                      text: 'A video becomes reusable knowledge.',
+                      offsetMs: 0,
+                      durationMs: 3000,
+                    },
+                    {
+                      text: 'Important claims remain grounded.',
+                      offsetMs: 63_000,
+                      durationMs: 3000,
+                    },
+                  ],
+                }),
+              ]
+            : []),
+      ];
+  return {
+    job: {
+      id: `job-${analysisId}`,
+      analysisId,
+      userId: 'fixture-user',
+      workflowRunId: null,
+      status: partial ? 'partial' : 'complete',
+      stage: partial ? 'artifacts' : 'complete',
+      attempt: 1,
+      revision: 9,
+      errorCode: null,
+      startedAt: '2026-07-18T00:00:00.000Z',
+      completedAt: '2026-07-18T00:01:00.000Z',
+      createdAt: '2026-07-18T00:00:00.000Z',
+      updatedAt: '2026-07-18T00:01:00.000Z',
+    },
+    events: [],
+    artifacts,
+    usageReservation: {
+      id: 'result-reservation',
+      jobId: `job-${analysisId}`,
+      userId: 'fixture-user',
+      status: partial ? 'released' : 'settled',
+      updatedAt: '2026-07-18T00:01:00.000Z',
+    },
+  };
+}
+
 export default async function FixtureReadinessPage({
   params,
   searchParams,
@@ -139,8 +298,9 @@ export default async function FixtureReadinessPage({
       summaryPreset:
         summaryPresetSchema.safeParse(summaryPreset).data ??
         fixtureSavedIntake.configuration.summaryPreset,
-      artifacts:
-        flashcardPreset === '18' || flashcardPreset === '30'
+      artifacts: resultIds.has(id)
+        ? (['summary', 'flashcards', 'timestamps', 'transcript'] as const)
+        : flashcardPreset === '18' || flashcardPreset === '30'
           ? [
               ...fixtureSavedIntake.configuration.artifacts,
               'flashcards' as const,
@@ -159,6 +319,7 @@ export default async function FixtureReadinessPage({
   const snapshot = pipelineFixture
     ? pipelineSnapshot(id, pipelineFixture)
     : null;
+  const result = resultIds.has(id) ? resultSnapshot(id) : null;
   const retrySnapshot =
     pipelineFixture === 'pipeline-partial' && snapshot
       ? {
@@ -184,7 +345,19 @@ export default async function FixtureReadinessPage({
       usage={unavailableUsage}
       pathnameOverride="/app"
     >
-      {snapshot ? (
+      {result ? (
+        <ResultWorkspace
+          model={normalizeResultWorkspace(intake, result)}
+          saveTitle={async () => {
+            'use server';
+            return { status: 'saved', updatedAt: new Date().toISOString() };
+          }}
+          saveArtifact={async () => {
+            'use server';
+            return { status: 'saved', updatedAt: new Date().toISOString() };
+          }}
+        />
+      ) : snapshot ? (
         <AnalysisProcessingFixtureScreen
           intake={intake}
           initialSnapshot={snapshot}

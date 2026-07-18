@@ -19,6 +19,9 @@ import { OverviewTab } from './overview-tab';
 import { SummaryTab } from './summary-tab';
 import { TimestampsTab } from './timestamps-tab';
 import { TranscriptTab } from './transcript-tab';
+import { PlayerProvider, useVideoPlayer } from './player-context';
+import type { VideoPlayerController } from './player-controller';
+import { SourcePanel } from './source-panel';
 
 type SaveAction = (input: unknown) => Promise<ResultSaveState>;
 type TabValue =
@@ -29,7 +32,7 @@ type TabValue =
   | 'transcript'
   | 'export';
 
-export function ResultWorkspace({
+function ResultArtifacts({
   model,
   saveTitle,
   saveArtifact,
@@ -82,10 +85,7 @@ export function ResultWorkspace({
     { value: 'export', label: 'Export' },
   ];
   return (
-    <section
-      className="min-w-0 overflow-hidden rounded-[20px] border border-[var(--border-default)] bg-[var(--background-elevated)]"
-      aria-label="Analysis artifacts"
-    >
+    <section className="result-workspace" aria-label="Analysis artifacts">
       <EditableTitle
         analysisId={model.source.intakeId}
         title={draftModel.source.title}
@@ -108,7 +108,7 @@ export function ResultWorkspace({
             <TabsTrigger
               key={trigger.value}
               value={trigger.value}
-              aria-disabled={trigger.unavailable || undefined}
+              data-artifact-unavailable={trigger.unavailable || undefined}
               className="min-h-11 shrink-0"
             >
               {trigger.label}
@@ -225,5 +225,51 @@ export function ResultWorkspace({
         </div>
       </Tabs>
     </section>
+  );
+}
+
+const inactiveController: VideoPlayerController = {
+  seekTo: () => undefined,
+  play: () => undefined,
+  pause: () => undefined,
+  getCurrentTimeMs: () => 0,
+};
+
+export function ResultWorkspace(
+  props: Readonly<{
+    model: ResultWorkspaceModel;
+    saveTitle: SaveAction;
+    saveArtifact: SaveAction;
+  }>,
+) {
+  const { model } = props;
+  const parentController = useVideoPlayer();
+  const [controller, setController] = useState<VideoPlayerController>();
+  const duration = new Date(model.source.durationSeconds * 1_000)
+    .toISOString()
+    .slice(model.source.durationSeconds >= 3600 ? 11 : 14, 19);
+
+  return (
+    <PlayerProvider
+      controller={controller ?? parentController ?? inactiveController}
+    >
+      <div className="result-layout" data-testid="result-layout">
+        <SourcePanel
+          source={{
+            videoId: model.source.youtubeVideoId,
+            title: model.source.title,
+            channel: model.source.channelTitle,
+            duration,
+            language:
+              model.tabs.transcript.status === 'ready'
+                ? model.tabs.transcript.data.language.toUpperCase()
+                : '—',
+            thumbnailUrl: model.source.thumbnailUrl,
+          }}
+          onPlayerReady={setController}
+        />
+        <ResultArtifacts {...props} />
+      </div>
+    </PlayerProvider>
   );
 }

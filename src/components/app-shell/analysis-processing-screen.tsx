@@ -13,6 +13,12 @@ import type {
 import type { RetryActionResult } from '@/lib/analysis-pipeline/retry-actions';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
+import {
+  saveResultArtifact,
+  saveResultTitle,
+} from '@/lib/result-workspace/actions';
+import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
+import { ResultWorkspace } from '@/components/result-workspace/result-workspace';
 
 import { AnalyzeProcessingVisual } from './analyze-processing-visual';
 
@@ -176,13 +182,11 @@ export function AnalysisProcessingScreen({
           retryDisabled={isRetryPending}
         />
       ) : (
-        <div
-          className="analysis-results-ready"
-          data-testid="analysis-results"
-          role="status"
-        >
-          Analysis results ready
-        </div>
+        <ResultWorkspace
+          model={normalizeResultWorkspace(intake, snapshot)}
+          saveTitle={saveResultTitle}
+          saveArtifact={saveResultArtifact}
+        />
       )}
       {readyArtifacts.length || failedArtifacts.length ? (
         <ul className="analysis-artifact-status" aria-label="Artifact status">

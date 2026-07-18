@@ -15,4 +15,9 @@ export const fixtureCases = [
   'pipeline-failed',
   'pipeline-retrying',
   'pipeline-complete',
+  'result-complete',
+  'result-legacy',
+  'result-partial',
+  'result-corrupted',
+  'result-empty',
 ] as const;
