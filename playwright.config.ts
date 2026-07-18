@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = 'http://127.0.0.1:3000';
+const port = process.env.PLAYWRIGHT_PORT ?? '3000';
+const baseURL = `http://127.0.0.1:${port}`;
 const testSupabaseUrl = 'https://gleen-test.supabase.co';
 const testSupabaseKey = 'sb_publishable_test';
 
@@ -17,9 +18,14 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'mobile-chrome',
+      grep: /durable/,
+      use: { ...devices['Pixel 7'] },
+    },
   ],
   webServer: {
-    command: 'npm run dev -- --hostname 127.0.0.1',
+    command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
     env: {
       NEXT_PUBLIC_APP_URL: baseURL,
       NEXT_PUBLIC_SUPABASE_URL: testSupabaseUrl,

@@ -48,7 +48,7 @@ export default function HomePage() {
                 <path d="m9 18 6-6-6-6" />
               </svg>
             </button>
-            <a className="btn btn-ghost btn-sm desktop-only" href="#product">
+            <a className="btn btn-ghost btn-sm desktop-only" href="/sign-in">
               <span>Sign in</span>
             </a>
             <a className="btn btn-primary btn-sm" href="#product">

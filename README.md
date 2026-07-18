@@ -50,6 +50,29 @@ Set `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and
 safe browser configuration; service-role keys and other secrets must remain
 server-only and must never be committed.
 
+YouTube intake also requires these server-only variables:
+
+- `YOUTUBE_DATA_API_KEY` — a Google Cloud server key restricted to the YouTube
+  Data API v3 and, where practical, to the deployment's server addresses;
+- `SUPADATA_API_KEY` — a Supadata server key used only for native transcript
+  requests. DEN-16 always requests `mode=native`; do not enable an automatic or
+  generated-transcript fallback.
+
+Enable YouTube Data API v3 in the linked Google Cloud project before creating
+the restricted key. Keep both provider values outside source control and never
+prefix them with `NEXT_PUBLIC_`.
+
+The durable analysis pipeline also requires two server-only variables:
+
+- `OPENROUTER_API_KEY` — the OpenRouter key used by the structured-output
+  adapter;
+- `OPENROUTER_MODEL` — one structured-output-capable model slug.
+
+Production generation requires parameter-compatible routing with data
+collection denied, zero-data-retention routing enabled, and compatible
+fallbacks allowed. Never prefix either variable with `NEXT_PUBLIC_`, and never
+log prompts, transcripts, generated content, or credentials.
+
 For DEN-14 account access:
 
 1. Create or link a Supabase project.
@@ -58,6 +81,22 @@ For DEN-14 account access:
 4. Add local and production `/auth/callback` URLs to the Supabase redirect
    allowlist.
 5. Copy the public project URL and publishable key into `.env.local`.
+
+For DEN-16 video intake, apply the intake schema after linking the intended
+Supabase project:
+
+```bash
+npx supabase db push
+```
+
+This applies `supabase/migrations/202607120002_create_analysis_intakes.sql`.
+Verify the target project before running the command; migration and provider
+configuration are server-side setup and contain no credential values.
+
+For DEN-17, also apply
+`supabase/migrations/202607170001_create_analysis_pipeline.sql`. It creates the
+owned job, event, artifact, and reservation records, selective retry RPCs, and
+the Realtime publication used as a refetch notification channel.
 
 Start the application:
 
@@ -83,10 +122,11 @@ settings workflows belong to later issues. Their current shell destinations are
 truthful placeholders and do not simulate those product capabilities.
 
 For deterministic responsive and accessibility browser checks, development and
-non-production previews expose `/app-shell-fixture`. It renders the real shell
-with explicit test-only identity data behind the same environment boundary as
-the UI primitives preview. Production builds return an exact 404 for this route;
-it is not an authentication bypass and must never be used as one.
+non-production previews expose `/app-shell-fixture`. Its local-only `intake`
+query selects fixed ready, duplicate, validation, provider-failure, and
+re-analysis dependencies backed by in-memory storage. These fixtures never read
+provider keys or write Supabase. Production builds return an exact 404 for every
+fixture URL and fixture readiness page; this is not an authentication bypass.
 
 ## Verification
 
@@ -105,6 +145,7 @@ npm run typecheck
 npm run test
 npm run build
 npm run test:e2e
+npm run test:e2e:production
 ```
 
 The Next.js development and production build commands load `.env.local`.
