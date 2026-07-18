@@ -14,6 +14,10 @@ import {
   retryAnalysis,
 } from '@/lib/analysis-pipeline/retry-actions';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
+import {
+  defaultArtifactSelection,
+  type IntakeConfiguration,
+} from '@/lib/youtube-intake/configuration';
 
 import { AnalyzeProcessingVisual } from './analyze-processing-visual';
 
@@ -24,6 +28,7 @@ export type InlineAnalysisProcessingProps = Readonly<{
   retryAction?: typeof retryAnalysis;
   resultPathPrefix?: string;
   enableRealtime?: boolean;
+  selectedArtifactKinds?: readonly IntakeConfiguration['artifacts'][number][];
 }>;
 
 const pollingIntervalMs = 2_000;
@@ -51,6 +56,7 @@ export function InlineAnalysisProcessing({
   retryAction = retryAnalysis,
   resultPathPrefix = '/app/video',
   enableRealtime = true,
+  selectedArtifactKinds = defaultArtifactSelection,
 }: InlineAnalysisProcessingProps) {
   const router = useRouter();
   const push = router.push;
@@ -149,6 +155,16 @@ export function InlineAnalysisProcessing({
         controllerGeneration.current += 1;
     };
   }, [analysisId, refresh]);
+
+  useEffect(() => {
+    if (ownedSnapshot || refreshUnavailableFor !== analysisId) return;
+    const generation = controllerGeneration.current;
+    const polling = window.setInterval(
+      () => void refresh(generation),
+      pollingIntervalMs,
+    );
+    return () => window.clearInterval(polling);
+  }, [analysisId, ownedSnapshot, refresh, refreshUnavailableFor]);
 
   useEffect(() => {
     if (
@@ -307,6 +323,7 @@ export function InlineAnalysisProcessing({
               : undefined
       }
       artifactStates={artifactStates}
+      selectedArtifactKinds={selectedArtifactKinds}
       controls={
         (isPartial || isFailed) && !isRetrying && !isReconciling ? (
           <>

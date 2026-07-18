@@ -126,6 +126,49 @@ describe('InlineAnalysisProcessing', () => {
     expect(refreshAction).toHaveBeenCalledTimes(2);
   });
 
+  test('bootstraps polling after an initial rejection without a snapshot and stops after recovery', async () => {
+    vi.useFakeTimers();
+    const refreshAction = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue(snapshot('running', 2));
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        selectedArtifactKinds={['summary', 'timestamps', 'transcript']}
+        refreshAction={refreshAction}
+        retryAction={vi.fn()}
+      />,
+    );
+    await act(async () => Promise.resolve());
+    expect(realtime.create).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(2_000));
+    expect(refreshAction).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-state',
+      'transcript',
+    );
+    expect(realtime.create).toHaveBeenCalledOnce();
+  });
+
+  test('marks omitted artifact rails as not selected from the intake configuration', () => {
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        initialSnapshot={snapshot('running')}
+        selectedArtifactKinds={['summary']}
+        refreshAction={vi.fn(async () => snapshot('running'))}
+        retryAction={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('FLASHCARDS').parentElement).toHaveTextContent(
+      'not selected',
+    );
+    expect(
+      screen.getByRole('list', { name: 'Artifact status' }),
+    ).toHaveTextContent('Flashcards not selected');
+  });
+
   test('subscribes to the owned records, reconciles realtime, and cleans up', async () => {
     const refreshAction = vi.fn(async () => snapshot('running', 2));
     const { unmount } = render(

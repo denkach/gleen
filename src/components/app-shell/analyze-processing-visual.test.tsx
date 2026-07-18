@@ -93,6 +93,7 @@ describe('AnalyzeProcessingVisual', () => {
       <AnalyzeProcessingVisual
         state="error"
         submittedUrl=""
+        selectedArtifactKinds={['summary', 'timestamps', 'transcript']}
         artifactStates={{ summary: 'ready', timestamps: 'failed' }}
         controls={
           <>
@@ -117,6 +118,28 @@ describe('AnalyzeProcessingVisual', () => {
     expect(
       screen.getByRole('list', { name: 'Artifact status' }),
     ).toHaveTextContent('Summary ready');
+    expect(screen.getByText('FLASHCARDS').parentElement).toHaveTextContent(
+      'not selected',
+    );
+  });
+
+  it('truthfully represents a custom artifact selection in visual and semantic status', () => {
+    render(
+      <AnalyzeProcessingVisual
+        state="artifacts"
+        submittedUrl=""
+        selectedArtifactKinds={['flashcards']}
+      />,
+    );
+    expect(screen.getByText('FLASHCARDS').parentElement).toHaveTextContent(
+      'queued',
+    );
+    expect(screen.getByText('SUMMARY').parentElement).toHaveTextContent(
+      'not selected',
+    );
+    const statuses = screen.getByRole('list', { name: 'Artifact status' });
+    expect(statuses).toHaveTextContent('Flashcards queued');
+    expect(statuses).toHaveTextContent('Summary not selected');
   });
 
   it('moves focus to processing and then terminal context only on transitions', () => {

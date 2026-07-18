@@ -175,6 +175,7 @@ export function NewAnalysisForm({
           analysisId={state.analysisId}
           initialSnapshot={initialSnapshot}
           resultPathPrefix={resultPathPrefix}
+          selectedArtifactKinds={state.configuration.artifacts}
         />
       ) : (
         <AnalyzeProcessingVisual

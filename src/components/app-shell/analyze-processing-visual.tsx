@@ -6,9 +6,13 @@ import {
   orderedAnalysisStages,
   type AnalysisVisualState,
 } from '@/lib/analyze-processing/analysis-visual-state';
+import {
+  defaultArtifactSelection,
+  type IntakeConfiguration,
+} from '@/lib/youtube-intake/configuration';
 import { useEffect, useRef, type ReactNode } from 'react';
 
-type ArtifactRailState = 'queued' | 'ready' | 'failed';
+type ArtifactRailState = 'queued' | 'ready' | 'failed' | 'not selected';
 
 export type AnalyzeProcessingVisualProps = Readonly<{
   state: AnalysisVisualState;
@@ -19,6 +23,7 @@ export type AnalyzeProcessingVisualProps = Readonly<{
   retryDisabled?: boolean;
   controls?: ReactNode;
   artifactStates?: Readonly<Record<string, ArtifactRailState>>;
+  selectedArtifactKinds?: readonly IntakeConfiguration['artifacts'][number][];
   idleContent?: ReactNode;
 }>;
 
@@ -31,6 +36,7 @@ export function AnalyzeProcessingVisual({
   retryDisabled = false,
   controls,
   artifactStates,
+  selectedArtifactKinds = defaultArtifactSelection,
   idleContent,
 }: AnalyzeProcessingVisualProps) {
   const presentation = getAnalysisVisualPresentation(state);
@@ -41,6 +47,17 @@ export function AnalyzeProcessingVisual({
   const previousMode = useRef<'idle' | 'processing' | 'complete' | 'error'>(
     'idle',
   );
+  const selectedRails = new Set(
+    selectedArtifactKinds.map((kind) =>
+      kind === 'transcript' ? 'export' : kind,
+    ),
+  );
+  const railState = (
+    railId: (typeof artifactRailDefinitions)[number]['id'],
+  ): ArtifactRailState =>
+    selectedRails.has(railId)
+      ? (artifactStates?.[railId] ?? (isComplete ? 'ready' : 'queued'))
+      : 'not selected';
 
   useEffect(() => {
     const previous = previousMode.current;
@@ -96,8 +113,7 @@ export function AnalyzeProcessingVisual({
               {artifactRailDefinitions.map((rail) => (
                 <li key={rail.id}>
                   {rail.label.charAt(0) + rail.label.slice(1).toLowerCase()}{' '}
-                  {artifactStates?.[rail.id] ??
-                    (isComplete ? 'ready' : 'queued')}
+                  {railState(rail.id)}
                 </li>
               ))}
             </ul>
@@ -148,10 +164,7 @@ export function AnalyzeProcessingVisual({
                   <div className={`analyze-rail ${rail.tone}`} key={rail.id}>
                     <span>{rail.label}</span>
                     <span className="analyze-track" />
-                    <small>
-                      {artifactStates?.[rail.id] ??
-                        (isComplete ? 'ready' : 'queued')}
-                    </small>
+                    <small>{railState(rail.id)}</small>
                   </div>
                 ))}
               </div>

@@ -47,6 +47,12 @@ export function NewAnalysisHome({
                   ...initialState,
                   status: 'ready',
                   analysisId: initialAnalysis.intake.id,
+                  configuration: {
+                    ...initialState.configuration,
+                    artifacts: [
+                      ...initialAnalysis.intake.configuration.artifacts,
+                    ],
+                  },
                 }
               : continuation
                 ? { ...initialState, rawUrl: continuation.rawUrl }

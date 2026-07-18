@@ -21,11 +21,18 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: routerPush }),
 }));
 vi.mock('./inline-analysis-processing', () => ({
-  InlineAnalysisProcessing: ({ analysisId }: { analysisId: string }) => (
+  InlineAnalysisProcessing: ({
+    analysisId,
+    selectedArtifactKinds,
+  }: {
+    analysisId: string;
+    selectedArtifactKinds: readonly string[];
+  }) => (
     <div
       data-testid="analyze-processing-visual"
       data-analysis-state="queued"
       data-analysis-id={analysisId}
+      data-selected-artifacts={selectedArtifactKinds.join(',')}
     />
   ),
 }));
@@ -58,6 +65,26 @@ function renderForm(
 }
 
 describe('NewAnalysisForm', () => {
+  test('threads the selected artifact configuration into durable processing', () => {
+    const initial = createInitialIntakeActionState(defaults);
+    render(
+      <NewAnalysisForm
+        initialState={{
+          ...initial,
+          status: 'ready',
+          analysisId: 'analysis-1',
+          configuration: {
+            ...initial.configuration,
+            artifacts: ['summary', 'transcript'],
+          },
+        }}
+      />,
+    );
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-selected-artifacts',
+      'summary,transcript',
+    );
+  });
   test('cleans a continuation from the URL before one automatic submit', async () => {
     window.history.replaceState(
       null,
