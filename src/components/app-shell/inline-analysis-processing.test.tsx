@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
@@ -56,6 +57,38 @@ function snapshot(
       status: 'reserved',
       updatedAt: '2026-07-17T00:00:00Z',
     },
+  };
+}
+
+function partialSnapshot(revision = 1): AnalysisSnapshot {
+  return {
+    ...snapshot('partial', revision),
+    artifacts: [
+      {
+        id: 'summary-artifact',
+        analysisId,
+        userId: 'user-1',
+        kind: 'summary',
+        status: 'ready',
+        schemaVersion: 1,
+        content: { title: 'Kept summary' },
+        errorCode: null,
+        generatedAt: '2026-07-17T00:00:00Z',
+        updatedAt: '2026-07-17T00:00:00Z',
+      },
+      {
+        id: 'timestamps-artifact',
+        analysisId,
+        userId: 'user-1',
+        kind: 'timestamps',
+        status: 'failed',
+        schemaVersion: 1,
+        content: null,
+        errorCode: 'provider_failed',
+        generatedAt: null,
+        updatedAt: '2026-07-17T00:00:00Z',
+      },
+    ],
   };
 }
 
@@ -127,9 +160,11 @@ describe('InlineAnalysisProcessing', () => {
     expect(realtime.remove).toHaveBeenCalledWith(realtime.channel);
   });
 
-  test('replaces reload identity and opens only a completed result', async () => {
+  test('keeps running inline then opens a completed result exactly once after copy and exit', async () => {
+    vi.useFakeTimers();
     const replaceState = vi.spyOn(window.history, 'replaceState');
-    const refreshAction = vi.fn(async () => snapshot('complete', 2));
+    const refreshResult = deferred<AnalysisSnapshot | null>();
+    const refreshAction = vi.fn(() => refreshResult.promise);
     render(
       <InlineAnalysisProcessing
         analysisId={analysisId}
@@ -145,9 +180,43 @@ describe('InlineAnalysisProcessing', () => {
       '',
       `/app?analysis=${analysisId}`,
     );
-    await waitFor(() =>
-      expect(routerPush).toHaveBeenCalledWith(`/app/video/${analysisId}`),
+    expect(routerPush).not.toHaveBeenCalled();
+
+    await act(async () => refreshResult.resolve(snapshot('complete', 2)));
+    await act(async () => vi.advanceTimersByTimeAsync(399));
+    expect(routerPush).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-exiting',
+      'true',
     );
+    await act(async () => vi.advanceTimersByTimeAsync(599));
+    expect(routerPush).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(routerPush).toHaveBeenCalledTimes(1);
+    expect(routerPush).toHaveBeenCalledWith(`/app/video/${analysisId}`);
+    await act(async () => vi.advanceTimersByTimeAsync(5_000));
+    expect(routerPush).toHaveBeenCalledTimes(1);
+  });
+
+  test('removes the decorative completion delay for reduced motion', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        initialSnapshot={snapshot('complete')}
+        refreshAction={vi.fn(async () => snapshot('complete'))}
+        retryAction={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(routerPush).toHaveBeenCalledTimes(1));
   });
 
   test('ignores a previous analysis refresh that resolves after the identity switches', async () => {
@@ -255,22 +324,65 @@ describe('InlineAnalysisProcessing', () => {
     ).toHaveLength(nextCallsBeforePolling + 1);
   });
 
-  test.each(['partial', 'failed'] as const)(
-    'keeps %s terminal state inline without exposing retry controls',
-    async (status) => {
-      const retryAction = vi.fn();
-      render(
-        <InlineAnalysisProcessing
-          analysisId={analysisId}
-          initialSnapshot={snapshot(status)}
-          refreshAction={vi.fn(async () => snapshot(status))}
-          retryAction={retryAction}
-        />,
-      );
+  test('keeps partial inline, exposes explicit choices, and retries once without clearing ready artifacts', async () => {
+    const user = userEvent.setup();
+    const retryAction = vi.fn();
+    retryAction.mockResolvedValue({ ok: true, attempt: 2 });
+    const refreshAction = vi
+      .fn()
+      .mockResolvedValueOnce(partialSnapshot())
+      .mockResolvedValue(snapshot('running', 2));
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        initialSnapshot={partialSnapshot()}
+        refreshAction={refreshAction}
+        retryAction={retryAction}
+      />,
+    );
 
-      expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
-      expect(retryAction).not.toHaveBeenCalled();
-      expect(routerPush).not.toHaveBeenCalled();
-    },
-  );
+    expect(screen.getByText('SUMMARY').parentElement).toHaveTextContent(
+      'ready',
+    );
+    expect(screen.getByText('TIMESTAMPS').parentElement).toHaveTextContent(
+      'failed',
+    );
+    expect(
+      screen.getByRole('button', { name: 'View available results' }),
+    ).toBeVisible();
+    const retry = screen.getByRole('button', { name: 'Retry failed artifact' });
+    expect(routerPush).not.toHaveBeenCalled();
+    await user.click(retry);
+    expect(retryAction).toHaveBeenCalledTimes(1);
+    const formData = retryAction.mock.calls[0]?.[0] as FormData;
+    expect(formData.get('analysisId')).toBe(analysisId);
+    expect(screen.getByText('SUMMARY').parentElement).toHaveTextContent(
+      'ready',
+    );
+    await waitFor(() => expect(refreshAction).toHaveBeenCalledTimes(2));
+    expect(
+      screen.queryByRole('button', { name: 'View available results' }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Retry failed artifact' }),
+    ).toBeNull();
+    expect(routerPush).not.toHaveBeenCalled();
+  });
+
+  test('opens available partial results only when explicitly requested', async () => {
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        initialSnapshot={partialSnapshot()}
+        refreshAction={vi.fn(async () => partialSnapshot())}
+        retryAction={vi.fn()}
+      />,
+    );
+    expect(routerPush).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'View available results' }),
+    );
+    expect(routerPush).toHaveBeenCalledTimes(1);
+    expect(routerPush).toHaveBeenCalledWith(`/app/video/${analysisId}`);
+  });
 });

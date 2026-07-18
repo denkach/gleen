@@ -1,12 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
-import { AnalysisProcessingScreen } from '@/components/app-shell/analysis-processing-screen';
 import { ResultWorkspace } from '@/components/result-workspace/result-workspace';
-import {
-  refreshAnalysisSnapshot,
-  retryAnalysis,
-} from '@/lib/analysis-pipeline/retry-actions';
 import {
   createSupabaseAnalysisRepository,
   type SupabaseAnalysisClient,
@@ -68,12 +63,5 @@ export default async function VideoIntakePage(props: VideoIntakePageProps) {
       />
     );
 
-  return (
-    <AnalysisProcessingScreen
-      intake={intake}
-      initialSnapshot={snapshot}
-      retryAction={retryAnalysis}
-      refreshAction={refreshAnalysisSnapshot}
-    />
-  );
+  redirect(`/app?analysis=${encodeURIComponent(intake.id)}`);
 }

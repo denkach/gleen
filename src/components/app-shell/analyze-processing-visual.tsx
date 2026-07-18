@@ -6,6 +6,8 @@ import {
 } from '@/lib/analyze-processing/analysis-visual-state';
 import type { ReactNode } from 'react';
 
+type ArtifactRailState = 'queued' | 'ready' | 'failed';
+
 export type AnalyzeProcessingVisualProps = Readonly<{
   state: AnalysisVisualState;
   isExiting?: boolean;
@@ -13,6 +15,8 @@ export type AnalyzeProcessingVisualProps = Readonly<{
   errorMessage?: string;
   onRetry?: () => void;
   retryDisabled?: boolean;
+  controls?: ReactNode;
+  artifactStates?: Readonly<Record<string, ArtifactRailState>>;
   idleContent?: ReactNode;
 }>;
 
@@ -23,6 +27,8 @@ export function AnalyzeProcessingVisual({
   errorMessage,
   onRetry,
   retryDisabled = false,
+  controls,
+  artifactStates,
   idleContent,
 }: AnalyzeProcessingVisualProps) {
   const presentation = getAnalysisVisualPresentation(state);
@@ -86,7 +92,9 @@ export function AnalyzeProcessingVisual({
               You can safely leave this page. We’ll save the result to your
               history.
             </div>
-            {isError && onRetry ? (
+            {controls ? (
+              <div className="analyze-controls">{controls}</div>
+            ) : isError && onRetry ? (
               <div className="analyze-controls">
                 <button
                   className="analyze-control"
@@ -108,7 +116,10 @@ export function AnalyzeProcessingVisual({
                   <div className={`analyze-rail ${rail.tone}`} key={rail.id}>
                     <span>{rail.label}</span>
                     <span className="analyze-track" />
-                    <small>{isComplete ? 'ready' : 'queued'}</small>
+                    <small>
+                      {artifactStates?.[rail.id] ??
+                        (isComplete ? 'ready' : 'queued')}
+                    </small>
                   </div>
                 ))}
               </div>

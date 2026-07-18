@@ -143,16 +143,31 @@ describe('owned intake readiness page', () => {
     },
   );
 
-  test('loads the asynchronously addressed owned intake', async () => {
-    render(
-      await VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
-    );
+  test.each(['queued', 'running'] as const)(
+    'redirects a %s snapshot to the normalized resumable analysis route',
+    async (status) => {
+      findOwnedSnapshot.mockResolvedValue({
+        ...snapshot,
+        job: { ...snapshot.job, status },
+      });
+      await expect(
+        VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
+      ).rejects.toThrow(
+        `NEXT_REDIRECT:/app?analysis=${encodeURIComponent(intake.id)}`,
+      );
+      expect(redirect).toHaveBeenCalledWith(
+        `/app?analysis=${encodeURIComponent(intake.id)}`,
+      );
+      expect(normalizeResultWorkspace).not.toHaveBeenCalled();
+    },
+  );
 
+  test('loads the asynchronously addressed owned intake before redirecting', async () => {
+    await expect(
+      VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
+    ).rejects.toThrow('NEXT_REDIRECT');
     expect(findOwned).toHaveBeenCalledWith('user-1', intake.id);
     expect(findOwnedSnapshot).toHaveBeenCalledWith('user-1', intake.id);
-    expect(
-      screen.getByRole('heading', { name: intake.title }),
-    ).toBeInTheDocument();
   });
 
   test('redirects an expired session before querying intake data', async () => {

@@ -88,6 +88,34 @@ describe('AnalyzeProcessingVisual', () => {
     expect(screen.getByRole('button', { name: 'Retrying…' })).toBeDisabled();
   });
 
+  it('renders explicit partial controls and truthful artifact states', () => {
+    render(
+      <AnalyzeProcessingVisual
+        state="error"
+        submittedUrl=""
+        artifactStates={{ summary: 'ready', timestamps: 'failed' }}
+        controls={
+          <>
+            <button type="button">View available results</button>
+            <button type="button">Retry failed artifact</button>
+          </>
+        }
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'View available results' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Retry failed artifact' }),
+    ).toBeVisible();
+    expect(screen.getByText('SUMMARY').parentElement).toHaveTextContent(
+      'ready',
+    );
+    expect(screen.getByText('TIMESTAMPS').parentElement).toHaveTextContent(
+      'failed',
+    );
+  });
+
   it('updates immediately when its controlled state changes', () => {
     const { container, rerender } = render(
       <AnalyzeProcessingVisual
