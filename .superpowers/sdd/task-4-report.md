@@ -67,3 +67,35 @@ Result: expected failure, exit 1. Three test files failed with 8 behavioral fail
 - The repository-wide unit gate is not fully green because of three reproducible failures in the pre-existing workflow orchestration suite. Fixing those expectations/implementation is outside Task 4 scope.
 - Repository-wide Prettier verification includes pre-existing and generated files outside Task 4; scoped formatting is clean.
 - Authenticated staging/live YouTube verification still requires external credentials and remains a release-level check.
+
+## Fix wave: retry reconciliation review findings
+
+### RED
+
+Added regressions for both independent-review findings before changing production code:
+
+`npm test -- src/components/app-shell/inline-analysis-processing.test.tsx`
+
+Exit 1: 2/10 failed. The null-immediate-refresh case expected a third refresh after the 2,000 ms poll but observed only two calls. The rejected retry case could not find the restored `Retry failed artifact` control and Vitest reported the rejected promise as an unhandled rejection.
+
+### Implementation
+
+- Added an explicit analysis-owned reconciliation mode with the retry baseline revision. A successful retry installs it before the immediate refresh, so terminal-snapshot polling and Realtime reconciliation resume even when that refresh is null or same/older. It clears only after a matching authoritative snapshot advances beyond the retry baseline.
+- Kept partial controls hidden during reconciliation without modifying the retained snapshot, preserving ready artifacts and exact action labels.
+- Wrapped retry submission in `try`/`catch`/`finally`; action failures and transport rejections restore controls and announce `Retry could not be started. Please try again.`
+- Preserved one `FormData` submission and generation/identity ownership. Late retry settlements cannot install state for a previous analysis or clear a newer analysis's pending retry.
+
+### GREEN and verification
+
+- `npm test -- src/components/app-shell/inline-analysis-processing.test.tsx src/components/app-shell/analyze-processing-visual.test.tsx 'src/app/app/video/[id]/page.test.tsx'` — exit 0, 3 files, 26/26 passed.
+- `npm test -- src/components/result-workspace/result-workspace.test.tsx` — exit 0, 1 file, 20/20 passed.
+- `npm run typecheck` — exit 0.
+- `npx eslint` over the six Task 4 source/test files — exit 0, no findings.
+- `npx prettier --check` over the six Task 4 source/test files — exit 0, all matched files use Prettier style.
+- `git diff --check` — exit 0.
+
+### Commit and self-review
+
+Commit: `fix: reconcile successful analysis retries` (final hash returned to the parent agent).
+
+Self-review found no changes to result routing, labels, artifact retention, dependencies, environment files, credentials, or unrelated production files. The new reconciliation state is keyed to analysis identity and revision; null and stale refreshes cannot terminate it, while a newer authoritative snapshot restores the ordinary terminal/non-terminal state machine. Remaining concerns are unchanged from the original Task 4 report.

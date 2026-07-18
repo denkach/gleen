@@ -369,6 +369,67 @@ describe('InlineAnalysisProcessing', () => {
     expect(routerPush).not.toHaveBeenCalled();
   });
 
+  test('keeps polling after retry when the immediate refresh is null until a running snapshot arrives', async () => {
+    vi.useFakeTimers();
+    const retryAction = vi.fn(async () => ({ ok: true, attempt: 2 }) as const);
+    const refreshAction = vi
+      .fn<() => Promise<AnalysisSnapshot | null>>()
+      .mockResolvedValueOnce(partialSnapshot())
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(snapshot('running', 2));
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        initialSnapshot={partialSnapshot()}
+        refreshAction={refreshAction}
+        retryAction={retryAction}
+      />,
+    );
+    await act(async () => Promise.resolve());
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Retry failed artifact' }).click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(refreshAction).toHaveBeenCalledTimes(2);
+    expect(
+      screen.queryByRole('button', { name: 'Retry failed artifact' }),
+    ).toBeNull();
+
+    await act(async () => vi.advanceTimersByTimeAsync(2_000));
+    expect(refreshAction).toHaveBeenCalledTimes(3);
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-state',
+      'transcript',
+    );
+  });
+
+  test('restores partial controls and reports a recoverable retry rejection', async () => {
+    const retryAction = vi.fn(async () => {
+      throw new Error('network unavailable');
+    });
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        initialSnapshot={partialSnapshot()}
+        refreshAction={vi.fn(async () => partialSnapshot())}
+        retryAction={retryAction}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Retry failed artifact' }),
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Retry failed artifact' }),
+    ).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Retry could not be started. Please try again.',
+    );
+  });
+
   test('opens available partial results only when explicitly requested', async () => {
     render(
       <InlineAnalysisProcessing

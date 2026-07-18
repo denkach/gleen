@@ -67,8 +67,17 @@ export function InlineAnalysisProcessing({
   const [retryingAnalysisId, setRetryingAnalysisId] = useState<string | null>(
     null,
   );
+  const [reconciliation, setReconciliation] = useState<{
+    analysisId: string;
+    revision: number;
+  } | null>(null);
+  const [retryError, setRetryError] = useState<{
+    analysisId: string;
+    message: string;
+  } | null>(null);
   const isExiting = exitingAnalysisId === analysisId;
   const isRetrying = retryingAnalysisId === analysisId;
+  const isReconciling = reconciliation?.analysisId === analysisId;
 
   const ownedSnapshot =
     snapshotState.analysisId === analysisId
@@ -88,6 +97,12 @@ export function InlineAnalysisProcessing({
         incoming.job.analysisId !== requestedAnalysisId
       )
         return;
+      setReconciliation((current) =>
+        current?.analysisId === requestedAnalysisId &&
+        incoming.job.revision > current.revision
+          ? null
+          : current,
+      );
       setSnapshotState((current) => {
         if (current.analysisId !== requestedAnalysisId)
           return { analysisId: requestedAnalysisId, snapshot: incoming };
@@ -117,7 +132,8 @@ export function InlineAnalysisProcessing({
   }, [analysisId, refresh]);
 
   useEffect(() => {
-    if (!ownedSnapshot || isTerminalAnalysis(ownedSnapshot)) return;
+    if (!ownedSnapshot || (isTerminalAnalysis(ownedSnapshot) && !isReconciling))
+      return;
     const supabase = createBrowserSupabaseClient();
     const generation = controllerGeneration.current;
     const notify = () => void refresh(generation);
@@ -160,7 +176,7 @@ export function InlineAnalysisProcessing({
       window.clearInterval(polling);
       void supabase.removeChannel(channel);
     };
-  }, [analysisId, ownedSnapshot, refresh]);
+  }, [analysisId, isReconciling, ownedSnapshot, refresh]);
 
   useEffect(() => {
     if (
@@ -192,18 +208,41 @@ export function InlineAnalysisProcessing({
 
   const resultPath = `${resultPathPrefix}/${analysisId}`;
   const isPartial = ownedSnapshot?.job.status === 'partial';
+  const ownedRevision = ownedSnapshot?.job.revision;
   const retryFailed = useCallback(async () => {
     if (isRetrying) return;
+    const generation = controllerGeneration.current;
     setRetryingAnalysisId(analysisId);
+    setRetryError(null);
     const formData = new FormData();
     formData.set('analysisId', analysisId);
-    const result = await retryAction(formData);
-    if (!result.ok) {
-      setRetryingAnalysisId(null);
-      return;
+    try {
+      const result = await retryAction(formData);
+      if (controllerGeneration.current !== generation) return;
+      if (!result.ok) {
+        setRetryError({
+          analysisId,
+          message: 'Retry could not be started. Please try again.',
+        });
+        return;
+      }
+      setReconciliation({
+        analysisId,
+        revision: ownedRevision ?? -1,
+      });
+      await refresh(generation);
+    } catch {
+      if (controllerGeneration.current !== generation) return;
+      setRetryError({
+        analysisId,
+        message: 'Retry could not be started. Please try again.',
+      });
+    } finally {
+      setRetryingAnalysisId((current) =>
+        current === analysisId ? null : current,
+      );
     }
-    await refresh();
-  }, [analysisId, isRetrying, refresh, retryAction]);
+  }, [analysisId, isRetrying, ownedRevision, refresh, retryAction]);
 
   const artifactStates = Object.fromEntries(
     (ownedSnapshot?.artifacts ?? []).map(
@@ -225,14 +264,16 @@ export function InlineAnalysisProcessing({
       isExiting={isExiting}
       submittedUrl=""
       errorMessage={
-        ownedSnapshot &&
-        ['partial', 'failed'].includes(ownedSnapshot.job.status)
-          ? 'Analysis stopped safely. Your completed work has been kept.'
-          : undefined
+        retryError?.analysisId === analysisId
+          ? retryError.message
+          : ownedSnapshot &&
+              ['partial', 'failed'].includes(ownedSnapshot.job.status)
+            ? 'Analysis stopped safely. Your completed work has been kept.'
+            : undefined
       }
       artifactStates={artifactStates}
       controls={
-        isPartial && !isRetrying ? (
+        isPartial && !isRetrying && !isReconciling ? (
           <>
             <button
               className="analyze-control"
