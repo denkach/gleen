@@ -126,7 +126,7 @@ describe('YouTubePlayer', () => {
       availableRates: [0.5, 1, 1.25, 1.5, 2],
       volume: 80,
       muted: false,
-      captionsAvailable: true,
+      captionsAvailable: false,
     });
 
     const events = Player.mock.calls[0]?.[1].events;
@@ -137,11 +137,13 @@ describe('YouTubePlayer', () => {
     controller.setPlaybackRate(1.4);
     controller.setVolume(120);
     controller.toggleMute();
+    controller.toggleCaptions();
 
     expect(player.seekTo).toHaveBeenCalledWith(900, true);
     expect(player.setPlaybackRate).toHaveBeenCalledWith(1.5);
     expect(player.setVolume).toHaveBeenCalledWith(100);
     expect(player.mute).toHaveBeenCalledOnce();
+    expect(player.setOption).not.toHaveBeenCalled();
 
     currentTime = 420;
     duration = 800;
@@ -156,6 +158,139 @@ describe('YouTubePlayer', () => {
       volume: 45,
       muted: true,
     });
+  });
+
+  test('publishes one loading controller that becomes unavailable before ready', async () => {
+    const onReady = vi.fn();
+    render(
+      <YouTubePlayer
+        videoId="dQw4w9WgXcQ"
+        title="Source video"
+        onReady={onReady}
+      />,
+    );
+
+    await act(async () => {});
+    const controller = onReady.mock.calls[0]?.[0] as VideoPlayerController;
+    expect(controller.getSnapshot().status).toBe('loading');
+
+    const script = document.querySelector<HTMLScriptElement>(
+      'script[src="https://www.youtube.com/iframe_api"]',
+    );
+    await act(async () => script?.dispatchEvent(new Event('error')));
+
+    expect(onReady.mock.calls[0]?.[0]).toBe(controller);
+    expect(controller.getSnapshot().status).toBe('unavailable');
+  });
+
+  test('replaces a ready controller with loading state before a new video fails', async () => {
+    const players: object[] = [];
+    const options: Array<{
+      videoId: string;
+      events: { onReady(): void; onError(): void };
+    }> = [];
+    const Player = vi.fn(function Player(
+      _element: HTMLElement,
+      next: {
+        videoId: string;
+        events: { onReady(): void; onError(): void };
+      },
+    ) {
+      options.push(next);
+      const instance = {
+        ...player,
+        getIframe: vi.fn(() => document.createElement('iframe')),
+        destroy: vi.fn(),
+      };
+      players.push(instance);
+      if (next.videoId === 'video-one') {
+        queueMicrotask(() => next.events.onReady());
+      }
+      return instance;
+    });
+    Object.assign(window, { YT: { Player } });
+    const currentController: { value: VideoPlayerController | null } = {
+      value: null,
+    };
+    const changes: Array<VideoPlayerController | null> = [];
+    const onReady = vi.fn(
+      (
+        next: VideoPlayerController | null,
+        replaced?: VideoPlayerController,
+      ) => {
+        changes.push(next);
+        if (next) currentController.value = next;
+        else if (currentController.value === replaced) {
+          currentController.value = null;
+        }
+      },
+    );
+    const { rerender } = render(
+      <YouTubePlayer
+        videoId="video-one"
+        title="First video"
+        onReady={onReady}
+      />,
+    );
+    await act(async () => {});
+    const firstController = currentController.value;
+    expect(firstController?.getSnapshot().status).toBe('ready');
+
+    rerender(
+      <YouTubePlayer
+        videoId="video-two"
+        title="Second video"
+        onReady={onReady}
+      />,
+    );
+    await act(async () => {});
+    const secondController = currentController.value;
+    expect(secondController).not.toBe(firstController);
+    expect(secondController?.getSnapshot().status).toBe('loading');
+
+    act(() => options[1]?.events.onError());
+    expect(secondController?.getSnapshot().status).toBe('unavailable');
+    expect(changes).toContain(null);
+    expect(Player).toHaveBeenCalledTimes(2);
+    expect(players).toHaveLength(2);
+  });
+
+  test('replaces controller state when a new analysis reuses the same video', async () => {
+    installYouTubeApi({ ready: false });
+    const changes: Array<VideoPlayerController | null> = [];
+    const onReady = vi.fn((next: VideoPlayerController | null) =>
+      changes.push(next),
+    );
+    const { rerender } = render(
+      <YouTubePlayer
+        videoId="shared-video"
+        lifecycleKey="analysis-a"
+        title="Shared video"
+        onReady={onReady}
+      />,
+    );
+    await act(async () => {});
+    const first = changes.find(
+      (value): value is VideoPlayerController => value !== null,
+    );
+
+    rerender(
+      <YouTubePlayer
+        videoId="shared-video"
+        lifecycleKey="analysis-b"
+        title="Shared video"
+        onReady={onReady}
+      />,
+    );
+    await act(async () => {});
+    const controllers = changes.filter(
+      (value): value is VideoPlayerController => value !== null,
+    );
+
+    expect(changes).toContain(null);
+    expect(controllers).toHaveLength(2);
+    expect(controllers[1]).not.toBe(first);
+    expect(controllers[1]?.getSnapshot().status).toBe('loading');
   });
 
   test('reports unsupported optional capabilities truthfully and no-ops safely', async () => {
@@ -271,6 +406,62 @@ describe('YouTubePlayer', () => {
     );
     await act(async () => script?.dispatchEvent(new Event('error')));
     expect(screen.getByText('Player unavailable')).toBeVisible();
+  });
+
+  test('removes its failed API script so a same-page remount can retry', async () => {
+    const first = render(
+      <YouTubePlayer videoId="video-one" title="First video" />,
+    );
+    const failedScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://www.youtube.com/iframe_api"]',
+    );
+    await act(async () => failedScript?.dispatchEvent(new Event('error')));
+    expect(failedScript).not.toBeInTheDocument();
+    first.unmount();
+
+    render(<YouTubePlayer videoId="video-two" title="Second video" />);
+    const retryScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://www.youtube.com/iframe_api"]',
+    );
+    expect(retryScript).toBeInTheDocument();
+    expect(retryScript).not.toBe(failedScript);
+  });
+
+  test('does not publish optimistic command state when the player throws', async () => {
+    const throwingPlayer = {
+      ...player,
+      seekTo: vi.fn(() => {
+        throw new Error('seek failed');
+      }),
+      setPlaybackRate: vi.fn(() => {
+        throw new Error('rate failed');
+      }),
+      setVolume: vi.fn(() => {
+        throw new Error('volume failed');
+      }),
+      mute: vi.fn(() => {
+        throw new Error('mute failed');
+      }),
+    };
+    installYouTubeApi({ instance: throwingPlayer });
+    const onReady = vi.fn();
+    render(
+      <YouTubePlayer
+        videoId="dQw4w9WgXcQ"
+        title="Source video"
+        onReady={onReady}
+      />,
+    );
+    await act(async () => {});
+    const controller = onReady.mock.calls[0]?.[0] as VideoPlayerController;
+    const before = controller.getSnapshot();
+
+    controller.seekTo(50_000);
+    controller.setPlaybackRate(2);
+    controller.setVolume(20);
+    controller.toggleMute();
+
+    expect(controller.getSnapshot()).toBe(before);
   });
 
   test('polls current time while ready and clears polling and the player on cleanup', async () => {

@@ -47,12 +47,16 @@ export function usePlaybackPersistence({
 
     let active = true;
     let timer: number | null = null;
+    let inFlight = false;
+    let forcedQueued = false;
+    let regularDue = false;
+    let lastAttemptAt: number | null = null;
     let previousSnapshot = controller.getSnapshot();
     let latestPositionMs = clampPosition(
       previousSnapshot.currentTimeMs,
       previousSnapshot.durationMs,
     );
-    let lastPersistedPositionMs = clampPosition(
+    let committedPositionMs = clampPosition(
       initialPositionMs,
       previousSnapshot.durationMs,
     );
@@ -64,30 +68,88 @@ export function usePlaybackPersistence({
     };
 
     const isSignificant = () =>
-      Math.abs(latestPositionMs - lastPersistedPositionMs) >=
+      Math.abs(latestPositionMs - committedPositionMs) >=
       MINIMUM_POSITION_CHANGE_MS;
 
-    const persist = () => {
+    const schedule = () => {
+      if (!isSignificant() || timer !== null) return;
+      const delay =
+        lastAttemptAt === null
+          ? PERSIST_INTERVAL_MS
+          : Math.max(0, PERSIST_INTERVAL_MS - (Date.now() - lastAttemptAt));
+      timer = window.setTimeout(() => {
+        timer = null;
+        regularDue = true;
+        if (!inFlight) {
+          regularDue = false;
+          runWrite();
+        }
+      }, delay);
+    };
+
+    const finishWrite = (positionMs: number, saved: boolean) => {
+      if (!active) return;
+      inFlight = false;
+      if (saved) committedPositionMs = positionMs;
+
+      if (!isSignificant()) {
+        forcedQueued = false;
+        regularDue = false;
+        clearTimer();
+        return;
+      }
+      if (forcedQueued) {
+        forcedQueued = false;
+        clearTimer();
+        regularDue = false;
+        runWrite();
+        return;
+      }
+      if (regularDue) {
+        regularDue = false;
+        runWrite();
+        return;
+      }
+      schedule();
+    };
+
+    const enqueue = (force: boolean) => {
+      if (!isSignificant()) return;
+      if (force) {
+        clearTimer();
+        regularDue = false;
+        if (inFlight) {
+          forcedQueued = true;
+          return;
+        }
+        runWrite();
+        return;
+      }
+      schedule();
+    };
+
+    function runWrite(): void {
       clearTimer();
-      if (!active || !isSignificant()) return;
+      regularDue = false;
+      if (!active || inFlight || !isSignificant()) return;
       const save = saveRef.current;
       if (!save) return;
 
       const positionMs = latestPositionMs;
-      lastPersistedPositionMs = positionMs;
+      inFlight = true;
+      lastAttemptAt = Date.now();
+      let request: Promise<ResultMutationState>;
       try {
-        void Promise.resolve(save({ analysisId, positionMs })).catch(
-          () => undefined,
-        );
+        request = save({ analysisId, positionMs });
       } catch {
-        // Playback remains independent of persistence availability.
+        finishWrite(positionMs, false);
+        return;
       }
-    };
-
-    const schedule = () => {
-      if (!isSignificant() || timer !== null) return;
-      timer = window.setTimeout(persist, PERSIST_INTERVAL_MS);
-    };
+      void Promise.resolve(request).then(
+        (result) => finishWrite(positionMs, result.status === 'saved'),
+        () => finishWrite(positionMs, false),
+      );
+    }
 
     const readSnapshot = (snapshot: VideoPlayerSnapshot) => {
       if (snapshot.status !== 'ready') {
@@ -100,8 +162,7 @@ export function usePlaybackPersistence({
       );
       const paused = previousSnapshot.playing && !snapshot.playing;
       previousSnapshot = snapshot;
-      if (paused) persist();
-      else schedule();
+      enqueue(paused);
     };
 
     const unsubscribe = controller.subscribe(() =>
@@ -109,7 +170,7 @@ export function usePlaybackPersistence({
     );
     const flushOnPageHide = () => {
       readSnapshot(controller.getSnapshot());
-      persist();
+      enqueue(true);
     };
     window.addEventListener('pagehide', flushOnPageHide);
     readSnapshot(previousSnapshot);

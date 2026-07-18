@@ -20,9 +20,6 @@ type YouTubePlayerInstance = {
   getAvailablePlaybackRates?(): number[];
   getVolume?(): number;
   isMuted?(): boolean;
-  getOptions?(module?: string): string[];
-  getOption?(module: string, option: string): unknown;
-  setOption?(module: string, option: string, value: unknown): void;
   mute?(): void;
   pauseVideo(): void;
   playVideo(): void;
@@ -66,6 +63,7 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
       `script[src="${API_URL}"]`,
     );
     const script = existing ?? document.createElement('script');
+    const ownsScript = !existing;
     let settled = false;
     const cleanup = () => {
       script.removeEventListener('error', handleError);
@@ -78,6 +76,7 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
       if (settled) return;
       settled = true;
       cleanup();
+      if (ownsScript) script.remove();
       reject(error);
     };
     const handleReady = () => {
@@ -118,15 +117,20 @@ function loadYouTubeApi(): Promise<YouTubeApi> {
 
 export type YouTubePlayerProps = Readonly<{
   videoId: string;
+  lifecycleKey?: string;
   title: string;
   initialPositionMs?: number;
-  onReady?: (controller: VideoPlayerController) => void;
+  onReady?: (
+    controller: VideoPlayerController | null,
+    replaced?: VideoPlayerController,
+  ) => void;
   onTimeChange?: (offsetMs: number) => void;
   onUnavailable?: () => void;
 }>;
 
 export function YouTubePlayer({
   videoId,
+  lifecycleKey = videoId,
   title,
   initialPositionMs = 0,
   onReady,
@@ -139,9 +143,10 @@ export function YouTubePlayer({
   const onUnavailableRef = useRef(onUnavailable);
   const initialPositionRef = useRef(initialPositionMs);
   const titleRef = useRef(title);
-  const [unavailableVideoId, setUnavailableVideoId] = useState<string | null>(
-    null,
-  );
+  const playerInstanceKey = JSON.stringify([lifecycleKey, videoId]);
+  const [unavailableLifecycleKey, setUnavailableLifecycleKey] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     onReadyRef.current = onReady;
@@ -169,6 +174,14 @@ export function YouTubePlayer({
         return operation();
       } catch {
         return fallback;
+      }
+    };
+    const call = (operation: () => void): boolean => {
+      try {
+        operation();
+        return true;
+      } catch {
+        return false;
       }
     };
     const sameRates = (left: readonly number[], right: readonly number[]) =>
@@ -219,7 +232,6 @@ export function YouTubePlayer({
         durationMs > 0 ? durationMs : Number.MAX_SAFE_INTEGER,
       );
       const playbackRate = read(() => player?.getPlaybackRate?.() ?? 1, 1);
-      const options = read(() => player?.getOptions?.() ?? [], []);
       updateSnapshot({
         status: 'ready',
         currentTimeMs,
@@ -234,10 +246,7 @@ export function YouTubePlayer({
           100,
         ),
         muted: read(() => player?.isMuted?.() ?? false, false),
-        captionsAvailable:
-          options.includes('captions') &&
-          typeof player.getOption === 'function' &&
-          typeof player.setOption === 'function',
+        captionsAvailable: false,
       });
     };
 
@@ -254,8 +263,9 @@ export function YouTubePlayer({
             ? snapshot.durationMs
             : Number.MAX_SAFE_INTEGER;
         const clamped = clamp(offsetMs, 0, maximum);
-        read(() => player?.seekTo(clamped / 1_000, true), undefined);
-        updateSnapshot({ ...snapshot, currentTimeMs: clamped });
+        if (call(() => player?.seekTo(clamped / 1_000, true))) {
+          updateSnapshot({ ...snapshot, currentTimeMs: clamped });
+        }
       },
       getCurrentTimeMs: readCurrentTimeMs,
       play: () => read(() => player?.playVideo(), undefined),
@@ -269,45 +279,33 @@ export function YouTubePlayer({
             ? candidate
             : closest,
         );
-        read(() => player?.setPlaybackRate?.(selected), undefined);
-        updateSnapshot({ ...snapshot, playbackRate: selected });
+        if (call(() => player?.setPlaybackRate?.(selected))) {
+          updateSnapshot({ ...snapshot, playbackRate: selected });
+        }
       },
       setVolume(nextVolume) {
         if (!player?.setVolume) return;
         const selected = clamp(nextVolume, 0, 100);
-        read(() => player?.setVolume?.(selected), undefined);
-        updateSnapshot({ ...snapshot, volume: selected });
-      },
-      toggleMute() {
-        if (!player || (!player.mute && !player.unMute)) return;
-        if (snapshot.muted) {
-          read(() => player?.unMute?.(), undefined);
-          updateSnapshot({ ...snapshot, muted: false });
-        } else {
-          read(() => player?.mute?.(), undefined);
-          updateSnapshot({ ...snapshot, muted: true });
+        if (call(() => player?.setVolume?.(selected))) {
+          updateSnapshot({ ...snapshot, volume: selected });
         }
       },
-      toggleCaptions() {
-        if (!player || !snapshot.captionsAvailable) return;
-        const track = read(
-          () => player?.getOption?.('captions', 'track'),
-          undefined,
-        );
-        const enabled =
-          typeof track === 'object' &&
-          track !== null &&
-          Object.keys(track).length > 0;
-        read(
-          () =>
-            player?.setOption?.(
-              'captions',
-              enabled ? 'track' : 'reload',
-              enabled ? {} : true,
-            ),
-          undefined,
-        );
+      toggleMute() {
+        const currentPlayer = player;
+        if (!currentPlayer) return;
+        if (snapshot.muted) {
+          if (!currentPlayer.unMute) return;
+          if (call(() => currentPlayer.unMute?.())) {
+            updateSnapshot({ ...snapshot, muted: false });
+          }
+        } else {
+          if (!currentPlayer.mute) return;
+          if (call(() => currentPlayer.mute?.())) {
+            updateSnapshot({ ...snapshot, muted: true });
+          }
+        }
       },
+      toggleCaptions: () => undefined,
       async requestFullscreen() {
         if (!player) return;
         try {
@@ -317,6 +315,8 @@ export function YouTubePlayer({
         }
       },
     };
+
+    onReadyRef.current?.(controller);
 
     const stopPlayer = () => {
       if (pollingId !== null) {
@@ -338,7 +338,7 @@ export function YouTubePlayer({
         captionsAvailable: false,
       });
       stopPlayer();
-      setUnavailableVideoId(videoId);
+      setUnavailableLifecycleKey(playerInstanceKey);
       onUnavailableRef.current?.();
     };
 
@@ -362,7 +362,6 @@ export function YouTubePlayer({
                 restoredPosition = true;
                 controller.seekTo(initialPositionRef.current);
               }
-              onReadyRef.current?.(controller);
               pollingId = window.setInterval(() => {
                 if (player) {
                   synchronize();
@@ -382,11 +381,12 @@ export function YouTubePlayer({
 
     return () => {
       active = false;
+      onReadyRef.current?.(null, controller);
       stopPlayer();
     };
-  }, [videoId]);
+  }, [lifecycleKey, playerInstanceKey, videoId]);
 
-  if (unavailableVideoId === videoId) {
+  if (unavailableLifecycleKey === playerInstanceKey) {
     return (
       <div
         className="grid size-full min-h-44 place-items-center px-6 text-center text-sm text-[var(--text-secondary)]"

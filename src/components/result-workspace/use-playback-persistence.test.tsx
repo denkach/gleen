@@ -21,6 +21,16 @@ type SavePlaybackPosition = (input: {
   positionMs: number;
 }) => Promise<ResultMutationState>;
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, reject, resolve };
+}
+
 function createController(initial: VideoPlayerSnapshot) {
   let snapshot = initial;
   const listeners = new Set<() => void>();
@@ -185,4 +195,118 @@ test('does not leak old analysis timers or callbacks across remounts', async () 
     positionMs: 5_000,
   });
   expect(saveFirst).not.toHaveBeenCalled();
+});
+
+test('serializes a regular save before the newest forced position', async () => {
+  const store = createController(readySnapshot);
+  const first = deferred<ResultMutationState>();
+  const second = deferred<ResultMutationState>();
+  const savePlaybackPosition = vi
+    .fn<SavePlaybackPosition>()
+    .mockReturnValueOnce(first.promise)
+    .mockReturnValueOnce(second.promise);
+  render(
+    <PlayerProvider controller={store.controller}>
+      <Harness
+        analysisId="analysis-a"
+        initialPositionMs={10_000}
+        savePlaybackPosition={savePlaybackPosition}
+      />
+    </PlayerProvider>,
+  );
+
+  act(() => store.update({ currentTimeMs: 12_000 }));
+  await act(async () => vi.advanceTimersByTime(5_000));
+  expect(savePlaybackPosition).toHaveBeenCalledExactlyOnceWith({
+    analysisId: 'analysis-a',
+    positionMs: 12_000,
+  });
+
+  act(() => store.update({ currentTimeMs: 16_000, playing: false }));
+  expect(savePlaybackPosition).toHaveBeenCalledTimes(1);
+
+  await act(async () => first.resolve({ status: 'saved' }));
+  expect(savePlaybackPosition).toHaveBeenCalledTimes(2);
+  expect(savePlaybackPosition).toHaveBeenLastCalledWith({
+    analysisId: 'analysis-a',
+    positionMs: 16_000,
+  });
+  await act(async () => second.resolve({ status: 'saved' }));
+});
+
+test('retries the same position after every unsaved mutation outcome', async () => {
+  const store = createController(readySnapshot);
+  const savePlaybackPosition = vi
+    .fn<SavePlaybackPosition>()
+    .mockResolvedValueOnce({ status: 'error' })
+    .mockResolvedValueOnce({ status: 'conflict' })
+    .mockRejectedValueOnce(new Error('rejected'))
+    .mockImplementationOnce(() => {
+      throw new Error('thrown');
+    })
+    .mockResolvedValueOnce({ status: 'saved' });
+  render(
+    <PlayerProvider controller={store.controller}>
+      <Harness
+        analysisId="analysis-a"
+        initialPositionMs={10_000}
+        savePlaybackPosition={savePlaybackPosition}
+      />
+    </PlayerProvider>,
+  );
+
+  await act(async () =>
+    store.update({ currentTimeMs: 12_000, playing: false }),
+  );
+  for (let expectedCalls = 2; expectedCalls <= 5; expectedCalls += 1) {
+    await act(async () => window.dispatchEvent(new Event('pagehide')));
+    expect(savePlaybackPosition).toHaveBeenCalledTimes(expectedCalls);
+  }
+  expect(savePlaybackPosition).toHaveBeenLastCalledWith({
+    analysisId: 'analysis-a',
+    positionMs: 12_000,
+  });
+});
+
+test('ignores stale in-flight completion after the analysis lifecycle changes', async () => {
+  const firstStore = createController(readySnapshot);
+  const secondStore = createController({
+    ...readySnapshot,
+    currentTimeMs: 3_000,
+  });
+  const staleRequest = deferred<ResultMutationState>();
+  const saveFirst = vi.fn<SavePlaybackPosition>(() => staleRequest.promise);
+  const saveSecond = vi.fn<SavePlaybackPosition>(async () => ({
+    status: 'saved',
+  }));
+  const { rerender } = render(
+    <PlayerProvider controller={firstStore.controller}>
+      <Harness
+        analysisId="analysis-a"
+        initialPositionMs={10_000}
+        savePlaybackPosition={saveFirst}
+      />
+    </PlayerProvider>,
+  );
+  act(() => firstStore.update({ currentTimeMs: 12_000 }));
+  await act(async () => vi.advanceTimersByTime(5_000));
+  act(() => firstStore.update({ currentTimeMs: 14_000, playing: false }));
+
+  rerender(
+    <PlayerProvider controller={secondStore.controller}>
+      <Harness
+        analysisId="analysis-b"
+        initialPositionMs={3_000}
+        savePlaybackPosition={saveSecond}
+      />
+    </PlayerProvider>,
+  );
+  await act(async () =>
+    secondStore.update({ currentTimeMs: 5_000, playing: false }),
+  );
+  expect(saveSecond).toHaveBeenCalledOnce();
+
+  await act(async () => staleRequest.resolve({ status: 'saved' }));
+  expect(saveFirst).toHaveBeenCalledOnce();
+  expect(saveSecond).toHaveBeenCalledOnce();
 });

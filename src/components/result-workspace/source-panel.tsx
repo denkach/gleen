@@ -18,21 +18,25 @@ export type SourcePanelSource = Readonly<{
 export function SourcePanel({
   source,
   playerAvailable = true,
+  playerLifecycleKey = source.videoId,
   initialPositionMs = 0,
   onPlayerReady,
   onTimeChange,
 }: Readonly<{
   source: SourcePanelSource;
   playerAvailable?: boolean;
+  playerLifecycleKey?: string;
   initialPositionMs?: number;
-  onPlayerReady?: (controller: VideoPlayerController) => void;
+  onPlayerReady?: (
+    controller: VideoPlayerController | null,
+    replaced?: VideoPlayerController,
+  ) => void;
   onTimeChange?: (offsetMs: number) => void;
 }>) {
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
-  const [failedPlayerVideoId, setFailedPlayerVideoId] = useState<string | null>(
-    null,
-  );
-  const showPlayer = playerAvailable && failedPlayerVideoId !== source.videoId;
+  const [failedPlayerKey, setFailedPlayerKey] = useState<string | null>(null);
+  const playerKey = `${playerLifecycleKey}:${source.videoId}`;
+  const showPlayer = playerAvailable && failedPlayerKey !== playerKey;
 
   return (
     <aside
@@ -43,11 +47,12 @@ export function SourcePanel({
         {showPlayer ? (
           <YouTubePlayer
             videoId={source.videoId}
+            lifecycleKey={playerLifecycleKey}
             title={source.title}
             initialPositionMs={initialPositionMs}
             onReady={onPlayerReady}
             onTimeChange={onTimeChange}
-            onUnavailable={() => setFailedPlayerVideoId(source.videoId)}
+            onUnavailable={() => setFailedPlayerKey(playerKey)}
           />
         ) : (
           <div className="relative grid size-full place-items-center">

@@ -222,6 +222,12 @@ function renderWorkspaceWithActions({
 
 describe('ResultWorkspace', () => {
   afterEach(() => {
+    vi.useRealTimers();
+    Reflect.deleteProperty(window, 'YT');
+    Reflect.deleteProperty(window, 'onYouTubeIframeAPIReady');
+    document
+      .querySelectorAll('script[src="https://www.youtube.com/iframe_api"]')
+      .forEach((script) => script.remove());
     window.history.replaceState(null, '', '/');
   });
 
@@ -249,46 +255,67 @@ describe('ResultWorkspace', () => {
   });
 
   it('consumes the typed playback mutation for the active analysis', async () => {
-    vi.useFakeTimers();
-    let snapshot = {
-      ...controller.getSnapshot(),
-      currentTimeMs: 0,
-      playing: true,
-    };
-    const listeners = new Set<() => void>();
-    const reactiveController: VideoPlayerController = {
-      ...controller,
-      subscribe(listener) {
-        listeners.add(listener);
-        return () => listeners.delete(listener);
+    let currentTime = 0;
+    let playerEvents:
+      | {
+          onReady(): void;
+          onStateChange?(event: { data: number }): void;
+        }
+      | undefined;
+    Object.assign(window, {
+      YT: {
+        Player: vi.fn(function Player(
+          _element: HTMLElement,
+          options: {
+            events: {
+              onReady(): void;
+              onStateChange?(event: { data: number }): void;
+            };
+          },
+        ) {
+          playerEvents = options.events;
+          const iframe = document.createElement('iframe');
+          queueMicrotask(() => options.events.onReady());
+          return {
+            destroy: vi.fn(),
+            getCurrentTime: () => currentTime,
+            getDuration: () => 900,
+            getIframe: () => iframe,
+            getPlaybackRate: () => 1,
+            getAvailablePlaybackRates: () => [1],
+            getVolume: () => 100,
+            isMuted: () => false,
+            pauseVideo: vi.fn(),
+            playVideo: vi.fn(),
+            seekTo: vi.fn(),
+          };
+        }),
       },
-      getSnapshot: () => snapshot,
-    };
+    });
     const savePlaybackPosition = vi.fn(async () => ({
       status: 'saved' as const,
     }));
 
     render(
-      <PlayerProvider controller={reactiveController}>
-        <ResultWorkspace
-          model={model}
-          saveTitle={vi.fn()}
-          saveArtifact={vi.fn()}
-          savePlaybackPosition={savePlaybackPosition}
-        />
-      </PlayerProvider>,
+      <ResultWorkspace
+        model={model}
+        saveTitle={vi.fn()}
+        saveArtifact={vi.fn()}
+        savePlaybackPosition={savePlaybackPosition}
+      />,
     );
 
+    await act(async () => {});
+    act(() => playerEvents?.onStateChange?.({ data: 1 }));
     await act(async () => {
-      snapshot = { ...snapshot, currentTimeMs: 2_000, playing: false };
-      listeners.forEach((listener) => listener());
+      currentTime = 2;
+      playerEvents?.onStateChange?.({ data: 2 });
     });
 
     expect(savePlaybackPosition).toHaveBeenCalledExactlyOnceWith({
       analysisId: model.source.intakeId,
       positionMs: 2_000,
     });
-    vi.useRealTimers();
   });
 
   it('initializes from the hash, pushes user navigation, and follows browser history', async () => {

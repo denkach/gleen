@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   ResultMutationState,
   ResultSaveState,
@@ -296,7 +296,25 @@ function PlaybackPersistence({
 export function ResultWorkspace(props: ResultWorkspaceProps) {
   const { model, copy = resultCopy.en } = props;
   const parentController = useVideoPlayer();
-  const [controller, setController] = useState<VideoPlayerController>();
+  const lifecycleKey = model.source.intakeId;
+  const [controllerState, setControllerState] = useState<{
+    lifecycleKey: string;
+    controller?: VideoPlayerController;
+  }>({ lifecycleKey });
+  const controller =
+    controllerState.lifecycleKey === lifecycleKey
+      ? controllerState.controller
+      : undefined;
+  const updateController = useCallback(
+    (next: VideoPlayerController | null, replaced?: VideoPlayerController) => {
+      setControllerState((current) => {
+        if (next) return { lifecycleKey, controller: next };
+        if (current.controller !== replaced) return current;
+        return { lifecycleKey };
+      });
+    },
+    [lifecycleKey],
+  );
   const duration = new Date(model.source.durationSeconds * 1_000)
     .toISOString()
     .slice(model.source.durationSeconds >= 3600 ? 11 : 14, 19);
@@ -304,7 +322,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
   const artifactRevisionKey = `${model.source.intakeId}:${model.revisions.title}:${model.revisions.summary ?? ''}:${model.revisions.flashcards ?? ''}:${model.revisions.timestamps ?? ''}`;
 
   return (
-    <PlayerProvider controller={controller ?? parentController}>
+    <PlayerProvider controller={parentController ?? controller ?? null}>
       <PlaybackPersistence
         analysisId={model.source.intakeId}
         initialPositionMs={playbackPositionMs}
@@ -323,8 +341,9 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
                 : '—',
             thumbnailUrl: model.source.thumbnailUrl,
           }}
+          playerLifecycleKey={lifecycleKey}
           initialPositionMs={playbackPositionMs}
-          onPlayerReady={setController}
+          onPlayerReady={updateController}
         />
         <ResultArtifacts
           key={artifactRevisionKey}
