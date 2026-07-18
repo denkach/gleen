@@ -19,7 +19,14 @@ test('exports playback persistence for the shared controller', () => {
 type SavePlaybackPosition = (input: {
   analysisId: string;
   positionMs: number;
+  revision: number;
 }) => Promise<ResultMutationState>;
+
+type FlushPlaybackPosition = (input: {
+  analysisId: string;
+  positionMs: number;
+  revision: number;
+}) => void;
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -61,15 +68,18 @@ function createController(initial: VideoPlayerSnapshot) {
 
 function Harness({
   analysisId,
+  flushPlaybackPosition,
   initialPositionMs,
   savePlaybackPosition,
 }: Readonly<{
   analysisId: string;
+  flushPlaybackPosition?: FlushPlaybackPosition;
   initialPositionMs: number;
   savePlaybackPosition: SavePlaybackPosition;
 }>) {
   playbackPersistence.usePlaybackPersistence({
     analysisId,
+    flushPlaybackPosition,
     initialPositionMs,
     savePlaybackPosition,
   });
@@ -117,6 +127,7 @@ test('throttles significant positions and clamps them to duration', async () => 
   expect(savePlaybackPosition).toHaveBeenLastCalledWith({
     analysisId: 'analysis-a',
     positionMs: 12_000,
+    revision: expect.any(Number),
   });
 
   act(() => store.update({ currentTimeMs: 50_000 }));
@@ -124,6 +135,7 @@ test('throttles significant positions and clamps them to duration', async () => 
   expect(savePlaybackPosition).toHaveBeenLastCalledWith({
     analysisId: 'analysis-a',
     positionMs: 20_000,
+    revision: expect.any(Number),
   });
   expect(savePlaybackPosition).toHaveBeenCalledTimes(2);
 });
@@ -149,6 +161,7 @@ test('flushes on pause and pagehide without surfacing save errors', async () => 
   expect(savePlaybackPosition).toHaveBeenLastCalledWith({
     analysisId: 'analysis-a',
     positionMs: 12_000,
+    revision: expect.any(Number),
   });
 
   act(() => store.update({ currentTimeMs: 14_000, playing: true }));
@@ -156,6 +169,7 @@ test('flushes on pause and pagehide without surfacing save errors', async () => 
   expect(savePlaybackPosition).toHaveBeenLastCalledWith({
     analysisId: 'analysis-a',
     positionMs: 14_000,
+    revision: expect.any(Number),
   });
   expect(savePlaybackPosition).toHaveBeenCalledTimes(2);
 });
@@ -193,6 +207,7 @@ test('does not leak old analysis timers or callbacks across remounts', async () 
   expect(saveSecond).toHaveBeenCalledExactlyOnceWith({
     analysisId: 'analysis-b',
     positionMs: 5_000,
+    revision: expect.any(Number),
   });
   expect(saveFirst).not.toHaveBeenCalled();
 });
@@ -220,6 +235,7 @@ test('serializes a regular save before the newest forced position', async () => 
   expect(savePlaybackPosition).toHaveBeenCalledExactlyOnceWith({
     analysisId: 'analysis-a',
     positionMs: 12_000,
+    revision: expect.any(Number),
   });
 
   act(() => store.update({ currentTimeMs: 16_000, playing: false }));
@@ -230,8 +246,48 @@ test('serializes a regular save before the newest forced position', async () => 
   expect(savePlaybackPosition).toHaveBeenLastCalledWith({
     analysisId: 'analysis-a',
     positionMs: 16_000,
+    revision: expect.any(Number),
   });
   await act(async () => second.resolve({ status: 'saved' }));
+});
+
+test('initiates the newest pagehide transport while a regular save is unresolved', async () => {
+  const store = createController(readySnapshot);
+  const unresolved = deferred<ResultMutationState>();
+  const savePlaybackPosition = vi.fn<SavePlaybackPosition>(
+    () => unresolved.promise,
+  );
+  const flushPlaybackPosition = vi.fn<FlushPlaybackPosition>();
+  render(
+    <PlayerProvider controller={store.controller}>
+      <Harness
+        analysisId="analysis-a"
+        flushPlaybackPosition={flushPlaybackPosition}
+        initialPositionMs={10_000}
+        savePlaybackPosition={savePlaybackPosition}
+      />
+    </PlayerProvider>,
+  );
+
+  act(() => store.update({ currentTimeMs: 12_000 }));
+  await act(async () => vi.advanceTimersByTime(5_000));
+  const regularRevision = savePlaybackPosition.mock.calls[0]?.[0].revision;
+  expect(savePlaybackPosition).toHaveBeenCalledOnce();
+
+  act(() => store.update({ currentTimeMs: 16_000 }));
+  act(() => window.dispatchEvent(new Event('pagehide')));
+
+  expect(flushPlaybackPosition).toHaveBeenCalledExactlyOnceWith({
+    analysisId: 'analysis-a',
+    positionMs: 16_000,
+    revision: expect.any(Number),
+  });
+  expect(flushPlaybackPosition.mock.calls[0]?.[0].revision).toBeGreaterThan(
+    regularRevision,
+  );
+  expect(savePlaybackPosition).toHaveBeenCalledOnce();
+
+  await act(async () => unresolved.resolve({ status: 'saved' }));
 });
 
 test('retries the same position after every unsaved mutation outcome', async () => {
@@ -265,6 +321,7 @@ test('retries the same position after every unsaved mutation outcome', async () 
   expect(savePlaybackPosition).toHaveBeenLastCalledWith({
     analysisId: 'analysis-a',
     positionMs: 12_000,
+    revision: expect.any(Number),
   });
 });
 

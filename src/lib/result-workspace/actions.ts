@@ -16,6 +16,10 @@ import {
   resultArtifactEditSchema,
   resultTitleEditSchema,
 } from './edit-schemas';
+import {
+  persistOwnedPlaybackPosition,
+  playbackPositionSchema,
+} from './playback-persistence-server';
 import { flashcardRatingSchema } from './user-state';
 import {
   createSupabaseResultUserStateRepository,
@@ -33,13 +37,6 @@ const resultPreferenceSchema = z
   .object({
     analysisId: z.uuid(),
     favorite: z.boolean(),
-  })
-  .strict();
-
-const playbackPositionSchema = z
-  .object({
-    analysisId: z.uuid(),
-    positionMs: z.number().int().nonnegative().safe(),
   })
   .strict();
 
@@ -119,22 +116,12 @@ export async function savePlaybackPosition(
     const supabase = await createServerSupabaseClient();
     const { data } = await supabase.auth.getUser();
     if (!data.user) return { status: 'error' };
-    const intake = await createSupabaseIntakeRepository(
-      supabase as unknown as SupabaseIntakeClient,
-    ).findOwned(data.user.id, parsed.data.analysisId);
-    if (!intake) return { status: 'conflict' };
-
-    await createSupabaseResultUserStateRepository(
-      supabase as unknown as SupabaseResultUserStateClient,
-    ).savePlaybackPosition({
-      userId: data.user.id,
-      analysisId: parsed.data.analysisId,
-      positionMs: Math.min(
-        parsed.data.positionMs,
-        intake.durationSeconds * 1000,
-      ),
-    });
-    return { status: 'saved' };
+    return await persistOwnedPlaybackPosition(
+      supabase as unknown as SupabaseIntakeClient &
+        SupabaseResultUserStateClient,
+      data.user.id,
+      parsed.data,
+    );
   } catch {
     return { status: 'error' };
   }

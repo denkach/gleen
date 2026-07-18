@@ -221,8 +221,16 @@ function renderWorkspaceWithActions({
 }
 
 describe('ResultWorkspace', () => {
-  afterEach(() => {
+  afterEach(async () => {
     vi.useRealTimers();
+    const scripts = Array.from(
+      document.querySelectorAll<HTMLScriptElement>(
+        'script[src="https://www.youtube.com/iframe_api"]',
+      ),
+    );
+    await act(async () =>
+      scripts.forEach((script) => script.dispatchEvent(new Event('error'))),
+    );
     Reflect.deleteProperty(window, 'YT');
     Reflect.deleteProperty(window, 'onYouTubeIframeAPIReady');
     document
@@ -315,7 +323,55 @@ describe('ResultWorkspace', () => {
     expect(savePlaybackPosition).toHaveBeenCalledExactlyOnceWith({
       analysisId: model.source.intakeId,
       positionMs: 2_000,
+      revision: expect.any(Number),
     });
+  });
+
+  it('keeps unavailable shared player state through fallback and resets it for a new lifecycle', async () => {
+    const view = render(
+      <ResultWorkspace
+        model={model}
+        saveTitle={vi.fn()}
+        saveArtifact={vi.fn()}
+      />,
+    );
+    const failedScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://www.youtube.com/iframe_api"]',
+    );
+
+    await act(async () => failedScript?.dispatchEvent(new Event('error')));
+
+    expect(screen.getByTestId('result-layout')).toHaveAttribute(
+      'data-player-status',
+      'unavailable',
+    );
+    expect(screen.getByRole('status', { name: '' })).toHaveTextContent(
+      'Player unavailable',
+    );
+
+    view.rerender(
+      <ResultWorkspace
+        model={{
+          ...model,
+          source: {
+            ...model.source,
+            intakeId: 'd41ba30f-b999-409f-8601-29cb209bc0fa',
+          },
+        }}
+        saveTitle={vi.fn()}
+        saveArtifact={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('result-layout')).toHaveAttribute(
+      'data-player-status',
+      'loading',
+    );
+
+    const replacementScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://www.youtube.com/iframe_api"]',
+    );
+    await act(async () => replacementScript?.dispatchEvent(new Event('error')));
   });
 
   it('initializes from the hash, pushes user navigation, and follows browser history', async () => {

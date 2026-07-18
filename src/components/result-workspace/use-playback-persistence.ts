@@ -4,21 +4,23 @@ import { useEffect, useRef } from 'react';
 
 import type { ResultMutationState } from '@/lib/result-workspace/actions';
 
+import type { PlaybackPositionWrite } from './playback-pagehide-transport';
 import { useVideoPlayer } from './player-context';
 import type { VideoPlayerSnapshot } from './player-controller';
 
 const PERSIST_INTERVAL_MS = 5_000;
 const MINIMUM_POSITION_CHANGE_MS = 1_000;
 
-type SavePlaybackPosition = (input: {
-  analysisId: string;
-  positionMs: number;
-}) => Promise<ResultMutationState>;
+type SavePlaybackPosition = (
+  input: PlaybackPositionWrite,
+) => Promise<ResultMutationState>;
+type FlushPlaybackPosition = (input: PlaybackPositionWrite) => void;
 
 export type PlaybackPersistenceOptions = Readonly<{
   analysisId: string;
   initialPositionMs: number;
   savePlaybackPosition?: SavePlaybackPosition;
+  flushPlaybackPosition?: FlushPlaybackPosition;
 }>;
 
 function clampPosition(positionMs: number, durationMs: number): number {
@@ -32,6 +34,7 @@ function clampPosition(positionMs: number, durationMs: number): number {
 
 export function usePlaybackPersistence({
   analysisId,
+  flushPlaybackPosition,
   initialPositionMs,
   savePlaybackPosition,
 }: PlaybackPersistenceOptions): void {
@@ -51,6 +54,7 @@ export function usePlaybackPersistence({
     let forcedQueued = false;
     let regularDue = false;
     let lastAttemptAt: number | null = null;
+    let lastRevision = 0;
     let previousSnapshot = controller.getSnapshot();
     let latestPositionMs = clampPosition(
       previousSnapshot.currentTimeMs,
@@ -70,6 +74,11 @@ export function usePlaybackPersistence({
     const isSignificant = () =>
       Math.abs(latestPositionMs - committedPositionMs) >=
       MINIMUM_POSITION_CHANGE_MS;
+
+    const nextRevision = () => {
+      lastRevision = Math.max(Date.now(), lastRevision + 1);
+      return lastRevision;
+    };
 
     const schedule = () => {
       if (!isSignificant() || timer !== null) return;
@@ -140,7 +149,11 @@ export function usePlaybackPersistence({
       lastAttemptAt = Date.now();
       let request: Promise<ResultMutationState>;
       try {
-        request = save({ analysisId, positionMs });
+        request = save({
+          analysisId,
+          positionMs,
+          revision: nextRevision(),
+        });
       } catch {
         finishWrite(positionMs, false);
         return;
@@ -170,6 +183,19 @@ export function usePlaybackPersistence({
     );
     const flushOnPageHide = () => {
       readSnapshot(controller.getSnapshot());
+      if (!isSignificant()) return;
+      if (flushPlaybackPosition) {
+        try {
+          flushPlaybackPosition({
+            analysisId,
+            positionMs: latestPositionMs,
+            revision: nextRevision(),
+          });
+          return;
+        } catch {
+          // Fall through to the serialized action transport.
+        }
+      }
       enqueue(true);
     };
     window.addEventListener('pagehide', flushOnPageHide);
@@ -181,5 +207,11 @@ export function usePlaybackPersistence({
       unsubscribe();
       window.removeEventListener('pagehide', flushOnPageHide);
     };
-  }, [analysisId, controller, initialPositionMs, persistenceEnabled]);
+  }, [
+    analysisId,
+    controller,
+    flushPlaybackPosition,
+    initialPositionMs,
+    persistenceEnabled,
+  ]);
 }

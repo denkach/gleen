@@ -381,7 +381,9 @@ export function YouTubePlayer({
 
     return () => {
       active = false;
-      onReadyRef.current?.(null, controller);
+      if (snapshot.status !== 'unavailable') {
+        onReadyRef.current?.(null, controller);
+      }
       stopPlayer();
     };
   }, [lifecycleKey, playerInstanceKey, videoId]);

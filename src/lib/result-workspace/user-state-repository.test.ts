@@ -38,6 +38,7 @@ describe('Supabase result user-state repository', () => {
         .fn()
         .mockReturnValueOnce(stateQuery)
         .mockReturnValueOnce(reviewQuery),
+      rpc: vi.fn(),
     };
 
     await expect(
@@ -89,6 +90,7 @@ describe('Supabase result user-state repository', () => {
         .fn()
         .mockReturnValueOnce(stateQuery)
         .mockReturnValueOnce(reviewQuery),
+      rpc: vi.fn(),
     };
 
     await expect(
@@ -125,6 +127,7 @@ describe('Supabase result user-state repository', () => {
         .fn()
         .mockReturnValueOnce(query(stateResult))
         .mockReturnValueOnce(query({ data: [], error: null })),
+      rpc: vi.fn(),
     };
 
     const promise = createSupabaseResultUserStateRepository(client).findOwned(
@@ -142,7 +145,10 @@ describe('Supabase result user-state repository', () => {
 
   it('upserts an explicit favorite through the owner composite key', async () => {
     const mutation = query({ data: null, error: null });
-    const client = { from: vi.fn().mockReturnValue(mutation) };
+    const client = {
+      from: vi.fn().mockReturnValue(mutation),
+      rpc: vi.fn(),
+    };
     const repository = createSupabaseResultUserStateRepository(client);
 
     await expect(
@@ -157,34 +163,75 @@ describe('Supabase result user-state repository', () => {
     expect(mutation.eq).toHaveBeenCalledWith('user_id', userId);
   });
 
-  it('upserts playback through the owner composite key', async () => {
-    const mutation = query({ data: null, error: null });
+  it('persists playback through the strictly ordered owner RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: true, error: null });
     const repository = createSupabaseResultUserStateRepository({
-      from: vi.fn().mockReturnValue(mutation),
+      from: vi.fn(),
+      rpc,
+    });
+
+    await expect(
+      repository.savePlaybackPosition({
+        analysisId,
+        positionMs: 213_000,
+        revision: 1_752_844_800_001,
+      }),
+    ).resolves.toBe(true);
+
+    expect(rpc).toHaveBeenCalledExactlyOnceWith(
+      'save_owned_playback_position',
+      {
+        p_analysis_id: analysisId,
+        p_position_ms: 213_000,
+        p_revision: 1_752_844_800_001,
+      },
+    );
+  });
+
+  it('cannot regress a newer playback revision with an older RPC request', async () => {
+    let stored = { positionMs: 0, revision: 0 };
+    const rpc = vi.fn(
+      async (
+        _functionName: string,
+        input: {
+          p_position_ms: number;
+          p_revision: number;
+        },
+      ) => {
+        const applied = input.p_revision > stored.revision;
+        if (applied) {
+          stored = {
+            positionMs: input.p_position_ms,
+            revision: input.p_revision,
+          };
+        }
+        return { data: applied, error: null };
+      },
+    );
+    const repository = createSupabaseResultUserStateRepository({
+      from: vi.fn(),
+      rpc,
     });
 
     await repository.savePlaybackPosition({
-      userId,
       analysisId,
-      positionMs: 213_000,
+      positionMs: 20_000,
+      revision: 2,
+    });
+    await repository.savePlaybackPosition({
+      analysisId,
+      positionMs: 10_000,
+      revision: 1,
     });
 
-    expect(mutation.upsert).toHaveBeenCalledWith(
-      {
-        analysis_id: analysisId,
-        user_id: userId,
-        playback_position_ms: 213_000,
-      },
-      { onConflict: 'analysis_id,user_id' },
-    );
-    expect(mutation.eq).toHaveBeenCalledWith('analysis_id', analysisId);
-    expect(mutation.eq).toHaveBeenCalledWith('user_id', userId);
+    expect(stored).toEqual({ positionMs: 20_000, revision: 2 });
   });
 
   it('uses the full review composite key and owner filters', async () => {
     const mutation = query({ data: null, error: null });
     const repository = createSupabaseResultUserStateRepository({
       from: vi.fn().mockReturnValue(mutation),
+      rpc: vi.fn(),
     });
 
     await repository.saveFlashcardReview({
@@ -215,6 +262,7 @@ describe('Supabase result user-state repository', () => {
     const mutation = query({ data: null, error: { code: '42501' } });
     const repository = createSupabaseResultUserStateRepository({
       from: vi.fn().mockReturnValue(mutation),
+      rpc: vi.fn(),
     });
 
     await expect(

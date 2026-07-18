@@ -75,7 +75,17 @@ describe('YouTubePlayer', () => {
       .forEach((script) => script.remove());
   });
 
-  afterEach(() => vi.useRealTimers());
+  afterEach(async () => {
+    const scripts = Array.from(
+      document.querySelectorAll<HTMLScriptElement>(
+        'script[src="https://www.youtube.com/iframe_api"]',
+      ),
+    );
+    await act(async () =>
+      scripts.forEach((script) => script.dispatchEvent(new Event('error'))),
+    );
+    vi.useRealTimers();
+  });
 
   test('reuses an available API and exposes a millisecond controller', async () => {
     const Player = installYouTubeApi();
@@ -425,6 +435,9 @@ describe('YouTubePlayer', () => {
     );
     expect(retryScript).toBeInTheDocument();
     expect(retryScript).not.toBe(failedScript);
+
+    installYouTubeApi({ ready: false });
+    await act(async () => window.onYouTubeIframeAPIReady?.());
   });
 
   test('does not publish optimistic command state when the player throws', async () => {

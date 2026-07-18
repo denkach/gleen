@@ -26,10 +26,15 @@ import { EditableTitle } from './editable-title';
 import { ExportTab } from './export-tab';
 import { FlashcardsTab } from './flashcards-tab';
 import { OverviewTab } from './overview-tab';
+import { flushPlaybackPositionOnPageHide } from './playback-pagehide-transport';
 import { SummaryTab } from './summary-tab';
 import { TimestampsTab } from './timestamps-tab';
 import { TranscriptTab } from './transcript-tab';
-import { PlayerProvider, useVideoPlayer } from './player-context';
+import {
+  PlayerProvider,
+  useVideoPlayer,
+  useVideoPlayerSnapshot,
+} from './player-context';
 import type { VideoPlayerController } from './player-controller';
 import { SourcePanel } from './source-panel';
 import { usePlaybackPersistence } from './use-playback-persistence';
@@ -287,10 +292,27 @@ function PlaybackPersistence({
 }>) {
   usePlaybackPersistence({
     analysisId,
+    flushPlaybackPosition: flushPlaybackPositionOnPageHide,
     initialPositionMs,
     savePlaybackPosition,
   });
   return null;
+}
+
+const selectPlayerStatus = (snapshot: { status: string }) => snapshot.status;
+
+function ResultLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const playerStatus = useVideoPlayerSnapshot(selectPlayerStatus);
+
+  return (
+    <div
+      className="result-layout"
+      data-testid="result-layout"
+      data-player-status={playerStatus}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function ResultWorkspace(props: ResultWorkspaceProps) {
@@ -328,7 +350,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
         initialPositionMs={playbackPositionMs}
         savePlaybackPosition={props.savePlaybackPosition}
       />
-      <div className="result-layout" data-testid="result-layout">
+      <ResultLayout>
         <SourcePanel
           source={{
             videoId: model.source.youtubeVideoId,
@@ -352,7 +374,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           saveTitle={props.saveTitle}
           saveArtifact={props.saveArtifact}
         />
-      </div>
+      </ResultLayout>
     </PlayerProvider>
   );
 }

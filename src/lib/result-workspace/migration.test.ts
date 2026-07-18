@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -162,5 +162,39 @@ describe('DEN-25 result persistence migration', () => {
     expect(sql).toContain('analysis_shares_user_id_idx');
     expect(sql).toContain('analysis_shares_analysis_id_idx');
     expect(sql).toContain('analysis_shares_active_token_idx');
+  });
+});
+
+describe('DEN-25 ordered playback migration', () => {
+  it('uses an authenticated security-invoker RPC with strictly monotonic writes', () => {
+    const migrationsDirectory = join(process.cwd(), 'supabase', 'migrations');
+    const filename = readdirSync(migrationsDirectory).find((entry) =>
+      entry.endsWith('_den_25_ordered_playback_position.sql'),
+    );
+
+    expect(filename).toBeDefined();
+    const orderedSql = readFileSync(
+      join(migrationsDirectory, filename!),
+      'utf8',
+    );
+
+    expect(orderedSql).toContain(
+      'add column playback_revision bigint not null default 0',
+    );
+    expect(orderedSql).toContain('check (playback_revision >= 0)');
+    expect(orderedSql).toContain(
+      'create or replace function public.save_owned_playback_position',
+    );
+    expect(orderedSql).toContain('security invoker');
+    expect(orderedSql).toContain('values (p_analysis_id, (select auth.uid())');
+    expect(orderedSql).toContain(
+      'excluded.playback_revision > analysis_result_states.playback_revision',
+    );
+    expect(orderedSql).toContain(
+      'revoke all on function public.save_owned_playback_position(uuid, bigint, bigint) from PUBLIC, anon;',
+    );
+    expect(orderedSql).toContain(
+      'grant execute on function public.save_owned_playback_position(uuid, bigint, bigint) to authenticated;',
+    );
   });
 });

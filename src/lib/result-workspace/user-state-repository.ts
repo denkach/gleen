@@ -33,6 +33,14 @@ type Query = Readonly<{
 
 export type SupabaseResultUserStateClient = Readonly<{
   from(table: 'analysis_result_states' | 'analysis_flashcard_reviews'): Query;
+  rpc(
+    functionName: 'save_owned_playback_position',
+    input: Readonly<{
+      p_analysis_id: string;
+      p_position_ms: number;
+      p_revision: number;
+    }>,
+  ): PromiseLike<SupabaseResult>;
 }>;
 
 type OwnerKey = Readonly<{ userId: string; analysisId: string }>;
@@ -43,8 +51,12 @@ export type ResultUserStateRepository = Readonly<{
     input: OwnerKey & Readonly<{ favorite: boolean }>,
   ): Promise<void>;
   savePlaybackPosition(
-    input: OwnerKey & Readonly<{ positionMs: number }>,
-  ): Promise<void>;
+    input: Readonly<{
+      analysisId: string;
+      positionMs: number;
+      revision: number;
+    }>,
+  ): Promise<boolean>;
   saveFlashcardReview(
     input: OwnerKey &
       Readonly<{
@@ -182,20 +194,16 @@ export function createSupabaseResultUserStateRepository(
 
     async savePlaybackPosition(input) {
       try {
-        await ensureMutation(
-          client
-            .from('analysis_result_states')
-            .upsert(
-              {
-                analysis_id: input.analysisId,
-                user_id: input.userId,
-                playback_position_ms: input.positionMs,
-              },
-              { onConflict: 'analysis_id,user_id' },
-            )
-            .eq('analysis_id', input.analysisId)
-            .eq('user_id', input.userId),
+        const data = ensureSuccess(
+          await client.rpc('save_owned_playback_position', {
+            p_analysis_id: input.analysisId,
+            p_position_ms: input.positionMs,
+            p_revision: input.revision,
+          }),
         );
+        const parsed = z.boolean().safeParse(data);
+        if (!parsed.success) throw new ResultUserStateRepositoryError();
+        return parsed.data;
       } catch (error) {
         throw repositoryError(error);
       }

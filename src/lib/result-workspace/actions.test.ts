@@ -170,7 +170,7 @@ describe('result owner-state server actions', () => {
 
   it('rejects invalid playback before authentication or persistence', async () => {
     await expect(
-      savePlaybackPosition({ analysisId, positionMs: -1 }),
+      savePlaybackPosition({ analysisId, positionMs: -1, revision: 1 }),
     ).resolves.toEqual({ status: 'error' });
     expect(getUser).not.toHaveBeenCalled();
     expect(findOwned).not.toHaveBeenCalled();
@@ -181,7 +181,7 @@ describe('result owner-state server actions', () => {
     findOwned.mockResolvedValue(null);
 
     await expect(
-      savePlaybackPosition({ analysisId, positionMs: 12_000 }),
+      savePlaybackPosition({ analysisId, positionMs: 12_000, revision: 1 }),
     ).resolves.toEqual({ status: 'conflict' });
     expect(findOwned).toHaveBeenCalledWith(userId, analysisId);
     expect(savePlaybackPositionRepository).not.toHaveBeenCalled();
@@ -189,14 +189,26 @@ describe('result owner-state server actions', () => {
 
   it('loads the owned intake and clamps playback to its duration', async () => {
     await expect(
-      savePlaybackPosition({ analysisId, positionMs: 999_000 }),
+      savePlaybackPosition({
+        analysisId,
+        positionMs: 999_000,
+        revision: 1_752_844_800_001,
+      }),
     ).resolves.toEqual({ status: 'saved' });
     expect(findOwned).toHaveBeenCalledWith(userId, analysisId);
     expect(savePlaybackPositionRepository).toHaveBeenCalledWith({
-      userId,
       analysisId,
       positionMs: 213_000,
+      revision: 1_752_844_800_001,
     });
+  });
+
+  it('strictly rejects a missing playback revision', async () => {
+    await expect(
+      savePlaybackPosition({ analysisId, positionMs: 12_000 }),
+    ).resolves.toEqual({ status: 'error' });
+    expect(getUser).not.toHaveBeenCalled();
+    expect(savePlaybackPositionRepository).not.toHaveBeenCalled();
   });
 
   it('persists the current revision and card index for a review', async () => {
