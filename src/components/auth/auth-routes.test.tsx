@@ -14,10 +14,17 @@ vi.mock('@/lib/auth/actions', () => ({
 }));
 
 import { AccessForm } from './access-form';
+import SignInPage from '@/app/(auth)/sign-in/page';
+import SignUpPage from '@/app/(auth)/sign-up/page';
 
 describe('account access and recovery routes', () => {
   it('matches the approved sign-in hierarchy and offers both email modes', () => {
-    render(<AccessForm intent="sign-in" />);
+    render(
+      <AccessForm
+        intent="sign-in"
+        nextPath="/app?continuation=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ"
+      />,
+    );
 
     expect(
       screen.getByRole('button', { name: 'Continue with Google' }),
@@ -31,7 +38,13 @@ describe('account access and recovery routes', () => {
     ).toBeVisible();
     expect(
       screen.getByRole('link', { name: 'Create an account' }),
-    ).toHaveAttribute('href', '/sign-up');
+    ).toHaveAttribute(
+      'href',
+      '/sign-up?next=%2Fapp%3Fcontinuation%3Dhttps%253A%252F%252Fwww.youtube.com%252Fwatch%253Fv%253DdQw4w9WgXcQ',
+    );
+    expect(screen.getAllByDisplayValue(/^\/app\?continuation=/)).toHaveLength(
+      2,
+    );
   });
 
   it('defines every required recovery and session route', async () => {
@@ -62,5 +75,32 @@ describe('account access and recovery routes', () => {
     expect(accessForm).toContain('Create your account');
     expect(accessForm).toContain('/terms');
     expect(accessForm).toContain('/privacy');
+  });
+
+  it.each([
+    ['//evil.example', '/onboarding'],
+    [String.raw`/\evil.example`, '/onboarding'],
+    ['/app?continuation=normalized', '/app?continuation=normalized'],
+  ])('validates the sign-in continuation %s', async (next, expected) => {
+    render(
+      await SignInPage({
+        searchParams: Promise.resolve({ next }),
+      }),
+    );
+
+    expect(screen.getAllByDisplayValue(expected)).toHaveLength(2);
+  });
+
+  it.each([
+    ['//evil.example', '/onboarding'],
+    [String.raw`/\evil.example`, '/onboarding'],
+    ['/app?continuation=normalized', '/app?continuation=normalized'],
+  ])('validates the sign-up continuation %s', async (next, expected) => {
+    render(await SignUpPage({ searchParams: Promise.resolve({ next }) }));
+    expect(screen.getAllByDisplayValue(expected)).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      `/sign-in?next=${encodeURIComponent(expected)}`,
+    );
   });
 });

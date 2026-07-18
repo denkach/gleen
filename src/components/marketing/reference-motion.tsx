@@ -107,31 +107,6 @@ export function ReferenceMotion() {
     };
     later(() => emitArtifacts(), reduceMotion ? 0 : 180);
 
-    const form = root.querySelector<HTMLFormElement>('.beam-form');
-    const onSubmit = (event: SubmitEvent) => {
-      event.preventDefault();
-      if (!form) return;
-      form.classList.remove('is-flashing', 'is-processing');
-      void form.offsetWidth;
-      form.classList.add('is-flashing', 'is-processing');
-      emitArtifacts(true);
-      stage?.classList.add('is-transforming');
-      const label = form.querySelector<HTMLElement>(
-        'button[type="submit"] span',
-      );
-      if (label) label.textContent = 'Refracting…';
-      later(
-        () => {
-          form.classList.remove('is-flashing', 'is-processing');
-          stage?.classList.remove('is-transforming');
-          if (label) label.textContent = 'Transform video';
-        },
-        reduceMotion ? 40 : 1250,
-      );
-    };
-    form?.addEventListener('submit', onSubmit);
-    cleanups.push(() => form?.removeEventListener('submit', onSubmit));
-
     const scene = root.querySelector<HTMLElement>('.process-scene');
     const steps = scene
       ? [...scene.querySelectorAll<HTMLElement>('.process-step')]

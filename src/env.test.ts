@@ -1,4 +1,8 @@
-import { validatePublicEnv } from '@/env';
+import {
+  validateAnalysisProviderEnv,
+  validateProviderEnv,
+  validatePublicEnv,
+} from '@/env';
 import { describe, expect, it } from 'vitest';
 
 function processEnv(
@@ -68,5 +72,50 @@ describe('validatePublicEnv', () => {
         }),
       ),
     ).toThrow('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required');
+  });
+});
+
+describe('validateProviderEnv', () => {
+  it('requires both server-only provider keys and trims valid values', () => {
+    expect(() => validateProviderEnv({ NODE_ENV: 'test' })).toThrow(
+      'YOUTUBE_DATA_API_KEY is required',
+    );
+    expect(() =>
+      validateProviderEnv({ NODE_ENV: 'test', YOUTUBE_DATA_API_KEY: 'yt' }),
+    ).toThrow('SUPADATA_API_KEY is required');
+    expect(
+      validateProviderEnv({
+        NODE_ENV: 'test',
+        YOUTUBE_DATA_API_KEY: ' yt ',
+        SUPADATA_API_KEY: ' supadata ',
+      }),
+    ).toEqual({
+      YOUTUBE_DATA_API_KEY: 'yt',
+      SUPADATA_API_KEY: 'supadata',
+    });
+  });
+});
+
+describe('validateAnalysisProviderEnv', () => {
+  it('requires and trims server-only OpenRouter configuration', () => {
+    expect(() => validateAnalysisProviderEnv({ NODE_ENV: 'test' })).toThrow(
+      'OPENROUTER_API_KEY is required',
+    );
+    expect(() =>
+      validateAnalysisProviderEnv({
+        NODE_ENV: 'test',
+        OPENROUTER_API_KEY: 'secret',
+      }),
+    ).toThrow('OPENROUTER_MODEL is required');
+    expect(
+      validateAnalysisProviderEnv({
+        NODE_ENV: 'test',
+        OPENROUTER_API_KEY: ' secret ',
+        OPENROUTER_MODEL: ' vendor/model ',
+      }),
+    ).toEqual({
+      OPENROUTER_API_KEY: 'secret',
+      OPENROUTER_MODEL: 'vendor/model',
+    });
   });
 });

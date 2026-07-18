@@ -1,32 +1,69 @@
 import Link from 'next/link';
 
-import { AppIcon } from './app-icon';
+import {
+  createInitialIntakeActionState,
+  type IntakeActionState,
+} from '@/lib/youtube-intake/action-state';
+import { defaultOnboardingState } from '@/lib/onboarding/preferences';
 
-export function NewAnalysisHome() {
+import { NewAnalysisForm } from './new-analysis-form';
+import type { ComponentProps } from 'react';
+import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
+import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
+
+type ProfileDefaults = Pick<
+  IntakeActionState['configuration'],
+  'outputLocale' | 'summaryPreset' | 'flashcardPreset'
+>;
+
+export function NewAnalysisHome({
+  profileDefaults = defaultOnboardingState,
+  action,
+  reanalyzeAction,
+  resultPathPrefix,
+  initialAnalysis,
+  continuation,
+}: Readonly<{
+  profileDefaults?: ProfileDefaults;
+  action?: ComponentProps<typeof NewAnalysisForm>['action'];
+  reanalyzeAction?: ComponentProps<typeof NewAnalysisForm>['reanalyzeAction'];
+  resultPathPrefix?: string;
+  initialAnalysis?: Readonly<{
+    intake: AnalysisIntake;
+    snapshot: AnalysisSnapshot;
+  }>;
+  continuation?: Readonly<{ rawUrl: string }>;
+}>) {
+  const initialState = createInitialIntakeActionState(profileDefaults);
   return (
     <>
       <section className="analysis-hero" aria-labelledby="new-analysis-title">
         <span className="eyebrow">New analysis</span>
         <h1 id="new-analysis-title">Turn a video into something useful.</h1>
-        <form
-          className="beam-form app-beam-form"
-          aria-describedby="intake-status"
-        >
-          <AppIcon name="link" className="link-icon" />
-          <input
-            aria-label="YouTube URL"
-            type="url"
-            placeholder="Paste a YouTube link"
-            disabled
-          />
-          <button className="btn btn-primary" type="button" disabled>
-            <span>Analyze video</span>
-            <AppIcon name="arrow" />
-          </button>
-        </form>
-        <p className="advanced-link" id="intake-status">
-          <AppIcon name="settings" /> Video intake arrives in the next step.
-        </p>
+        <NewAnalysisForm
+          initialState={
+            initialAnalysis
+              ? {
+                  ...initialState,
+                  status: 'ready',
+                  analysisId: initialAnalysis.intake.id,
+                  configuration: {
+                    ...initialState.configuration,
+                    artifacts: [
+                      ...initialAnalysis.intake.configuration.artifacts,
+                    ],
+                  },
+                }
+              : continuation
+                ? { ...initialState, rawUrl: continuation.rawUrl }
+                : initialState
+          }
+          initialSnapshot={initialAnalysis?.snapshot}
+          autoSubmit={Boolean(continuation)}
+          action={action}
+          reanalyzeAction={reanalyzeAction}
+          resultPathPrefix={resultPathPrefix}
+        />
       </section>
 
       <div className="dashboard-grid">

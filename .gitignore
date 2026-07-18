@@ -41,3 +41,5 @@ Thumbs.db
 
 # local Codex state
 .codex/
+/.swc
+.vercel

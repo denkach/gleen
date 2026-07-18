@@ -1,8 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 
 describe('isUiPreviewEnabled', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('can guard a route directly from the current server environment', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VERCEL_ENV', 'production');
+
+    expect(isUiPreviewEnabled()).toBe(false);
+  });
+
   it.each<{
     name: string;
     env: Pick<NodeJS.ProcessEnv, 'NODE_ENV' | 'VERCEL_ENV'>;
