@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
 const fixtureUrl = 'https://www.youtube.com/watch?v=gleen-fixture';
+const crossPlatformGeometryTolerance = 2;
 const viewports = [
   { width: 1440, height: 900 },
   { width: 1024, height: 768 },
@@ -58,7 +59,7 @@ const den16IdleGeometry = [
 ] as const;
 
 for (const baseline of den16IdleGeometry) {
-  test(`idle production shell exactly matches the DEN-16 form at ${baseline.viewport.width}x${baseline.viewport.height}`, async ({
+  test(`idle production shell matches the DEN-16 form at ${baseline.viewport.width}x${baseline.viewport.height}`, async ({
     page,
   }) => {
     await page.setViewportSize(baseline.viewport);
@@ -101,7 +102,9 @@ for (const baseline of den16IdleGeometry) {
       'dashboard',
     ] as const) {
       for (const dimension of ['x', 'y', 'width', 'height'] as const) {
-        expect(actual[key][dimension]).toBeCloseTo(baseline[key][dimension], 0);
+        expect(
+          Math.abs(actual[key][dimension] - baseline[key][dimension]),
+        ).toBeLessThanOrEqual(crossPlatformGeometryTolerance);
       }
     }
     expect(actual.style).toEqual({

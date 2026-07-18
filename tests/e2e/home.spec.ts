@@ -61,15 +61,26 @@ test('aligns the BeamInput with its action on mobile', async ({ page }) => {
   expect(inputBox?.x).toBe((formBox?.x ?? 0) + 8);
 });
 
-test('runs the approved BeamInput and scroll motion', async ({ page }) => {
+test('routes a valid BeamInput through the secure sign-in continuation', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
+  await page.getByRole('button', { name: 'Transform video' }).click();
+
+  await expect(page).toHaveURL(/\/sign-in\?next=/);
+  const next = new URL(page.url()).searchParams.get('next');
+  expect(next).toBe(
+    '/app?continuation=' +
+      encodeURIComponent('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+  );
+});
+
+test('runs the approved landing scroll motion', async ({ page }) => {
   await page.goto('/');
   await page.waitForTimeout(1_200);
   await expect(page.locator('.artifact-float.is-emitted')).toHaveCount(4);
-
-  await page.getByRole('button', { name: 'Transform video' }).click();
-  await expect(page.locator('.beam-form')).toHaveClass(/is-processing/);
-  await expect(page.locator('.prism-stage')).toHaveClass(/is-transforming/);
-  await expect(page.getByRole('button', { name: 'Refracting…' })).toBeVisible();
 
   await page.locator('.process-scene').scrollIntoViewIfNeeded();
   await page.waitForTimeout(300);

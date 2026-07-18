@@ -26,7 +26,7 @@ async function atLeast44(locator: Locator) {
     .toBeGreaterThanOrEqual(44);
 }
 
-test('chooses artifacts, prevents double submit, announces pending, and opens readiness', async ({
+test('chooses artifacts, prevents double submit, and enters one processing handoff', async ({
   page,
 }) => {
   await page.goto('/app-shell-fixture?intake=ready');
@@ -64,8 +64,12 @@ test('chooses artifacts, prevents double submit, announces pending, and opens re
   await expect(processing.getByText('TRANSCRIPT', { exact: true })).toHaveCount(
     0,
   );
-  await expect(page).toHaveURL(/\/app\/video\//, { timeout: 15_000 });
-  await expect(page.getByText('Ready for processing')).toBeVisible();
+  await expect(page).toHaveURL(
+    /\/app\?analysis=33333333-3333-4333-8333-333333333333$/,
+    { timeout: 5_000 },
+  );
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
+  expect(page.url()).not.toContain('/app/video/');
 });
 
 test('persists output language and summary preset through options and submission', async ({
@@ -81,14 +85,19 @@ test('persists output language and summary preset through options and submission
   await expect(page.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
   await expect(page.getByLabel('Summary preset')).toHaveValue('detailed');
   await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('input[name="outputLocale"]')).toHaveValue('de');
+  await expect(page.locator('input[name="summaryPreset"]')).toHaveValue(
+    'detailed',
+  );
   await page.getByRole('button', { name: 'Analyze video' }).click();
-  await expect(page).toHaveURL(/\/app\/video\//, { timeout: 15_000 });
-  await expect(page.getByText('Ready for processing')).toBeVisible();
-  await expect(page.getByText('German', { exact: true })).toBeVisible();
-  await expect(page.getByText('Detailed', { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(
+    /\/app\?analysis=33333333-3333-4333-8333-333333333333$/,
+    { timeout: 5_000 },
+  );
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
 });
 
-test('retains a 30-card preset after closing options and submits it to readiness', async ({
+test('retains a 30-card preset and submits it to the processing handoff', async ({
   page,
 }) => {
   await page.goto('/app-shell-fixture?intake=ready');
@@ -100,11 +109,17 @@ test('retains a 30-card preset after closing options and submits it to readiness
   await page.getByRole('button', { name: 'Advanced options' }).click();
   await expect(page.getByLabel('Flashcard count')).toHaveValue('30');
   await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('input[name="flashcardPreset"]')).toHaveValue('30');
+  await expect(
+    page.locator('input[name="artifacts"][value="flashcards"]'),
+  ).toHaveCount(1);
   await page.getByRole('button', { name: 'Analyze video' }).click();
 
-  await expect(page).toHaveURL(/\/app\/video\//, { timeout: 15_000 });
-  await expect(page.getByText('Ready for processing')).toBeVisible();
-  await expect(page.getByText('30 cards')).toBeVisible();
+  await expect(page).toHaveURL(
+    /\/app\?analysis=33333333-3333-4333-8333-333333333333$/,
+    { timeout: 5_000 },
+  );
+  await expect(page.getByText('FLASHCARDS', { exact: true })).toBeVisible();
 });
 
 test('detects an exact duplicate, opens existing, and confirms re-analysis', async ({
@@ -305,7 +320,7 @@ test('removes dialog and readiness motion while preserving content', async ({
   ).toBeVisible();
 });
 
-test('reduced motion adds no decorative delay to truthful readiness navigation', async ({
+test('reduced motion enters truthful processing without decorative delay', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -313,10 +328,13 @@ test('reduced motion adds no decorative delay to truthful readiness navigation',
   await page.getByLabel('YouTube URL').fill(videoUrl);
   const startedAt = Date.now();
   await page.getByRole('button', { name: 'Analyze video' }).click();
-  await expect(page).toHaveURL(/\/app\/video\//, { timeout: 3_000 });
+  await expect(page).toHaveURL(
+    /\/app\?analysis=33333333-3333-4333-8333-333333333333$/,
+    { timeout: 3_000 },
+  );
   // The fixture action intentionally takes 1.8s. This ceiling allows normal
-  // parallel-test overhead while proving the client skips the 4s visual flow.
+  // parallel-test overhead while proving processing starts without a visual delay.
   expect(Date.now() - startedAt).toBeLessThan(3_500);
-  await expect(page.getByText('Ready for processing')).toBeVisible();
-  await expect(page.getByText('Your artifacts are ready')).toHaveCount(0);
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
+  expect(page.url()).not.toContain('/app/video/');
 });
