@@ -258,6 +258,9 @@ function normalizeTimestamps(
   const chapters = timestamps.chapters.filter(
     (chapter) => chapter.offsetMs <= durationMs,
   );
+  if (chapters.length === 0) {
+    throw new Error('Timestamp artifact has no chapters within duration');
+  }
   return {
     ...timestamps,
     chapters: chapters.map((chapter, index) => {

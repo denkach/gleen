@@ -536,4 +536,26 @@ describe('normalizeResultWorkspace', () => {
       endSeconds: 212,
     });
   });
+
+  it('treats timestamps as malformed when every chapter is beyond duration', () => {
+    const beyondDuration = artifact('timestamps', 'ready', {
+      schemaVersion: 1,
+      chapters: [
+        { offsetMs: 212_001, title: 'Beyond', description: 'Invalid' },
+        { offsetMs: 213_000, title: 'Later', description: 'Also invalid' },
+      ],
+    });
+
+    const model = normalizeResultWorkspace(
+      fixtureSavedIntake,
+      snapshot([beyondDuration]),
+    );
+
+    expect(model.tabs.timestamps).toEqual({
+      status: 'unavailable',
+      reason: 'malformed',
+    });
+    expect(model.overview.keyMomentCount).toBeNull();
+    expect(model.overview.currentChapter).toBeNull();
+  });
 });
