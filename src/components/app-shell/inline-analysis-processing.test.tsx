@@ -193,6 +193,68 @@ describe('InlineAnalysisProcessing', () => {
     );
   });
 
+  test('ignores a retained realtime callback from the previous analysis generation', async () => {
+    vi.useFakeTimers();
+    const nextAnalysisId = '660e8400-e29b-41d4-a716-446655440000';
+    const refreshAction = vi.fn(async (requestedAnalysisId: string) =>
+      snapshot('running', 2, requestedAnalysisId),
+    );
+    const { rerender } = render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        initialSnapshot={snapshot('running', 1, analysisId)}
+        refreshAction={refreshAction}
+        retryAction={vi.fn()}
+      />,
+    );
+    await act(async () => Promise.resolve());
+    const previousNotify = realtime.channel.on.mock.calls.find(
+      ([, options]) =>
+        (options as { filter?: string }).filter ===
+        `analysis_id=eq.${analysisId}`,
+    )?.[2] as () => void;
+
+    rerender(
+      <InlineAnalysisProcessing
+        analysisId={nextAnalysisId}
+        refreshAction={refreshAction}
+        retryAction={vi.fn()}
+      />,
+    );
+    await act(async () => Promise.resolve());
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-state',
+      'transcript',
+    );
+
+    await act(async () => {
+      previousNotify();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-analysis-state',
+      'transcript',
+    );
+    expect(realtime.channel.on).toHaveBeenCalledWith(
+      'postgres_changes',
+      expect.objectContaining({
+        table: 'analysis_artifacts',
+        filter: `analysis_id=eq.${nextAnalysisId}`,
+      }),
+      expect.any(Function),
+    );
+    const nextCallsBeforePolling = refreshAction.mock.calls.filter(
+      ([requestedAnalysisId]) => requestedAnalysisId === nextAnalysisId,
+    ).length;
+    await act(async () => vi.advanceTimersByTimeAsync(2_000));
+    expect(
+      refreshAction.mock.calls.filter(
+        ([requestedAnalysisId]) => requestedAnalysisId === nextAnalysisId,
+      ),
+    ).toHaveLength(nextCallsBeforePolling + 1);
+  });
+
   test.each(['partial', 'failed'] as const)(
     'keeps %s terminal state inline without exposing retry controls',
     async (status) => {

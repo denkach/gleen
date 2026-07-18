@@ -88,7 +88,8 @@ export function InlineAnalysisProcessing({
   useEffect(() => {
     if (!ownedSnapshot || isTerminalAnalysis(ownedSnapshot)) return;
     const supabase = createBrowserSupabaseClient();
-    const notify = () => void refresh();
+    const generation = controllerGeneration.current;
+    const notify = () => void refresh(generation);
     const polling = window.setInterval(notify, pollingIntervalMs);
     const channel = supabase
       .channel(`analysis:${ownedSnapshot.job.id}`)
