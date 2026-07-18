@@ -96,6 +96,20 @@ test('result workspace is result-only with zero processing spectra', async ({
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
 });
 
+test('DEN-25 fixture renders one current workspace and one local player mount', async ({
+  page,
+}) => {
+  await gotoFixture(
+    page,
+    '/app-shell-fixture/app/video/result-den-25#overview',
+  );
+
+  await expect(page.getByTestId('result-layout')).toHaveCount(1);
+  await expect(page.getByLabel('Analysis artifacts')).toHaveCount(1);
+  await expect(page.locator('[data-fixture-player-mount]')).toHaveCount(1);
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
+});
+
 test('supports keyboard tab navigation and summary seeking', async ({
   page,
 }) => {

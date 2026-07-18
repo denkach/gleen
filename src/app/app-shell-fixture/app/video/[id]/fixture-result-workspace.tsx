@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useSyncExternalStore } from 'react';
+import { useCallback, useState, useSyncExternalStore } from 'react';
 
 import { ResultWorkspace } from '@/components/result-workspace/result-workspace';
 import type { ResultSaveState } from '@/lib/result-workspace/actions';
@@ -12,6 +12,111 @@ import type {
   ResultWorkspaceModel,
   SummaryPresentation,
 } from '@/lib/result-workspace/presentation';
+
+type FixturePlayerCommand = Readonly<{
+  type: 'destroy' | 'pause' | 'play' | 'seek';
+  offsetMs?: number;
+}>;
+
+type FixturePlayerState = {
+  fixtureId: string;
+  currentTime: number;
+  playing: boolean;
+  seeks: number[];
+  commands: FixturePlayerCommand[];
+};
+
+declare global {
+  interface Window {
+    __fixturePlayer?: FixturePlayerState;
+  }
+}
+
+function installFixturePlayer(fixtureId: string, initialOffsetMs: number) {
+  if (window.__fixturePlayer?.fixtureId === fixtureId) return;
+
+  const state: FixturePlayerState = {
+    fixtureId,
+    currentTime: initialOffsetMs / 1_000,
+    playing: false,
+    seeks: [],
+    commands: [],
+  };
+
+  class Player {
+    readonly iframe = document.createElement('iframe');
+
+    constructor(
+      element: HTMLElement,
+      options: { events: { onReady(): void } },
+    ) {
+      this.iframe.dataset.fixturePlayerMount = fixtureId;
+      element.replaceChildren(this.iframe);
+      queueMicrotask(() => options.events.onReady());
+    }
+
+    destroy() {
+      state.commands.push({ type: 'destroy' });
+      this.iframe.remove();
+    }
+
+    getCurrentTime() {
+      return state.currentTime;
+    }
+
+    getIframe() {
+      return this.iframe;
+    }
+
+    pauseVideo() {
+      state.playing = false;
+      state.commands.push({ type: 'pause' });
+    }
+
+    playVideo() {
+      state.playing = true;
+      state.commands.push({ type: 'play' });
+    }
+
+    seekTo(seconds: number) {
+      state.currentTime = seconds;
+      state.seeks.push(seconds);
+      state.commands.push({
+        type: 'seek',
+        offsetMs: Math.round(seconds * 1_000),
+      });
+    }
+  }
+
+  Object.assign(window, { __fixturePlayer: state, YT: { Player } });
+}
+
+function useFixturePlayerReady(
+  fixtureId: string,
+  initialOffsetMs: number | undefined,
+) {
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      if (initialOffsetMs !== undefined) {
+        installFixturePlayer(fixtureId, initialOffsetMs);
+        onStoreChange();
+      }
+      return () => undefined;
+    },
+    [fixtureId, initialOffsetMs],
+  );
+  const getSnapshot = useCallback(
+    () =>
+      initialOffsetMs === undefined ||
+      window.__fixturePlayer?.fixtureId === fixtureId,
+    [fixtureId, initialOffsetMs],
+  );
+  const getServerSnapshot = useCallback(
+    () => initialOffsetMs === undefined,
+    [initialOffsetMs],
+  );
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
 
 function normalizeSummary(
   content: Extract<
@@ -44,9 +149,17 @@ function readStoredModel(storageKey: string): ResultWorkspaceModel | undefined {
 
 export function FixtureResultWorkspace({
   initialModel,
-}: Readonly<{ initialModel: ResultWorkspaceModel }>) {
+  fixturePlayerStartMs,
+}: Readonly<{
+  initialModel: ResultWorkspaceModel;
+  fixturePlayerStartMs?: number;
+}>) {
   const storageKey = `gleen:result-fixture:${initialModel.source.intakeId}`;
   const [model, setModel] = useState(initialModel);
+  const fixturePlayerReady = useFixturePlayerReady(
+    initialModel.source.intakeId,
+    fixturePlayerStartMs,
+  );
   const hydrated = useSyncExternalStore(
     subscribeToHydration,
     () => true,
@@ -73,7 +186,7 @@ export function FixtureResultWorkspace({
     return { status: 'saved', updatedAt };
   };
 
-  if (!hydrated) return null;
+  if (!hydrated || !fixturePlayerReady) return null;
 
   return (
     <ResultWorkspace

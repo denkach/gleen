@@ -15,6 +15,114 @@ import {
 
 import { FixtureResultWorkspace } from './fixture-result-workspace';
 
+type Den25UserStateSeed = Readonly<{
+  favorite: boolean;
+  playbackPositionMs: number;
+  lastArtifact: 'overview';
+  reviewedFlashcardCount: number;
+  activeShare: null;
+}>;
+
+const den25UserStateSeed: Den25UserStateSeed = {
+  favorite: false,
+  playbackPositionMs: 370_000,
+  lastArtifact: 'overview',
+  reviewedFlashcardCount: 11,
+  activeShare: null,
+};
+
+const den25Chapters = [
+  ['Begin with purpose', 'Why purpose gives every later decision context.'],
+  ['The outside-in default', 'How feature-first explanations lose meaning.'],
+  ['The inside-out alternative', 'A clearer order for communicating ideas.'],
+  ['Belief before behavior', 'Why conviction precedes durable action.'],
+  ['Trust as an outcome', 'How consistent choices make trust observable.'],
+  ['Early adopters', 'Why aligned people accept uncertainty sooner.'],
+  ['The adoption curve', 'How ideas move from a few people to many.'],
+  ['Crossing the threshold', 'What helps a message reach the early majority.'],
+  [
+    'Clarity under pressure',
+    'How a stable purpose guides difficult tradeoffs.',
+  ],
+  ['Symbols and signals', 'Why actions communicate values more than slogans.'],
+  ['Hiring for alignment', 'How shared motivation strengthens a team.'],
+  ['Products as proof', 'How an offering can demonstrate a belief.'],
+  ['Consistency over novelty', 'Why repetition makes a message credible.'],
+  ['Leaders and authority', 'The difference between influence and a title.'],
+  ['Movements need ownership', 'How people act when an idea becomes theirs.'],
+  [
+    'Translate belief into action',
+    'A practical sequence from purpose to habit.',
+  ],
+  ['Review the signal', 'How to test whether actions match stated intent.'],
+  ['Close with the why', 'A concise way to carry the central idea forward.'],
+] as const;
+
+const den25Summary = {
+  schemaVersion: 2 as const,
+  title: 'Lead with purpose, then make it visible',
+  overview:
+    'Clear purpose gives people a reason to trust, participate, and act consistently.',
+  keyPoints: [
+    {
+      text: 'Start communication with the purpose behind the work.',
+      sourceOffsetMs: 75_000,
+    },
+    {
+      text: 'Trust grows when decisions repeatedly reflect the same belief.',
+      sourceOffsetMs: 250_000,
+    },
+    {
+      text: 'Early adopters respond to meaning before broad social proof exists.',
+      sourceOffsetMs: 370_000,
+    },
+    {
+      text: 'Leadership creates willing participation rather than mere compliance.',
+      sourceOffsetMs: 620_000,
+    },
+    {
+      text: 'Turn purpose into practical habits that others can recognize and repeat.',
+      sourceOffsetMs: 900_000,
+    },
+  ],
+};
+
+const den25Timestamps = {
+  schemaVersion: 1 as const,
+  chapters: den25Chapters.map(([title, description], index) => ({
+    offsetMs: index * 60_000,
+    title,
+    description,
+  })),
+};
+
+const den25Flashcards = {
+  schemaVersion: 1 as const,
+  cards: Array.from({ length: 28 }, (_, index) => {
+    const chapter = den25Timestamps.chapters[index % den25Chapters.length];
+    return {
+      front: `Card ${index + 1}: What is the practical lesson from “${chapter.title}”?`,
+      back: chapter.description,
+    };
+  }),
+};
+
+const den25Transcript = {
+  schemaVersion: 1 as const,
+  language: 'en',
+  segments: Array.from({ length: 36 }, (_, index) => {
+    const chapter = den25Timestamps.chapters[Math.floor(index / 2)];
+    const supporting = index % 2 === 1;
+    return {
+      text: supporting
+        ? `A practical example makes ${chapter.title.toLowerCase()} visible in everyday decisions.`
+        : chapter.description,
+      offsetMs: chapter.offsetMs + (supporting ? 24_000 : 0),
+      durationMs: 8_000,
+    };
+  }),
+};
+
 const allowedIds = new Set([
   fixtureSavedIntake.id,
   '33333333-3333-4333-8333-333333333333',
@@ -34,6 +142,9 @@ const allowedIds = new Set([
   'result-partial',
   'result-corrupted',
   'result-empty',
+  'result-den-25',
+  'result-den-25-partial',
+  'result-den-25-public',
 ]);
 
 const resultIds = new Set([
@@ -42,6 +153,9 @@ const resultIds = new Set([
   'result-partial',
   'result-corrupted',
   'result-empty',
+  'result-den-25',
+  'result-den-25-partial',
+  'result-den-25-public',
 ]);
 
 const resultAnalysisIds: Record<string, string> = {
@@ -50,6 +164,9 @@ const resultAnalysisIds: Record<string, string> = {
   'result-partial': '60000000-0000-4000-8000-000000000003',
   'result-corrupted': '60000000-0000-4000-8000-000000000004',
   'result-empty': '60000000-0000-4000-8000-000000000005',
+  'result-den-25': '60000000-0000-4000-8000-000000000006',
+  'result-den-25-partial': '60000000-0000-4000-8000-000000000007',
+  'result-den-25-public': '60000000-0000-4000-8000-000000000008',
 };
 
 const pipelineStages = {
@@ -129,6 +246,76 @@ function pipelineSnapshot(
             ? 'released'
             : 'reserved',
       updatedAt: '2026-07-17T00:01:00.000Z',
+    },
+  };
+}
+
+function den25ResultSnapshot(analysisId: string): AnalysisSnapshot {
+  const partial = analysisId === 'result-den-25-partial';
+  const ready = (
+    kind: 'summary' | 'flashcards' | 'timestamps' | 'transcript',
+    content: unknown,
+  ) => ({
+    id: `fixture-${kind}`,
+    analysisId,
+    userId: 'fixture-user',
+    kind,
+    status: 'ready' as const,
+    schemaVersion: 1,
+    content,
+    errorCode: null,
+    generatedAt: '2026-07-18T00:00:30.000Z',
+    updatedAt: '2026-07-18T00:00:30.000Z',
+  });
+  const pending = (kind: 'flashcards' | 'transcript') => ({
+    id: `fixture-${kind}`,
+    analysisId,
+    userId: 'fixture-user',
+    kind,
+    status: 'pending' as const,
+    schemaVersion: 1,
+    content: null,
+    errorCode: null,
+    generatedAt: null,
+    updatedAt: '2026-07-18T00:00:30.000Z',
+  });
+  return {
+    job: {
+      id: `job-${analysisId}`,
+      analysisId,
+      userId: 'fixture-user',
+      workflowRunId: null,
+      status: partial ? 'partial' : 'complete',
+      stage: partial ? 'artifacts' : 'complete',
+      attempt: 1,
+      revision: 9,
+      errorCode: null,
+      startedAt: '2026-07-18T00:00:00.000Z',
+      completedAt: '2026-07-18T00:01:00.000Z',
+      createdAt: '2026-07-18T00:00:00.000Z',
+      updatedAt: '2026-07-18T00:01:00.000Z',
+    },
+    events: [],
+    artifacts: [
+      ready('summary', den25Summary),
+      ...(partial
+        ? [
+            pending('flashcards'),
+            ready('timestamps', den25Timestamps),
+            pending('transcript'),
+          ]
+        : [
+            ready('flashcards', den25Flashcards),
+            ready('timestamps', den25Timestamps),
+            ready('transcript', den25Transcript),
+          ]),
+    ],
+    usageReservation: {
+      id: 'result-reservation',
+      jobId: `job-${analysisId}`,
+      userId: 'fixture-user',
+      status: partial ? 'released' : 'settled',
+      updatedAt: '2026-07-18T00:01:00.000Z',
     },
   };
 }
@@ -298,9 +485,19 @@ export default async function FixtureReadinessPage({
   const { id } = await params;
   const { flashcardPreset, outputLocale, summaryPreset } = await searchParams;
   if (!allowedIds.has(id)) notFound();
+  const den25Fixture = id.startsWith('result-den-25');
   const intake = {
     ...fixtureSavedIntake,
     id: resultAnalysisIds[id] ?? id,
+    ...(den25Fixture
+      ? {
+          youtubeVideoId: 'den25fixture',
+          title: 'How purpose becomes consistent action',
+          channelTitle: 'Gleen Local Fixture',
+          durationSeconds: 1_043,
+          thumbnailUrl: '/app-icons.svg',
+        }
+      : {}),
     configuration: {
       ...fixtureSavedIntake.configuration,
       outputLocale:
@@ -330,7 +527,11 @@ export default async function FixtureReadinessPage({
   const snapshot = pipelineFixture
     ? pipelineSnapshot(id, pipelineFixture)
     : null;
-  const result = resultIds.has(id) ? resultSnapshot(id) : null;
+  const result = resultIds.has(id)
+    ? den25Fixture
+      ? den25ResultSnapshot(id)
+      : resultSnapshot(id)
+    : null;
   const retrySnapshot =
     pipelineFixture === 'pipeline-partial' && snapshot
       ? {
@@ -359,6 +560,13 @@ export default async function FixtureReadinessPage({
       {result ? (
         <FixtureResultWorkspace
           initialModel={normalizeResultWorkspace(intake, result)}
+          fixturePlayerStartMs={
+            den25Fixture
+              ? id === 'result-den-25-public'
+                ? 0
+                : den25UserStateSeed.playbackPositionMs
+              : undefined
+          }
         />
       ) : snapshot ? (
         <AnalysisProcessingFixtureScreen
