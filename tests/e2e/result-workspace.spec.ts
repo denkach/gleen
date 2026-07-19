@@ -257,7 +257,10 @@ test('seeks from timestamps and transcript controls', async ({ page }) => {
   await page.getByRole('tab', { name: 'Transcript' }).click();
   await page
     .getByRole('tabpanel', { name: 'Transcript' })
-    .getByRole('button', { name: /00:00.*A prism separates light/i })
+    .getByRole('button', {
+      name: 'Play this moment: 00:00. A video becomes reusable knowledge.',
+      exact: true,
+    })
     .click();
   await expect
     .poll(() =>
