@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { formatResultCopy, type ResultCopy } from '@/lib/result-workspace/copy';
 
@@ -92,11 +92,21 @@ export function PlayerControls({
   const volume = useVideoPlayerSnapshot(selectVolume);
   const muted = useVideoPlayerSnapshot(selectMuted);
   const captionsAvailable = useVideoPlayerSnapshot(selectCaptions);
+  const [fullscreenActive, setFullscreenActive] = useState(false);
   const availableRates = availableRatesValue
     ? availableRatesValue.split(',').map(Number)
     : [];
 
   useEffect(() => onMounted?.(), [onMounted]);
+  useEffect(() => {
+    const updateFullscreenState = () =>
+      setFullscreenActive(Boolean(document.fullscreenElement));
+
+    updateFullscreenState();
+    document.addEventListener('fullscreenchange', updateFullscreenState);
+    return () =>
+      document.removeEventListener('fullscreenchange', updateFullscreenState);
+  }, []);
 
   if (!controller || status !== 'ready') {
     return (
@@ -133,6 +143,19 @@ export function PlayerControls({
     undefined,
   );
   const displayedVolume = muted ? 0 : volume;
+  const toggleFullscreen = () => {
+    if (!fullscreenActive) {
+      void controller.requestFullscreen();
+      return;
+    }
+
+    try {
+      const exitRequest = document.exitFullscreen?.();
+      void exitRequest?.catch(() => undefined);
+    } catch {
+      // Fullscreen support and permissions vary by browser and embedding context.
+    }
+  };
 
   return (
     <>
@@ -262,8 +285,12 @@ export function PlayerControls({
         <button
           className="result-control-button"
           type="button"
-          aria-label={copy.playerEnterFullscreen}
-          onClick={() => void controller.requestFullscreen()}
+          aria-label={
+            fullscreenActive
+              ? copy.playerExitFullscreen
+              : copy.playerEnterFullscreen
+          }
+          onClick={toggleFullscreen}
         >
           <ControlIcon name="fullscreen" />
         </button>

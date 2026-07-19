@@ -1,9 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { resultCopy } from '@/lib/result-workspace/copy';
 
 import { PlayerProvider } from './player-context';
+import { PlayerControls } from './player-controls';
 import type {
   VideoPlayerController,
   VideoPlayerSnapshot,
@@ -52,6 +53,12 @@ beforeEach(() => {
     toggleCaptions: vi.fn(),
     requestFullscreen: vi.fn(async () => undefined),
   };
+});
+
+afterEach(() => {
+  Reflect.deleteProperty(document, 'exitFullscreen');
+  Reflect.deleteProperty(document, 'fullscreenElement');
+  vi.restoreAllMocks();
 });
 
 test('exposes the prototype player controls through native semantic inputs', () => {
@@ -151,4 +158,62 @@ test('unmutes before setting a positive volume', () => {
   expect(
     vi.mocked(controller.toggleMute).mock.invocationCallOrder[0],
   ).toBeLessThan(vi.mocked(controller.setVolume).mock.invocationCallOrder[0]!);
+});
+
+test('tracks fullscreen state, swaps its label, and exits fullscreen', () => {
+  const fullscreenStage = document.createElement('div');
+  let fullscreenElement: Element | null = null;
+  Object.defineProperty(document, 'fullscreenElement', {
+    configurable: true,
+    get: () => fullscreenElement,
+  });
+  const exitFullscreen = vi.fn(async () => undefined);
+  Object.defineProperty(document, 'exitFullscreen', {
+    configurable: true,
+    value: exitFullscreen,
+  });
+
+  render(
+    <PlayerProvider controller={controller}>
+      <PlayerControls copy={resultCopy.en} chapters={[]} />
+    </PlayerProvider>,
+  );
+
+  expect(
+    screen.getByRole('button', { name: 'Enter full screen' }),
+  ).toBeVisible();
+
+  fullscreenElement = fullscreenStage;
+  act(() => document.dispatchEvent(new Event('fullscreenchange')));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Exit full screen' }));
+  expect(exitFullscreen).toHaveBeenCalledOnce();
+  expect(controller.requestFullscreen).not.toHaveBeenCalled();
+
+  fullscreenElement = null;
+  act(() => document.dispatchEvent(new Event('fullscreenchange')));
+  expect(
+    screen.getByRole('button', { name: 'Enter full screen' }),
+  ).toBeVisible();
+});
+
+test('cleans up its fullscreenchange listener', () => {
+  const addEventListener = vi.spyOn(document, 'addEventListener');
+  const removeEventListener = vi.spyOn(document, 'removeEventListener');
+  const view = render(
+    <PlayerProvider controller={controller}>
+      <PlayerControls copy={resultCopy.en} chapters={[]} />
+    </PlayerProvider>,
+  );
+  const fullscreenListener = addEventListener.mock.calls.find(
+    ([eventName]) => eventName === 'fullscreenchange',
+  )?.[1];
+
+  expect(fullscreenListener).toBeDefined();
+  view.unmount();
+
+  expect(removeEventListener).toHaveBeenCalledWith(
+    'fullscreenchange',
+    fullscreenListener,
+  );
 });

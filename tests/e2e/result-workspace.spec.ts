@@ -141,10 +141,13 @@ test('keeps the complete custom controlbar reachable in fullscreen', async ({
   await expect(page.getByRole('slider', { name: 'Volume' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Mute' })).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Enter full screen' }),
+    page.getByRole('button', { name: 'Exit full screen' }),
   ).toBeVisible();
 
-  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Exit full screen' }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.fullscreenElement === null))
+    .toBe(true);
 });
 
 test('result workspace is result-only with zero processing spectra', async ({
