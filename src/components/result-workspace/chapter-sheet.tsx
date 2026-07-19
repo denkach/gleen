@@ -29,6 +29,7 @@ export function ChapterSheet({
   copy,
   onOpenChange,
   open,
+  responsiveFallbackRef,
   restoreFocusRef,
 }: Readonly<{
   analysisId: string;
@@ -36,6 +37,7 @@ export function ChapterSheet({
   copy: ResultCopy;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  responsiveFallbackRef: RefObject<HTMLElement | null>;
   restoreFocusRef?: RefObject<HTMLElement | null>;
 }>) {
   const controller = useVideoPlayer();
@@ -55,6 +57,7 @@ export function ChapterSheet({
       onOpenChange={onOpenChange}
       title={copy.sheetChaptersTitle}
       closeLabel={copy.sheetClose}
+      responsiveFallbackRef={responsiveFallbackRef}
       restoreFocusRef={restoreFocusRef}
     >
       <ol className="result-chapter-sheet-list">

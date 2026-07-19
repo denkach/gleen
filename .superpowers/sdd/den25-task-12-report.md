@@ -8,7 +8,8 @@ Implemented the approved mobile result-workspace study flow without adding a sec
 - mobile result navigation provides Overview, Summary, Flashcards, Timestamps, and More, with Transcript and Export in a Radix-backed bottom sheet;
 - a controller-backed mini-player appears after less than 40% of the full player is visible and reuses the existing player controller for play/pause, chapter access, and expansion;
 - mobile Chapters uses the same bottom-sheet primitive, seeks the shared controller, starts playback, and restores focus after close;
-- mini-player, mobile navigation, chapter trigger, and Chapters sheet mount only while the result media query is at or below 620px; moving above the breakpoint closes an open sheet, releases its scroll lock, and restores focus to a visible full-player control;
+- mini-player, mobile navigation, chapter trigger, and Chapters sheet mount only while the result media query is at or below 620px; moving above the breakpoint closes an open sheet, releases its scroll lock, and restores focus to the stable result workspace;
+- ordinary More and Chapters closes restore their visible mobile trigger with `focus({ preventScroll: true })`; responsive teardown for either sheet restores the stable result workspace instead, without changing scroll position or the artifact hash;
 - per-analysis, per-artifact scroll positions are stored in session storage, restored in `requestAnimationFrame`, and clamped without rewriting the artifact hash;
 - horizontal swipe navigation uses the approved 56 px / 1.4 ratio and rejects form controls, buttons, sliders, swipe guards, horizontal scrollers, and active text selections;
 - safe-area, reduced-motion, keyboard focus, and 44 px touch-target behavior is covered by the reference stylesheet and tests.
@@ -43,8 +44,8 @@ No production dependency was added. The existing Radix Dialog primitive is reuse
 
 - Focused hook and AppShell tests: 4 files, 20 tests passed.
 - Related hooks, AppShell, and result stylesheet suites: 5 files, 33 tests passed.
-- Complete result-workspace unit/integration suite: 62 tests passed.
-- Full Vitest suite: 103 files, 798 tests passed.
+- Complete result-workspace unit/integration suite: 63 tests passed.
+- Full Vitest suite: 103 files, 799 tests passed.
 - `npm run format:check`: passed.
 - `npm run lint`: passed with zero warnings.
 - `npm run typecheck`: passed.
@@ -59,7 +60,7 @@ The plain `npm run build` first stopped at the repository's intentional required
 
 The in-app browser sandbox was intentionally skipped per the task brief. Verification used external Playwright instead.
 
-The earlier combined desktop/tablet/mobile geometry attempt on port 3017 resolved a legacy `.source-panel` DOM even though this worktree renders `.result-source-column`, consistent with a stale reused local server. That stale-port result is not counted as passing evidence in this report. The review-requested mobile durable flow was rerun twice on clean port 3063 and passed both times. Unit, focused integration, reduced-motion browser, clean-port mobile browser, lint, type, format, and production build checks are green.
+The earlier combined desktop/tablet/mobile geometry attempt on port 3017 resolved a legacy `.source-panel` DOM even though this worktree renders `.result-source-column`, consistent with a stale reused local server. That stale-port result is not counted as passing evidence in this report. The review-requested mobile durable flow passed again on clean port 3063 after the final focus changes. Unit, focused integration, reduced-motion browser, clean-port mobile browser, lint, type, format, and production build checks are green.
 
 ## React review
 

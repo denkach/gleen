@@ -599,6 +599,13 @@ describe('ResultWorkspace', () => {
       }),
     );
     const viewport = stubMobileResultViewport(false);
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      writable: true,
+      value: 480,
+    });
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
     const analytics: unknown[] = [];
     const onAnalytics = (event: Event) =>
       analytics.push((event as CustomEvent).detail);
@@ -611,9 +618,15 @@ describe('ResultWorkspace', () => {
         expect(callbacks).toHaveLength(1);
         return document.querySelector('.result-player-stage') as HTMLElement;
       });
-      const fullPlayerControl = playerStage.querySelector(
-        '.result-center-play',
-      ) as HTMLButtonElement;
+      const workspace = document.querySelector(
+        '.result-workspace',
+      ) as HTMLElement;
+      const workspaceFocus = vi.spyOn(workspace, 'focus');
+      const scrollIntoView = vi.fn();
+      Object.defineProperty(workspace, 'scrollIntoView', {
+        configurable: true,
+        value: scrollIntoView,
+      });
       act(() =>
         callbacks[0](
           [
@@ -657,9 +670,9 @@ describe('ResultWorkspace', () => {
         ),
       ).toHaveLength(1);
 
-      const chapterTrigger = document.querySelector(
-        '.result-mobile-chapters-trigger',
-      ) as HTMLButtonElement;
+      const chapterTrigger = within(
+        screen.getByTestId('mobile-mini-player'),
+      ).getByRole('button', { name: resultCopy.en.playerChapters });
       await user.click(chapterTrigger);
       expect(
         screen.getByRole('dialog', { name: resultCopy.en.sheetChaptersTitle }),
@@ -680,7 +693,12 @@ describe('ResultWorkspace', () => {
         document.querySelector('.result-mobile-navigation'),
       ).not.toBeInTheDocument();
       expect(document.body).not.toHaveAttribute('data-scroll-locked');
-      expect(fullPlayerControl).toHaveFocus();
+      expect(workspaceFocus).toHaveBeenCalledWith({ preventScroll: true });
+      expect(workspace).toHaveFocus();
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(window.scrollY).toBe(480);
+      expect(window.location.hash).toBe('#overview');
       expect(
         analytics.filter(
           (event) =>
@@ -691,6 +709,57 @@ describe('ResultWorkspace', () => {
     } finally {
       window.removeEventListener('gleen:analytics', onAnalytics);
     }
+  });
+
+  it('restores More to the visible workspace without scrolling when the mobile breakpoint exits', async () => {
+    const viewport = stubMobileResultViewport(true);
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      writable: true,
+      value: 640,
+    });
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    window.history.replaceState(null, '', '/app/video/result#summary');
+    const user = userEvent.setup();
+    renderWorkspace();
+    const navigation = await waitFor(() =>
+      document.querySelector('.result-mobile-navigation'),
+    );
+    const workspace = document.querySelector(
+      '.result-workspace',
+    ) as HTMLElement;
+    const workspaceFocus = vi.spyOn(workspace, 'focus');
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(workspace, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    await user.click(
+      within(navigation as HTMLElement).getByRole('button', {
+        name: resultCopy.en.tabMore,
+      }),
+    );
+    expect(
+      screen.getByRole('dialog', { name: resultCopy.en.sheetMoreTitle }),
+    ).toBeVisible();
+
+    act(() => viewport.setMatches(false));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: resultCopy.en.sheetMoreTitle }),
+      ).not.toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(workspaceFocus).toHaveBeenCalledWith({ preventScroll: true }),
+    );
+    expect(workspace).toHaveFocus();
+    expect(document.body).not.toHaveAttribute('data-scroll-locked');
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(window.scrollY).toBe(640);
+    expect(window.location.hash).toBe('#summary');
   });
 
   it('opens localized More and Chapters sheets with selection, Escape, and focus restoration', async () => {
@@ -716,13 +785,21 @@ describe('ResultWorkspace', () => {
       'button',
       { name: resultCopy.en.tabMore },
     );
+    const moreFocus = vi.spyOn(moreTrigger, 'focus');
     await user.click(moreTrigger);
     const moreSheet = screen.getByRole('dialog', {
       name: resultCopy.en.sheetMoreTitle,
     });
     expect(moreSheet.querySelector('.result-sheet-handle')).not.toBeNull();
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(moreFocus).toHaveBeenCalledWith({ preventScroll: true }),
+    );
+    await user.click(moreTrigger);
     await user.click(
-      within(moreSheet).getByRole('button', {
+      within(
+        screen.getByRole('dialog', { name: resultCopy.en.sheetMoreTitle }),
+      ).getByRole('button', {
         name: resultCopy.en.tabTranscript,
       }),
     );
@@ -734,6 +811,7 @@ describe('ResultWorkspace', () => {
     const chapterTrigger = document.querySelector(
       '.result-mobile-chapters-trigger',
     ) as HTMLButtonElement;
+    const chapterFocus = vi.spyOn(chapterTrigger, 'focus');
     expect(chapterTrigger).not.toBeNull();
     await user.click(chapterTrigger);
     const chapterSheet = screen.getByRole('dialog', {
@@ -747,6 +825,9 @@ describe('ResultWorkspace', () => {
     );
     expect(controller.seekTo).toHaveBeenCalledWith(755_000);
     expect(controller.play).toHaveBeenCalledOnce();
+    await waitFor(() =>
+      expect(chapterFocus).toHaveBeenCalledWith({ preventScroll: true }),
+    );
     expect(
       screen.queryByRole('dialog', { name: resultCopy.en.sheetChaptersTitle }),
     ).not.toBeInTheDocument();

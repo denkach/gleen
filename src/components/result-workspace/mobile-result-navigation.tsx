@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 
 import { trackResultEvent } from '@/lib/analytics/result-events';
 import type { ResultCopy } from '@/lib/result-workspace/copy';
@@ -45,11 +45,13 @@ export function MobileResultNavigation({
   copy,
   items,
   onSelect,
+  responsiveFallbackRef,
 }: Readonly<{
   activeArtifact: ResultArtifact;
   copy: ResultCopy;
   items: readonly ResultNavigationItem[];
   onSelect: (artifact: ResultArtifact) => void;
+  responsiveFallbackRef: RefObject<HTMLElement | null>;
 }>) {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreTriggerRef = useRef<HTMLButtonElement>(null);
@@ -99,6 +101,7 @@ export function MobileResultNavigation({
         onOpenChange={setMoreOpen}
         title={copy.sheetMoreTitle}
         closeLabel={copy.sheetClose}
+        responsiveFallbackRef={responsiveFallbackRef}
         restoreFocusRef={moreTriggerRef}
       >
         <div className="result-sheet-destinations">

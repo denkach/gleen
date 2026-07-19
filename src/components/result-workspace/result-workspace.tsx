@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type RefObject,
 } from 'react';
 import type {
   ResultMutationState,
@@ -70,6 +71,7 @@ type ResultArtifactsProps = Readonly<{
   favorite: boolean;
   favoritePending: boolean;
   mobileResultLayout: boolean;
+  workspaceFocusRef: RefObject<HTMLElement | null>;
   onFavorite?: () => void;
   onShare?: () => void;
   saveFlashcardReview?: MutationAction;
@@ -187,6 +189,7 @@ function ResultArtifacts({
   favorite,
   favoritePending,
   mobileResultLayout,
+  workspaceFocusRef,
   onFavorite,
   onShare,
   saveFlashcardReview,
@@ -304,7 +307,12 @@ function ResultArtifacts({
     { value: 'export', label: copy.tabExport },
   ];
   return (
-    <section className="result-workspace" aria-label={copy.workspaceLabel}>
+    <section
+      ref={workspaceFocusRef}
+      className="result-workspace"
+      aria-label={copy.workspaceLabel}
+      tabIndex={-1}
+    >
       <Tabs value={tab} onValueChange={selectTab}>
         <ResultHeader
           title={
@@ -466,6 +474,7 @@ function ResultArtifacts({
             copy={copy}
             items={triggers}
             onSelect={selectTab}
+            responsiveFallbackRef={workspaceFocusRef}
           />
         ) : null}
       </Tabs>
@@ -548,6 +557,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
   const parentController = useVideoPlayer();
   const lifecycleKey = model.source.intakeId;
   const playerStageRef = useRef<HTMLDivElement>(null);
+  const workspaceFocusRef = useRef<HTMLElement>(null);
   const chapterSheetTriggerRef = useRef<HTMLElement | null>(null);
   const playerVisible = usePlayerVisibility(playerStageRef);
   const [controllerState, setControllerState] = useState<{
@@ -668,10 +678,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
   const handleMobileResultLayoutChange = useCallback(
     (mobile: boolean) => {
       if (mobile || !chapterSheetOpen) return;
-      chapterSheetTriggerRef.current =
-        playerStageRef.current?.querySelector<HTMLElement>(
-          '.result-center-play, .result-control-button:not(:disabled)',
-        ) ?? null;
+      chapterSheetTriggerRef.current = workspaceFocusRef.current;
       setChapterSheetOpen(false);
     },
     [chapterSheetOpen, setChapterSheetOpen],
@@ -739,6 +746,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           favorite={favorite}
           favoritePending={favoritePending}
           mobileResultLayout={mobileResultLayout}
+          workspaceFocusRef={workspaceFocusRef}
           onFavorite={favoriteAction}
           onShare={props.onShare}
           saveFlashcardReview={props.saveFlashcardReview}
@@ -761,6 +769,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
             copy={copy}
             open={chapterSheetOpen}
             onOpenChange={setChapterSheetOpen}
+            responsiveFallbackRef={workspaceFocusRef}
             restoreFocusRef={chapterSheetTriggerRef}
           />
         ) : null}

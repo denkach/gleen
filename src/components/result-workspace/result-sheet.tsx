@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode, RefObject } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
 import { cx } from '@/lib/cx';
@@ -11,6 +11,7 @@ export function ResultSheet({
   closeLabel,
   onOpenChange,
   open,
+  responsiveFallbackRef,
   restoreFocusRef,
   title,
 }: Readonly<{
@@ -19,9 +20,25 @@ export function ResultSheet({
   closeLabel: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  responsiveFallbackRef?: RefObject<HTMLElement | null>;
   restoreFocusRef?: RefObject<HTMLElement | null>;
   title: string;
 }>) {
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+  useEffect(
+    () => () => {
+      if (!openRef.current) return;
+      queueMicrotask(() => {
+        const fallback = responsiveFallbackRef?.current;
+        if (fallback?.isConnected) fallback.focus({ preventScroll: true });
+      });
+    },
+    [responsiveFallbackRef],
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -30,9 +47,10 @@ export function ResultSheet({
         description={title}
         data-swipe-guard
         onCloseAutoFocus={(event) => {
-          if (!restoreFocusRef?.current) return;
           event.preventDefault();
-          restoreFocusRef.current.focus();
+          const target =
+            restoreFocusRef?.current ?? responsiveFallbackRef?.current;
+          target?.focus({ preventScroll: true });
         }}
       >
         <span className="result-sheet-handle" aria-hidden="true" />
