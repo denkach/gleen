@@ -267,9 +267,6 @@ describe('DEN-25 atomic result Share migration', () => {
       'when public.analysis_shares.revoked_at is null then public.analysis_shares.token',
     );
     expect(atomicSql).toContain('else excluded.token');
-    expect(atomicSql).toMatch(
-      /revoked_at = pg_catalog\.coalesce\(\s*public\.analysis_shares\.revoked_at,\s*pg_catalog\.now\(\)\s*\)/,
-    );
   });
 
   it('allows only authenticated callers to execute owner Share RPCs', () => {
@@ -357,5 +354,35 @@ describe('DEN-25 service-role privilege hardening migration', () => {
     }
 
     expect(hardeningSql).not.toMatch(/grant [^;]+ to service_role;/);
+  });
+});
+
+describe('DEN-25 Share revoke correction migration', () => {
+  const migrationsDirectory = join(process.cwd(), 'supabase', 'migrations');
+  const filename = readdirSync(migrationsDirectory).find((entry) =>
+    entry.endsWith('_den_25_fix_share_revoke.sql'),
+  );
+
+  it('uses SQL COALESCE without an invalid pg_catalog qualifier', () => {
+    expect(filename).toBeDefined();
+    const correctionSql = readFileSync(
+      join(migrationsDirectory, filename!),
+      'utf8',
+    );
+
+    expect(correctionSql).toContain(
+      'create or replace function public.revoke_owned_result_share',
+    );
+    expect(correctionSql).toMatch(
+      /revoked_at = coalesce\(\s*public\.analysis_shares\.revoked_at,\s*pg_catalog\.now\(\)\s*\)/,
+    );
+    expect(correctionSql).toContain('return coalesce(revoked, false);');
+    expect(correctionSql).not.toContain('pg_catalog.coalesce');
+    expect(correctionSql).toContain(
+      'revoke all on function public.revoke_owned_result_share(uuid) from PUBLIC, anon, service_role;',
+    );
+    expect(correctionSql).toContain(
+      'grant execute on function public.revoke_owned_result_share(uuid) to authenticated;',
+    );
   });
 });
