@@ -2034,14 +2034,14 @@ body:has(.result-page-layout) {
 }
 
 .result-export-destination[data-active='true'] {
-  border-color: color-mix(in srgb, var(--artifact-flashcards) 55%, transparent);
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--artifact-flashcards) 14%, transparent),
-    color-mix(in srgb, var(--result-surface-deep) 96%, transparent)
+  border-color: color-mix(in srgb, var(--artifact-export) 55%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--artifact-export) 9%,
+    var(--result-surface-deep)
   );
   box-shadow: 0 0 0 1px
-    color-mix(in srgb, var(--artifact-flashcards) 6%, transparent);
+    color-mix(in srgb, var(--artifact-export) 6%, transparent);
 }
 
 .result-export-destination:disabled {
@@ -2051,7 +2051,7 @@ body:has(.result-page-layout) {
 
 .result-export-destination-icon {
   display: block;
-  color: color-mix(in srgb, var(--artifact-flashcards) 62%, var(--result-text));
+  color: color-mix(in srgb, var(--artifact-export) 62%, var(--result-text));
   font: 24px/1 var(--font-display);
 }
 
@@ -2179,12 +2179,9 @@ body:has(.result-page-layout) {
   bottom: -70px;
   width: 160px;
   height: 160px;
-  background: conic-gradient(
-    from 230deg,
-    transparent,
-    color-mix(in srgb, var(--artifact-flashcards) 23%, transparent),
-    color-mix(in srgb, var(--artifact-timestamps) 12%, transparent),
-    color-mix(in srgb, var(--artifact-summary) 16%, transparent),
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--artifact-export) 14%, transparent),
     transparent 66%
   );
   content: '';
@@ -2208,14 +2205,13 @@ body:has(.result-page-layout) {
   margin-top: 13px;
   border: 0;
   border-radius: 11px;
-  background: linear-gradient(
-    100deg,
-    color-mix(in srgb, var(--artifact-flashcards) 82%, var(--result-text)),
-    color-mix(in srgb, var(--artifact-timestamps) 70%, var(--result-text)),
-    color-mix(in srgb, var(--artifact-export) 72%, var(--result-text))
+  background: color-mix(
+    in srgb,
+    var(--artifact-export) 78%,
+    var(--result-text)
   );
   box-shadow: 0 10px 30px
-    color-mix(in srgb, var(--artifact-timestamps) 11%, transparent);
+    color-mix(in srgb, var(--artifact-export) 11%, transparent);
   color: var(--background-deep);
   font-weight: 750;
   cursor: pointer;

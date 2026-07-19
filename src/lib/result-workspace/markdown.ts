@@ -36,6 +36,75 @@ function unavailableSection(lines: string[], label: string): void {
   lines.push('', `## ${label} unavailable`, '', `_${label} is unavailable._`);
 }
 
+function contentKey(value: string): string {
+  return plainText(value).normalize('NFKC').toLowerCase().replace(/\s+/g, ' ');
+}
+
+function yamlDoubleQuoted(value: string): string {
+  return `"${value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]+/g, ' ')}"`;
+}
+
+function obsidianWikiTarget(value: string): string {
+  return (
+    plainText(value)
+      .normalize('NFKC')
+      .replace(/[\[\]|/\\#^\r\n]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim() || 'Source video'
+  );
+}
+
+function pushSummary(
+  lines: string[],
+  model: ResultWorkspaceModel,
+): ReadonlySet<string> {
+  if (model.tabs.summary.status !== 'ready') return new Set();
+  const summary = model.tabs.summary.data;
+  const represented = new Set<string>();
+  const outcome = plainText(summary.outcome);
+  const overview = plainText(summary.overview);
+
+  lines.push('', '## Summary', '', `### ${plainText(summary.title)}`);
+  represented.add(contentKey(summary.title));
+  if (outcome) {
+    lines.push('', `**Outcome:** ${outcome}`);
+    represented.add(contentKey(outcome));
+  }
+  if (overview && contentKey(overview) !== contentKey(outcome)) {
+    lines.push('', overview);
+    represented.add(contentKey(overview));
+  }
+
+  for (const section of summary.sections) {
+    const sectionSummary = plainText(section.summary);
+    const details = plainText(section.details);
+    lines.push('', `### ${plainText(section.title)}`);
+    represented.add(contentKey(section.title));
+    if (sectionSummary) {
+      lines.push('', sectionSummary);
+      represented.add(contentKey(sectionSummary));
+    }
+    if (details && contentKey(details) !== contentKey(sectionSummary)) {
+      lines.push('', details);
+      represented.add(contentKey(details));
+    }
+    if (section.supportingQuote) {
+      lines.push('', `> ${plainText(section.supportingQuote)}`);
+      represented.add(contentKey(section.supportingQuote));
+    }
+    if (section.sourceOffsetMs !== null) {
+      lines.push(
+        '',
+        `[Source moment ${timecode(section.sourceOffsetMs)}](${sourceUrl(model, section.sourceOffsetMs)})`,
+      );
+    }
+  }
+  return represented;
+}
+
 export function serializeExport(
   model: ResultWorkspaceModel,
   destination: ExportDestination,
@@ -47,10 +116,19 @@ export function serializeExport(
   const lines: string[] = [];
 
   if (selection.metadata) {
+    const title = plainText(model.source.title);
     if (destination === 'obsidian') {
-      lines.push('---', `source: "${source}"`, 'type: gleen-result', '---', '');
+      lines.push(
+        '---',
+        `title: ${yamlDoubleQuoted(title)}`,
+        `source: ${yamlDoubleQuoted(source)}`,
+        'source_type: youtube',
+        'type: gleen-result',
+        '---',
+        '',
+      );
     }
-    lines.push(`# ${plainText(model.source.title)}`, '');
+    lines.push(`# ${title}`, '');
     if (destination === 'notebooklm') {
       lines.push('> NotebookLM source document', '');
     }
@@ -62,19 +140,17 @@ export function serializeExport(
     if (model.tabs.transcript.status === 'ready') {
       lines.push(`Language: ${plainText(model.tabs.transcript.data.language)}`);
     }
+    if (destination === 'obsidian') {
+      lines.push(
+        `Obsidian source: [[YouTube - ${obsidianWikiTarget(title)}|Source video]]`,
+      );
+    }
   }
 
+  let representedSummaryContent: ReadonlySet<string> = new Set();
   if (selection.summary) {
     if (model.tabs.summary.status === 'ready') {
-      const summary = model.tabs.summary.data;
-      lines.push(
-        '',
-        '## Summary',
-        '',
-        `### ${plainText(summary.title)}`,
-        '',
-        plainText(summary.overview),
-      );
+      representedSummaryContent = pushSummary(lines, model);
     } else {
       unavailableSection(lines, 'Summary');
     }
@@ -82,8 +158,20 @@ export function serializeExport(
 
   if (selection.keyTakeaways) {
     if (model.tabs.summary.status === 'ready') {
-      lines.push('', '## Key takeaways');
-      for (const point of model.tabs.summary.data.keyPoints) {
+      const points = model.tabs.summary.data.keyPoints.filter(
+        (point) => !representedSummaryContent.has(contentKey(point.text)),
+      );
+      if (points.length > 0) {
+        lines.push('', '## Key takeaways');
+      } else if (selection.summary) {
+        lines.push(
+          '',
+          '## Key takeaways',
+          '',
+          '_Included in the structured summary above._',
+        );
+      }
+      for (const point of points) {
         const citation =
           point.sourceOffsetMs === null
             ? ''
@@ -112,7 +200,10 @@ export function serializeExport(
   }
 
   if (selection.transcript) {
-    if (model.tabs.transcript.status === 'ready') {
+    if (
+      model.tabs.transcript.status === 'ready' &&
+      model.tabs.transcript.data.segments.length > 0
+    ) {
       lines.push('', '## Transcript');
       for (const segment of model.tabs.transcript.data.segments) {
         const speaker = segment.speakerLabel
@@ -138,13 +229,12 @@ export function exportFilename(
   model: ResultWorkspaceModel,
   destination: ExportDestination,
 ): string {
-  const slug = plainText(model.source.title)
-    .normalize('NFKD')
-    .toLocaleLowerCase()
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
+  const normalizedSlug = plainText(model.source.title)
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[^\p{Letter}\p{Number}]+/gu, '-')
+    .replace(/^-+|-+$/g, '');
+  const slug = Array.from(normalizedSlug).slice(0, 80).join('');
   const destinationSuffix =
     destination === 'notebooklm' ? 'notebooklm-source' : destination;
   return `${slug || 'gleen-result'}-${destinationSuffix}.md`;

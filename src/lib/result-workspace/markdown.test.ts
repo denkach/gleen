@@ -212,6 +212,78 @@ describe('serializeExport', () => {
     expect(keyTakeawaysOnly).not.toContain('Source:');
   });
 
+  it('acknowledges takeaways already represented by a selected summary', () => {
+    const output = serializeExport(model, 'markdown', {
+      summary: true,
+      keyTakeaways: true,
+      chapters: false,
+      transcript: false,
+      metadata: false,
+    });
+
+    expect(output).toContain(
+      '## Key takeaways\n\n_Included in the structured summary above._',
+    );
+    expect(output.match(/Legacy text remains readable\./g)).toHaveLength(2);
+    expect(output.match(/Sources remain grounded\./g)).toHaveLength(2);
+  });
+
+  it('exports every structured summary field and avoids repeated takeaways', () => {
+    if (model.tabs.summary.status !== 'ready') {
+      throw new Error('Expected a ready summary fixture');
+    }
+    const structuredModel: ResultWorkspaceModel = {
+      ...model,
+      tabs: {
+        ...model.tabs,
+        summary: {
+          status: 'ready',
+          data: {
+            ...model.tabs.summary.data,
+            sections: [
+              {
+                title: 'Refraction in practice',
+                summary: 'A prism separates a source into useful outputs.',
+                details: 'The outputs remain traceable to the original source.',
+                supportingQuote: 'Every useful claim stays grounded.',
+                sourceOffsetMs: 75_000,
+              },
+            ],
+            keyPoints: [
+              {
+                text: 'A prism separates a source into useful outputs.',
+                sourceOffsetMs: 75_000,
+              },
+              { text: 'A distinct takeaway.', sourceOffsetMs: null },
+            ],
+          },
+        },
+      },
+    };
+
+    const output = serializeExport(structuredModel, 'markdown', {
+      summary: true,
+      keyTakeaways: true,
+      chapters: false,
+      transcript: false,
+      metadata: false,
+    });
+
+    expect(output).toContain('### Refraction in practice');
+    expect(output).toContain('A prism separates a source into useful outputs.');
+    expect(output).toContain(
+      'The outputs remain traceable to the original source.',
+    );
+    expect(output).toContain('> Every useful claim stays grounded.');
+    expect(output).toContain(
+      '[Source moment 1:15](https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=75s)',
+    );
+    expect(
+      output.match(/A prism separates a source into useful outputs\./g),
+    ).toHaveLength(1);
+    expect(output).toContain('## Key takeaways\n- A distinct takeaway.');
+  });
+
   it('adds only truthful destination-specific document syntax', () => {
     const markdown = serializeExport(model, 'markdown', selection);
     const obsidian = serializeExport(model, 'obsidian', selection);
@@ -219,8 +291,12 @@ describe('serializeExport', () => {
 
     expect(markdown).not.toMatch(/^---/);
     expect(markdown).not.toContain('NotebookLM source document');
-    expect(obsidian).toMatch(
-      /^---\nsource: "https:\/\/www\.youtube\.com\/watch\?v=dQw4w9WgXcQ"\ntype: gleen-result\n---/,
+    expect(obsidian).toMatch(/^---\ntitle: "Light alert\(1\) & learning"/);
+    expect(obsidian).toContain(
+      'source: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"',
+    );
+    expect(obsidian).toContain(
+      '[[YouTube - Light alert(1) & learning|Source video]]',
     );
     expect(notebookLm).toContain('> NotebookLM source document');
     expect(notebookLm).not.toMatch(/^---/);
@@ -291,6 +367,56 @@ describe('serializeExport', () => {
     expect(output).not.toMatch(/## Summary\n\n##/);
   });
 
+  it('reports a ready transcript with zero segments as unavailable', () => {
+    const transcriptFixture = model.tabs.transcript;
+    if (transcriptFixture.status !== 'ready') {
+      throw new Error('Expected a ready transcript fixture');
+    }
+    const emptyTranscriptModel: ResultWorkspaceModel = {
+      ...model,
+      tabs: {
+        ...model.tabs,
+        transcript: {
+          status: 'ready',
+          data: { ...transcriptFixture.data, segments: [] },
+        },
+      },
+    };
+
+    const output = serializeExport(emptyTranscriptModel, 'markdown', {
+      summary: false,
+      keyTakeaways: false,
+      chapters: false,
+      transcript: true,
+      metadata: false,
+    });
+
+    expect(output).toContain('## Transcript unavailable');
+    expect(output).not.toMatch(/^## Transcript$/m);
+  });
+
+  it('escapes Obsidian properties and wiki-link targets safely', () => {
+    const unsafeTitleModel: ResultWorkspaceModel = {
+      ...model,
+      source: {
+        ...model.source,
+        title: 'Notes "one" ]] | / \\ next',
+      },
+    };
+
+    const output = serializeExport(unsafeTitleModel, 'obsidian', {
+      summary: false,
+      keyTakeaways: false,
+      chapters: false,
+      transcript: false,
+      metadata: true,
+    });
+
+    expect(output).toContain('title: "Notes \\"one\\" ]] | / \\\\ next"');
+    expect(output).toContain('[[YouTube - Notes "one" next|Source video]]');
+    expect(output).not.toContain('[[YouTube - Notes "one" ]]');
+  });
+
   it('returns no bytes for an empty selection', () => {
     expect(
       serializeExport(model, 'markdown', {
@@ -314,4 +440,20 @@ describe('serializeExport', () => {
       'light-alert-1-learning-notebooklm-source.md',
     );
   });
+
+  it.each([
+    ['Призма і знання', 'призма-і-знання-markdown.md'],
+    ['ПРИЗМА ТА ЗНАННЯ', 'призма-та-знання-markdown.md'],
+    ['  ../Prism\\notes: one?  ', 'prism-notes-one-markdown.md'],
+  ])(
+    'preserves Unicode letters and strips unsafe separators from %s',
+    (title, filename) => {
+      expect(
+        exportFilename(
+          { ...model, source: { ...model.source, title } },
+          'markdown',
+        ),
+      ).toBe(filename);
+    },
+  );
 });

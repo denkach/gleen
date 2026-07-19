@@ -26,6 +26,22 @@ type ExportMessage = Readonly<{
 
 type SelectionKey = keyof ExportSelection;
 
+export type ExportUiState = Readonly<{
+  destination: ExportDestination;
+  selection: ExportSelection;
+}>;
+
+export const initialExportUiState: ExportUiState = {
+  destination: 'markdown',
+  selection: {
+    summary: true,
+    keyTakeaways: true,
+    chapters: true,
+    transcript: false,
+    metadata: true,
+  },
+};
+
 function unavailableCopy(state: UnavailableTab, copy: ResultCopy): string {
   switch (state.reason) {
     case 'pending':
@@ -48,29 +64,46 @@ function unavailableReason<T>(
   return tab.status === 'ready' ? undefined : unavailableCopy(tab, copy);
 }
 
-function initialSelection(model: ResultWorkspaceModel): ExportSelection {
+function transcriptUnavailableReason(
+  model: ResultWorkspaceModel,
+  copy: ResultCopy,
+): string | undefined {
+  const transcript = model.tabs.transcript;
+  if (transcript.status !== 'ready') return unavailableCopy(transcript, copy);
+  return transcript.data.segments.length === 0 ? copy.stateMissing : undefined;
+}
+
+function availableSelection(
+  model: ResultWorkspaceModel,
+  selection: ExportSelection,
+): ExportSelection {
   const summaryReady = model.tabs.summary.status === 'ready';
   return {
-    summary: summaryReady,
-    keyTakeaways: summaryReady,
-    chapters: model.tabs.timestamps.status === 'ready',
-    transcript: false,
-    metadata: true,
+    summary: summaryReady && selection.summary,
+    keyTakeaways: summaryReady && selection.keyTakeaways,
+    chapters: model.tabs.timestamps.status === 'ready' && selection.chapters,
+    transcript:
+      model.tabs.transcript.status === 'ready' &&
+      model.tabs.transcript.data.segments.length > 0 &&
+      selection.transcript,
+    metadata: selection.metadata,
   };
 }
 
 export function ExportTab({
   model,
   copy = resultCopy.en,
+  uiState,
+  onUiStateChange,
 }: Readonly<{
   model: ResultWorkspaceModel;
   copy?: ResultCopy;
+  uiState: ExportUiState;
+  onUiStateChange: (nextState: ExportUiState) => void;
 }>) {
-  const [destination, setDestination] = useState<ExportDestination>('markdown');
-  const [selection, setSelection] = useState<ExportSelection>(() =>
-    initialSelection(model),
-  );
   const [message, setMessage] = useState<ExportMessage>();
+  const { destination } = uiState;
+  const selection = availableSelection(model, uiState.selection);
 
   const destinationOptions: readonly Readonly<{
     id: ExportDestination | 'notion';
@@ -133,7 +166,7 @@ export function ExportTab({
       id: 'transcript',
       label: copy.exportIncludeTranscript,
       description: copy.exportIncludeTranscriptDescription,
-      unavailable: unavailableReason(model.tabs.transcript, copy),
+      unavailable: transcriptUnavailableReason(model, copy),
     },
     {
       id: 'metadata',
@@ -226,7 +259,7 @@ export function ExportTab({
             disabled={option.disabled}
             onClick={() => {
               if (option.id !== 'notion') {
-                setDestination(option.id);
+                onUiStateChange({ ...uiState, destination: option.id });
                 setMessage(undefined);
               }
             }}
@@ -266,10 +299,13 @@ export function ExportTab({
                   disabled={Boolean(option.unavailable)}
                   onChange={(event) => {
                     const checked = event.currentTarget.checked;
-                    setSelection((current) => ({
-                      ...current,
-                      [option.id]: checked,
-                    }));
+                    onUiStateChange({
+                      ...uiState,
+                      selection: {
+                        ...uiState.selection,
+                        [option.id]: checked,
+                      },
+                    });
                     setMessage(undefined);
                   }}
                 />

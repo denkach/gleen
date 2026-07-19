@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -5,7 +6,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resultCopy } from '@/lib/result-workspace/copy';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
-import { ExportTab } from './export-tab';
+import {
+  ExportTab,
+  initialExportUiState,
+  type ExportUiState,
+} from './export-tab';
 
 const model: ResultWorkspaceModel = {
   source: {
@@ -99,9 +104,34 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+function ExportTabHarness({
+  value,
+  copy = resultCopy.en,
+}: Readonly<{
+  value: ResultWorkspaceModel;
+  copy?: (typeof resultCopy)[keyof typeof resultCopy];
+}>) {
+  const [uiState, setUiState] = useState<ExportUiState>(initialExportUiState);
+  return (
+    <ExportTab
+      model={value}
+      copy={copy}
+      uiState={uiState}
+      onUiStateChange={setUiState}
+    />
+  );
+}
+
+function renderExportTab(
+  value: ResultWorkspaceModel = model,
+  copy: (typeof resultCopy)[keyof typeof resultCopy] = resultCopy.en,
+) {
+  return render(<ExportTabHarness value={value} copy={copy} />);
+}
+
 describe('ExportTab', () => {
   it('matches the three-step destination, inclusion, preview, action, and privacy composition', () => {
-    render(<ExportTab model={model} copy={resultCopy.en} />);
+    renderExportTab();
 
     expect(
       screen.getByRole('heading', { name: resultCopy.en.exportTitle }),
@@ -143,7 +173,7 @@ describe('ExportTab', () => {
         transcript: { status: 'unavailable', reason: 'missing' },
       },
     };
-    render(<ExportTab model={unavailableModel} copy={resultCopy.en} />);
+    renderExportTab(unavailableModel);
 
     expect(screen.getByRole('checkbox', { name: /Summary/i })).toBeDisabled();
     expect(
@@ -167,7 +197,7 @@ describe('ExportTab', () => {
 
   it('disables export and explains an empty selection', async () => {
     const user = userEvent.setup();
-    render(<ExportTab model={model} copy={resultCopy.en} />);
+    renderExportTab();
 
     for (const checkbox of screen.getAllByRole('checkbox')) {
       if ((checkbox as HTMLInputElement).checked) {
@@ -208,7 +238,7 @@ describe('ExportTab', () => {
     ) {
       downloads.push(this.download);
     });
-    render(<ExportTab model={model} copy={resultCopy.en} />);
+    renderExportTab();
 
     const preview = screen.getByTestId('export-preview').textContent ?? '';
     await user.click(screen.getByRole('button', { name: 'Copy Markdown' }));
@@ -223,7 +253,7 @@ describe('ExportTab', () => {
   });
 
   it('renders disconnected Notion and all surrounding copy in the selected locale', () => {
-    render(<ExportTab model={model} copy={resultCopy.de} />);
+    renderExportTab(model, resultCopy.de);
 
     const notion = screen.getByRole('button', {
       name: new RegExp(
@@ -239,5 +269,29 @@ describe('ExportTab', () => {
     expect(
       screen.getByRole('heading', { name: resultCopy.de.exportTitle }),
     ).toBeVisible();
+  });
+
+  it('disables and unchecks a ready transcript that has no segments', () => {
+    const transcriptFixture = model.tabs.transcript;
+    if (transcriptFixture.status !== 'ready') {
+      throw new Error('Expected a ready transcript fixture');
+    }
+    renderExportTab({
+      ...model,
+      tabs: {
+        ...model.tabs,
+        transcript: {
+          status: 'ready',
+          data: { ...transcriptFixture.data, segments: [] },
+        },
+      },
+    });
+
+    const transcript = screen.getByRole('checkbox', {
+      name: /Full transcript/i,
+    });
+    expect(transcript).toBeDisabled();
+    expect(transcript).not.toBeChecked();
+    expect(screen.getByText(resultCopy.en.stateMissing)).toBeVisible();
   });
 });

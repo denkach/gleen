@@ -25,7 +25,11 @@ import { Tabs, TabsContent, type TabsAccent } from '@/components/ui/tabs';
 
 import { ArtifactState } from './artifact-state';
 import { EditableTitle } from './editable-title';
-import { ExportTab } from './export-tab';
+import {
+  ExportTab,
+  initialExportUiState,
+  type ExportUiState,
+} from './export-tab';
 import { FlashcardsTab } from './flashcards-tab';
 import { OverviewTab } from './overview-tab';
 import { flushPlaybackPositionOnPageHide } from './playback-pagehide-transport';
@@ -62,7 +66,108 @@ type ResultArtifactsProps = Readonly<{
   saveFlashcardReview?: MutationAction;
   transcriptUiState: TranscriptUiState;
   onTranscriptUiStateChange: (nextState: TranscriptUiState) => void;
+  exportUiState: ExportUiState;
+  onExportUiStateChange: (nextState: ExportUiState) => void;
 }>;
+
+function valuesEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (Array.isArray(left) && Array.isArray(right)) {
+    return (
+      left.length === right.length &&
+      left.every((value, index) => valuesEqual(value, right[index]))
+    );
+  }
+  if (
+    left !== null &&
+    right !== null &&
+    typeof left === 'object' &&
+    typeof right === 'object'
+  ) {
+    const leftRecord = left as Record<string, unknown>;
+    const rightRecord = right as Record<string, unknown>;
+    const leftKeys = Object.keys(leftRecord);
+    const rightKeys = Object.keys(rightRecord);
+    return (
+      leftKeys.length === rightKeys.length &&
+      leftKeys.every(
+        (key) =>
+          Object.hasOwn(rightRecord, key) &&
+          valuesEqual(leftRecord[key], rightRecord[key]),
+      )
+    );
+  }
+  return false;
+}
+
+function mergeDraftValue<T>(base: T, draft: T, incoming: T): T {
+  if (valuesEqual(draft, base)) return incoming;
+  if (valuesEqual(incoming, base)) return draft;
+  if (Array.isArray(base) && Array.isArray(draft) && Array.isArray(incoming)) {
+    if (base.length !== draft.length || base.length !== incoming.length) {
+      return draft;
+    }
+    return draft.map((value, index) =>
+      mergeDraftValue(base[index], value, incoming[index]),
+    ) as T;
+  }
+  if (
+    base !== null &&
+    draft !== null &&
+    incoming !== null &&
+    typeof base === 'object' &&
+    typeof draft === 'object' &&
+    typeof incoming === 'object'
+  ) {
+    const baseRecord = base as Record<string, unknown>;
+    const draftRecord = draft as Record<string, unknown>;
+    const incomingRecord = incoming as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(incomingRecord).map((key) => [
+        key,
+        mergeDraftValue(baseRecord[key], draftRecord[key], incomingRecord[key]),
+      ]),
+    ) as T;
+  }
+  return draft;
+}
+
+function reconcileResultDraft(
+  base: ResultWorkspaceModel,
+  draft: ResultWorkspaceModel,
+  incoming: ResultWorkspaceModel,
+): ResultWorkspaceModel {
+  return {
+    ...incoming,
+    source: {
+      ...incoming.source,
+      title: mergeDraftValue(
+        base.source.title,
+        draft.source.title,
+        incoming.source.title,
+      ),
+    },
+    tabs: {
+      ...incoming.tabs,
+      summary: mergeDraftValue(
+        base.tabs.summary,
+        draft.tabs.summary,
+        incoming.tabs.summary,
+      ),
+      flashcards: mergeDraftValue(
+        base.tabs.flashcards,
+        draft.tabs.flashcards,
+        incoming.tabs.flashcards,
+      ),
+      timestamps: mergeDraftValue(
+        base.tabs.timestamps,
+        draft.tabs.timestamps,
+        incoming.tabs.timestamps,
+      ),
+      transcript: incoming.tabs.transcript,
+    },
+  };
+}
 
 function ResultArtifacts({
   model,
@@ -76,9 +181,36 @@ function ResultArtifacts({
   saveFlashcardReview,
   transcriptUiState,
   onTranscriptUiStateChange,
+  exportUiState,
+  onExportUiStateChange,
 }: ResultArtifactsProps) {
   const [tab, setTab] = useState<TabValue>('overview');
-  const [draftModel, setDraftModel] = useState(model);
+  const [draftState, setDraftState] = useState(() => ({
+    base: model,
+    draft: model,
+  }));
+  const reconciledDraftState =
+    draftState.base === model
+      ? draftState
+      : {
+          base: model,
+          draft: reconcileResultDraft(draftState.base, draftState.draft, model),
+        };
+  if (reconciledDraftState !== draftState) {
+    setDraftState(reconciledDraftState);
+  }
+  const draftModel = reconciledDraftState.draft;
+  const setDraftModel = (
+    update: (current: ResultWorkspaceModel) => ResultWorkspaceModel,
+  ) => {
+    setDraftState((current) => {
+      const synchronizedDraft =
+        current.base === model
+          ? current.draft
+          : reconcileResultDraft(current.base, current.draft, model);
+      return { base: model, draft: update(synchronizedDraft) };
+    });
+  };
   const availableArtifacts = useMemo(
     () => getAddressableResultArtifacts(model.tabs),
     [model.tabs],
@@ -288,7 +420,12 @@ function ResultArtifacts({
             )}
           </TabsContent>
           <TabsContent value="export">
-            <ExportTab model={draftModel} copy={copy} />
+            <ExportTab
+              model={draftModel}
+              copy={copy}
+              uiState={exportUiState}
+              onUiStateChange={onExportUiStateChange}
+            />
           </TabsContent>
         </div>
       </Tabs>
@@ -297,23 +434,26 @@ function ResultArtifacts({
 }
 
 function ResultArtifactsStateOwner({
-  artifactRevisionKey,
   ...props
 }: Omit<
   ResultArtifactsProps,
-  'transcriptUiState' | 'onTranscriptUiStateChange'
-> &
-  Readonly<{ artifactRevisionKey: string }>) {
+  | 'transcriptUiState'
+  | 'onTranscriptUiStateChange'
+  | 'exportUiState'
+  | 'onExportUiStateChange'
+>) {
   const [transcriptUiState, setTranscriptUiState] = useState(
     initialTranscriptUiState,
   );
+  const [exportUiState, setExportUiState] = useState(initialExportUiState);
 
   return (
     <ResultArtifacts
-      key={artifactRevisionKey}
       {...props}
       transcriptUiState={transcriptUiState}
       onTranscriptUiStateChange={setTranscriptUiState}
+      exportUiState={exportUiState}
+      onExportUiStateChange={setExportUiState}
     />
   );
 }
@@ -389,7 +529,6 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
     .toISOString()
     .slice(model.source.durationSeconds >= 3600 ? 11 : 14, 19);
   const playbackPositionMs = model.userState?.playbackPositionMs ?? 0;
-  const artifactRevisionKey = `${model.source.intakeId}:${model.revisions.title}:${model.revisions.summary ?? ''}:${model.revisions.flashcards ?? ''}:${model.revisions.timestamps ?? ''}`;
   const initialFavorite = model.userState?.favorite ?? false;
   const [favoriteState, setFavoriteState] = useState<{
     lifecycleKey: string;
@@ -500,7 +639,6 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
         />
         <ResultArtifactsStateOwner
           key={lifecycleKey}
-          artifactRevisionKey={artifactRevisionKey}
           model={model}
           copy={copy}
           saveTitle={props.saveTitle}

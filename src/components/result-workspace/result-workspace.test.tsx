@@ -1257,6 +1257,99 @@ describe('ResultWorkspace', () => {
     );
   });
 
+  it.each([
+    ['unchanged', model.revisions.summary],
+    ['changed', '2026-07-18T00:03:00.000Z'],
+  ])(
+    'reconciles a pending transcript with local drafts when the summary revision is %s',
+    async (_label, summaryRevision) => {
+      const summaryFixture = model.tabs.summary;
+      const transcriptFixture = model.tabs.transcript;
+      if (
+        summaryFixture.status !== 'ready' ||
+        transcriptFixture.status !== 'ready'
+      ) {
+        throw new Error('Expected ready result fixtures');
+      }
+      const user = userEvent.setup();
+      const pendingModel: ResultWorkspaceModel = {
+        ...model,
+        tabs: {
+          ...model.tabs,
+          transcript: { status: 'unavailable', reason: 'pending' },
+        },
+      };
+      const view = renderWorkspace(pendingModel);
+      await user.click(screen.getByRole('tab', { name: 'Summary' }));
+      const title = screen.getByRole('textbox', { name: 'Summary title' });
+      await user.clear(title);
+      await user.type(title, 'Unsaved local summary');
+      await user.click(screen.getByRole('tab', { name: 'Export' }));
+      await user.click(screen.getByRole('button', { name: /Obsidian/i }));
+      expect(
+        screen.getByRole('checkbox', { name: /Full transcript/i }),
+      ).toBeDisabled();
+
+      view.rerender(
+        <PlayerProvider controller={controller}>
+          <ResultWorkspace
+            model={{
+              ...model,
+              revision: model.revision + 1,
+              revisions: { ...model.revisions, summary: summaryRevision },
+              tabs: {
+                ...model.tabs,
+                summary: {
+                  status: 'ready',
+                  data: {
+                    ...summaryFixture.data,
+                    overview: 'Newest server overview',
+                  },
+                },
+                transcript: {
+                  status: 'ready',
+                  data: {
+                    ...transcriptFixture.data,
+                    segments: [
+                      {
+                        text: 'Newest transcript segment.',
+                        offsetMs: 1_000,
+                        durationMs: 2_000,
+                        segmentType: 'other',
+                        speakerLabel: null,
+                      },
+                    ],
+                  },
+                },
+              },
+            }}
+            saveTitle={vi.fn()}
+            saveArtifact={vi.fn()}
+          />
+        </PlayerProvider>,
+      );
+
+      expect(
+        screen.getByRole('button', { name: /^Obsidian/i }),
+      ).toHaveAttribute('aria-pressed', 'true');
+      const transcript = screen.getByRole('checkbox', {
+        name: /Full transcript/i,
+      });
+      expect(transcript).toBeEnabled();
+      expect(transcript).not.toBeChecked();
+      await user.click(transcript);
+      expect(screen.getByTestId('export-preview')).toHaveTextContent(
+        'Unsaved local summary',
+      );
+      expect(screen.getByTestId('export-preview')).toHaveTextContent(
+        'Newest server overview',
+      );
+      expect(screen.getByTestId('export-preview')).toHaveTextContent(
+        'Newest transcript segment.',
+      );
+    },
+  );
+
   it('seeks timestamps and exposes the active chapter', async () => {
     const user = userEvent.setup();
     renderWorkspace();
@@ -1773,6 +1866,51 @@ describe('ResultWorkspace', () => {
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
     expect(click).toHaveBeenCalled();
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:result');
+  });
+
+  it('preserves export choices across tab unmount and resets them for a new analysis', async () => {
+    const user = userEvent.setup();
+    const view = renderWorkspace();
+    await user.click(screen.getByRole('tab', { name: 'Export' }));
+    await user.click(screen.getByRole('button', { name: /Obsidian/i }));
+    await user.click(screen.getByRole('checkbox', { name: /Summary/i }));
+    await user.click(screen.getByRole('tab', { name: 'Overview' }));
+    await user.click(screen.getByRole('tab', { name: 'Export' }));
+
+    expect(screen.getByRole('button', { name: /^Obsidian/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(
+      screen.getByRole('checkbox', { name: /Summary/i }),
+    ).not.toBeChecked();
+
+    view.rerender(
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          model={{
+            ...model,
+            source: {
+              ...model.source,
+              intakeId: 'analysis-b',
+              title: 'Second analysis',
+            },
+          }}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+        />
+      </PlayerProvider>,
+    );
+    await user.click(screen.getByRole('tab', { name: 'Export' }));
+
+    expect(screen.getByRole('button', { name: /^Markdown/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('checkbox', { name: /Summary/i })).toBeChecked();
+    expect(screen.getByTestId('export-preview')).toHaveTextContent(
+      'Second analysis',
+    );
   });
 
   it('exports the current visible title and artifact edits', async () => {

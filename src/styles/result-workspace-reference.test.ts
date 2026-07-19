@@ -125,4 +125,29 @@ describe('DEN-25 result shell geometry', () => {
     expect(css).not.toMatch(/\.result-overview-continue-action:active/);
     expect(css).not.toMatch(/\.result-overview-recommendation > button:active/);
   });
+
+  it('keeps Export controls lime-led without a permanent spectral action gradient', () => {
+    const activeDestination = css.match(
+      /\.result-export-destination\[data-active='true'\]\s*{[^}]*}/,
+    )?.[0];
+    const destinationIcon = css.match(
+      /\.result-export-destination-icon\s*{[^}]*}/,
+    )?.[0];
+    const previewAccent = css.match(
+      /\.result-export-preview::after\s*{[^}]*}/,
+    )?.[0];
+    const action = css.match(/\.result-export-action\s*{[^}]*}/)?.[0];
+
+    for (const rule of [
+      activeDestination,
+      destinationIcon,
+      previewAccent,
+      action,
+    ]) {
+      expect(rule).toContain('var(--artifact-export)');
+      expect(rule).not.toContain('var(--artifact-flashcards)');
+      expect(rule).not.toContain('var(--artifact-timestamps)');
+    }
+    expect(action).not.toContain('linear-gradient');
+  });
 });

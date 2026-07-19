@@ -347,9 +347,11 @@ test('downloads generated Markdown with the rendered artifact content', async ({
   await gotoFixture(page, route);
   await page.getByRole('tab', { name: 'Export' }).click();
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download Markdown' }).click();
+  await page.getByRole('button', { name: 'Export to Markdown' }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('gleen-result.md');
+  expect(download.suggestedFilename()).toBe(
+    'how-one-video-becomes-reusable-knowledge-markdown.md',
+  );
   const stream = await download.createReadStream();
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
