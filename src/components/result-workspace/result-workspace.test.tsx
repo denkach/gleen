@@ -2066,8 +2066,9 @@ describe('ResultWorkspace', () => {
 
   it('renders unknown flashcard progress truthfully and does not coerce it to zero', async () => {
     const user = userEvent.setup();
+    const saveFlashcardReview = vi.fn().mockResolvedValue({ status: 'saved' });
     renderWorkspaceWithActions({
-      saveFlashcardReview: vi.fn().mockResolvedValue({ status: 'saved' }),
+      saveFlashcardReview,
       value: { ...model, userState: null },
     });
     await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
@@ -2078,6 +2079,12 @@ describe('ResultWorkspace', () => {
       'unknown',
     );
     expect(screen.queryByText(/0 \/ 2 reviewed/i)).toBeNull();
+    const rating = screen.getByRole('button', {
+      name: /got it.*review saving is unavailable/i,
+    });
+    expect(rating).toBeDisabled();
+    await user.click(rating);
+    expect(saveFlashcardReview).not.toHaveBeenCalled();
   });
 
   it('rolls repeated in-flight same-card ratings back to the persisted baseline when both fail', async () => {

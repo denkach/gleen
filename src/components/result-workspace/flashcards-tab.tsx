@@ -138,15 +138,17 @@ export function FlashcardsTab({
     revision,
     save,
   });
-  const reviewUnavailableReason = !saveFlashcardReview
+  const reviewUnavailableReason = !reviewsKnown
     ? copy.flashcardsReviewUnavailable
-    : !autosave.isSaved
-      ? autosave.status === 'saving'
-        ? copy.stateSaving
-        : autosave.status === 'conflict'
-          ? copy.flashcardsReviewUnavailable
-          : copy.stateNetworkError
-      : '';
+    : !saveFlashcardReview
+      ? copy.flashcardsReviewUnavailable
+      : !autosave.isSaved
+        ? autosave.status === 'saving'
+          ? copy.stateSaving
+          : autosave.status === 'conflict'
+            ? copy.flashcardsReviewUnavailable
+            : copy.stateNetworkError
+        : '';
   const reviewRevision = useRef(autosave.revision);
   useEffect(() => {
     if (reviewRevision.current === autosave.revision) return;
@@ -164,7 +166,7 @@ export function FlashcardsTab({
     setFlipped(false);
   };
   const reviewCard = (rating: FlashcardRating) => {
-    if (!saveFlashcardReview || !autosave.isSaved) return;
+    if (!reviewsKnown || !saveFlashcardReview || !autosave.isSaved) return;
     const cardIndex = safeIndex;
     const requestId = ++reviewRequestSequence.current;
     const artifactRevision = autosave.revision;
