@@ -97,4 +97,23 @@ describe('DEN-25 result shell geometry', () => {
     expect(css).not.toMatch(/\.artifact-link-card:hover/);
     expect(css).not.toMatch(/\.artifact-link-card:active/);
   });
+
+  it('limits Continue and Recommendation hover and pressed feedback to available actions', () => {
+    expect(css).toContain(
+      ".result-overview-continue-action[aria-disabled='false']:hover",
+    );
+    expect(css).toContain(
+      ".result-overview-continue-action[aria-disabled='false']:active",
+    );
+    expect(css).toContain(
+      ".result-overview-recommendation > button[aria-disabled='false']:hover",
+    );
+    expect(css).toContain(
+      ".result-overview-recommendation > button[aria-disabled='false']:active",
+    );
+    expect(css).not.toMatch(/\.result-overview-continue-action:hover/);
+    expect(css).not.toMatch(/\.result-overview-recommendation > button:hover/);
+    expect(css).not.toMatch(/\.result-overview-continue-action:active/);
+    expect(css).not.toMatch(/\.result-overview-recommendation > button:active/);
+  });
 });

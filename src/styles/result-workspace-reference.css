@@ -885,14 +885,14 @@ body:has(.result-page-layout) {
     transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.result-overview-continue-action:hover,
-.result-overview-recommendation > button:hover {
+.result-overview-continue-action[aria-disabled='false']:hover,
+.result-overview-recommendation > button[aria-disabled='false']:hover {
   border-color: var(--result-line-strong);
   background: var(--result-control-hover);
 }
 
-.result-overview-continue-action:active,
-.result-overview-recommendation > button:active {
+.result-overview-continue-action[aria-disabled='false']:active,
+.result-overview-recommendation > button[aria-disabled='false']:active {
   transform: translateY(1px);
 }
 
@@ -1324,8 +1324,8 @@ body:has(.result-page-layout) {
     transition: none;
   }
 
-  .result-overview-continue-action:active,
-  .result-overview-recommendation > button:active,
+  .result-overview-continue-action[aria-disabled='false']:active,
+  .result-overview-recommendation > button[aria-disabled='false']:active,
   .artifact-link-card[aria-disabled='false']:active {
     transform: none;
   }
