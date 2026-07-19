@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { resultCopy } from '@/lib/result-workspace/copy';
@@ -10,7 +11,7 @@ import type {
   VideoPlayerController,
   VideoPlayerSnapshot,
 } from './player-controller';
-import { TranscriptTab } from './transcript-tab';
+import { initialTranscriptUiState, TranscriptTab } from './transcript-tab';
 
 const transcript: TranscriptPresentation = {
   schemaVersion: 2,
@@ -88,9 +89,21 @@ function renderTranscript({
   copy?: (typeof resultCopy)[keyof typeof resultCopy];
 }> = {}) {
   const player = createController();
+  function TranscriptHarness() {
+    const [uiState, setUiState] = useState(initialTranscriptUiState);
+    return (
+      <TranscriptTab
+        transcript={value}
+        copy={copy}
+        active={active}
+        uiState={uiState}
+        onUiStateChange={setUiState}
+      />
+    );
+  }
   const view = render(
     <PlayerProvider controller={player.controller}>
-      <TranscriptTab transcript={value} copy={copy} active={active} />
+      <TranscriptHarness />
     </PlayerProvider>,
   );
   return { ...view, ...player };
@@ -260,7 +273,7 @@ describe('TranscriptTab', () => {
     );
   });
 
-  it('seeks, plays, and reflects shared playback without scrolling the page', async () => {
+  it('activates the whole row by pointer and keyboard without duplicate commands', async () => {
     const user = userEvent.setup();
     const scrollIntoView = vi.fn();
     Object.defineProperty(Element.prototype, 'scrollIntoView', {
@@ -274,14 +287,27 @@ describe('TranscriptTab', () => {
       value: vi.fn(),
     });
 
-    await user.click(
-      screen.getByRole('button', {
-        name: `${resultCopy.en.timestampsSeek}: 00:03`,
-      }),
-    );
+    await user.click(screen.getByText('Purpose creates trust.'));
     expect(controller.seekTo).toHaveBeenCalledWith(3_000);
-    expect(controller.play).toHaveBeenCalled();
+    expect(controller.seekTo).toHaveBeenCalledTimes(1);
+    expect(controller.play).toHaveBeenCalledTimes(1);
     expect(scrollIntoView).not.toHaveBeenCalled();
+
+    const row = screen.getByRole('button', {
+      name: /00:03.*Purpose creates trust/i,
+    });
+    vi.mocked(controller.seekTo).mockClear();
+    vi.mocked(controller.play).mockClear();
+    row.focus();
+    await user.keyboard('{Enter}');
+    expect(controller.seekTo).toHaveBeenCalledTimes(1);
+    expect(controller.play).toHaveBeenCalledTimes(1);
+
+    vi.mocked(controller.seekTo).mockClear();
+    vi.mocked(controller.play).mockClear();
+    await user.keyboard(' ');
+    expect(controller.seekTo).toHaveBeenCalledTimes(1);
+    expect(controller.play).toHaveBeenCalledTimes(1);
 
     update({ currentTimeMs: 3_500, playing: true });
     expect(
@@ -289,7 +315,7 @@ describe('TranscriptTab', () => {
     ).toHaveAttribute('aria-current', 'true');
   });
 
-  it('auto-scrolls only for active playback changes and pauses after manual interaction', () => {
+  it('retries the current active row when temporary manual suppression expires', () => {
     vi.useFakeTimers();
     try {
       const view = renderTranscript();
@@ -303,31 +329,27 @@ describe('TranscriptTab', () => {
       fireEvent.wheel(list);
       view.update({ currentTimeMs: 3_500, playing: true });
       expect(scrollTo).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(1);
 
-      act(() => vi.advanceTimersByTime(2_000));
-      view.update({ currentTimeMs: 6_500 });
+      act(() => vi.advanceTimersByTime(1_599));
+      expect(scrollTo).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(1));
       expect(scrollTo).toHaveBeenCalledWith(
         expect.objectContaining({ behavior: 'smooth' }),
       );
 
-      view.rerender(
-        <PlayerProvider controller={view.controller}>
-          <TranscriptTab
-            transcript={transcript}
-            copy={resultCopy.en}
-            active={false}
-          />
-        </PlayerProvider>,
-      );
-      scrollTo.mockClear();
-      view.update({ currentTimeMs: 500 });
-      expect(scrollTo).not.toHaveBeenCalled();
+      fireEvent.touchStart(list);
+      view.update({ currentTimeMs: 6_500 });
+      expect(vi.getTimerCount()).toBe(1);
+      view.unmount();
+      expect(vi.getTimerCount()).toBe(0);
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('uses instant auto-scroll under reduced motion', () => {
+  it('uses instant retry scrolling under reduced motion', () => {
+    vi.useFakeTimers();
     vi.stubGlobal(
       'matchMedia',
       vi.fn().mockReturnValue({
@@ -344,10 +366,55 @@ describe('TranscriptTab', () => {
       value: scrollTo,
     });
 
+    fireEvent.pointerDown(list);
     update({ currentTimeMs: 3_500, playing: true });
+    expect(scrollTo).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1_600));
 
     expect(scrollTo).toHaveBeenCalledWith(
       expect.objectContaining({ behavior: 'auto' }),
     );
+    vi.useRealTimers();
+  });
+
+  it('uses offset plus source index identity for duplicate timestamps', () => {
+    const duplicateTranscript: TranscriptPresentation = {
+      ...transcript,
+      segments: [
+        transcript.segments[0],
+        { ...transcript.segments[1], text: 'First simultaneous claim.' },
+        { ...transcript.segments[1], text: 'Second simultaneous claim.' },
+      ],
+    };
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const { update } = renderTranscript({ value: duplicateTranscript });
+    const list = screen.getByRole('list', { name: 'Transcript' });
+    const scrollTo = vi.fn();
+    Object.defineProperty(list, 'scrollTo', {
+      configurable: true,
+      value: scrollTo,
+    });
+    const firstDuplicate = screen
+      .getByText('First simultaneous claim.')
+      .closest('li');
+    const secondDuplicate = screen
+      .getByText('Second simultaneous claim.')
+      .closest('li');
+    expect(firstDuplicate).not.toBeNull();
+    expect(secondDuplicate).not.toBeNull();
+    Object.defineProperty(firstDuplicate!, 'offsetTop', { value: 30 });
+    Object.defineProperty(secondDuplicate!, 'offsetTop', { value: 90 });
+
+    update({ currentTimeMs: 3_500, playing: true });
+
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(
+      [firstDuplicate, secondDuplicate].filter(
+        (row) => row?.getAttribute('aria-current') === 'true',
+      ),
+    ).toEqual([secondDuplicate]);
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 90 }));
   });
 });

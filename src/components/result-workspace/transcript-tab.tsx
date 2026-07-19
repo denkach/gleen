@@ -8,7 +8,22 @@ import type { TranscriptPresentation } from '@/lib/result-workspace/presentation
 
 import { useVideoPlayer, useVideoPlayerSnapshot } from './player-context';
 
-type TranscriptFilter = 'all' | 'insight' | 'question' | 'example' | 'story';
+export type TranscriptFilter =
+  'all' | 'insight' | 'question' | 'example' | 'story';
+
+export type TranscriptUiState = Readonly<{
+  query: string;
+  filter: TranscriptFilter;
+  speakerLabels: boolean;
+  autoScroll: boolean;
+}>;
+
+export const initialTranscriptUiState: TranscriptUiState = Object.freeze({
+  query: '',
+  filter: 'all',
+  speakerLabels: false,
+  autoScroll: true,
+});
 
 const transcriptFilters: readonly TranscriptFilter[] = [
   'all',
@@ -91,39 +106,58 @@ export function TranscriptTab({
   transcript,
   copy,
   active,
+  uiState,
+  onUiStateChange,
 }: Readonly<{
   transcript: TranscriptPresentation;
   copy: ResultCopy;
   active: boolean;
+  uiState: TranscriptUiState;
+  onUiStateChange: (nextState: TranscriptUiState) => void;
 }>) {
   const player = useVideoPlayer();
   const currentTimeMs = useVideoPlayerSnapshot(selectCurrentTime);
   const reducedMotion = useReducedMotion();
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<TranscriptFilter>('all');
-  const [speakerLabels, setSpeakerLabels] = useState(false);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const activeOffset =
-    transcript.segments.findLast((segment) => segment.offsetMs <= currentTimeMs)
-      ?.offsetMs ??
-    transcript.segments[0]?.offsetMs ??
-    null;
-  const previousActiveOffset = useRef(activeOffset);
+  const { query, filter, speakerLabels, autoScroll } = uiState;
+  const indexedSegments = useMemo(
+    () =>
+      transcript.segments.map((segment, sourceIndex) => ({
+        key: `${segment.offsetMs}:${sourceIndex}`,
+        segment,
+        sourceIndex,
+      })),
+    [transcript.segments],
+  );
+  const activeSourceIndex = transcript.segments.findLastIndex(
+    (segment) => segment.offsetMs <= currentTimeMs,
+  );
+  const resolvedActiveSourceIndex =
+    activeSourceIndex >= 0
+      ? activeSourceIndex
+      : transcript.segments.length
+        ? 0
+        : -1;
+  const activeSegmentKey =
+    resolvedActiveSourceIndex >= 0
+      ? `${transcript.segments[resolvedActiveSourceIndex].offsetMs}:${resolvedActiveSourceIndex}`
+      : null;
+  const lastHandledActiveKey = useRef(activeSegmentKey);
   const manualScrollUntil = useRef(0);
   const listRef = useRef<HTMLOListElement>(null);
-  const segmentRefs = useRef(new Map<number, HTMLLIElement>());
+  const segmentRefs = useRef(new Map<string, HTMLLIElement>());
+  const [scrollRetryVersion, setScrollRetryVersion] = useState(0);
   const [actionMessage, setActionMessage] = useState<string>();
   const normalizedQuery = query.trim().toLocaleLowerCase(copy.interfaceLocale);
   const visibleSegments = useMemo(
     () =>
-      transcript.segments.filter((segment) => {
+      indexedSegments.filter(({ segment }) => {
         const matchesText = segment.text
           .toLocaleLowerCase(copy.interfaceLocale)
           .includes(normalizedQuery);
         const matchesType = filter === 'all' || segment.segmentType === filter;
         return matchesText && matchesType;
       }),
-    [copy.interfaceLocale, filter, normalizedQuery, transcript.segments],
+    [copy.interfaceLocale, filter, indexedSegments, normalizedQuery],
   );
   const reliableSpeakers = transcript.segments.some((segment) =>
     Boolean(segment.speakerLabel?.trim()),
@@ -134,16 +168,34 @@ export function TranscriptTab({
   );
 
   useEffect(() => {
-    const previousOffset = previousActiveOffset.current;
-    previousActiveOffset.current = activeOffset;
-    if (previousOffset === activeOffset) return;
-    if (!active || !autoScroll || activeOffset === null) return;
-    if (Date.now() < manualScrollUntil.current) return;
-    if (window.getSelection()?.toString()) return;
+    if (lastHandledActiveKey.current === activeSegmentKey) return;
+    if (!active || !autoScroll || activeSegmentKey === null) {
+      lastHandledActiveKey.current = activeSegmentKey;
+      return;
+    }
+
+    const remainingSuppressionMs = manualScrollUntil.current - Date.now();
+    if (remainingSuppressionMs > 0) {
+      const timer = window.setTimeout(
+        () => setScrollRetryVersion((version) => version + 1),
+        remainingSuppressionMs,
+      );
+      return () => window.clearTimeout(timer);
+    }
+    if (window.getSelection()?.toString()) {
+      const timer = window.setTimeout(
+        () => setScrollRetryVersion((version) => version + 1),
+        200,
+      );
+      return () => window.clearTimeout(timer);
+    }
 
     const list = listRef.current;
-    const row = segmentRefs.current.get(activeOffset);
-    if (!list || !row) return;
+    const row = segmentRefs.current.get(activeSegmentKey);
+    if (!list || !row) {
+      lastHandledActiveKey.current = activeSegmentKey;
+      return;
+    }
     const top = Math.max(
       0,
       row.offsetTop -
@@ -151,13 +203,14 @@ export function TranscriptTab({
         Math.max(0, (list.clientHeight - row.offsetHeight) / 2),
     );
     list.scrollTo({ behavior: reducedMotion ? 'auto' : 'smooth', top });
-  }, [active, activeOffset, autoScroll, reducedMotion]);
+    lastHandledActiveKey.current = activeSegmentKey;
+  }, [active, activeSegmentKey, autoScroll, reducedMotion, scrollRetryVersion]);
 
   const suppressAutoScroll = () => {
     manualScrollUntil.current = Date.now() + manualScrollSuppressionMs;
   };
   const changeFilter = (nextFilter: TranscriptFilter) => {
-    setFilter(nextFilter);
+    onUiStateChange({ ...uiState, filter: nextFilter });
     trackResultEvent({
       name: 'result_transcript_control_changed',
       control: 'filter',
@@ -209,7 +262,9 @@ export function TranscriptTab({
           <input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) =>
+              onUiStateChange({ ...uiState, query: event.target.value })
+            }
             aria-label={copy.transcriptSearch}
             placeholder={copy.transcriptSearch}
           />
@@ -269,33 +324,37 @@ export function TranscriptTab({
           onTouchStart={suppressAutoScroll}
           onPointerDown={suppressAutoScroll}
         >
-          {visibleSegments.map((segment) => {
-            const current = activeOffset === segment.offsetMs;
+          {visibleSegments.map(({ key, segment, sourceIndex }) => {
+            const current = resolvedActiveSourceIndex === sourceIndex;
             const timestamp = formatTranscriptTimestamp(segment.offsetMs);
             return (
               <li
-                key={segment.offsetMs}
+                key={key}
                 ref={(row) => {
-                  if (row) segmentRefs.current.set(segment.offsetMs, row);
-                  else segmentRefs.current.delete(segment.offsetMs);
+                  if (row) segmentRefs.current.set(key, row);
+                  else segmentRefs.current.delete(key);
                 }}
                 aria-current={current ? 'true' : undefined}
                 className="result-transcript-line"
               >
                 <button
                   type="button"
-                  aria-label={`${copy.timestampsSeek}: ${timestamp}`}
+                  aria-label={`${copy.timestampsSeek}: ${timestamp}. ${
+                    speakerLabels && segment.speakerLabel
+                      ? `${segment.speakerLabel}: `
+                      : ''
+                  }${segment.text}`}
                   title={copy.timestampsSeek}
                   onClick={() => playSegment(segment.offsetMs)}
                 >
-                  {timestamp}
+                  <time>{timestamp}</time>
+                  <span className="result-transcript-line-copy">
+                    {speakerLabels && segment.speakerLabel ? (
+                      <strong>{segment.speakerLabel}</strong>
+                    ) : null}
+                    <span>{segment.text}</span>
+                  </span>
                 </button>
-                <p>
-                  {speakerLabels && segment.speakerLabel ? (
-                    <strong>{segment.speakerLabel}</strong>
-                  ) : null}
-                  <span>{segment.text}</span>
-                </p>
               </li>
             );
           })}
@@ -311,7 +370,10 @@ export function TranscriptTab({
             aria-checked={speakerLabels}
             disabled={!reliableSpeakers}
             onClick={() => {
-              setSpeakerLabels((shown) => !shown);
+              onUiStateChange({
+                ...uiState,
+                speakerLabels: !speakerLabels,
+              });
               trackResultEvent({
                 name: 'result_transcript_control_changed',
                 control: 'speaker_labels',
@@ -334,7 +396,7 @@ export function TranscriptTab({
             aria-label={copy.transcriptAutoScroll}
             aria-checked={autoScroll}
             onClick={() => {
-              setAutoScroll((enabled) => !enabled);
+              onUiStateChange({ ...uiState, autoScroll: !autoScroll });
               trackResultEvent({
                 name: 'result_transcript_control_changed',
                 control: 'auto_scroll',

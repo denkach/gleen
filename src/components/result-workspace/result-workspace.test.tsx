@@ -1367,7 +1367,7 @@ describe('ResultWorkspace', () => {
     const transcript = screen.getByRole('tabpanel', { name: 'Transcript' });
     await user.click(
       within(transcript).getByRole('button', {
-        name: 'Play this moment: 12:35',
+        name: /12:35.*Sources stay grounded/i,
       }),
     );
     expect(controller.seekTo).toHaveBeenCalledWith(755_000);
@@ -1381,6 +1381,124 @@ describe('ResultWorkspace', () => {
     expect(
       within(transcript).getByText('A prism separates light.').closest('li'),
     ).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('preserves transcript controls across tab and revision remounts but resets for another analysis', async () => {
+    const user = userEvent.setup();
+    const enrichedModel: ResultWorkspaceModel = {
+      ...model,
+      tabs: {
+        ...model.tabs,
+        transcript: {
+          status: 'ready',
+          data: {
+            schemaVersion: 2,
+            language: 'en',
+            segments: [
+              {
+                text: 'Purpose begins with a question.',
+                offsetMs: 0,
+                durationMs: 3_000,
+                segmentType: 'question',
+                speakerLabel: 'Host',
+              },
+              {
+                text: 'Purpose creates trust.',
+                offsetMs: 3_000,
+                durationMs: 3_000,
+                segmentType: 'insight',
+                speakerLabel: 'Guest',
+              },
+            ],
+          },
+        },
+      },
+    };
+    const view = renderWorkspace(enrichedModel);
+    await user.click(screen.getByRole('tab', { name: 'Transcript' }));
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Search transcript' }),
+      'purpose',
+    );
+    await user.click(screen.getByRole('button', { name: 'Question' }));
+    await user.click(screen.getByRole('switch', { name: 'Speaker labels' }));
+    await user.click(screen.getByRole('switch', { name: 'Auto-scroll' }));
+
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    await user.click(screen.getByRole('tab', { name: 'Transcript' }));
+    expect(
+      screen.getByRole('searchbox', { name: 'Search transcript' }),
+    ).toHaveValue('purpose');
+    expect(screen.getByRole('button', { name: 'Question' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(
+      screen.getByRole('switch', { name: 'Speaker labels' }),
+    ).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: 'Auto-scroll' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+
+    view.rerender(
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          model={{
+            ...enrichedModel,
+            revision: enrichedModel.revision + 1,
+            revisions: {
+              ...enrichedModel.revisions,
+              title: '2026-07-19T00:00:00.000Z',
+            },
+          }}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+        />
+      </PlayerProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Transcript' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+    expect(
+      screen.getByRole('searchbox', { name: 'Search transcript' }),
+    ).toHaveValue('purpose');
+    expect(screen.getByRole('switch', { name: 'Auto-scroll' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+
+    view.rerender(
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          model={{
+            ...enrichedModel,
+            source: { ...enrichedModel.source, intakeId: 'another-analysis' },
+          }}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+        />
+      </PlayerProvider>,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('searchbox', { name: 'Search transcript' }),
+      ).toHaveValue(''),
+    );
+    expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(
+      screen.getByRole('switch', { name: 'Speaker labels' }),
+    ).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('switch', { name: 'Auto-scroll' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
   });
 
   it('reports clipboard rejection without leaking an unhandled error', async () => {

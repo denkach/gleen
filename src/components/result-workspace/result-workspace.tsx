@@ -31,7 +31,11 @@ import { OverviewTab } from './overview-tab';
 import { flushPlaybackPositionOnPageHide } from './playback-pagehide-transport';
 import { SummaryTab } from './summary-tab';
 import { TimestampsTab } from './timestamps-tab';
-import { TranscriptTab } from './transcript-tab';
+import {
+  initialTranscriptUiState,
+  TranscriptTab,
+  type TranscriptUiState,
+} from './transcript-tab';
 import {
   PlayerProvider,
   useVideoPlayer,
@@ -46,6 +50,19 @@ import { usePlaybackPersistence } from './use-playback-persistence';
 type SaveAction = (input: unknown) => Promise<ResultSaveState>;
 type MutationAction = (input: unknown) => Promise<ResultMutationState>;
 type TabValue = ResultArtifact;
+type ResultArtifactsProps = Readonly<{
+  model: ResultWorkspaceModel;
+  saveTitle: SaveAction;
+  saveArtifact: SaveAction;
+  copy: ResultCopy;
+  favorite: boolean;
+  favoritePending: boolean;
+  onFavorite?: () => void;
+  onShare?: () => void;
+  saveFlashcardReview?: MutationAction;
+  transcriptUiState: TranscriptUiState;
+  onTranscriptUiStateChange: (nextState: TranscriptUiState) => void;
+}>;
 
 function ResultArtifacts({
   model,
@@ -57,17 +74,9 @@ function ResultArtifacts({
   onFavorite,
   onShare,
   saveFlashcardReview,
-}: Readonly<{
-  model: ResultWorkspaceModel;
-  saveTitle: SaveAction;
-  saveArtifact: SaveAction;
-  copy: ResultCopy;
-  favorite: boolean;
-  favoritePending: boolean;
-  onFavorite?: () => void;
-  onShare?: () => void;
-  saveFlashcardReview?: MutationAction;
-}>) {
+  transcriptUiState,
+  onTranscriptUiStateChange,
+}: ResultArtifactsProps) {
   const [tab, setTab] = useState<TabValue>('overview');
   const [draftModel, setDraftModel] = useState(model);
   const availableArtifacts = useMemo(
@@ -271,6 +280,8 @@ function ResultArtifacts({
                 transcript={model.tabs.transcript.data}
                 copy={copy}
                 active={tab === 'transcript'}
+                uiState={transcriptUiState}
+                onUiStateChange={onTranscriptUiStateChange}
               />
             ) : (
               <ArtifactState state={model.tabs.transcript} />
@@ -282,6 +293,28 @@ function ResultArtifacts({
         </div>
       </Tabs>
     </section>
+  );
+}
+
+function ResultArtifactsStateOwner({
+  artifactRevisionKey,
+  ...props
+}: Omit<
+  ResultArtifactsProps,
+  'transcriptUiState' | 'onTranscriptUiStateChange'
+> &
+  Readonly<{ artifactRevisionKey: string }>) {
+  const [transcriptUiState, setTranscriptUiState] = useState(
+    initialTranscriptUiState,
+  );
+
+  return (
+    <ResultArtifacts
+      key={artifactRevisionKey}
+      {...props}
+      transcriptUiState={transcriptUiState}
+      onTranscriptUiStateChange={setTranscriptUiState}
+    />
   );
 }
 
@@ -465,8 +498,9 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           initialPositionMs={playbackPositionMs}
           onPlayerReady={updateController}
         />
-        <ResultArtifacts
-          key={artifactRevisionKey}
+        <ResultArtifactsStateOwner
+          key={lifecycleKey}
+          artifactRevisionKey={artifactRevisionKey}
           model={model}
           copy={copy}
           saveTitle={props.saveTitle}

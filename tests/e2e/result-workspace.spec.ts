@@ -241,7 +241,11 @@ test('supports keyboard tab navigation and summary seeking', async ({
 test('seeks from timestamps and transcript controls', async ({ page }) => {
   await gotoFixture(page, route);
   await page.getByRole('tab', { name: 'Timestamps' }).click();
-  await page.getByRole('button', { name: '1:03' }).click();
+  await page
+    .getByRole('tabpanel', { name: 'Timestamps' })
+    .locator('.result-timeline')
+    .getByRole('button', { name: '1:03', exact: true })
+    .click();
   await expect
     .poll(() =>
       page.evaluate(() =>
@@ -251,7 +255,10 @@ test('seeks from timestamps and transcript controls', async ({ page }) => {
     .toBe(63);
 
   await page.getByRole('tab', { name: 'Transcript' }).click();
-  await page.getByRole('button', { name: '0:00' }).click();
+  await page
+    .getByRole('tabpanel', { name: 'Transcript' })
+    .getByRole('button', { name: /00:00.*A prism separates light/i })
+    .click();
   await expect
     .poll(() =>
       page.evaluate(() =>
@@ -285,7 +292,9 @@ test('highlights the transcript segment for the current player time', async ({
     (window as unknown as FixtureWindow).__fixturePlayer.currentTime = 63.5;
   });
   await expect(
-    page.getByText('Important claims remain grounded.').locator('..'),
+    page
+      .getByText('Important claims remain grounded.')
+      .locator('xpath=ancestor::li[contains(@class,"result-transcript-line")]'),
   ).toHaveAttribute('aria-current', 'true');
 });
 
