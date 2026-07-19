@@ -324,3 +324,38 @@ describe('DEN-25 atomic result Share migration', () => {
     );
   });
 });
+
+describe('DEN-25 service-role privilege hardening migration', () => {
+  const migrationsDirectory = join(process.cwd(), 'supabase', 'migrations');
+  const filename = readdirSync(migrationsDirectory).find((entry) =>
+    entry.endsWith('_den_25_restrict_service_role.sql'),
+  );
+
+  it('removes implicit admin grants from private user-state tables and functions', () => {
+    expect(filename).toBeDefined();
+    const hardeningSql = readFileSync(
+      join(migrationsDirectory, filename!),
+      'utf8',
+    );
+
+    for (const table of [
+      'analysis_result_states',
+      'analysis_flashcard_reviews',
+    ]) {
+      expect(hardeningSql).toContain(
+        `revoke all on table public.${table} from service_role;`,
+      );
+    }
+
+    for (const signature of [
+      'public.save_owned_playback_position(uuid, bigint, bigint)',
+      'public.enforce_monotonic_playback_position()',
+    ]) {
+      expect(hardeningSql).toContain(
+        `revoke all on function ${signature} from service_role;`,
+      );
+    }
+
+    expect(hardeningSql).not.toMatch(/grant [^;]+ to service_role;/);
+  });
+});
