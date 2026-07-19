@@ -11,7 +11,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { resultArtifactEditSchema } from '@/lib/result-workspace/edit-schemas';
 import { resultCopy } from '@/lib/result-workspace/copy';
-import type { ResultMutationState } from '@/lib/result-workspace/actions';
+import type {
+  ResultMutationState,
+  ResultSaveState,
+} from '@/lib/result-workspace/actions';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
 import { PlayerProvider } from './player-context';
@@ -198,6 +201,22 @@ function renderWorkspace(value: ResultWorkspaceModel = model) {
         saveArtifact={vi.fn().mockResolvedValue({ status: 'error' })}
       />
     </PlayerProvider>,
+  );
+}
+
+function revisionWorkspace(
+  value: ResultWorkspaceModel,
+  saveTitle: (input: unknown) => Promise<ResultSaveState>,
+  saveArtifact: (input: unknown) => Promise<ResultSaveState>,
+) {
+  return (
+    <PlayerProvider controller={controller}>
+      <ResultWorkspace
+        model={value}
+        saveTitle={saveTitle}
+        saveArtifact={saveArtifact}
+      />
+    </PlayerProvider>
   );
 }
 
@@ -463,6 +482,260 @@ describe('ResultWorkspace', () => {
       ).toBeVisible();
     },
   );
+
+  it('autosaves a dirty title against a newer server revision without a duplicate save', async () => {
+    vi.useFakeTimers();
+    const saveTitle = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:04:00.000Z',
+    });
+    const saveArtifact = vi.fn();
+    const view = render(revisionWorkspace(model, saveTitle, saveArtifact));
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Result title' }), {
+      target: { value: 'Dirty local title' },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    view.rerender(
+      revisionWorkspace(
+        {
+          ...model,
+          revisions: {
+            ...model.revisions,
+            title: '2026-07-18T00:03:00.000Z',
+          },
+          source: { ...model.source, title: 'External server title' },
+        },
+        saveTitle,
+        saveArtifact,
+      ),
+    );
+    expect(screen.getByRole('textbox', { name: 'Result title' })).toHaveValue(
+      'Dirty local title',
+    );
+    await act(() => vi.advanceTimersByTimeAsync(700));
+
+    expect(saveTitle).toHaveBeenCalledExactlyOnceWith({
+      analysisId: model.source.intakeId,
+      expectedUpdatedAt: '2026-07-18T00:03:00.000Z',
+      title: 'Dirty local title',
+    });
+    await act(() => vi.advanceTimersByTimeAsync(1_400));
+    expect(saveTitle).toHaveBeenCalledTimes(1);
+    expect(saveArtifact).not.toHaveBeenCalled();
+  });
+
+  it('autosaves a dirty Summary with untouched server edits against the newer revision', async () => {
+    const summaryFixture = model.tabs.summary;
+    if (summaryFixture.status !== 'ready') {
+      throw new Error('Expected a ready Summary fixture');
+    }
+    vi.useFakeTimers();
+    window.history.replaceState(null, '', '/#summary');
+    const saveTitle = vi.fn();
+    const saveArtifact = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:04:00.000Z',
+    });
+    const view = render(revisionWorkspace(model, saveTitle, saveArtifact));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Summary title' }), {
+      target: { value: 'Dirty local Summary' },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    view.rerender(
+      revisionWorkspace(
+        {
+          ...model,
+          revisions: {
+            ...model.revisions,
+            summary: '2026-07-18T00:03:00.000Z',
+          },
+          tabs: {
+            ...model.tabs,
+            summary: {
+              status: 'ready',
+              data: {
+                ...summaryFixture.data,
+                outcome: 'External server overview',
+                overview: 'External server overview',
+              },
+            },
+          },
+        },
+        saveTitle,
+        saveArtifact,
+      ),
+    );
+    expect(screen.getByRole('textbox', { name: 'Summary title' })).toHaveValue(
+      'Dirty local Summary',
+    );
+    expect(
+      screen.getByRole('textbox', { name: 'Summary overview' }),
+    ).toHaveValue('External server overview');
+    await act(() => vi.advanceTimersByTimeAsync(700));
+
+    expect(saveArtifact).toHaveBeenCalledExactlyOnceWith({
+      analysisId: model.source.intakeId,
+      expectedUpdatedAt: '2026-07-18T00:03:00.000Z',
+      kind: 'summary',
+      content: expect.objectContaining({
+        title: 'Dirty local Summary',
+        overview: 'External server overview',
+      }),
+    });
+    await act(() => vi.advanceTimersByTimeAsync(1_400));
+    expect(saveArtifact).toHaveBeenCalledTimes(1);
+    expect(saveTitle).not.toHaveBeenCalled();
+  });
+
+  it('autosaves dirty Flashcards with untouched server edits against the newer revision', async () => {
+    const flashcardsFixture = model.tabs.flashcards;
+    if (flashcardsFixture.status !== 'ready') {
+      throw new Error('Expected a ready Flashcards fixture');
+    }
+    vi.useFakeTimers();
+    window.history.replaceState(null, '', '/#flashcards');
+    const saveTitle = vi.fn();
+    const saveArtifact = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:04:00.000Z',
+    });
+    const view = render(revisionWorkspace(model, saveTitle, saveArtifact));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit flashcards' }));
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Flashcard question' }),
+      { target: { value: 'Dirty local question?' } },
+    );
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    view.rerender(
+      revisionWorkspace(
+        {
+          ...model,
+          revisions: {
+            ...model.revisions,
+            flashcards: '2026-07-18T00:03:00.000Z',
+          },
+          tabs: {
+            ...model.tabs,
+            flashcards: {
+              status: 'ready',
+              data: {
+                ...flashcardsFixture.data,
+                cards: flashcardsFixture.data.cards.map((card, index) =>
+                  index === 1
+                    ? { ...card, back: 'External server answer.' }
+                    : card,
+                ),
+              },
+            },
+          },
+        },
+        saveTitle,
+        saveArtifact,
+      ),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(700));
+
+    expect(saveArtifact).toHaveBeenCalledExactlyOnceWith({
+      analysisId: model.source.intakeId,
+      expectedUpdatedAt: '2026-07-18T00:03:00.000Z',
+      kind: 'flashcards',
+      content: {
+        ...flashcardsFixture.data,
+        cards: [
+          {
+            ...flashcardsFixture.data.cards[0],
+            front: 'Dirty local question?',
+          },
+          {
+            ...flashcardsFixture.data.cards[1],
+            back: 'External server answer.',
+          },
+        ],
+      },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(1_400));
+    expect(saveArtifact).toHaveBeenCalledTimes(1);
+    expect(saveTitle).not.toHaveBeenCalled();
+  });
+
+  it('autosaves dirty Timestamps with untouched server edits against the newer revision', async () => {
+    const timestampsFixture = model.tabs.timestamps;
+    if (timestampsFixture.status !== 'ready') {
+      throw new Error('Expected a ready Timestamps fixture');
+    }
+    vi.useFakeTimers();
+    window.history.replaceState(null, '', '/#timestamps');
+    const saveTitle = vi.fn();
+    const saveArtifact = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:04:00.000Z',
+    });
+    const view = render(revisionWorkspace(model, saveTitle, saveArtifact));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Chapter 1 title' }), {
+      target: { value: 'Dirty local chapter' },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    view.rerender(
+      revisionWorkspace(
+        {
+          ...model,
+          revisions: {
+            ...model.revisions,
+            timestamps: '2026-07-18T00:03:00.000Z',
+          },
+          tabs: {
+            ...model.tabs,
+            timestamps: {
+              status: 'ready',
+              data: {
+                ...timestampsFixture.data,
+                chapters: timestampsFixture.data.chapters.map(
+                  (chapter, index) =>
+                    index === 1
+                      ? { ...chapter, description: 'External server details.' }
+                      : chapter,
+                ),
+              },
+            },
+          },
+        },
+        saveTitle,
+        saveArtifact,
+      ),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(700));
+
+    expect(saveArtifact).toHaveBeenCalledExactlyOnceWith({
+      analysisId: model.source.intakeId,
+      expectedUpdatedAt: '2026-07-18T00:03:00.000Z',
+      kind: 'timestamps',
+      content: {
+        schemaVersion: 1,
+        chapters: [
+          {
+            offsetMs: timestampsFixture.data.chapters[0]!.offsetMs,
+            title: 'Dirty local chapter',
+            description: timestampsFixture.data.chapters[0]!.description,
+          },
+          {
+            offsetMs: timestampsFixture.data.chapters[1]!.offsetMs,
+            title: timestampsFixture.data.chapters[1]!.title,
+            description: 'External server details.',
+          },
+        ],
+      },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(1_400));
+    expect(saveArtifact).toHaveBeenCalledTimes(1);
+    expect(saveTitle).not.toHaveBeenCalled();
+  });
 
   it('canonicalizes an unavailable initial artifact hash to Overview', async () => {
     window.history.replaceState(null, '', '/app/video/result#flashcards');
@@ -1246,8 +1519,8 @@ describe('ResultWorkspace', () => {
       <PlayerProvider controller={controller}>
         <ResultWorkspace
           model={{ ...model, revision: model.revision + 1 }}
-          saveTitle={vi.fn()}
-          saveArtifact={vi.fn()}
+          saveTitle={vi.fn().mockResolvedValue({ status: 'error' })}
+          saveArtifact={vi.fn().mockResolvedValue({ status: 'error' })}
         />
       </PlayerProvider>,
     );
@@ -1323,8 +1596,8 @@ describe('ResultWorkspace', () => {
                 },
               },
             }}
-            saveTitle={vi.fn()}
-            saveArtifact={vi.fn()}
+            saveTitle={vi.fn().mockResolvedValue({ status: 'error' })}
+            saveArtifact={vi.fn().mockResolvedValue({ status: 'conflict' })}
           />
         </PlayerProvider>,
       );

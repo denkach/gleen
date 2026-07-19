@@ -18,6 +18,7 @@ import { useAutosave } from './use-autosave';
 export function TimestampsTab({
   analysisId,
   artifact,
+  serverArtifact = artifact,
   onArtifactChange,
   revision,
   saveArtifact,
@@ -28,6 +29,7 @@ export function TimestampsTab({
 }: Readonly<{
   analysisId: string;
   artifact: TimestampsArtifact;
+  serverArtifact?: TimestampsArtifact;
   onArtifactChange: (artifact: TimestampsArtifact) => void;
   revision: string;
   saveArtifact: (input: unknown) => Promise<ResultSaveState>;
@@ -63,7 +65,12 @@ export function TimestampsTab({
       }),
     [analysisId, saveArtifact],
   );
-  const autosave = useAutosave({ value, revision, save });
+  const autosave = useAutosave({
+    value,
+    serverValue: serverArtifact,
+    revision,
+    save,
+  });
   useEffect(() => {
     if (!player) return;
     const synchronize = () => {

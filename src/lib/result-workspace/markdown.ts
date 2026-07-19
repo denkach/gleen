@@ -79,14 +79,17 @@ function pushSummary(
   }
 
   for (const section of summary.sections) {
+    const sectionTitle = plainText(section.title);
     const sectionSummary = plainText(section.summary);
     const details = plainText(section.details);
-    lines.push('', `### ${plainText(section.title)}`);
-    represented.add(contentKey(section.title));
-    if (sectionSummary) {
+    const sectionTitleKey = contentKey(sectionTitle);
+    const sectionSummaryKey = contentKey(sectionSummary);
+    lines.push('', `### ${sectionTitle}`);
+    represented.add(sectionTitleKey);
+    if (sectionSummary && sectionSummaryKey !== sectionTitleKey) {
       lines.push('', sectionSummary);
-      represented.add(contentKey(sectionSummary));
     }
+    if (sectionSummary) represented.add(sectionSummaryKey);
     if (details && contentKey(details) !== contentKey(sectionSummary)) {
       lines.push('', details);
       represented.add(contentKey(details));

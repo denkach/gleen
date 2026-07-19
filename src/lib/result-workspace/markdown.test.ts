@@ -224,8 +224,8 @@ describe('serializeExport', () => {
     expect(output).toContain(
       '## Key takeaways\n\n_Included in the structured summary above._',
     );
-    expect(output.match(/Legacy text remains readable\./g)).toHaveLength(2);
-    expect(output.match(/Sources remain grounded\./g)).toHaveLength(2);
+    expect(output.match(/Legacy text remains readable\./g)).toHaveLength(1);
+    expect(output.match(/Sources remain grounded\./g)).toHaveLength(1);
   });
 
   it('exports every structured summary field and avoids repeated takeaways', () => {

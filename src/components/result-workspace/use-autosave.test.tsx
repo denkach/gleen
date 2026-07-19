@@ -10,13 +10,18 @@ type SaveResult =
 
 function Harness({
   save,
+  revision = '2026-07-18T00:00:00.000Z',
+  serverValue = 'Original',
 }: Readonly<{
   save: (value: string, revision: string) => Promise<SaveResult>;
+  revision?: string;
+  serverValue?: string;
 }>) {
   const [value, setValue] = useState('Original');
   const autosave = useAutosave({
     value,
-    revision: '2026-07-18T00:00:00.000Z',
+    serverValue,
+    revision,
     save,
     delayMs: 700,
   });
@@ -83,6 +88,38 @@ describe('useAutosave', () => {
 
     expect(save).toHaveBeenCalledTimes(1);
     expect(save).toHaveBeenCalledWith('Latest', '2026-07-18T00:00:00.000Z');
+  });
+
+  it('keeps a dirty debounce across a server revision and adopts its newest CAS baseline', async () => {
+    const save = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:02:00.000Z',
+    });
+    const view = render(<Harness save={save} />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Title' }), {
+      target: { value: 'Dirty local value' },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    view.rerender(
+      <Harness
+        save={save}
+        revision="2026-07-18T00:01:00.000Z"
+        serverValue="External server value"
+      />,
+    );
+    await act(() => vi.advanceTimersByTimeAsync(700));
+
+    expect(save).toHaveBeenCalledExactlyOnceWith(
+      'Dirty local value',
+      '2026-07-18T00:01:00.000Z',
+    );
+    expect(screen.getByText('saved')).toBeVisible();
+    expect(screen.getByLabelText('Saved revision')).toHaveTextContent(
+      '2026-07-18T00:02:00.000Z',
+    );
+    await act(() => vi.advanceTimersByTimeAsync(1_400));
+    expect(save).toHaveBeenCalledTimes(1);
   });
 
   it('advances the CAS revision before saving an edit made during an in-flight save', async () => {

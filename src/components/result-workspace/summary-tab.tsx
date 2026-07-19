@@ -62,6 +62,7 @@ function serializeSummary(content: SummaryPresentation): SummaryArtifact {
 export function SummaryTab({
   analysisId,
   summary,
+  serverSummary = summary,
   onSummaryChange,
   revision,
   saveArtifact,
@@ -70,6 +71,7 @@ export function SummaryTab({
 }: Readonly<{
   analysisId: string;
   summary: SummaryPresentation;
+  serverSummary?: SummaryPresentation;
   onSummaryChange: (summary: SummaryPresentation) => void;
   revision: string;
   saveArtifact: (input: unknown) => Promise<ResultSaveState>;
@@ -91,7 +93,12 @@ export function SummaryTab({
       }),
     [analysisId, saveArtifact],
   );
-  const autosave = useAutosave({ value, revision, save });
+  const autosave = useAutosave({
+    value,
+    serverValue: serverSummary,
+    revision,
+    save,
+  });
   const disclosurePrefix = useId();
   const [openSections, setOpenSections] = useState<ReadonlySet<number>>(
     () => new Set(value.sections.length > 0 ? [0] : []),

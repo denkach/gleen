@@ -74,6 +74,7 @@ const reviewButtons = [
 export function FlashcardsTab({
   analysisId,
   artifact,
+  serverArtifact = artifact,
   onArtifactChange,
   revision,
   saveArtifact,
@@ -83,6 +84,7 @@ export function FlashcardsTab({
 }: Readonly<{
   analysisId: string;
   artifact: FlashcardsArtifact;
+  serverArtifact?: FlashcardsArtifact;
   onArtifactChange: (artifact: FlashcardsArtifact) => void;
   revision: string;
   saveArtifact: (input: unknown) => Promise<ResultSaveState>;
@@ -121,7 +123,12 @@ export function FlashcardsTab({
       }),
     [analysisId, saveArtifact],
   );
-  const autosave = useAutosave({ value, revision, save });
+  const autosave = useAutosave({
+    value,
+    serverValue: serverArtifact,
+    revision,
+    save,
+  });
   const reviewUnavailableReason = !saveFlashcardReview
     ? copy.flashcardsReviewUnavailable
     : !autosave.isSaved

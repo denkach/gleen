@@ -280,6 +280,7 @@ function ResultArtifacts({
             <EditableTitle
               analysisId={model.source.intakeId}
               title={draftModel.source.title}
+              serverTitle={model.source.title}
               onTitleChange={(title) =>
                 setDraftModel((current) => ({
                   ...current,
@@ -312,13 +313,13 @@ function ResultArtifacts({
           >
             {model.tabs.summary.status === 'ready' ? (
               <SummaryTab
-                key={model.revisions.summary}
                 analysisId={model.source.intakeId}
                 summary={
                   draftModel.tabs.summary.status === 'ready'
                     ? draftModel.tabs.summary.data
                     : model.tabs.summary.data
                 }
+                serverSummary={model.tabs.summary.data}
                 onSummaryChange={(summary) =>
                   setDraftModel((current) => ({
                     ...current,
@@ -345,13 +346,13 @@ function ResultArtifacts({
           >
             {model.tabs.flashcards.status === 'ready' ? (
               <FlashcardsTab
-                key={model.revisions.flashcards}
                 analysisId={model.source.intakeId}
                 artifact={
                   draftModel.tabs.flashcards.status === 'ready'
                     ? draftModel.tabs.flashcards.data
                     : model.tabs.flashcards.data
                 }
+                serverArtifact={model.tabs.flashcards.data}
                 onArtifactChange={(flashcards) =>
                   setDraftModel((current) => ({
                     ...current,
@@ -379,13 +380,13 @@ function ResultArtifacts({
           >
             {model.tabs.timestamps.status === 'ready' ? (
               <TimestampsTab
-                key={model.revisions.timestamps}
                 analysisId={model.source.intakeId}
                 artifact={
                   draftModel.tabs.timestamps.status === 'ready'
                     ? draftModel.tabs.timestamps.data
                     : model.tabs.timestamps.data
                 }
+                serverArtifact={model.tabs.timestamps.data}
                 onArtifactChange={(timestamps) =>
                   setDraftModel((current) => ({
                     ...current,

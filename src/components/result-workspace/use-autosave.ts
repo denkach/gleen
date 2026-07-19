@@ -9,11 +9,13 @@ export type AutosaveState =
 
 export function useAutosave<T>({
   value,
+  serverValue,
   revision,
   save,
   delayMs = 700,
 }: Readonly<{
   value: T;
+  serverValue: T;
   revision: string;
   save: (value: T, revision: string) => Promise<ResultSaveState>;
   delayMs?: number;
@@ -25,10 +27,10 @@ export function useAutosave<T>({
 }> {
   const [status, setStatus] = useState<AutosaveState>('idle');
   const [savedRevision, setSavedRevision] = useState(revision);
-  const [savedValue, setSavedValue] = useState(value);
+  const [savedValue, setSavedValue] = useState(serverValue);
   const [cycle, setCycle] = useState(0);
   const latestValue = useRef(value);
-  const lastSavedValue = useRef(value);
+  const lastSavedValue = useRef(serverValue);
   const revisionRef = useRef(revision);
   const propRevisionRef = useRef(revision);
   const saveRef = useRef(save);
@@ -78,20 +80,29 @@ export function useAutosave<T>({
 
   useEffect(() => {
     if (propRevisionRef.current !== revision) {
+      let active = true;
       propRevisionRef.current = revision;
       revisionRef.current = revision;
-      setSavedRevision(revision);
-      lastSavedValue.current = value;
-      setSavedValue(value);
-      setStatus('idle');
-      return;
+      lastSavedValue.current = serverValue;
+      const dirty = !Object.is(value, serverValue);
+      queueMicrotask(() => {
+        if (!active) return;
+        setSavedRevision(revision);
+        setSavedValue(serverValue);
+        setStatus(dirty ? 'saving' : 'idle');
+      });
+      if (dirty) schedule();
+      return () => {
+        active = false;
+        window.clearTimeout(timerRef.current);
+      };
     }
     if (!Object.is(value, lastSavedValue.current)) {
       setStatus('saving');
       schedule();
     }
     return () => window.clearTimeout(timerRef.current);
-  }, [cycle, revision, schedule, value]);
+  }, [cycle, revision, schedule, serverValue, value]);
 
   const retry = useCallback(() => {
     if (status !== 'conflict') setCycle((current) => current + 1);
