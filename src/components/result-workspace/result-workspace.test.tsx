@@ -458,7 +458,9 @@ describe('ResultWorkspace', () => {
       expect(
         screen.getByRole('tab', { name: resultCopy.en.tabExport }),
       ).toHaveAttribute('aria-selected', 'true');
-      expect(screen.getByText('Local export')).toBeVisible();
+      expect(
+        screen.getByRole('heading', { name: resultCopy.en.exportTitle }),
+      ).toBeVisible();
     },
   );
 
@@ -1765,7 +1767,9 @@ describe('ResultWorkspace', () => {
     ).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Copy Markdown' }));
     expect(screen.getByRole('alert')).toHaveTextContent(/could not copy/i);
-    await user.click(screen.getByRole('button', { name: 'Download Markdown' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Export to Markdown' }),
+    );
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
     expect(click).toHaveBeenCalled();
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:result');
@@ -1804,7 +1808,7 @@ describe('ResultWorkspace', () => {
     const markdown = writeText.mock.calls[0]?.[0] as string;
     expect(markdown).toContain('# Draft export title');
     expect(markdown).toContain('Draft export overview');
-    expect(markdown).toContain('Draft export question?');
+    expect(markdown).not.toContain('Draft export question?');
     expect(markdown).toContain('Draft export chapter');
   });
 

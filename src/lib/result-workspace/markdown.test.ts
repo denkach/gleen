@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ResultWorkspaceModel } from './presentation';
-import { serializeMarkdown } from './markdown';
+import {
+  exportFilename,
+  serializeExport,
+  serializeMarkdown,
+  type ExportSelection,
+} from './markdown';
 
 const model: ResultWorkspaceModel = {
   source: {
@@ -162,6 +167,151 @@ describe('serializeMarkdown', () => {
   it('labels NotebookLM input as a source document', () => {
     expect(serializeMarkdown(model, 'notebooklm')).toContain(
       '> NotebookLM source document',
+    );
+  });
+});
+
+describe('serializeExport', () => {
+  const selection: ExportSelection = {
+    summary: true,
+    keyTakeaways: false,
+    chapters: true,
+    transcript: false,
+    metadata: true,
+  };
+
+  it.each(['markdown', 'obsidian', 'notebooklm'] as const)(
+    'uses the closed selection contract for %s',
+    (destination) => {
+      const output = serializeExport(model, destination, selection);
+
+      expect(output).toContain('## Summary');
+      expect(output).toContain('One source becomes useful outputs.');
+      expect(output).toContain('## Chapters');
+      expect(output).toContain('### 12:35 — Sources');
+      expect(output).toContain('# Light alert(1) & learning');
+      expect(output).not.toContain('## Key takeaways');
+      expect(output).not.toContain('## Transcript');
+      expect(output).not.toContain('## Flashcards');
+      expect(serializeExport(model, destination, selection)).toBe(output);
+    },
+  );
+
+  it('keeps summary and key takeaways independently selectable', () => {
+    const keyTakeawaysOnly = serializeExport(model, 'markdown', {
+      summary: false,
+      keyTakeaways: true,
+      chapters: false,
+      transcript: false,
+      metadata: false,
+    });
+
+    expect(keyTakeawaysOnly).toContain('## Key takeaways');
+    expect(keyTakeawaysOnly).toContain('- Legacy text remains readable.');
+    expect(keyTakeawaysOnly).not.toContain('## Summary');
+    expect(keyTakeawaysOnly).not.toContain('Source:');
+  });
+
+  it('adds only truthful destination-specific document syntax', () => {
+    const markdown = serializeExport(model, 'markdown', selection);
+    const obsidian = serializeExport(model, 'obsidian', selection);
+    const notebookLm = serializeExport(model, 'notebooklm', selection);
+
+    expect(markdown).not.toMatch(/^---/);
+    expect(markdown).not.toContain('NotebookLM source document');
+    expect(obsidian).toMatch(
+      /^---\nsource: "https:\/\/www\.youtube\.com\/watch\?v=dQw4w9WgXcQ"\ntype: gleen-result\n---/,
+    );
+    expect(notebookLm).toContain('> NotebookLM source document');
+    expect(notebookLm).not.toMatch(/^---/);
+  });
+
+  it('serializes current draft values without mutating the model', () => {
+    if (
+      model.tabs.summary.status !== 'ready' ||
+      model.tabs.timestamps.status !== 'ready'
+    ) {
+      throw new Error('Expected ready export fixture artifacts');
+    }
+    const draftModel: ResultWorkspaceModel = {
+      ...model,
+      source: { ...model.source, title: 'Current draft title' },
+      tabs: {
+        ...model.tabs,
+        summary: {
+          status: 'ready',
+          data: {
+            ...model.tabs.summary.data,
+            overview: 'Current draft overview',
+          },
+        },
+        timestamps: {
+          status: 'ready',
+          data: {
+            ...model.tabs.timestamps.data,
+            chapters: model.tabs.timestamps.data.chapters.map(
+              (chapter, index) =>
+                index === 0
+                  ? { ...chapter, title: 'Current draft chapter' }
+                  : chapter,
+            ),
+          },
+        },
+      },
+    };
+
+    const output = serializeExport(draftModel, 'markdown', selection);
+
+    expect(output).toContain('# Current draft title');
+    expect(output).toContain('Current draft overview');
+    expect(output).toContain('Current draft chapter');
+    expect(model.source.title).toContain('<script>');
+  });
+
+  it('reports selected unavailable content honestly without empty headings', () => {
+    const unavailableModel: ResultWorkspaceModel = {
+      ...model,
+      tabs: {
+        ...model.tabs,
+        summary: { status: 'unavailable', reason: 'failed', errorCode: 'x' },
+        transcript: { status: 'unavailable', reason: 'missing' },
+      },
+    };
+    const output = serializeExport(unavailableModel, 'markdown', {
+      summary: true,
+      keyTakeaways: true,
+      chapters: false,
+      transcript: true,
+      metadata: false,
+    });
+
+    expect(output).toContain('Summary unavailable');
+    expect(output).toContain('Key takeaways unavailable');
+    expect(output).toContain('Transcript unavailable');
+    expect(output).not.toMatch(/## Summary\n\n##/);
+  });
+
+  it('returns no bytes for an empty selection', () => {
+    expect(
+      serializeExport(model, 'markdown', {
+        summary: false,
+        keyTakeaways: false,
+        chapters: false,
+        transcript: false,
+        metadata: false,
+      }),
+    ).toBe('');
+  });
+
+  it('creates destination-specific filenames from the current title', () => {
+    expect(exportFilename(model, 'markdown')).toBe(
+      'light-alert-1-learning-markdown.md',
+    );
+    expect(exportFilename(model, 'obsidian')).toBe(
+      'light-alert-1-learning-obsidian.md',
+    );
+    expect(exportFilename(model, 'notebooklm')).toBe(
+      'light-alert-1-learning-notebooklm-source.md',
     );
   });
 });

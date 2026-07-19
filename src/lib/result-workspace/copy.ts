@@ -124,13 +124,33 @@ export interface ResultCopy {
   readonly exportNotebookLm: string;
   readonly exportNotion: string;
   readonly exportConnectionRequired: string;
+  readonly exportChooseDestination: string;
+  readonly exportChooseContents: string;
+  readonly exportMarkdownDescription: string;
+  readonly exportNotionDescription: string;
+  readonly exportObsidianDescription: string;
+  readonly exportNotebookLmDescription: string;
   readonly exportIncludeSummary: string;
+  readonly exportIncludeSummaryDescription: string;
+  readonly exportIncludeKeyTakeaways: string;
+  readonly exportIncludeKeyTakeawaysDescription: string;
+  readonly exportIncludeChapters: string;
+  readonly exportIncludeChaptersDescription: string;
   readonly exportIncludeFlashcards: string;
   readonly exportIncludeTimestamps: string;
   readonly exportIncludeTranscript: string;
+  readonly exportIncludeTranscriptDescription: string;
+  readonly exportIncludeMetadata: string;
+  readonly exportIncludeMetadataDescription: string;
   readonly exportPreview: string;
+  readonly exportCopy: string;
+  readonly exportCopied: string;
+  readonly exportCopyFailed: string;
   readonly exportAction: string;
+  readonly exportDownloaded: string;
+  readonly exportDownloadFailed: string;
   readonly exportEmpty: string;
+  readonly exportPrivacy: string;
   readonly sheetMoreTitle: string;
   readonly sheetChaptersTitle: string;
   readonly sheetClose: string;
@@ -317,13 +337,34 @@ export const resultCopy = {
     exportNotebookLm: 'NotebookLM',
     exportNotion: 'Notion',
     exportConnectionRequired: 'Connection required',
-    exportIncludeSummary: 'Include summary',
+    exportChooseDestination: 'Choose destination',
+    exportChooseContents: 'Choose what to include',
+    exportMarkdownDescription:
+      'Clean document for docs, wikis, and version control.',
+    exportNotionDescription: 'Create a new page in your connected workspace.',
+    exportObsidianDescription: 'Export a note with backlinks and frontmatter.',
+    exportNotebookLmDescription: 'Prepare a source document for manual upload.',
+    exportIncludeSummary: 'Summary',
+    exportIncludeSummaryDescription: 'Overview and structured summary',
+    exportIncludeKeyTakeaways: 'Key takeaways',
+    exportIncludeKeyTakeawaysDescription: 'Important points and source links',
+    exportIncludeChapters: 'Chapters',
+    exportIncludeChaptersDescription: 'Timestamps and chapter titles',
     exportIncludeFlashcards: 'Include flashcards',
     exportIncludeTimestamps: 'Include timestamps',
-    exportIncludeTranscript: 'Include transcript',
+    exportIncludeTranscript: 'Full transcript',
+    exportIncludeTranscriptDescription: 'Complete timestamped transcript',
+    exportIncludeMetadata: 'AI generated title & metadata',
+    exportIncludeMetadataDescription: 'Title, channel, duration, and source',
     exportPreview: 'Preview',
-    exportAction: 'Export',
+    exportCopy: 'Copy {destination}',
+    exportCopied: '{destination} copied',
+    exportCopyFailed: 'Could not copy {destination}',
+    exportAction: 'Export to {destination}',
+    exportDownloaded: '{filename} downloaded',
+    exportDownloadFailed: '{destination} could not be downloaded',
     exportEmpty: 'Select at least one artifact to export',
+    exportPrivacy: 'Your data remains private and is never shared.',
     sheetMoreTitle: 'More artifacts',
     sheetChaptersTitle: 'Chapters',
     sheetClose: 'Close',
@@ -481,13 +522,38 @@ export const resultCopy = {
     exportNotebookLm: 'NotebookLM',
     exportNotion: 'Notion',
     exportConnectionRequired: 'Потрібне підключення',
-    exportIncludeSummary: 'Додати резюме',
+    exportChooseDestination: 'Виберіть призначення',
+    exportChooseContents: 'Виберіть, що додати',
+    exportMarkdownDescription:
+      'Чистий документ для нотаток, вікі та контролю версій.',
+    exportNotionDescription:
+      'Створіть нову сторінку в підключеному робочому просторі.',
+    exportObsidianDescription:
+      'Експортуйте нотатку зі зворотними посиланнями та frontmatter.',
+    exportNotebookLmDescription:
+      'Підготуйте документ-джерело для ручного завантаження.',
+    exportIncludeSummary: 'Резюме',
+    exportIncludeSummaryDescription: 'Огляд і структуроване резюме',
+    exportIncludeKeyTakeaways: 'Ключові висновки',
+    exportIncludeKeyTakeawaysDescription:
+      'Важливі пункти й посилання на джерело',
+    exportIncludeChapters: 'Розділи',
+    exportIncludeChaptersDescription: 'Часові мітки й назви розділів',
     exportIncludeFlashcards: 'Додати картки',
     exportIncludeTimestamps: 'Додати мітки часу',
-    exportIncludeTranscript: 'Додати транскрипт',
+    exportIncludeTranscript: 'Повний транскрипт',
+    exportIncludeTranscriptDescription: 'Повний транскрипт із часовими мітками',
+    exportIncludeMetadata: 'Згенерована ШІ назва й метадані',
+    exportIncludeMetadataDescription: 'Назва, канал, тривалість і джерело',
     exportPreview: 'Попередній перегляд',
-    exportAction: 'Експортувати',
+    exportCopy: 'Копіювати {destination}',
+    exportCopied: '{destination} скопійовано',
+    exportCopyFailed: 'Не вдалося скопіювати {destination}',
+    exportAction: 'Експортувати до {destination}',
+    exportDownloaded: '{filename} завантажено',
+    exportDownloadFailed: 'Не вдалося завантажити {destination}',
     exportEmpty: 'Виберіть принаймні один матеріал для експорту',
+    exportPrivacy: 'Ваші дані залишаються приватними й не передаються іншим.',
     sheetMoreTitle: 'Інші матеріали',
     sheetChaptersTitle: 'Розділи',
     sheetClose: 'Закрити',
@@ -646,13 +712,38 @@ export const resultCopy = {
     exportNotebookLm: 'NotebookLM',
     exportNotion: 'Notion',
     exportConnectionRequired: 'Требуется подключение',
-    exportIncludeSummary: 'Добавить конспект',
+    exportChooseDestination: 'Выберите назначение',
+    exportChooseContents: 'Выберите, что включить',
+    exportMarkdownDescription:
+      'Чистый документ для заметок, вики и контроля версий.',
+    exportNotionDescription:
+      'Создайте новую страницу в подключённом рабочем пространстве.',
+    exportObsidianDescription:
+      'Экспортируйте заметку с обратными ссылками и frontmatter.',
+    exportNotebookLmDescription:
+      'Подготовьте документ-источник для ручной загрузки.',
+    exportIncludeSummary: 'Конспект',
+    exportIncludeSummaryDescription: 'Обзор и структурированный конспект',
+    exportIncludeKeyTakeaways: 'Ключевые выводы',
+    exportIncludeKeyTakeawaysDescription: 'Важные пункты и ссылки на источник',
+    exportIncludeChapters: 'Главы',
+    exportIncludeChaptersDescription: 'Метки времени и названия глав',
     exportIncludeFlashcards: 'Добавить карточки',
     exportIncludeTimestamps: 'Добавить метки времени',
-    exportIncludeTranscript: 'Добавить транскрипт',
+    exportIncludeTranscript: 'Полный транскрипт',
+    exportIncludeTranscriptDescription: 'Полный транскрипт с метками времени',
+    exportIncludeMetadata: 'Созданные ИИ название и метаданные',
+    exportIncludeMetadataDescription:
+      'Название, канал, длительность и источник',
     exportPreview: 'Предпросмотр',
-    exportAction: 'Экспортировать',
+    exportCopy: 'Копировать {destination}',
+    exportCopied: '{destination} скопирован',
+    exportCopyFailed: 'Не удалось скопировать {destination}',
+    exportAction: 'Экспортировать в {destination}',
+    exportDownloaded: '{filename} скачан',
+    exportDownloadFailed: 'Не удалось скачать {destination}',
     exportEmpty: 'Выберите хотя бы один материал для экспорта',
+    exportPrivacy: 'Ваши данные остаются приватными и не передаются другим.',
     sheetMoreTitle: 'Другие материалы',
     sheetChaptersTitle: 'Главы',
     sheetClose: 'Закрыть',
@@ -812,13 +903,39 @@ export const resultCopy = {
     exportNotebookLm: 'NotebookLM',
     exportNotion: 'Notion',
     exportConnectionRequired: 'Conexión necesaria',
-    exportIncludeSummary: 'Incluir resumen',
+    exportChooseDestination: 'Elige el destino',
+    exportChooseContents: 'Elige qué incluir',
+    exportMarkdownDescription:
+      'Documento limpio para notas, wikis y control de versiones.',
+    exportNotionDescription:
+      'Crea una página nueva en tu espacio de trabajo conectado.',
+    exportObsidianDescription:
+      'Exporta una nota con enlaces entrantes y frontmatter.',
+    exportNotebookLmDescription:
+      'Prepara un documento fuente para subirlo manualmente.',
+    exportIncludeSummary: 'Resumen',
+    exportIncludeSummaryDescription: 'Vista general y resumen estructurado',
+    exportIncludeKeyTakeaways: 'Ideas clave',
+    exportIncludeKeyTakeawaysDescription:
+      'Puntos importantes y enlaces a la fuente',
+    exportIncludeChapters: 'Capítulos',
+    exportIncludeChaptersDescription: 'Marcas de tiempo y títulos',
     exportIncludeFlashcards: 'Incluir tarjetas',
     exportIncludeTimestamps: 'Incluir marcas de tiempo',
-    exportIncludeTranscript: 'Incluir transcripción',
+    exportIncludeTranscript: 'Transcripción completa',
+    exportIncludeTranscriptDescription:
+      'Transcripción completa con marcas de tiempo',
+    exportIncludeMetadata: 'Título y metadatos generados por IA',
+    exportIncludeMetadataDescription: 'Título, canal, duración y fuente',
     exportPreview: 'Vista previa',
-    exportAction: 'Exportar',
+    exportCopy: 'Copiar {destination}',
+    exportCopied: '{destination} copiado',
+    exportCopyFailed: 'No se pudo copiar {destination}',
+    exportAction: 'Exportar a {destination}',
+    exportDownloaded: '{filename} descargado',
+    exportDownloadFailed: 'No se pudo descargar {destination}',
     exportEmpty: 'Selecciona al menos un material para exportar',
+    exportPrivacy: 'Tus datos permanecen privados y nunca se comparten.',
     sheetMoreTitle: 'Más materiales',
     sheetChaptersTitle: 'Capítulos',
     sheetClose: 'Cerrar',
@@ -978,13 +1095,40 @@ export const resultCopy = {
     exportNotebookLm: 'NotebookLM',
     exportNotion: 'Notion',
     exportConnectionRequired: 'Verbindung erforderlich',
-    exportIncludeSummary: 'Zusammenfassung einschließen',
+    exportChooseDestination: 'Ziel auswählen',
+    exportChooseContents: 'Inhalte auswählen',
+    exportMarkdownDescription:
+      'Sauberes Dokument für Notizen, Wikis und Versionskontrolle.',
+    exportNotionDescription:
+      'Neue Seite im verbundenen Arbeitsbereich erstellen.',
+    exportObsidianDescription:
+      'Notiz mit Backlinks und Frontmatter exportieren.',
+    exportNotebookLmDescription:
+      'Quelldokument für den manuellen Upload vorbereiten.',
+    exportIncludeSummary: 'Zusammenfassung',
+    exportIncludeSummaryDescription:
+      'Überblick und strukturierte Zusammenfassung',
+    exportIncludeKeyTakeaways: 'Kernaussagen',
+    exportIncludeKeyTakeawaysDescription: 'Wichtige Punkte und Quellenlinks',
+    exportIncludeChapters: 'Kapitel',
+    exportIncludeChaptersDescription: 'Zeitmarken und Kapiteltitel',
     exportIncludeFlashcards: 'Lernkarten einschließen',
     exportIncludeTimestamps: 'Zeitmarken einschließen',
-    exportIncludeTranscript: 'Transkript einschließen',
+    exportIncludeTranscript: 'Vollständiges Transkript',
+    exportIncludeTranscriptDescription:
+      'Vollständiges Transkript mit Zeitmarken',
+    exportIncludeMetadata: 'KI-generierter Titel und Metadaten',
+    exportIncludeMetadataDescription: 'Titel, Kanal, Dauer und Quelle',
     exportPreview: 'Vorschau',
-    exportAction: 'Exportieren',
+    exportCopy: '{destination} kopieren',
+    exportCopied: '{destination} kopiert',
+    exportCopyFailed: '{destination} konnte nicht kopiert werden',
+    exportAction: 'Nach {destination} exportieren',
+    exportDownloaded: '{filename} heruntergeladen',
+    exportDownloadFailed: '{destination} konnte nicht heruntergeladen werden',
     exportEmpty: 'Wähle mindestens ein Artefakt für den Export',
+    exportPrivacy:
+      'Deine Daten bleiben privat und werden niemals weitergegeben.',
     sheetMoreTitle: 'Weitere Artefakte',
     sheetChaptersTitle: 'Kapitel',
     sheetClose: 'Schließen',

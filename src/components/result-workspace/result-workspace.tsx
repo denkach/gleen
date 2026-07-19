@@ -288,7 +288,7 @@ function ResultArtifacts({
             )}
           </TabsContent>
           <TabsContent value="export">
-            <ExportTab model={draftModel} />
+            <ExportTab model={draftModel} copy={copy} />
           </TabsContent>
         </div>
       </Tabs>
