@@ -750,6 +750,7 @@ body:has(.result-page-layout) {
   min-height: 43px;
   padding: 0 0 1px;
   color: var(--result-text-secondary);
+  font-size: 14px;
 }
 
 .result-navigation .ui-tabs-trigger::after {
@@ -2774,7 +2775,7 @@ body:has(.result-page-layout) {
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 60;
+    z-index: 30;
     min-height: calc(67px + env(safe-area-inset-bottom));
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -2829,7 +2830,7 @@ body:has(.result-page-layout) {
     right: max(8px, env(safe-area-inset-right));
     bottom: calc(75px + env(safe-area-inset-bottom));
     left: max(8px, env(safe-area-inset-left));
-    z-index: 59;
+    z-index: 29;
     min-height: 68px;
     display: grid;
     grid-template-columns: 72px minmax(0, 1fr) repeat(3, 44px);

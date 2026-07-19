@@ -26,6 +26,25 @@ async function gotoFixture(page: import('@playwright/test').Page, url: string) {
   }
 }
 
+async function expectFocusToCycleInside(
+  page: import('@playwright/test').Page,
+  dialog: import('@playwright/test').Locator,
+) {
+  const focusableCount = await dialog
+    .locator(
+      'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )
+    .count();
+
+  for (let index = 0; index <= focusableCount; index += 1) {
+    await page.keyboard.press('Tab');
+    await expect(dialog.locator(':focus')).toHaveCount(1);
+  }
+
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.locator(':focus')).toHaveCount(1);
+}
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const state = { currentTime: 0, seeks: [] as number[] };
@@ -573,6 +592,13 @@ test('traps and restores focus for Chapters and More sheets', async ({
       ),
     )
     .toBe(true);
+  await expectFocusToCycleInside(page, chapters);
+  const chaptersClose = chapters.getByRole('button', {
+    name: 'Close',
+    exact: true,
+  });
+  await chaptersClose.scrollIntoViewIfNeeded();
+  await chaptersClose.click({ trial: true });
   await page.keyboard.press('Escape');
   await expect(chapters).toBeHidden();
   await expect(chapterTrigger).toBeFocused();
@@ -584,6 +610,13 @@ test('traps and restores focus for Chapters and More sheets', async ({
   await moreTrigger.click();
   const more = page.getByRole('dialog', { name: 'More artifacts' });
   await expect(more).toBeVisible();
+  await expectFocusToCycleInside(page, more);
+  const moreClose = more.getByRole('button', {
+    name: 'Close',
+    exact: true,
+  });
+  await moreClose.scrollIntoViewIfNeeded();
+  await moreClose.click({ trial: true });
   await page.keyboard.press('Escape');
   await expect(more).toBeHidden();
   await expect(moreTrigger).toBeFocused();
@@ -626,6 +659,33 @@ test('keeps core result actions available at 200 percent zoom', async ({
       .locator('.result-mobile-navigation')
       .getByRole('button', { name: 'More' }),
   ).toBeVisible();
+  await page.getByLabel('Analysis artifacts').scrollIntoViewIfNeeded();
+  const miniPlayer = page.getByTestId('mobile-mini-player');
+  await expect(miniPlayer).toBeVisible();
+  await miniPlayer.getByRole('button', { name: 'Chapters' }).click();
+  const chapters = page.getByRole('dialog', { name: 'Chapters' });
+  const chaptersClose = chapters.getByRole('button', {
+    name: 'Close',
+    exact: true,
+  });
+  await chaptersClose.scrollIntoViewIfNeeded();
+  await chaptersClose.click({ trial: true });
+  await chaptersClose.click();
+  await page
+    .locator('.result-mobile-navigation')
+    .getByRole('button', { name: 'More' })
+    .click();
+  const more = page.getByRole('dialog', { name: 'More artifacts' });
+  const exportDestination = more.getByRole('button', { name: 'Export' });
+  await exportDestination.scrollIntoViewIfNeeded();
+  await exportDestination.click({ trial: true });
+  const moreClose = more.getByRole('button', {
+    name: 'Close',
+    exact: true,
+  });
+  await moreClose.scrollIntoViewIfNeeded();
+  await moreClose.click({ trial: true });
+  await moreClose.click();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -641,6 +701,9 @@ test('preserves long titles and 3 hour playback controls', async ({ page }) => {
   );
 
   await expect(page.getByText('3:14:05', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Result title')).toHaveValue(
+    'How purpose becomes consistent action across teams, products, decisions, and every difficult moment that follows',
+  );
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

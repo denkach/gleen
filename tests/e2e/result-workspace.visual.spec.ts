@@ -29,12 +29,76 @@ async function openFixture(page: import('@playwright/test').Page) {
 }
 
 async function capture(page: import('@playwright/test').Page, name: string) {
+  await page
+    .locator('nextjs-portal')
+    .evaluateAll((portals) =>
+      portals.forEach((portal) =>
+        (portal as HTMLElement).style.setProperty(
+          'display',
+          'none',
+          'important',
+        ),
+      ),
+    );
   await expect(page).toHaveScreenshot(name, {
     animations: 'disabled',
     caret: 'hide',
     mask: [page.locator('[aria-label="Video source"] iframe')],
     maskColor: '#05070b',
   });
+}
+
+async function expectSheetAboveMobileChrome(
+  page: import('@playwright/test').Page,
+) {
+  const layers = await page.evaluate(() => {
+    const zIndex = (selector: string) => {
+      const element = document.querySelector(selector);
+
+      if (!(element instanceof HTMLElement)) {
+        throw new Error(`Missing layer: ${selector}`);
+      }
+
+      return Number.parseInt(window.getComputedStyle(element).zIndex, 10);
+    };
+
+    return {
+      dialog: zIndex('.result-sheet'),
+      miniPlayer: zIndex('.result-mobile-mini-player'),
+      navigation: zIndex('.result-mobile-navigation'),
+      overlay: zIndex('.ui-dialog-overlay'),
+    };
+  });
+
+  expect(layers.overlay).toBeGreaterThan(layers.miniPlayer);
+  expect(layers.overlay).toBeGreaterThan(layers.navigation);
+  expect(layers.dialog).toBeGreaterThan(layers.miniPlayer);
+  expect(layers.dialog).toBeGreaterThan(layers.navigation);
+
+  const mobileChromeIsInert = await page.evaluate(() => {
+    const selectors = [
+      '.result-mobile-mini-player',
+      '.result-mobile-navigation',
+    ];
+
+    return selectors.every((selector) => {
+      const element = document.querySelector(selector);
+
+      if (!(element instanceof HTMLElement)) {
+        return false;
+      }
+
+      const rect = element.getBoundingClientRect();
+      const hitTarget = document.elementFromPoint(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2,
+      );
+
+      return Boolean(hitTarget?.closest('.result-sheet, .ui-dialog-overlay'));
+    });
+  });
+
+  expect(mobileChromeIsInert).toBe(true);
 }
 
 for (const viewport of overviewViewports) {
@@ -44,6 +108,22 @@ for (const viewport of overviewViewports) {
     await page.setViewportSize(viewport);
     await openFixture(page);
     await page.evaluate(() => window.scrollTo(0, 0));
+
+    if (viewport.width >= 1440) {
+      const tabs = page.locator('.result-navigation [role="tablist"]');
+      const exportTab = tabs.getByRole('tab', { name: 'Export' });
+      const [tabsBox, exportBox] = await Promise.all([
+        tabs.boundingBox(),
+        exportTab.boundingBox(),
+      ]);
+
+      expect(tabsBox).not.toBeNull();
+      expect(exportBox).not.toBeNull();
+      expect(exportBox!.x + exportBox!.width).toBeLessThanOrEqual(
+        tabsBox!.x + tabsBox!.width,
+      );
+    }
+
     await capture(
       page,
       `den-25-${viewport.width}x${viewport.height}-${viewport.mode}-overview.png`,
@@ -68,25 +148,47 @@ for (const viewport of mobileViewports) {
     );
 
     await miniPlayer.getByRole('button', { name: 'Chapters' }).click();
-    await expect(page.getByRole('dialog', { name: 'Chapters' })).toBeVisible();
+    const chaptersSheet = page.getByRole('dialog', { name: 'Chapters' });
+    await expect(chaptersSheet).toBeVisible();
+    await expectSheetAboveMobileChrome(page);
     await capture(
       page,
       `den-25-${viewport.width}x${viewport.height}-mobile-chapters-sheet.png`,
     );
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    const lastChapter = chaptersSheet.getByRole('button').last();
+    await lastChapter.scrollIntoViewIfNeeded();
+    await lastChapter.click({ trial: true });
+    const chaptersClose = chaptersSheet.getByRole('button', {
+      name: 'Close',
+      exact: true,
+    });
+    await chaptersClose.scrollIntoViewIfNeeded();
+    await chaptersClose.click({ trial: true });
+    await chaptersClose.click();
 
     const mobileNavigation = page.locator('.result-mobile-navigation');
     await mobileNavigation.getByRole('button', { name: 'More' }).click();
-    await expect(page.getByRole('dialog', { name: 'More' })).toBeVisible();
+    const moreSheet = page.getByRole('dialog', { name: 'More' });
+    await expect(moreSheet).toBeVisible();
+    await expectSheetAboveMobileChrome(page);
     await capture(
       page,
       `den-25-${viewport.width}x${viewport.height}-mobile-more-sheet.png`,
     );
 
-    await page
-      .getByRole('dialog', { name: 'More' })
-      .getByRole('button', { name: 'Transcript' })
-      .click();
+    const exportDestination = moreSheet.getByRole('button', {
+      name: 'Export',
+    });
+    await exportDestination.scrollIntoViewIfNeeded();
+    await exportDestination.click({ trial: true });
+    const moreClose = moreSheet.getByRole('button', {
+      name: 'Close',
+      exact: true,
+    });
+    await moreClose.scrollIntoViewIfNeeded();
+    await moreClose.click({ trial: true });
+
+    await moreSheet.getByRole('button', { name: 'Transcript' }).click();
     await expect(
       page.getByRole('tabpanel', { name: 'Transcript' }),
     ).toBeVisible();
