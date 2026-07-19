@@ -204,6 +204,7 @@ function renderWorkspace(value: ResultWorkspaceModel = model) {
 function renderWorkspaceWithActions({
   saveTitle = vi.fn(),
   saveArtifact = vi.fn(),
+  saveFlashcardReview,
   value = model,
 }: Readonly<{
   saveTitle?: (
@@ -216,6 +217,9 @@ function renderWorkspaceWithActions({
   ) => Promise<
     { status: 'saved'; updatedAt: string } | { status: 'conflict' | 'error' }
   >;
+  saveFlashcardReview?: (
+    input: unknown,
+  ) => Promise<{ status: 'saved' | 'conflict' | 'error' }>;
   value?: ResultWorkspaceModel;
 }>) {
   return render(
@@ -224,6 +228,7 @@ function renderWorkspaceWithActions({
         model={value}
         saveTitle={saveTitle}
         saveArtifact={saveArtifact}
+        saveFlashcardReview={saveFlashcardReview}
       />
     </PlayerProvider>,
   );
@@ -687,8 +692,62 @@ describe('ResultWorkspace', () => {
     const user = userEvent.setup();
     renderWorkspace();
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
-    expect(screen.getByText('Legacy text remains readable.')).toBeVisible();
+    expect(
+      screen.getByRole('button', {
+        name: /legacy text remains readable/i,
+        expanded: true,
+      }),
+    ).toBeVisible();
     expect(screen.queryByRole('button', { name: '0:00' })).toBeNull();
+    await user.click(
+      screen.getByRole('button', {
+        name: /sources remain grounded/i,
+        expanded: false,
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: '12:35' }));
+    expect(controller.seekTo).toHaveBeenCalledWith(755_000);
+  });
+
+  it('matches the Summary hero, metrics, disclosure, copy, and grounded source interactions', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    renderWorkspace();
+
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+
+    expect(screen.getByText('Summary in one sentence')).toBeVisible();
+    expect(screen.getByText('Structured sections')).toBeVisible();
+    expect(screen.getByText('Reading time')).toBeVisible();
+    expect(screen.getByText('Study cards')).toBeVisible();
+
+    const disclosure = screen.getByRole('button', {
+      name: /legacy text remains readable/i,
+      expanded: true,
+    });
+    expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+    await user.click(disclosure);
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    await user.click(disclosure);
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /copy.*legacy text remains readable/i,
+      }),
+    );
+    expect(writeText).toHaveBeenCalledWith('Legacy text remains readable.');
+    expect(screen.getByRole('status')).toHaveTextContent('Copied');
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /sources remain grounded/i,
+        expanded: false,
+      }),
+    );
     await user.click(screen.getByRole('button', { name: '12:35' }));
     expect(controller.seekTo).toHaveBeenCalledWith(755_000);
   });
@@ -719,8 +778,89 @@ describe('ResultWorkspace', () => {
       expect(screen.getByRole('button', { name: label })).toBeVisible();
     }
     await user.click(screen.getByRole('button', { name: 'Got it' }));
-    expect(screen.getByText(/1 studied/i)).toBeVisible();
+    expect(screen.getByText(/1 \/ 2 reviewed cards/i)).toBeVisible();
     expect(card.closest('[data-reduced-motion]')).toBeTruthy();
+  });
+
+  it('persists one optimistic flashcard rating per current revision and rolls progress back on failure', async () => {
+    const user = userEvent.setup();
+    const review = deferred<{ status: 'error' }>();
+    const saveFlashcardReview = vi.fn(() => review.promise);
+    renderWorkspaceWithActions({
+      saveFlashcardReview,
+      value: {
+        ...model,
+        userState: {
+          ...model.userState!,
+          reviews: [
+            {
+              artifactRevision: 'stale-revision',
+              cardIndex: 0,
+              rating: 'again',
+            },
+            {
+              artifactRevision: model.revisions.flashcards!,
+              cardIndex: 1,
+              rating: 'hard',
+            },
+          ],
+        },
+      },
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+    expect(screen.getByText(/1 \/ 2 reviewed cards/i)).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Got it' }));
+
+    expect(saveFlashcardReview).toHaveBeenCalledWith({
+      analysisId: model.source.intakeId,
+      artifactRevision: model.revisions.flashcards,
+      cardIndex: 0,
+      rating: 'got_it',
+    });
+    expect(screen.getByText(/2 \/ 2 reviewed cards/i)).toBeVisible();
+    expect(screen.getByText('What stays grounded?')).toBeVisible();
+
+    review.resolve({ status: 'error' });
+    await waitFor(() =>
+      expect(screen.getByText(/1 \/ 2 reviewed cards/i)).toBeVisible(),
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Review could not be saved',
+    );
+  });
+
+  it('keeps flashcard editors out of study mode and autosaves edits on demand', async () => {
+    const user = userEvent.setup();
+    const saveArtifact = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:02:00.000Z',
+    });
+    renderWorkspaceWithActions({ saveArtifact });
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Flashcard question' }),
+    ).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Edit flashcards' }));
+    const question = screen.getByRole('textbox', {
+      name: 'Flashcard question',
+    });
+    await user.clear(question);
+    await user.type(question, 'Edited study question?');
+    await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
+
+    expect(saveArtifact).toHaveBeenCalledWith({
+      analysisId: model.source.intakeId,
+      expectedUpdatedAt: model.revisions.flashcards,
+      kind: 'flashcards',
+      content: expect.objectContaining({
+        cards: expect.arrayContaining([
+          expect.objectContaining({ front: 'Edited study question?' }),
+        ]),
+      }),
+    });
   });
 
   it('clamps the current flashcard when a refreshed deck is shorter', async () => {
@@ -790,8 +930,43 @@ describe('ResultWorkspace', () => {
     expect(controller.seekTo).toHaveBeenCalledWith(755_000);
     const timestamps = screen.getByRole('tabpanel', { name: 'Timestamps' });
     expect(
-      within(timestamps).getByText('Sources').closest('li'),
+      within(timestamps)
+        .getByRole('textbox', { name: 'Chapter 2 title' })
+        .closest('li'),
     ).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('renders prototype moments with derived durations and seeks without scrolling the page', async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    renderWorkspace();
+    await user.click(screen.getByRole('tab', { name: 'Timestamps' }));
+
+    expect(
+      screen.getByRole('heading', { name: '2 key moments' }),
+    ).toBeVisible();
+    expect(screen.getByText('Auto-generated')).toBeVisible();
+    expect(
+      screen.getByText('12:35', { selector: '.result-moment-duration' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText('2:25', { selector: '.result-moment-duration' }),
+    ).toBeVisible();
+    const timestamps = screen.getByRole('tabpanel', { name: 'Timestamps' });
+    expect(
+      within(timestamps).getAllByRole('img', { name: /light and learning/i }),
+    ).toHaveLength(2);
+
+    await user.click(
+      screen.getByRole('button', { name: /play this moment.*sources/i }),
+    );
+    expect(controller.seekTo).toHaveBeenCalledWith(755_000);
+    expect(controller.play).toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 
   it('updates the active timestamp from controller time polling', async () => {
@@ -808,7 +983,9 @@ describe('ResultWorkspace', () => {
       await user.click(screen.getByRole('tab', { name: 'Timestamps' }));
       const timestamps = screen.getByRole('tabpanel', { name: 'Timestamps' });
       expect(
-        within(timestamps).getByText('Opening').closest('li'),
+        within(timestamps)
+          .getByRole('textbox', { name: 'Chapter 1 title' })
+          .closest('li'),
       ).toHaveAttribute('aria-current', 'true');
 
       vi.mocked(controller.getCurrentTimeMs).mockReturnValue(755_000);
@@ -820,7 +997,9 @@ describe('ResultWorkspace', () => {
       });
 
       expect(
-        within(timestamps).getByText('Sources').closest('li'),
+        within(timestamps)
+          .getByRole('textbox', { name: 'Chapter 2 title' })
+          .closest('li'),
       ).toHaveAttribute('aria-current', 'true');
     } finally {
       interval.mockRestore();
@@ -1144,6 +1323,7 @@ describe('ResultWorkspace', () => {
     await user.clear(overview);
     await user.type(overview, 'Draft export overview');
     await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+    await user.click(screen.getByRole('button', { name: 'Edit flashcards' }));
     const question = screen.getByRole('textbox', {
       name: 'Flashcard question',
     });

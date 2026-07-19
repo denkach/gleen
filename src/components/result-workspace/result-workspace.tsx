@@ -56,6 +56,7 @@ function ResultArtifacts({
   favoritePending,
   onFavorite,
   onShare,
+  saveFlashcardReview,
 }: Readonly<{
   model: ResultWorkspaceModel;
   saveTitle: SaveAction;
@@ -65,6 +66,7 @@ function ResultArtifacts({
   favoritePending: boolean;
   onFavorite?: () => void;
   onShare?: () => void;
+  saveFlashcardReview?: MutationAction;
 }>) {
   const [tab, setTab] = useState<TabValue>('overview');
   const [draftModel, setDraftModel] = useState(model);
@@ -187,6 +189,8 @@ function ResultArtifacts({
                 }
                 revision={model.revisions.summary!}
                 saveArtifact={saveArtifact}
+                flashcardCount={model.overview.flashcardCount}
+                copy={copy}
               />
             ) : (
               <ArtifactState state={model.tabs.summary} />
@@ -218,6 +222,9 @@ function ResultArtifacts({
                 }
                 revision={model.revisions.flashcards!}
                 saveArtifact={saveArtifact}
+                saveFlashcardReview={saveFlashcardReview}
+                reviews={model.userState?.reviews ?? []}
+                copy={copy}
               />
             ) : (
               <ArtifactState state={model.tabs.flashcards} />
@@ -249,6 +256,10 @@ function ResultArtifacts({
                 }
                 revision={model.revisions.timestamps!}
                 saveArtifact={saveArtifact}
+                durationSeconds={model.source.durationSeconds}
+                thumbnailUrl={model.source.thumbnailUrl}
+                sourceTitle={model.source.title}
+                copy={copy}
               />
             ) : (
               <ArtifactState state={model.tabs.timestamps} />
@@ -460,6 +471,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           favoritePending={favoritePending}
           onFavorite={favoriteAction}
           onShare={props.onShare}
+          saveFlashcardReview={props.saveFlashcardReview}
         />
       </ResultLayout>
     </PlayerProvider>

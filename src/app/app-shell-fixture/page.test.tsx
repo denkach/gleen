@@ -83,6 +83,10 @@ it('freezes the complete DEN-25 result fixture contract', async () => {
   expect(den25Model.tabs.summary.status).toBe('ready');
   if (den25Model.tabs.summary.status !== 'ready') return;
   expect(den25Model.tabs.summary.data.keyPoints).toHaveLength(5);
+  expect(den25Model.tabs.summary.data.keyPoints[0]).toEqual({
+    text: 'Start communication with the purpose behind the work.',
+    sourceOffsetMs: 75_000,
+  });
 
   expect(den25Model.tabs.flashcards.status).toBe('ready');
   if (den25Model.tabs.flashcards.status !== 'ready') return;

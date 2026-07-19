@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState, useSyncExternalStore } from 'react';
+import { z } from 'zod';
 
 import { ResultWorkspace } from '@/components/result-workspace/result-workspace';
 import type { ResultSaveState } from '@/lib/result-workspace/actions';
@@ -12,6 +13,16 @@ import type {
   ResultWorkspaceModel,
   SummaryPresentation,
 } from '@/lib/result-workspace/presentation';
+import { flashcardRatingSchema } from '@/lib/result-workspace/user-state';
+
+const fixtureFlashcardReviewSchema = z
+  .object({
+    analysisId: z.uuid(),
+    artifactRevision: z.iso.datetime({ offset: true }),
+    cardIndex: z.number().int().nonnegative(),
+    rating: flashcardRatingSchema,
+  })
+  .strict();
 
 type FixturePlayerCommand = Readonly<{
   type: 'destroy' | 'pause' | 'play' | 'seek';
@@ -260,6 +271,40 @@ export function FixtureResultWorkspace({
             },
           },
         }));
+      }}
+      saveFlashcardReview={async (input) => {
+        const review = fixtureFlashcardReviewSchema.parse(input);
+        if (review.analysisId !== displayedModel.source.intakeId)
+          return { status: 'error' };
+        update((current) => {
+          if (!current.userState) return current;
+          const reviews = [
+            ...current.userState.reviews.filter(
+              (item) =>
+                item.artifactRevision !== review.artifactRevision ||
+                item.cardIndex !== review.cardIndex,
+            ),
+            review,
+          ];
+          const reviewedFlashcardCount = new Set(
+            reviews
+              .filter(
+                (item) =>
+                  item.artifactRevision === current.revisions.flashcards,
+              )
+              .map((item) => item.cardIndex),
+          ).size;
+          return {
+            ...current,
+            overview: { ...current.overview, reviewedFlashcardCount },
+            userState: {
+              ...current.userState,
+              lastStudyAction: 'flashcards_reviewed',
+              reviews,
+            },
+          };
+        });
+        return { status: 'saved' };
       }}
     />
   );

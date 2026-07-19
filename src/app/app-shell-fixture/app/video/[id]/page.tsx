@@ -8,6 +8,7 @@ import { unavailableUsage } from '@/lib/app-shell';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
 import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
+import type { ResultUserState } from '@/lib/result-workspace/user-state';
 import {
   outputLocaleSchema,
   summaryPresetSchema,
@@ -15,20 +16,16 @@ import {
 
 import { FixtureResultWorkspace } from './fixture-result-workspace';
 
-type Den25UserStateSeed = Readonly<{
-  favorite: boolean;
-  playbackPositionMs: number;
-  lastArtifact: 'overview';
-  reviewedFlashcardCount: number;
-  activeShare: null;
-}>;
-
-const den25UserStateSeed: Den25UserStateSeed = {
+const den25UserStateSeed: ResultUserState = {
   favorite: false,
   playbackPositionMs: 370_000,
   lastArtifact: 'overview',
-  reviewedFlashcardCount: 11,
-  activeShare: null,
+  lastStudyAction: 'flashcards_reviewed',
+  reviews: Array.from({ length: 11 }, (_, cardIndex) => ({
+    artifactRevision: '2026-07-18T00:00:30.000Z',
+    cardIndex,
+    rating: 'got_it' as const,
+  })),
 };
 
 const den25Chapters = [
@@ -86,6 +83,19 @@ const den25Summary = {
     },
   ],
 };
+
+const den25SourceTranscriptSegments = [
+  {
+    text: 'Purpose gives the rest of the talk a clear frame.',
+    offsetMs: 0,
+    durationMs: 8_000,
+  },
+  ...den25Summary.keyPoints.map((point) => ({
+    text: point.text,
+    offsetMs: point.sourceOffsetMs,
+    durationMs: 8_000,
+  })),
+];
 
 const den25Timestamps = {
   schemaVersion: 1 as const,
@@ -496,6 +506,7 @@ export default async function FixtureReadinessPage({
           channelTitle: 'Gleen Local Fixture',
           durationSeconds: 1_043,
           thumbnailUrl: '/app-icons.svg',
+          transcriptSegments: den25SourceTranscriptSegments,
         }
       : {}),
     configuration: {
@@ -559,7 +570,11 @@ export default async function FixtureReadinessPage({
     >
       {result ? (
         <FixtureResultWorkspace
-          initialModel={normalizeResultWorkspace(intake, result)}
+          initialModel={normalizeResultWorkspace(
+            intake,
+            result,
+            id === 'result-den-25-public' ? null : den25UserStateSeed,
+          )}
           fixturePlayerStartMs={
             den25Fixture
               ? id === 'result-den-25-public'
