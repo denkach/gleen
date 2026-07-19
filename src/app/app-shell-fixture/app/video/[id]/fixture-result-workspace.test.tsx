@@ -1,4 +1,5 @@
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
@@ -97,6 +98,38 @@ afterEach(() => {
 });
 
 describe('FixtureResultWorkspace player global lifecycle', () => {
+  it('does not expose a falsely successful review action when private state is unknown', async () => {
+    const unknownModel: ResultWorkspaceModel = {
+      ...model,
+      revisions: {
+        ...model.revisions,
+        flashcards: '2026-07-18T00:01:00.000Z',
+      },
+      overview: { ...model.overview, flashcardCount: 1 },
+      userState: null,
+      tabs: {
+        ...model.tabs,
+        flashcards: {
+          status: 'ready',
+          data: {
+            schemaVersion: 1,
+            cards: [{ front: 'Unknown progress', back: 'No fake save' }],
+          },
+        },
+      },
+    };
+    render(<FixtureResultWorkspace initialModel={unknownModel} />);
+    await userEvent.click(
+      await screen.findByRole('tab', { name: 'Flashcards' }),
+    );
+
+    expect(
+      screen.getByRole('button', {
+        name: /got it.*review saving is unavailable/i,
+      }),
+    ).toBeDisabled();
+  });
+
   it('restores pre-existing player globals when the fixture unmounts', async () => {
     const previousApi = playerApi('DEN-18 player');
     const previousState = playerState('DEN-18 state');

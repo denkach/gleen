@@ -277,40 +277,44 @@ export function FixtureResultWorkspace({
           },
         }));
       }}
-      saveFlashcardReview={async (input) => {
-        const review = fixtureFlashcardReviewSchema.parse(input);
-        if (review.analysisId !== displayedModel.source.intakeId)
-          return { status: 'error' };
-        update((current) => {
-          if (!current.userState) return current;
-          const reviews = [
-            ...current.userState.reviews.filter(
-              (item) =>
-                item.artifactRevision !== review.artifactRevision ||
-                item.cardIndex !== review.cardIndex,
-            ),
-            review,
-          ];
-          const reviewedFlashcardCount = new Set(
-            reviews
-              .filter(
-                (item) =>
-                  item.artifactRevision === current.revisions.flashcards,
-              )
-              .map((item) => item.cardIndex),
-          ).size;
-          return {
-            ...current,
-            overview: { ...current.overview, reviewedFlashcardCount },
-            userState: {
-              ...current.userState,
-              lastStudyAction: 'flashcards_reviewed',
-              reviews,
-            },
-          };
-        });
-        return { status: 'saved' };
-      }}
+      saveFlashcardReview={
+        displayedModel.userState
+          ? async (input) => {
+              const review = fixtureFlashcardReviewSchema.parse(input);
+              if (review.analysisId !== displayedModel.source.intakeId)
+                return { status: 'error' };
+              update((current) => {
+                if (!current.userState) return current;
+                const reviews = [
+                  ...current.userState.reviews.filter(
+                    (item) =>
+                      item.artifactRevision !== review.artifactRevision ||
+                      item.cardIndex !== review.cardIndex,
+                  ),
+                  review,
+                ];
+                const reviewedFlashcardCount = new Set(
+                  reviews
+                    .filter(
+                      (item) =>
+                        item.artifactRevision === current.revisions.flashcards,
+                    )
+                    .map((item) => item.cardIndex),
+                ).size;
+                return {
+                  ...current,
+                  overview: { ...current.overview, reviewedFlashcardCount },
+                  userState: {
+                    ...current.userState,
+                    lastStudyAction: 'flashcards_reviewed',
+                    reviews,
+                  },
+                };
+              });
+              return { status: 'saved' };
+            }
+          : undefined
+      }
     />
   );
 }

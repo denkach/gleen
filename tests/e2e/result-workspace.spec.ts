@@ -350,17 +350,49 @@ test('durable mobile touch flow flips and studies a flashcard', async ({
   isMobile,
   page,
 }) => {
-  await gotoFixture(page, route);
+  const den25OwnerRoute =
+    '/app-shell-fixture/app/video/result-den-25#flashcards';
+  await gotoFixture(page, den25OwnerRoute);
   const activate = async (locator: import('@playwright/test').Locator) =>
     isMobile ? locator.tap() : locator.click();
   await activate(page.getByRole('tab', { name: 'Flashcards' }));
   await activate(page.getByRole('button', { name: 'Show answer' }));
-  await expect(page.getByText('Reusable knowledge artifacts.')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Show question' }),
+  ).toBeVisible();
   await activate(page.getByRole('button', { name: 'Got it' }));
   await expect(page.getByText('Review saved')).toBeVisible();
+  await expect(page.locator('.result-deck-progress')).toHaveAttribute(
+    'data-reviewed-count',
+    '12',
+  );
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('[aria-label="Video source"] iframe').waitFor();
+  await page.getByRole('tab', { name: 'Flashcards' }).click();
+  await expect(page.locator('.result-deck-progress')).toHaveAttribute(
+    'data-reviewed-count',
+    '12',
+  );
+  await expect(
+    page.locator('.result-deck-progress-row span').last(),
+  ).toHaveText('13 / 28');
+});
+
+test('keeps unknown legacy review state truthful without fake persistence', async ({
+  page,
+}) => {
+  await gotoFixture(page, route);
+  await page.getByRole('tab', { name: 'Flashcards' }).click();
+
   await expect(
     page.locator('.result-deck-progress-row span').last(),
   ).toHaveText('Progress unavailable');
+  await expect(
+    page.getByRole('button', {
+      name: /got it.*review saving is unavailable/i,
+    }),
+  ).toBeDisabled();
 });
 
 test('isolates partial, corrupted, empty, and legacy fixture states', async ({

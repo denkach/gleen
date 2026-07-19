@@ -254,12 +254,12 @@ export function SummaryTab({
                     </button>
                   ) : null}
                 </div>
-                {index === 0 ? <AutosaveStatus {...autosave} /> : null}
               </div>
             </li>
           );
         })}
       </ol>
+      <AutosaveStatus {...autosave} copy={copy} />
       {copyMessage ? (
         <p className="result-artifact-message" role="status" aria-live="polite">
           {copyMessage}

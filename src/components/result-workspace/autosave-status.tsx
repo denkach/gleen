@@ -1,3 +1,5 @@
+import type { ResultCopy } from '@/lib/result-workspace/copy';
+
 import type { AutosaveState } from './use-autosave';
 
 const labels: Record<AutosaveState, string> = {
@@ -13,13 +15,30 @@ const labels: Record<AutosaveState, string> = {
 export function AutosaveStatus({
   status,
   retry,
-}: Readonly<{ status: AutosaveState; retry: () => void }>) {
+  copy,
+}: Readonly<{
+  status: AutosaveState;
+  retry: () => void;
+  copy?: Pick<
+    ResultCopy,
+    'stateNetworkError' | 'stateRetry' | 'stateSaved' | 'stateSaving'
+  >;
+}>) {
   if (status === 'idle') return null;
   const retryable = status === 'error' || status === 'offline';
+  const label = copy
+    ? status === 'saving'
+      ? copy.stateSaving
+      : status === 'saved'
+        ? copy.stateSaved
+        : status === 'conflict'
+          ? labels.conflict
+          : copy.stateNetworkError
+    : labels[status];
   return (
     <div className="flex min-h-6 flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
       <p role="status" aria-live="polite">
-        {labels[status]}
+        {label}
       </p>
       {retryable && (
         <button
@@ -27,7 +46,7 @@ export function AutosaveStatus({
           onClick={retry}
           className="min-h-11 rounded-lg px-3 text-[var(--text-primary)] underline decoration-[var(--border-strong)] underline-offset-4"
         >
-          Retry
+          {copy?.stateRetry ?? 'Retry'}
         </button>
       )}
     </div>

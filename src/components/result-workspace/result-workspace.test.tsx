@@ -205,6 +205,7 @@ function renderWorkspaceWithActions({
   saveTitle = vi.fn(),
   saveArtifact = vi.fn(),
   saveFlashcardReview,
+  copy,
   value = model,
 }: Readonly<{
   saveTitle?: (
@@ -220,6 +221,7 @@ function renderWorkspaceWithActions({
   saveFlashcardReview?: (
     input: unknown,
   ) => Promise<{ status: 'saved' | 'conflict' | 'error' }>;
+  copy?: (typeof resultCopy)[keyof typeof resultCopy];
   value?: ResultWorkspaceModel;
 }>) {
   return render(
@@ -229,6 +231,7 @@ function renderWorkspaceWithActions({
         saveTitle={saveTitle}
         saveArtifact={saveArtifact}
         saveFlashcardReview={saveFlashcardReview}
+        copy={copy}
       />
     </PlayerProvider>,
   );
@@ -912,6 +915,91 @@ describe('ResultWorkspace', () => {
     );
   });
 
+  it('blocks review writes while an edit is dirty, debouncing, or saving, then uses the saved revision', async () => {
+    const user = userEvent.setup();
+    const artifactSave = deferred<{
+      status: 'saved';
+      updatedAt: string;
+    }>();
+    const saveArtifact = vi.fn(() => artifactSave.promise);
+    const saveFlashcardReview = vi.fn().mockResolvedValue({ status: 'saved' });
+    const copy = resultCopy.ru;
+    renderWorkspaceWithActions({
+      copy,
+      saveArtifact,
+      saveFlashcardReview,
+    });
+    await user.click(screen.getByRole('tab', { name: copy.tabFlashcards }));
+    await user.click(screen.getByRole('button', { name: copy.flashcardsEdit }));
+    fireEvent.change(
+      screen.getByRole('textbox', { name: copy.flashcardsQuestionField }),
+      { target: { value: 'Изменённый вопрос' } },
+    );
+
+    const blockedReview = screen.getByRole('button', {
+      name: new RegExp(`${copy.flashcardsGotIt}.*${copy.stateSaving}`, 'i'),
+    });
+    expect(blockedReview).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent(copy.stateSaving);
+    fireEvent.click(blockedReview);
+    expect(saveFlashcardReview).not.toHaveBeenCalled();
+
+    await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
+    expect(saveArtifact).toHaveBeenCalledOnce();
+    expect(blockedReview).toBeDisabled();
+    fireEvent.click(blockedReview);
+    expect(saveFlashcardReview).not.toHaveBeenCalled();
+
+    artifactSave.resolve({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:05:00.000Z',
+    });
+    const enabledReview = await screen.findByRole('button', {
+      name: copy.flashcardsGotIt,
+    });
+    expect(enabledReview).toBeEnabled();
+    await user.click(enabledReview);
+    expect(saveFlashcardReview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        artifactRevision: '2026-07-18T00:05:00.000Z',
+      }),
+    );
+  });
+
+  it('keeps review writes disabled after an autosave error until retry saves', async () => {
+    const user = userEvent.setup();
+    const saveArtifact = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'error' })
+      .mockResolvedValueOnce({
+        status: 'saved',
+        updatedAt: '2026-07-18T00:06:00.000Z',
+      });
+    const saveFlashcardReview = vi.fn().mockResolvedValue({ status: 'saved' });
+    renderWorkspaceWithActions({ saveArtifact, saveFlashcardReview });
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+    await user.click(screen.getByRole('button', { name: 'Edit flashcards' }));
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Flashcard question' }),
+      { target: { value: 'Unsaved question' } },
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
+
+    expect(
+      screen.getByText('Check your connection and try again'),
+    ).toBeVisible();
+    const review = screen.getByRole('button', {
+      name: /got it.*check your connection/i,
+    });
+    expect(review).toBeDisabled();
+    fireEvent.click(review);
+    expect(saveFlashcardReview).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
+    expect(await screen.findByRole('button', { name: 'Got it' })).toBeEnabled();
+  });
+
   it('resumes at the first unreviewed card and renders prototype position progress', async () => {
     const user = userEvent.setup();
     renderWorkspaceWithActions({
@@ -1044,6 +1132,49 @@ describe('ResultWorkspace', () => {
       ),
     );
   });
+
+  it.each(['failure-first', 'success-first'] as const)(
+    'reconciles different-card review writes per card when completion is %s',
+    async (completionOrder) => {
+      const user = userEvent.setup();
+      const first = deferred<ResultMutationState>();
+      const second = deferred<ResultMutationState>();
+      const saveFlashcardReview = vi
+        .fn()
+        .mockReturnValueOnce(first.promise)
+        .mockReturnValueOnce(second.promise);
+      renderWorkspaceWithActions({ saveFlashcardReview });
+      await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+      await user.click(screen.getByRole('button', { name: 'Again' }));
+      await user.click(screen.getByRole('button', { name: 'Got it' }));
+      await waitFor(() => expect(saveFlashcardReview).toHaveBeenCalledTimes(2));
+
+      if (completionOrder === 'failure-first') {
+        first.resolve({ status: 'error' });
+        await waitFor(() =>
+          expect(
+            document.querySelector('.result-deck-progress'),
+          ).toHaveAttribute('data-reviewed-count', '1'),
+        );
+        second.resolve({ status: 'saved' });
+      } else {
+        second.resolve({ status: 'saved' });
+        await waitFor(() =>
+          expect(
+            document.querySelector('.result-deck-progress'),
+          ).toHaveAttribute('data-reviewed-count', '2'),
+        );
+        first.resolve({ status: 'error' });
+      }
+
+      await waitFor(() =>
+        expect(document.querySelector('.result-deck-progress')).toHaveAttribute(
+          'data-reviewed-count',
+          '1',
+        ),
+      );
+    },
+  );
 
   it('does not claim a review can persist when no review action is supplied', async () => {
     const user = userEvent.setup();
@@ -1404,6 +1535,36 @@ describe('ResultWorkspace', () => {
         ],
       },
     });
+  });
+
+  it('keeps Summary autosave feedback visible while editing a non-first open section', async () => {
+    const user = userEvent.setup();
+    const saveArtifact = vi.fn().mockResolvedValue({ status: 'error' });
+    renderWorkspaceWithActions({ saveArtifact });
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    await user.click(
+      screen.getByRole('button', {
+        name: /legacy text remains readable/i,
+        expanded: true,
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: /sources remain grounded/i,
+        expanded: false,
+      }),
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'Summary point 2' }), {
+      target: { value: 'Edited second section' },
+    });
+
+    expect(screen.getByRole('status')).toHaveTextContent('Saving');
+    expect(screen.getByRole('status')).toBeVisible();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Check your connection and try again',
+    );
+    expect(screen.getByRole('status')).toBeVisible();
   });
 
   it('strips derived chapter duration before strict timestamps autosave', async () => {

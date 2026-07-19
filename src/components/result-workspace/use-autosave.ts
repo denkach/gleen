@@ -20,10 +20,12 @@ export function useAutosave<T>({
 }>): Readonly<{
   status: AutosaveState;
   revision: string;
+  isSaved: boolean;
   retry: () => void;
 }> {
   const [status, setStatus] = useState<AutosaveState>('idle');
   const [savedRevision, setSavedRevision] = useState(revision);
+  const [savedValue, setSavedValue] = useState(value);
   const [cycle, setCycle] = useState(0);
   const latestValue = useRef(value);
   const lastSavedValue = useRef(value);
@@ -58,6 +60,7 @@ export function useAutosave<T>({
             revisionRef.current = result.updatedAt;
             setSavedRevision(result.updatedAt);
             lastSavedValue.current = savingValue;
+            setSavedValue(savingValue);
             setStatus('saved');
             if (!Object.is(latestValue.current, savingValue)) {
               setCycle((current) => current + 1);
@@ -79,10 +82,14 @@ export function useAutosave<T>({
       revisionRef.current = revision;
       setSavedRevision(revision);
       lastSavedValue.current = value;
+      setSavedValue(value);
       setStatus('idle');
       return;
     }
-    if (!Object.is(value, lastSavedValue.current)) schedule();
+    if (!Object.is(value, lastSavedValue.current)) {
+      setStatus('saving');
+      schedule();
+    }
     return () => window.clearTimeout(timerRef.current);
   }, [cycle, revision, schedule, value]);
 
@@ -90,5 +97,8 @@ export function useAutosave<T>({
     if (status !== 'conflict') setCycle((current) => current + 1);
   }, [status]);
 
-  return { status, revision: savedRevision, retry };
+  const isSaved =
+    Object.is(value, savedValue) && (status === 'idle' || status === 'saved');
+
+  return { status, revision: savedRevision, isSaved, retry };
 }

@@ -122,6 +122,15 @@ export function FlashcardsTab({
     [analysisId, saveArtifact],
   );
   const autosave = useAutosave({ value, revision, save });
+  const reviewUnavailableReason = !saveFlashcardReview
+    ? copy.flashcardsReviewUnavailable
+    : !autosave.isSaved
+      ? autosave.status === 'saving'
+        ? copy.stateSaving
+        : autosave.status === 'conflict'
+          ? copy.flashcardsReviewUnavailable
+          : copy.stateNetworkError
+      : '';
   const reviewRevision = useRef(autosave.revision);
   useEffect(() => {
     if (reviewRevision.current === autosave.revision) return;
@@ -139,7 +148,7 @@ export function FlashcardsTab({
     setFlipped(false);
   };
   const reviewCard = (rating: FlashcardRating) => {
-    if (!saveFlashcardReview) return;
+    if (!saveFlashcardReview || !autosave.isSaved) return;
     const cardIndex = safeIndex;
     const requestId = ++reviewRequestSequence.current;
     const artifactRevision = autosave.revision;
@@ -172,7 +181,13 @@ export function FlashcardsTab({
         return;
       }
       if (!isLatest) return;
-      setReviewedCards(new Map(persistedReviews.current));
+      setReviewedCards((current) => {
+        const next = new Map(current);
+        const persistedReview = persistedReviews.current.get(cardIndex);
+        if (persistedReview) next.set(cardIndex, persistedReview);
+        else next.delete(cardIndex);
+        return next;
+      });
       setReviewMessage(copy.flashcardsReviewFailed);
     };
     const pending = reviewQueues.current.get(cardIndex) ?? Promise.resolve();
@@ -255,7 +270,7 @@ export function FlashcardsTab({
               />
             </label>
           ))}
-          <AutosaveStatus {...autosave} />
+          <AutosaveStatus {...autosave} copy={copy} />
         </div>
       ) : null}
 
@@ -327,11 +342,11 @@ export function FlashcardsTab({
             type="button"
             className={`result-review-button ${item.className}`}
             aria-label={
-              saveFlashcardReview
-                ? String(copy[item.label])
-                : `${String(copy[item.label])}. ${copy.flashcardsReviewUnavailable}`
+              reviewUnavailableReason
+                ? `${String(copy[item.label])}. ${reviewUnavailableReason}`
+                : String(copy[item.label])
             }
-            disabled={!saveFlashcardReview}
+            disabled={Boolean(reviewUnavailableReason)}
             onClick={() => reviewCard(item.rating)}
           >
             <span>
