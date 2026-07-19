@@ -3,6 +3,7 @@ import type { supportedLocales } from '@/lib/onboarding/preferences';
 type InterfaceLocale = (typeof supportedLocales)[number];
 
 export interface ResultCopy {
+  readonly interfaceLocale: InterfaceLocale;
   readonly workspaceLabel: string;
   readonly playerLabel: string;
   readonly playerPlay: string;
@@ -22,7 +23,10 @@ export interface ResultCopy {
   readonly sourceLabel: string;
   readonly sourceThumbnail: string;
   readonly currentChapter: string;
-  readonly keyMomentsCount: string;
+  readonly keyMomentsCountOne: string;
+  readonly keyMomentsCountFew: string;
+  readonly keyMomentsCountMany: string;
+  readonly keyMomentsCountOther: string;
   readonly playerUnavailable: string;
   readonly playerPreviewUnavailable: string;
   readonly metadataChannel: string;
@@ -136,8 +140,26 @@ export function formatResultCopy(
   );
 }
 
+type KeyMomentPluralCategory = 'one' | 'few' | 'many' | 'other';
+
+export function formatKeyMomentsCount(copy: ResultCopy, count: number): string {
+  const variants: Readonly<Record<KeyMomentPluralCategory, string>> = {
+    one: copy.keyMomentsCountOne,
+    few: copy.keyMomentsCountFew,
+    many: copy.keyMomentsCountMany,
+    other: copy.keyMomentsCountOther,
+  };
+  const selected = new Intl.PluralRules(copy.interfaceLocale).select(count);
+  const template =
+    selected === 'one' || selected === 'few' || selected === 'many'
+      ? variants[selected]
+      : variants.other;
+  return formatResultCopy(template, { count });
+}
+
 export const resultCopy = {
   en: {
+    interfaceLocale: 'en',
     workspaceLabel: 'Analysis artifacts',
     playerLabel: 'Video player',
     playerPlay: 'Play',
@@ -157,7 +179,10 @@ export const resultCopy = {
     sourceLabel: 'Video source',
     sourceThumbnail: 'Thumbnail for {title}',
     currentChapter: 'Current chapter',
-    keyMomentsCount: '{count} key moments',
+    keyMomentsCountOne: '{count} key moment',
+    keyMomentsCountFew: '{count} key moments',
+    keyMomentsCountMany: '{count} key moments',
+    keyMomentsCountOther: '{count} key moments',
     playerUnavailable: 'Player unavailable',
     playerPreviewUnavailable: 'Video preview unavailable',
     metadataChannel: 'Channel',
@@ -263,6 +288,7 @@ export const resultCopy = {
     publicViewExpired: 'This link is invalid or has been revoked',
   },
   uk: {
+    interfaceLocale: 'uk',
     workspaceLabel: 'Матеріали аналізу',
     playerLabel: 'Відеопрогравач',
     playerPlay: 'Відтворити',
@@ -282,7 +308,10 @@ export const resultCopy = {
     sourceLabel: 'Джерело відео',
     sourceThumbnail: 'Мініатюра для {title}',
     currentChapter: 'Поточний розділ',
-    keyMomentsCount: '{count} ключових моментів',
+    keyMomentsCountOne: '{count} ключовий момент',
+    keyMomentsCountFew: '{count} ключові моменти',
+    keyMomentsCountMany: '{count} ключових моментів',
+    keyMomentsCountOther: '{count} ключового моменту',
     playerUnavailable: 'Програвач недоступний',
     playerPreviewUnavailable: 'Попередній перегляд відео недоступний',
     metadataChannel: 'Канал',
@@ -388,6 +417,7 @@ export const resultCopy = {
     publicViewExpired: 'Це посилання недійсне або відкликане',
   },
   ru: {
+    interfaceLocale: 'ru',
     workspaceLabel: 'Материалы анализа',
     playerLabel: 'Видеоплеер',
     playerPlay: 'Воспроизвести',
@@ -407,7 +437,10 @@ export const resultCopy = {
     sourceLabel: 'Источник видео',
     sourceThumbnail: 'Миниатюра для {title}',
     currentChapter: 'Текущая глава',
-    keyMomentsCount: '{count} ключевых моментов',
+    keyMomentsCountOne: '{count} ключевой момент',
+    keyMomentsCountFew: '{count} ключевых момента',
+    keyMomentsCountMany: '{count} ключевых моментов',
+    keyMomentsCountOther: '{count} ключевого момента',
     playerUnavailable: 'Плеер недоступен',
     playerPreviewUnavailable: 'Предпросмотр видео недоступен',
     metadataChannel: 'Канал',
@@ -513,6 +546,7 @@ export const resultCopy = {
     publicViewExpired: 'Эта ссылка недействительна или отозвана',
   },
   es: {
+    interfaceLocale: 'es',
     workspaceLabel: 'Materiales del análisis',
     playerLabel: 'Reproductor de vídeo',
     playerPlay: 'Reproducir',
@@ -532,7 +566,10 @@ export const resultCopy = {
     sourceLabel: 'Fuente de vídeo',
     sourceThumbnail: 'Miniatura de {title}',
     currentChapter: 'Capítulo actual',
-    keyMomentsCount: '{count} momentos clave',
+    keyMomentsCountOne: '{count} momento clave',
+    keyMomentsCountFew: '{count} momentos clave',
+    keyMomentsCountMany: '{count} momentos clave',
+    keyMomentsCountOther: '{count} momentos clave',
     playerUnavailable: 'Reproductor no disponible',
     playerPreviewUnavailable: 'Vista previa del vídeo no disponible',
     metadataChannel: 'Canal',
@@ -639,6 +676,7 @@ export const resultCopy = {
     publicViewExpired: 'Este enlace no es válido o se ha revocado',
   },
   de: {
+    interfaceLocale: 'de',
     workspaceLabel: 'Analyseartefakte',
     playerLabel: 'Videoplayer',
     playerPlay: 'Abspielen',
@@ -658,7 +696,10 @@ export const resultCopy = {
     sourceLabel: 'Videoquelle',
     sourceThumbnail: 'Vorschaubild für {title}',
     currentChapter: 'Aktuelles Kapitel',
-    keyMomentsCount: '{count} Schlüsselmomente',
+    keyMomentsCountOne: '{count} Schlüsselmoment',
+    keyMomentsCountFew: '{count} Schlüsselmomente',
+    keyMomentsCountMany: '{count} Schlüsselmomente',
+    keyMomentsCountOther: '{count} Schlüsselmomente',
     playerUnavailable: 'Player nicht verfügbar',
     playerPreviewUnavailable: 'Videovorschau nicht verfügbar',
     metadataChannel: 'Kanal',

@@ -712,6 +712,14 @@ body:has(.result-page-layout) {
 }
 
 @media (max-width: 860px) {
+  body:has(.result-page-layout) .app-topbar {
+    padding-inline: 14px;
+  }
+
+  body:has(.result-page-layout) .usage-pill {
+    display: none;
+  }
+
   .result-page-layout {
     padding: 10px;
   }
@@ -756,6 +764,10 @@ body:has(.result-page-layout) {
   :root {
     --result-shell-sidebar: 0px;
     --result-shell-topbar: 62px;
+  }
+
+  body:has(.result-page-layout) .result-source-actions {
+    display: none;
   }
 
   .app-shell:has(.result-page-layout) {
@@ -855,6 +867,72 @@ body:has(.result-page-layout) {
   .result-navigation .ui-tabs-list {
     gap: 19px;
   }
+}
+
+body:has(.result-page-layout)
+  .result-player-stage:is(:fullscreen, :-webkit-full-screen) {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 0;
+  background: var(--result-player-surface);
+}
+
+body:has(.result-page-layout)
+  .result-player-stage:is(:fullscreen, :-webkit-full-screen)::after {
+  bottom: 65px;
+}
+
+body:has(.result-page-layout)
+  .result-player-stage:is(:fullscreen, :-webkit-full-screen)
+  :is(
+    .result-player-poster,
+    .result-youtube-player,
+    .result-player-unavailable
+  ) {
+  height: calc(100% - 65px);
+}
+
+body:has(.result-page-layout)
+  .result-player-stage:is(:fullscreen, :-webkit-full-screen)
+  .result-center-play {
+  top: calc(50% - 32.5px);
+}
+
+body:has(.result-page-layout)
+  .result-player-stage:is(:fullscreen, :-webkit-full-screen)
+  .result-player-controls {
+  top: auto;
+  bottom: 0;
+  height: 65px;
+  display: flex;
+  overflow-x: auto;
+}
+
+body:has(.result-page-layout)
+  .result-player-stage:is(:fullscreen, :-webkit-full-screen)
+  .result-progress-wrap {
+  right: 18px;
+  bottom: 64px;
+  left: 18px;
+  display: block;
+}
+
+body:has(.result-page-layout)
+  .result-player-stage:is(:fullscreen, :-webkit-full-screen)
+  .result-current-chapter,
+body:has(.result-page-layout)
+  .result-player-stage:is(:fullscreen, :-webkit-full-screen)
+  .result-caption-control,
+body:has(.result-page-layout)
+  .result-player-stage:is(:fullscreen, :-webkit-full-screen)
+  .result-speed-control,
+body:has(.result-page-layout)
+  .result-player-stage:is(:fullscreen, :-webkit-full-screen)
+  .result-volume-input {
+  display: block;
 }
 
 @media (pointer: coarse) {

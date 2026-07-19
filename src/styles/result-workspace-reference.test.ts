@@ -47,4 +47,32 @@ describe('DEN-25 result shell geometry', () => {
       /@media \(pointer: coarse\)[\s\S]*?\.result-progress-input,[\s\S]*?\.result-volume-input\s*{[^}]*min-height:\s*44px;/,
     );
   });
+
+  it('keeps the custom player surface and complete controls inside fullscreen', () => {
+    expect(css).toContain(':is(:fullscreen, :-webkit-full-screen)');
+    expect(css).toMatch(
+      /\.result-player-stage:is\(:fullscreen, :-webkit-full-screen\)\s*{[^}]*width:\s*100%;[^}]*height:\s*100%;[^}]*aspect-ratio:\s*auto;[^}]*margin:\s*0;[^}]*overflow:\s*hidden;/,
+    );
+    expect(css).toMatch(
+      /\.result-player-stage:is\(:fullscreen, :-webkit-full-screen\)\s+\.result-player-controls\s*{[^}]*top:\s*auto;[^}]*bottom:\s*0;[^}]*overflow-x:\s*auto;/,
+    );
+    expect(css).toMatch(
+      /\.result-player-stage:is\(:fullscreen, :-webkit-full-screen\)\s+\.result-progress-wrap\s*{[^}]*bottom:\s*64px;/,
+    );
+    expect(css).toMatch(
+      /\.result-player-stage:is\(:fullscreen, :-webkit-full-screen\)[^}]*\.result-speed-control,[\s\S]*?\.result-player-stage:is\(:fullscreen, :-webkit-full-screen\)[^}]*\.result-volume-input\s*{[^}]*display:\s*block;/,
+    );
+  });
+
+  it('matches the result-only 860px and 620px prototype transitions', () => {
+    expect(css).toMatch(
+      /@media \(max-width: 860px\)[\s\S]*?body:has\(\.result-page-layout\) \.app-topbar\s*{[^}]*padding-inline:\s*14px;/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 860px\)[\s\S]*?body:has\(\.result-page-layout\) \.usage-pill\s*{[^}]*display:\s*none;/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 620px\)[\s\S]*?body:has\(\.result-page-layout\) \.result-source-actions\s*{[^}]*display:\s*none;/,
+    );
+  });
 });

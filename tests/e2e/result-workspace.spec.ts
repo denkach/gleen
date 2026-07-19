@@ -85,11 +85,17 @@ test('matches desktop, tablet, and mobile result geometry', async ({
   await expect(page.locator('.user-chip-text')).toBeHidden();
   await expect(page.getByLabel('Video source')).toHaveCSS('position', 'static');
 
+  await page.setViewportSize({ width: 860, height: 768 });
+  await expect(page.locator('.app-topbar')).toHaveCSS('padding-left', '14px');
+  await expect(page.locator('.app-topbar')).toHaveCSS('padding-right', '14px');
+  await expect(page.locator('.usage-pill')).toBeHidden();
+
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('.app-topbar')).toHaveCSS('height', '62px');
   await expect(page.locator('.app-topbar')).toBeVisible();
   await expect(page.locator('.bottom-nav')).toBeHidden();
   await expect(page.locator('.app-shell')).toHaveCSS('padding-bottom', '0px');
+  await expect(page.locator('.result-source-actions')).toBeHidden();
   await expect(page.locator('.result-progress-wrap')).toHaveCSS(
     'bottom',
     '57px',
@@ -105,6 +111,40 @@ test('matches desktop, tablet, and mobile result geometry', async ({
   }));
   expect(boxes.source).toBeLessThan(boxes.workspace);
   expect(boxes.overflow).toBe(false);
+});
+
+test('keeps the complete custom controlbar reachable in fullscreen', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 860, height: 768 });
+  await gotoFixture(page, route);
+  await page.getByRole('button', { name: 'Enter full screen' }).click();
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        document.fullscreenElement?.classList.contains('result-player-stage'),
+      ),
+    )
+    .toBe(true);
+  await expect(page.locator('.result-player-stage')).toHaveCSS(
+    'height',
+    '768px',
+  );
+  await expect(page.locator('.result-player-controls')).toHaveCSS(
+    'bottom',
+    '0px',
+  );
+  await expect(
+    page.getByRole('combobox', { name: 'Playback speed' }),
+  ).toBeVisible();
+  await expect(page.getByRole('slider', { name: 'Volume' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Mute' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Enter full screen' }),
+  ).toBeVisible();
+
+  await page.keyboard.press('Escape');
 });
 
 test('result workspace is result-only with zero processing spectra', async ({

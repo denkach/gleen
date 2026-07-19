@@ -2,7 +2,10 @@
 
 import Image from 'next/image';
 
-import { formatResultCopy, type ResultCopy } from '@/lib/result-workspace/copy';
+import {
+  formatKeyMomentsCount,
+  type ResultCopy,
+} from '@/lib/result-workspace/copy';
 import type { TimestampsPresentation } from '@/lib/result-workspace/presentation';
 
 import { useVideoPlayer, useVideoPlayerSnapshot } from './player-context';
@@ -43,9 +46,7 @@ export function ChapterRail({
     <section className="result-chapters" aria-label={copy.playerChapters}>
       <div className="result-section-row">
         <h3>{copy.playerChapters}</h3>
-        <span>
-          {formatResultCopy(copy.keyMomentsCount, { count: chapters.length })}
-        </span>
+        <span>{formatKeyMomentsCount(copy, chapters.length)}</span>
       </div>
       <div className="result-chapter-rail">
         {chapters.map((chapter, index) => (

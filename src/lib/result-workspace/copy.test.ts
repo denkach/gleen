@@ -23,7 +23,10 @@ describe('result workspace copy', () => {
     expect(copy.stateMalformed).toBeTruthy();
     expect(copy.sourceLabel).toBe('Джерело відео');
     expect(copy.currentChapter).toBe('Поточний розділ');
-    expect(copy.keyMomentsCount).toContain('{count}');
+    expect(copy.keyMomentsCountOne).toContain('{count}');
+    expect(copy.keyMomentsCountFew).toContain('{count}');
+    expect(copy.keyMomentsCountMany).toContain('{count}');
+    expect(copy.keyMomentsCountOther).toContain('{count}');
     expect(copy.playerProgressValue).toContain('{current}');
     expect(copy.playerVolumeValue).toContain('{percent}');
   });

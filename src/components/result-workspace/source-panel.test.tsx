@@ -140,8 +140,41 @@ test('uses localized source, chapter, unavailable, and metadata wording', () => 
 
   expect(screen.getByLabelText('Videoquelle')).toBeVisible();
   expect(screen.getByText('Player nicht verfügbar')).toBeVisible();
-  expect(screen.getByText('1 Schlüsselmomente')).toBeVisible();
+  expect(screen.getByText('1 Schlüsselmoment')).toBeVisible();
   expect(screen.getByText('Kanal')).toBeVisible();
   expect(screen.getByText('Dauer')).toBeVisible();
   expect(screen.getByText('Sprache')).toBeVisible();
 });
+
+test.each([
+  ['en', 1, '1 key moment'],
+  ['en', 2, '2 key moments'],
+  ['de', 1, '1 Schlüsselmoment'],
+  ['de', 2, '2 Schlüsselmomente'],
+  ['es', 1, '1 momento clave'],
+  ['es', 2, '2 momentos clave'],
+  ['ru', 1, '1 ключевой момент'],
+  ['ru', 2, '2 ключевых момента'],
+  ['ru', 5, '5 ключевых моментов'],
+  ['uk', 1, '1 ключовий момент'],
+  ['uk', 2, '2 ключові моменти'],
+  ['uk', 5, '5 ключових моментів'],
+] as const)(
+  'pluralizes %s key-moment count %i as localized copy',
+  (locale, count, expected) => {
+    render(
+      <SourcePanel
+        source={source}
+        copy={resultCopy[locale]}
+        playerAvailable={false}
+        chapters={Array.from({ length: count }, (_, index) => ({
+          offsetMs: index * 10_000,
+          title: `Chapter ${index + 1}`,
+          description: '',
+        }))}
+      />,
+    );
+
+    expect(screen.getByText(expected)).toBeVisible();
+  },
+);
