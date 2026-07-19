@@ -168,7 +168,7 @@ function ResultArtifacts({
         />
         <div className="result-artifact-content">
           <TabsContent value="overview">
-            <OverviewTab model={model} openTab={selectTab} />
+            <OverviewTab model={model} openTab={selectTab} copy={copy} />
           </TabsContent>
           <TabsContent
             value="summary"
