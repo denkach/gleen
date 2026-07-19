@@ -267,7 +267,11 @@ function ResultArtifacts({
           </TabsContent>
           <TabsContent value="transcript">
             {model.tabs.transcript.status === 'ready' ? (
-              <TranscriptTab transcript={model.tabs.transcript.data} />
+              <TranscriptTab
+                transcript={model.tabs.transcript.data}
+                copy={copy}
+                active={tab === 'transcript'}
+              />
             ) : (
               <ArtifactState state={model.tabs.transcript} />
             )}

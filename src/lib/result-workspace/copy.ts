@@ -109,7 +109,12 @@ export interface ResultCopy {
   readonly transcriptFilterExample: string;
   readonly transcriptFilterStory: string;
   readonly transcriptCopy: string;
+  readonly transcriptCopied: string;
+  readonly transcriptCopyFailed: string;
   readonly transcriptDownload: string;
+  readonly transcriptDownloaded: string;
+  readonly transcriptDownloadFailed: string;
+  readonly transcriptNoMatches: string;
   readonly transcriptAutoScroll: string;
   readonly transcriptSpeakerLabels: string;
   readonly transcriptSpeakerUnavailable: string;
@@ -296,7 +301,12 @@ export const resultCopy = {
     transcriptFilterExample: 'Example',
     transcriptFilterStory: 'Story',
     transcriptCopy: 'Copy transcript',
+    transcriptCopied: 'Transcript copied',
+    transcriptCopyFailed: 'Transcript could not be copied',
     transcriptDownload: 'Download transcript',
+    transcriptDownloaded: 'Transcript downloaded',
+    transcriptDownloadFailed: 'Transcript could not be downloaded',
+    transcriptNoMatches: 'No transcript matches',
     transcriptAutoScroll: 'Auto-scroll',
     transcriptSpeakerLabels: 'Speaker labels',
     transcriptSpeakerUnavailable:
@@ -456,7 +466,12 @@ export const resultCopy = {
     transcriptFilterExample: 'Приклад',
     transcriptFilterStory: 'Історія',
     transcriptCopy: 'Копіювати транскрипт',
+    transcriptCopied: 'Транскрипт скопійовано',
+    transcriptCopyFailed: 'Не вдалося скопіювати транскрипт',
     transcriptDownload: 'Завантажити транскрипт',
+    transcriptDownloaded: 'Транскрипт завантажено',
+    transcriptDownloadFailed: 'Не вдалося завантажити транскрипт',
+    transcriptNoMatches: 'У транскрипті немає збігів',
     transcriptAutoScroll: 'Автопрокручування',
     transcriptSpeakerLabels: 'Позначки мовців',
     transcriptSpeakerUnavailable: 'Позначки мовців недоступні для цього відео',
@@ -616,7 +631,12 @@ export const resultCopy = {
     transcriptFilterExample: 'Пример',
     transcriptFilterStory: 'История',
     transcriptCopy: 'Копировать транскрипт',
+    transcriptCopied: 'Транскрипт скопирован',
+    transcriptCopyFailed: 'Не удалось скопировать транскрипт',
     transcriptDownload: 'Скачать транскрипт',
+    transcriptDownloaded: 'Транскрипт скачан',
+    transcriptDownloadFailed: 'Не удалось скачать транскрипт',
+    transcriptNoMatches: 'В транскрипте нет совпадений',
     transcriptAutoScroll: 'Автопрокрутка',
     transcriptSpeakerLabels: 'Метки говорящих',
     transcriptSpeakerUnavailable: 'Метки говорящих недоступны для этого видео',
@@ -776,7 +796,12 @@ export const resultCopy = {
     transcriptFilterExample: 'Ejemplo',
     transcriptFilterStory: 'Historia',
     transcriptCopy: 'Copiar transcripción',
+    transcriptCopied: 'Transcripción copiada',
+    transcriptCopyFailed: 'No se pudo copiar la transcripción',
     transcriptDownload: 'Descargar transcripción',
+    transcriptDownloaded: 'Transcripción descargada',
+    transcriptDownloadFailed: 'No se pudo descargar la transcripción',
+    transcriptNoMatches: 'No hay coincidencias en la transcripción',
     transcriptAutoScroll: 'Desplazamiento automático',
     transcriptSpeakerLabels: 'Etiquetas de hablantes',
     transcriptSpeakerUnavailable:
@@ -937,7 +962,12 @@ export const resultCopy = {
     transcriptFilterExample: 'Beispiel',
     transcriptFilterStory: 'Geschichte',
     transcriptCopy: 'Transkript kopieren',
+    transcriptCopied: 'Transkript kopiert',
+    transcriptCopyFailed: 'Transkript konnte nicht kopiert werden',
     transcriptDownload: 'Transkript herunterladen',
+    transcriptDownloaded: 'Transkript heruntergeladen',
+    transcriptDownloadFailed: 'Transkript konnte nicht heruntergeladen werden',
+    transcriptNoMatches: 'Keine Treffer im Transkript',
     transcriptAutoScroll: 'Automatisch scrollen',
     transcriptSpeakerLabels: 'Sprecherbezeichnungen',
     transcriptSpeakerUnavailable:
