@@ -75,6 +75,7 @@ export interface DialogContentProps extends Omit<
   children: ReactNode;
   initialFocusRef?: RefObject<HTMLElement | null>;
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
+  onCloseAutoFocus?: (event: Event) => void;
   onInteractOutside?: (event: Event) => void;
   onPointerDownOutside?: (event: Event) => void;
 }

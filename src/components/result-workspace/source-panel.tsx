@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type RefObject } from 'react';
 import Image from 'next/image';
 
 import {
@@ -55,7 +55,9 @@ export function SourcePanel({
   playerLifecycleKey = source.videoId,
   initialPositionMs = 0,
   onPlayerReady,
+  onOpenChapters,
   onTimeChange,
+  playerStageRef: suppliedPlayerStageRef,
 }: Readonly<{
   source: SourcePanelSource;
   copy?: ResultCopy;
@@ -71,12 +73,15 @@ export function SourcePanel({
     controller: VideoPlayerController | null,
     replaced?: VideoPlayerController,
   ) => void;
+  onOpenChapters?: () => void;
   onTimeChange?: (offsetMs: number) => void;
+  playerStageRef?: RefObject<HTMLDivElement | null>;
 }>) {
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const [failedPlayerKey, setFailedPlayerKey] = useState<string | null>(null);
   const [customControlsMounted, setCustomControlsMounted] = useState(false);
-  const playerStageRef = useRef<HTMLDivElement>(null);
+  const internalPlayerStageRef = useRef<HTMLDivElement>(null);
+  const playerStageRef = suppliedPlayerStageRef ?? internalPlayerStageRef;
   const playerStatus = useVideoPlayerSnapshot(selectPlayerStatus);
   const currentTimeMs = useVideoPlayerSnapshot(selectCurrentTime);
   const playerKey = `${playerLifecycleKey}:${source.videoId}`;
@@ -178,6 +183,15 @@ export function SourcePanel({
               copy={copy}
               onMounted={mountCustomControls}
             />
+          ) : null}
+          {chapters.length && onOpenChapters ? (
+            <button
+              className="result-mobile-chapters-trigger"
+              type="button"
+              onClick={onOpenChapters}
+            >
+              {copy.playerChapters}
+            </button>
           ) : null}
         </div>
         {chapters.length ? (

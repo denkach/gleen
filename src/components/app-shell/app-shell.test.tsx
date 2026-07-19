@@ -103,4 +103,60 @@ describe('AppShell', () => {
       /\.app-icon\s*{(?=[^}]*stroke:\s*currentColor)(?=[^}]*fill:\s*none)(?=[^}]*stroke-width:\s*1\.7)(?=[^}]*stroke-linecap:\s*round)(?=[^}]*stroke-linejoin:\s*round)[^}]*}/,
     );
   });
+
+  test.each([
+    '/app/video/result-den-25',
+    '/app/video/result-den-25/',
+    '/app-shell-fixture/app/video/result-den-25',
+    '/app-shell-fixture/app/video/result-den-25/',
+  ])(
+    'marks the global mobile navigation hidden on result route %s',
+    (pathname) => {
+      usePathname.mockReturnValue(pathname);
+
+      render(
+        <AppShell identity={identity} usage={unavailableUsage}>
+          <h1>Result page</h1>
+        </AppShell>,
+      );
+
+      expect(
+        screen.getByRole('navigation', { name: 'Mobile navigation' }),
+      ).toHaveAttribute('data-result-video-route', 'true');
+    },
+  );
+
+  test.each([
+    '/app',
+    '/app/video',
+    '/app/video/result-den-25/edit',
+    '/app/history',
+    '/app-shell-fixture/app/history',
+  ])(
+    'keeps the global mobile navigation on non-result route %s',
+    (pathname) => {
+      usePathname.mockReturnValue(pathname);
+
+      render(
+        <AppShell identity={identity} usage={unavailableUsage}>
+          <h1>Application page</h1>
+        </AppShell>,
+      );
+
+      expect(
+        screen.getByRole('navigation', { name: 'Mobile navigation' }),
+      ).not.toHaveAttribute('data-result-video-route');
+    },
+  );
+
+  test('hides only result-route global navigation at the mobile breakpoint', () => {
+    const css = fs.readFileSync(
+      path.join(process.cwd(), 'src/styles/app-shell-reference.css'),
+      'utf8',
+    );
+
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*720px\)[\s\S]*?\.bottom-nav\[data-result-video-route='true'\]\s*\{[^}]*display:\s*none/,
+    );
+  });
 });

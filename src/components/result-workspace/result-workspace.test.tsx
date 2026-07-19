@@ -259,6 +259,8 @@ function renderWorkspaceWithActions({
 describe('ResultWorkspace', () => {
   afterEach(async () => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
     const scripts = Array.from(
       document.querySelectorAll<HTMLScriptElement>(
         'script[src="https://www.youtube.com/iframe_api"]',
@@ -449,6 +451,287 @@ describe('ResultWorkspace', () => {
     replaceState.mockRestore();
     pushState.mockRestore();
     window.history.replaceState(null, '', '/');
+  });
+
+  it('shows one controller-only mobile mini-player and five result destinations after the player leaves view', async () => {
+    const callbacks: IntersectionObserverCallback[] = [];
+    const disconnect = vi.fn();
+    vi.stubGlobal(
+      'IntersectionObserver',
+      vi.fn(function Observer(callback: IntersectionObserverCallback) {
+        callbacks.push(callback);
+        return {
+          observe: vi.fn(),
+          unobserve: vi.fn(),
+          disconnect,
+          takeRecords: vi.fn(() => []),
+          root: null,
+          rootMargin: '0px',
+          thresholds: [0, 0.4],
+        };
+      }),
+    );
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    );
+    window.history.replaceState(null, '', '/app/video/result#summary');
+    renderWorkspace();
+    const playerStage = await waitFor(() => {
+      expect(callbacks).toHaveLength(1);
+      return document.querySelector('.result-player-stage') as HTMLElement;
+    });
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(playerStage, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    act(() =>
+      callbacks[0](
+        [
+          {
+            target: playerStage,
+            isIntersecting: false,
+            intersectionRatio: 0,
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      ),
+    );
+
+    expect(screen.getAllByTestId('mobile-mini-player')).toHaveLength(1);
+    expect(
+      screen.getByTestId('mobile-mini-player').querySelectorAll('iframe'),
+    ).toHaveLength(0);
+    const navigation = document.querySelector('.result-mobile-navigation');
+    expect(navigation).not.toBeNull();
+    expect(
+      within(navigation as HTMLElement).getAllByRole('button'),
+    ).toHaveLength(5);
+
+    window.dispatchEvent(new Event('orientationchange'));
+    act(() =>
+      callbacks[0](
+        [
+          {
+            target: playerStage,
+            isIntersecting: false,
+            intersectionRatio: 0,
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      ),
+    );
+    expect(screen.getAllByTestId('mobile-mini-player')).toHaveLength(1);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: resultCopy.en.playerExpand }),
+    );
+    expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+      block: 'start',
+      behavior: 'auto',
+    });
+    expect(window.location.hash).toBe('#summary');
+  });
+
+  it('keeps mobile-only navigation out of desktop document semantics', () => {
+    renderWorkspace();
+
+    expect(
+      document.querySelector('.result-mobile-navigation'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens localized More and Chapters sheets with selection, Escape, and focus restoration', async () => {
+    sessionStorage.clear();
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    );
+    window.history.replaceState(null, '', '/app/video/result#overview');
+    vi.mocked(controller.seekTo).mockClear();
+    vi.mocked(controller.play).mockClear();
+    const user = userEvent.setup();
+    renderWorkspace();
+
+    const mobileNavigation = await waitFor(() =>
+      document.querySelector('.result-mobile-navigation'),
+    );
+    const moreTrigger = within(mobileNavigation as HTMLElement).getByRole(
+      'button',
+      { name: resultCopy.en.tabMore },
+    );
+    await user.click(moreTrigger);
+    const moreSheet = screen.getByRole('dialog', {
+      name: resultCopy.en.sheetMoreTitle,
+    });
+    expect(moreSheet.querySelector('.result-sheet-handle')).not.toBeNull();
+    await user.click(
+      within(moreSheet).getByRole('button', {
+        name: resultCopy.en.tabTranscript,
+      }),
+    );
+    expect(window.location.hash).toBe('#transcript');
+    expect(
+      screen.queryByRole('dialog', { name: resultCopy.en.sheetMoreTitle }),
+    ).not.toBeInTheDocument();
+
+    const chapterTrigger = document.querySelector(
+      '.result-mobile-chapters-trigger',
+    ) as HTMLButtonElement;
+    expect(chapterTrigger).not.toBeNull();
+    await user.click(chapterTrigger);
+    const chapterSheet = screen.getByRole('dialog', {
+      name: resultCopy.en.sheetChaptersTitle,
+    });
+    expect(
+      within(chapterSheet).getByRole('button', { name: /00:00 Opening/ }),
+    ).toHaveAttribute('aria-current', 'true');
+    await user.click(
+      within(chapterSheet).getByRole('button', { name: /12:35 Sources/ }),
+    );
+    expect(controller.seekTo).toHaveBeenCalledWith(755_000);
+    expect(controller.play).toHaveBeenCalledOnce();
+    expect(
+      screen.queryByRole('dialog', { name: resultCopy.en.sheetChaptersTitle }),
+    ).not.toBeInTheDocument();
+
+    await user.click(chapterTrigger);
+    await user.keyboard('{Escape}');
+    expect(
+      screen.queryByRole('dialog', { name: resultCopy.en.sheetChaptersTitle }),
+    ).not.toBeInTheDocument();
+    expect(chapterTrigger).toHaveFocus();
+  });
+
+  it('saves before artifact changes and restores clamped per-artifact positions without replacing hash', async () => {
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      value: 5_000,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: 800,
+    });
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      writable: true,
+      value: 0,
+    });
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn((callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      }),
+    );
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    sessionStorage.setItem(
+      `gleen:result-scroll:${model.source.intakeId}:transcript`,
+      '9000',
+    );
+    window.history.replaceState(null, '', '/app/video/result#transcript');
+    const user = userEvent.setup();
+    renderWorkspace();
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Transcript' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+    expect(scrollTo).toHaveBeenLastCalledWith({
+      top: 4_200,
+      left: 0,
+      behavior: 'auto',
+    });
+
+    window.scrollY = 720;
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+    expect(
+      sessionStorage.getItem(
+        `gleen:result-scroll:${model.source.intakeId}:transcript`,
+      ),
+    ).toBe('720');
+    window.scrollY = 180;
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    expect(
+      sessionStorage.getItem(
+        `gleen:result-scroll:${model.source.intakeId}:flashcards`,
+      ),
+    ).toBe('180');
+    await user.click(screen.getByRole('tab', { name: 'Transcript' }));
+    expect(scrollTo).toHaveBeenLastCalledWith({
+      top: 720,
+      left: 0,
+      behavior: 'auto',
+    });
+    expect(window.location.hash).toBe('#transcript');
+  });
+
+  it('navigates mobile artifacts by guarded horizontal swipe', async () => {
+    vi.stubGlobal('scrollTo', vi.fn());
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    );
+    window.history.replaceState(null, '', '/app/video/result#overview');
+    renderWorkspace();
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+    await act(async () => {});
+    const artifactContent = document.querySelector(
+      '.result-artifact-content',
+    ) as HTMLElement;
+
+    fireEvent.touchStart(artifactContent, {
+      touches: [{ identifier: 1, clientX: 180, clientY: 100 }],
+    });
+    fireEvent.touchEnd(artifactContent, {
+      changedTouches: [{ identifier: 1, clientX: 100, clientY: 102 }],
+    });
+    await waitFor(() => expect(window.location.hash).toBe('#summary'));
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Summary' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
+
+    fireEvent.touchStart(artifactContent, {
+      touches: [{ identifier: 2, clientX: 180, clientY: 100 }],
+    });
+    fireEvent.touchEnd(artifactContent, {
+      changedTouches: [{ identifier: 2, clientX: 100, clientY: 190 }],
+    });
+    expect(window.location.hash).toBe('#summary');
+
+    const summaryTitle = screen.getByRole('textbox', { name: 'Summary title' });
+    fireEvent.touchStart(summaryTitle, {
+      touches: [{ identifier: 3, clientX: 180, clientY: 100 }],
+    });
+    fireEvent.touchEnd(summaryTitle, {
+      changedTouches: [{ identifier: 3, clientX: 100, clientY: 100 }],
+    });
+    expect(window.location.hash).toBe('#summary');
   });
 
   it.each([

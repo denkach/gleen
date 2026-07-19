@@ -12,6 +12,7 @@ import type {
   ResultMutationState,
   ResultSaveState,
 } from '@/lib/result-workspace/actions';
+import { trackResultEvent } from '@/lib/analytics/result-events';
 import { getAddressableResultArtifacts } from '@/lib/result-workspace/artifact-availability';
 import { resultCopy, type ResultCopy } from '@/lib/result-workspace/copy';
 import {
@@ -24,6 +25,7 @@ import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 import { Tabs, TabsContent, type TabsAccent } from '@/components/ui/tabs';
 
 import { ArtifactState } from './artifact-state';
+import { ChapterSheet } from './chapter-sheet';
 import { EditableTitle } from './editable-title';
 import {
   ExportTab,
@@ -31,6 +33,8 @@ import {
   type ExportUiState,
 } from './export-tab';
 import { FlashcardsTab } from './flashcards-tab';
+import { MobileMiniPlayer } from './mobile-mini-player';
+import { MobileResultNavigation } from './mobile-result-navigation';
 import { OverviewTab } from './overview-tab';
 import { flushPlaybackPositionOnPageHide } from './playback-pagehide-transport';
 import { SummaryTab } from './summary-tab';
@@ -49,7 +53,11 @@ import type { VideoPlayerController } from './player-controller';
 import { ResultHeader } from './result-header';
 import { ResultNavigation } from './result-navigation';
 import { SourcePanel } from './source-panel';
+import { useArtifactSwipe } from './use-artifact-swipe';
+import { useMobileResultLayout } from './use-mobile-result-layout';
 import { usePlaybackPersistence } from './use-playback-persistence';
+import { usePlayerVisibility } from './use-player-visibility';
+import { useResultScrollMemory } from './use-result-scroll-memory';
 
 type SaveAction = (input: unknown) => Promise<ResultSaveState>;
 type MutationAction = (input: unknown) => Promise<ResultMutationState>;
@@ -185,6 +193,7 @@ function ResultArtifacts({
   exportUiState,
   onExportUiStateChange,
 }: ResultArtifactsProps) {
+  const mobileResultLayout = useMobileResultLayout();
   const [tab, setTab] = useState<TabValue>('overview');
   const [draftState, setDraftState] = useState(() => ({
     base: model,
@@ -216,6 +225,9 @@ function ResultArtifacts({
     () => getAddressableResultArtifacts(model.tabs),
     [model.tabs],
   );
+  const { restoreScrollPosition, saveScrollPosition } = useResultScrollMemory(
+    model.source.intakeId,
+  );
   useEffect(() => {
     let subscribed = true;
     const initialArtifact =
@@ -223,21 +235,38 @@ function ResultArtifacts({
     queueMicrotask(() => {
       if (subscribed) setTab(initialArtifact);
     });
-    const unsubscribe = subscribeToResultArtifactNavigation(
-      setTab,
-      availableArtifacts,
-    );
+    const unsubscribe = subscribeToResultArtifactNavigation((artifact) => {
+      setTab((current) => {
+        if (current !== artifact) saveScrollPosition(current);
+        return artifact;
+      });
+    }, availableArtifacts);
     return () => {
       subscribed = false;
       unsubscribe();
     };
-  }, [availableArtifacts]);
+  }, [availableArtifacts, saveScrollPosition]);
+
+  useEffect(() => {
+    restoreScrollPosition(tab);
+  }, [restoreScrollPosition, tab]);
 
   const selectTab = (value: string) => {
     const artifact = value as ResultArtifact;
+    if (artifact === tab) return;
+    saveScrollPosition(tab);
     setTab(artifact);
     navigateToResultArtifact(artifact);
   };
+  const navigateByOffset = (offset: -1 | 1) => {
+    const currentIndex = availableArtifacts.indexOf(tab);
+    const nextArtifact = availableArtifacts[currentIndex + offset];
+    if (nextArtifact) selectTab(nextArtifact);
+  };
+  const swipeHandlers = useArtifactSwipe({
+    onNext: () => navigateByOffset(1),
+    onPrevious: () => navigateByOffset(-1),
+  });
   const accent: TabsAccent =
     tab === 'summary' ||
     tab === 'flashcards' ||
@@ -302,7 +331,7 @@ function ResultArtifacts({
             <ResultNavigation accent={accent} copy={copy} items={triggers} />
           }
         />
-        <div className="result-artifact-content">
+        <div className="result-artifact-content" {...swipeHandlers}>
           <TabsContent value="overview">
             <OverviewTab model={model} openTab={selectTab} copy={copy} />
           </TabsContent>
@@ -430,6 +459,14 @@ function ResultArtifacts({
             />
           </TabsContent>
         </div>
+        {mobileResultLayout ? (
+          <MobileResultNavigation
+            activeArtifact={tab}
+            copy={copy}
+            items={triggers}
+            onSelect={selectTab}
+          />
+        ) : null}
       </Tabs>
     </section>
   );
@@ -509,6 +546,9 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
   const { model, copy = resultCopy.en } = props;
   const parentController = useVideoPlayer();
   const lifecycleKey = model.source.intakeId;
+  const playerStageRef = useRef<HTMLDivElement>(null);
+  const chapterSheetTriggerRef = useRef<HTMLElement | null>(null);
+  const playerVisible = usePlayerVisibility(playerStageRef);
   const [controllerState, setControllerState] = useState<{
     lifecycleKey: string;
     controller?: VideoPlayerController;
@@ -599,6 +639,44 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
       });
   }, [copy, favorite, favoritePending, lifecycleKey, savePreference]);
   const favoriteAction = savePreference ? toggleFavorite : undefined;
+  const chapters =
+    model.tabs.timestamps.status === 'ready'
+      ? model.tabs.timestamps.data.chapters
+      : [];
+  const [chapterSheetState, setChapterSheetState] = useState({
+    lifecycleKey,
+    open: false,
+  });
+  const chapterSheetOpen =
+    chapterSheetState.lifecycleKey === lifecycleKey && chapterSheetState.open;
+  const setChapterSheetOpen = useCallback(
+    (open: boolean) => setChapterSheetState({ lifecycleKey, open }),
+    [lifecycleKey],
+  );
+  const openChapterSheet = useCallback(() => {
+    chapterSheetTriggerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    trackResultEvent({
+      name: 'result_chapter_sheet_opened',
+      anonymousAnalysisId: lifecycleKey,
+    });
+    setChapterSheetOpen(true);
+  }, [lifecycleKey, setChapterSheetOpen]);
+  const expandPlayer = useCallback(() => {
+    trackResultEvent({
+      name: 'result_mobile_miniplayer_expanded',
+      anonymousAnalysisId: lifecycleKey,
+    });
+    const reduceMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    playerStageRef.current?.scrollIntoView({
+      block: 'start',
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
+  }, [lifecycleKey]);
 
   return (
     <PlayerProvider controller={parentController ?? controller ?? null}>
@@ -626,11 +704,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
             thumbnailUrl: model.source.thumbnailUrl,
           }}
           copy={copy}
-          chapters={
-            model.tabs.timestamps.status === 'ready'
-              ? model.tabs.timestamps.data.chapters
-              : []
-          }
+          chapters={chapters}
           favorite={favorite}
           favoritePending={favoritePending}
           onFavorite={favoriteAction}
@@ -638,6 +712,8 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           playerLifecycleKey={lifecycleKey}
           initialPositionMs={playbackPositionMs}
           onPlayerReady={updateController}
+          onOpenChapters={openChapterSheet}
+          playerStageRef={playerStageRef}
         />
         <ResultArtifactsStateOwner
           key={lifecycleKey}
@@ -650,6 +726,25 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           onFavorite={favoriteAction}
           onShare={props.onShare}
           saveFlashcardReview={props.saveFlashcardReview}
+        />
+        {!playerVisible ? (
+          <MobileMiniPlayer
+            analysisId={lifecycleKey}
+            chapters={chapters}
+            copy={copy}
+            onChapters={openChapterSheet}
+            onExpand={expandPlayer}
+            thumbnailUrl={model.source.thumbnailUrl}
+            title={model.source.title}
+          />
+        ) : null}
+        <ChapterSheet
+          analysisId={lifecycleKey}
+          chapters={chapters}
+          copy={copy}
+          open={chapterSheetOpen}
+          onOpenChange={setChapterSheetOpen}
+          restoreFocusRef={chapterSheetTriggerRef}
         />
       </ResultLayout>
     </PlayerProvider>
