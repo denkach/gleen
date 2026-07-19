@@ -16,6 +16,11 @@ import { AutosaveStatus } from './autosave-status';
 import { useAutosave } from './use-autosave';
 
 type ReviewAction = (input: unknown) => Promise<ResultMutationState>;
+type SavedReview = Readonly<{
+  artifactRevision: string;
+  cardIndex: number;
+  rating: FlashcardRating;
+}>;
 
 function currentReviewMap(
   reviews: ResultUserState['reviews'] | null,
@@ -79,6 +84,7 @@ export function FlashcardsTab({
   revision,
   saveArtifact,
   saveFlashcardReview,
+  onReviewSaved,
   reviews,
   copy,
   readOnly = false,
@@ -90,6 +96,7 @@ export function FlashcardsTab({
   revision: string;
   saveArtifact: (input: unknown) => Promise<ResultSaveState>;
   saveFlashcardReview?: ReviewAction;
+  onReviewSaved?: (review: SavedReview) => void;
   reviews: ResultUserState['reviews'] | null;
   copy: ResultCopy;
   readOnly?: boolean;
@@ -186,6 +193,7 @@ export function FlashcardsTab({
         latestReviewRequests.current.get(cardIndex) === requestId;
       if (result.status === 'saved') {
         persistedReviews.current.set(cardIndex, rating);
+        onReviewSaved?.({ artifactRevision, cardIndex, rating });
         if (isLatest) setReviewMessage(copy.flashcardsReviewSaved);
         return;
       }

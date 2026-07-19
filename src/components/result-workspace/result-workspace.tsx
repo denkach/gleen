@@ -24,6 +24,7 @@ import {
   type ResultArtifact,
 } from '@/lib/result-workspace/navigation';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
+import type { FlashcardRating } from '@/lib/result-workspace/user-state';
 import { Tabs, TabsContent, type TabsAccent } from '@/components/ui/tabs';
 
 import { ArtifactState } from './artifact-state';
@@ -187,6 +188,34 @@ function reconcileResultDraft(
   };
 }
 
+function recordSavedFlashcardReview(
+  model: ResultWorkspaceModel,
+  review: Readonly<{
+    artifactRevision: string;
+    cardIndex: number;
+    rating: FlashcardRating;
+  }>,
+): ResultWorkspaceModel {
+  if (!model.userState) return model;
+  const reviews = [
+    ...model.userState.reviews.filter(
+      (candidate) =>
+        candidate.artifactRevision === review.artifactRevision &&
+        candidate.cardIndex !== review.cardIndex,
+    ),
+    review,
+  ];
+  return {
+    ...model,
+    overview: { ...model.overview, reviewedFlashcardCount: reviews.length },
+    userState: {
+      ...model.userState,
+      lastStudyAction: 'flashcards_reviewed',
+      reviews,
+    },
+  };
+}
+
 function ResultArtifacts({
   model,
   saveTitle,
@@ -221,6 +250,19 @@ function ResultArtifacts({
     setDraftState(reconciledDraftState);
   }
   const draftModel = reconciledDraftState.draft;
+  const overviewModel =
+    draftModel.overview.reviewedFlashcardCount ===
+      model.overview.reviewedFlashcardCount &&
+    draftModel.userState === model.userState
+      ? model
+      : {
+          ...model,
+          overview: {
+            ...model.overview,
+            reviewedFlashcardCount: draftModel.overview.reviewedFlashcardCount,
+          },
+          userState: draftModel.userState,
+        };
   const setDraftModel = (
     update: (current: ResultWorkspaceModel) => ResultWorkspaceModel,
   ) => {
@@ -354,7 +396,7 @@ function ResultArtifacts({
         <div className="result-artifact-content" {...swipeHandlers}>
           <TabsContent value="overview">
             <OverviewTab
-              model={model}
+              model={overviewModel}
               openTab={selectTab}
               copy={copy}
               publicMode={publicMode}
@@ -421,6 +463,11 @@ function ResultArtifacts({
                 revision={model.revisions.flashcards!}
                 saveArtifact={saveArtifact}
                 saveFlashcardReview={saveFlashcardReview}
+                onReviewSaved={(review) =>
+                  setDraftModel((current) =>
+                    recordSavedFlashcardReview(current, review),
+                  )
+                }
                 reviews={model.userState?.reviews ?? null}
                 copy={copy}
                 readOnly={publicMode}

@@ -1773,6 +1773,23 @@ describe('ResultWorkspace', () => {
     expect(card.closest('[data-reduced-motion]')).toBeTruthy();
   });
 
+  it('updates the truthful overview review count after a rating is saved', async () => {
+    const user = userEvent.setup();
+    const saveFlashcardReview = vi.fn().mockResolvedValue({ status: 'saved' });
+    renderWorkspaceWithActions({ saveFlashcardReview });
+
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+    await user.click(screen.getByRole('button', { name: 'Got it' }));
+    await waitFor(() => expect(saveFlashcardReview).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole('tab', { name: 'Overview' }));
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Open artifact: Flashcards. 1 / 2 · Reviewed',
+      }),
+    ).toBeVisible();
+  });
+
   it('persists one optimistic flashcard rating per current revision and rolls progress back on failure', async () => {
     const user = userEvent.setup();
     const review = deferred<{ status: 'error' }>();
