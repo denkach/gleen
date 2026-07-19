@@ -223,7 +223,7 @@ function ResultArtifacts({
                 revision={model.revisions.flashcards!}
                 saveArtifact={saveArtifact}
                 saveFlashcardReview={saveFlashcardReview}
-                reviews={model.userState?.reviews ?? []}
+                reviews={model.userState?.reviews ?? null}
                 copy={copy}
               />
             ) : (

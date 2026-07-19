@@ -573,7 +573,9 @@ export default async function FixtureReadinessPage({
           initialModel={normalizeResultWorkspace(
             intake,
             result,
-            id === 'result-den-25-public' ? null : den25UserStateSeed,
+            den25Fixture && id !== 'result-den-25-public'
+              ? den25UserStateSeed
+              : null,
           )}
           fixturePlayerStartMs={
             den25Fixture

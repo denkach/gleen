@@ -149,17 +149,6 @@ export function SummaryTab({
           <path d="M54 8v76M13 84h83M54 49h54" />
         </svg>
       </header>
-      <div className="result-summary-title-row">
-        <input
-          aria-label={copy.summaryTitleField}
-          value={value.title}
-          onChange={(event) =>
-            setValue((current) => ({ ...current, title: event.target.value }))
-          }
-          className="result-summary-title-input"
-        />
-        <AutosaveStatus {...autosave} />
-      </div>
       <dl className="result-summary-stats">
         <div className="result-summary-stat">
           <dd>{value.sections.length}</dd>
@@ -214,6 +203,19 @@ export function SummaryTab({
                 {section.supportingQuote ? (
                   <blockquote>“{section.supportingQuote}”</blockquote>
                 ) : null}
+                {index === 0 ? (
+                  <input
+                    aria-label={copy.summaryTitleField}
+                    value={value.title}
+                    onChange={(event) =>
+                      setValue((current) => ({
+                        ...current,
+                        title: event.target.value,
+                      }))
+                    }
+                    className="result-summary-title-input"
+                  />
+                ) : null}
                 <textarea
                   aria-label={formatResultCopy(copy.summaryPointField, {
                     count: index + 1,
@@ -252,6 +254,7 @@ export function SummaryTab({
                     </button>
                   ) : null}
                 </div>
+                {index === 0 ? <AutosaveStatus {...autosave} /> : null}
               </div>
             </li>
           );

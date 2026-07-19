@@ -229,7 +229,10 @@ export function FixtureResultWorkspace({
       : model;
 
   const update = (
-    transform: (current: ResultWorkspaceModel) => ResultWorkspaceModel,
+    transform: (
+      current: ResultWorkspaceModel,
+      updatedAt: string,
+    ) => ResultWorkspaceModel,
   ): ResultSaveState => {
     const updatedAt = new Date().toISOString();
     setModel((current) => {
@@ -237,6 +240,7 @@ export function FixtureResultWorkspace({
         current === initialModel
           ? (readStoredModel(storageKey) ?? current)
           : current,
+        updatedAt,
       );
       window.localStorage.setItem(storageKey, JSON.stringify(next));
       return next;
@@ -258,8 +262,9 @@ export function FixtureResultWorkspace({
       }}
       saveArtifact={async (input) => {
         const edit = resultArtifactEditSchema.parse(input);
-        return update((current) => ({
+        return update((current, updatedAt) => ({
           ...current,
+          revisions: { ...current.revisions, [edit.kind]: updatedAt },
           tabs: {
             ...current.tabs,
             [edit.kind]: {

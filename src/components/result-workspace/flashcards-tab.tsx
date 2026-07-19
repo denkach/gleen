@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FlashcardsArtifact } from '@/lib/analysis-pipeline/artifact-schemas';
 import type {
   ResultMutationState,
@@ -16,6 +16,30 @@ import { AutosaveStatus } from './autosave-status';
 import { useAutosave } from './use-autosave';
 
 type ReviewAction = (input: unknown) => Promise<ResultMutationState>;
+
+function currentReviewMap(
+  reviews: ResultUserState['reviews'] | null,
+  revision: string,
+): Map<number, FlashcardRating> {
+  return new Map(
+    (reviews ?? [])
+      .filter((review) => review.artifactRevision === revision)
+      .map((review) => [review.cardIndex, review.rating]),
+  );
+}
+
+function resumeCardIndex(
+  cardCount: number,
+  reviews: ReadonlyMap<number, FlashcardRating>,
+  known: boolean,
+): number {
+  if (!known) return 0;
+  const firstUnreviewed = Array.from(
+    { length: cardCount },
+    (_, cardIndex) => cardIndex,
+  ).find((cardIndex) => !reviews.has(cardIndex));
+  return firstUnreviewed ?? Math.max(0, cardCount - 1);
+}
 
 const reviewButtons = [
   {
@@ -63,29 +87,28 @@ export function FlashcardsTab({
   revision: string;
   saveArtifact: (input: unknown) => Promise<ResultSaveState>;
   saveFlashcardReview?: ReviewAction;
-  reviews: ResultUserState['reviews'];
+  reviews: ResultUserState['reviews'] | null;
   copy: ResultCopy;
 }>) {
   const value = artifact;
   const setValue = (
     update: (current: FlashcardsArtifact) => FlashcardsArtifact,
   ) => onArtifactChange(update(value));
-  const [index, setIndex] = useState(0);
+  const reviewsKnown = reviews !== null;
+  const initialReviews = currentReviewMap(reviews, revision);
+  const [index, setIndex] = useState(() =>
+    resumeCardIndex(value.cards.length, initialReviews, reviewsKnown),
+  );
   const [flipped, setFlipped] = useState(false);
   const [editing, setEditing] = useState(false);
   const [reviewMessage, setReviewMessage] = useState('');
   const [reviewedCards, setReviewedCards] = useState<
     ReadonlyMap<number, FlashcardRating>
-  >(
-    () =>
-      new Map(
-        reviews
-          .filter((review) => review.artifactRevision === revision)
-          .map((review) => [review.cardIndex, review.rating]),
-      ),
-  );
+  >(() => initialReviews);
+  const persistedReviews = useRef(new Map(initialReviews));
   const reviewRequestSequence = useRef(0);
   const latestReviewRequests = useRef(new Map<number, number>());
+  const reviewQueues = useRef(new Map<number, Promise<void>>());
   const safeIndex = Math.max(0, Math.min(index, value.cards.length - 1));
   const card = value.cards[safeIndex];
   const save = useCallback(
@@ -99,14 +122,27 @@ export function FlashcardsTab({
     [analysisId, saveArtifact],
   );
   const autosave = useAutosave({ value, revision, save });
+  const reviewRevision = useRef(autosave.revision);
+  useEffect(() => {
+    if (reviewRevision.current === autosave.revision) return;
+    reviewRevision.current = autosave.revision;
+    persistedReviews.current = new Map();
+    latestReviewRequests.current.clear();
+    reviewQueues.current.clear();
+    setReviewedCards(new Map());
+    setIndex(0);
+    setFlipped(false);
+    setReviewMessage('');
+  }, [autosave.revision]);
   const move = (next: number) => {
     setIndex(next);
     setFlipped(false);
   };
   const reviewCard = (rating: FlashcardRating) => {
+    if (!saveFlashcardReview) return;
     const cardIndex = safeIndex;
-    const previousRating = reviewedCards.get(cardIndex);
     const requestId = ++reviewRequestSequence.current;
+    const artifactRevision = autosave.revision;
     latestReviewRequests.current.set(cardIndex, requestId);
     setReviewMessage('');
     setReviewedCards((current) => {
@@ -115,54 +151,61 @@ export function FlashcardsTab({
       return next;
     });
     move((cardIndex + 1) % value.cards.length);
-    if (!saveFlashcardReview) return;
-    void saveFlashcardReview({
-      analysisId,
-      artifactRevision: revision,
-      cardIndex,
-      rating,
-    })
-      .then((result) => {
-        if (latestReviewRequests.current.get(cardIndex) !== requestId) return;
-        if (result.status === 'saved') {
-          setReviewMessage(copy.flashcardsReviewSaved);
-          return;
-        }
-        setReviewedCards((current) => {
-          const next = new Map(current);
-          if (previousRating) next.set(cardIndex, previousRating);
-          else next.delete(cardIndex);
-          return next;
+    const persist = async () => {
+      let result: ResultMutationState;
+      try {
+        result = await saveFlashcardReview({
+          analysisId,
+          artifactRevision,
+          cardIndex,
+          rating,
         });
-        setReviewMessage(copy.flashcardsReviewFailed);
-      })
-      .catch(() => {
-        if (latestReviewRequests.current.get(cardIndex) !== requestId) return;
-        setReviewedCards((current) => {
-          const next = new Map(current);
-          if (previousRating) next.set(cardIndex, previousRating);
-          else next.delete(cardIndex);
-          return next;
-        });
-        setReviewMessage(copy.flashcardsReviewFailed);
-      });
+      } catch {
+        result = { status: 'error' };
+      }
+      if (reviewRevision.current !== artifactRevision) return;
+      const isLatest =
+        latestReviewRequests.current.get(cardIndex) === requestId;
+      if (result.status === 'saved') {
+        persistedReviews.current.set(cardIndex, rating);
+        if (isLatest) setReviewMessage(copy.flashcardsReviewSaved);
+        return;
+      }
+      if (!isLatest) return;
+      setReviewedCards(new Map(persistedReviews.current));
+      setReviewMessage(copy.flashcardsReviewFailed);
+    };
+    const pending = reviewQueues.current.get(cardIndex) ?? Promise.resolve();
+    const queued = pending.then(persist);
+    reviewQueues.current.set(cardIndex, queued);
+    void queued.finally(() => {
+      if (reviewQueues.current.get(cardIndex) === queued)
+        reviewQueues.current.delete(cardIndex);
+    });
   };
 
   return (
     <section className="result-flashcards" data-artifact="flashcards">
       <header className="result-flashcards-top">
-        <div className="result-deck-progress">
+        <div
+          className="result-deck-progress"
+          data-reviewed-count={reviewsKnown ? reviewedCards.size : 'unknown'}
+          aria-label={`${copy.flashcardsDeckProgress}: ${reviewsKnown ? `${safeIndex + 1} / ${value.cards.length}. ${reviewedCards.size} ${copy.flashcardsReviewed}` : copy.flashcardsProgressUnknown}`}
+        >
           <div className="result-deck-progress-row">
             <span>{copy.flashcardsDeckProgress}</span>
             <span>
-              {reviewedCards.size} / {value.cards.length}{' '}
-              {copy.flashcardsReviewed}
+              {reviewsKnown
+                ? `${safeIndex + 1} / ${value.cards.length}`
+                : copy.flashcardsProgressUnknown}
             </span>
           </div>
           <div className="result-deck-bar" aria-hidden="true">
             <span
               style={{
-                width: `${(reviewedCards.size / value.cards.length) * 100}%`,
+                width: reviewsKnown
+                  ? `${((safeIndex + 1) / value.cards.length) * 100}%`
+                  : '0%',
               }}
             />
           </div>
@@ -283,7 +326,12 @@ export function FlashcardsTab({
             key={item.rating}
             type="button"
             className={`result-review-button ${item.className}`}
-            aria-label={String(copy[item.label])}
+            aria-label={
+              saveFlashcardReview
+                ? String(copy[item.label])
+                : `${String(copy[item.label])}. ${copy.flashcardsReviewUnavailable}`
+            }
+            disabled={!saveFlashcardReview}
             onClick={() => reviewCard(item.rating)}
           >
             <span>

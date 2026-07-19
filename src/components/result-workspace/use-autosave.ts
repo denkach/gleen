@@ -17,8 +17,13 @@ export function useAutosave<T>({
   revision: string;
   save: (value: T, revision: string) => Promise<ResultSaveState>;
   delayMs?: number;
-}>): Readonly<{ status: AutosaveState; retry: () => void }> {
+}>): Readonly<{
+  status: AutosaveState;
+  revision: string;
+  retry: () => void;
+}> {
   const [status, setStatus] = useState<AutosaveState>('idle');
+  const [savedRevision, setSavedRevision] = useState(revision);
   const [cycle, setCycle] = useState(0);
   const latestValue = useRef(value);
   const lastSavedValue = useRef(value);
@@ -51,6 +56,7 @@ export function useAutosave<T>({
         .then((result) => {
           if (result.status === 'saved') {
             revisionRef.current = result.updatedAt;
+            setSavedRevision(result.updatedAt);
             lastSavedValue.current = savingValue;
             setStatus('saved');
             if (!Object.is(latestValue.current, savingValue)) {
@@ -71,6 +77,7 @@ export function useAutosave<T>({
     if (propRevisionRef.current !== revision) {
       propRevisionRef.current = revision;
       revisionRef.current = revision;
+      setSavedRevision(revision);
       lastSavedValue.current = value;
       setStatus('idle');
       return;
@@ -83,5 +90,5 @@ export function useAutosave<T>({
     if (status !== 'conflict') setCycle((current) => current + 1);
   }, [status]);
 
-  return { status, retry };
+  return { status, revision: savedRevision, retry };
 }

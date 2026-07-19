@@ -170,6 +170,21 @@ test('DEN-25 fixture renders one current workspace and one local player mount', 
   await expect(page.getByLabel('Analysis artifacts')).toHaveCount(1);
   await expect(page.locator('[data-fixture-player-mount]')).toHaveCount(1);
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as unknown as FixtureWindow).__fixturePlayer.seeks,
+      ),
+    )
+    .toEqual([370]);
+
+  await page.getByRole('tab', { name: 'Flashcards' }).click();
+  await expect(
+    page.locator('.result-flashcard-number').filter({ hasText: 'Card' }),
+  ).toHaveText(/Card\s+12 \/ 28/);
+  await expect(
+    page.locator('.result-deck-progress-row span').last(),
+  ).toHaveText('12 / 28');
 
   await page.getByRole('tab', { name: 'Summary' }).click();
   await page.getByRole('button', { name: '1:15' }).click();
@@ -192,13 +207,14 @@ test('DEN-25 fixture renders one current workspace and one local player mount', 
     )
     .toEqual({
       commands: [
+        { type: 'seek', offsetMs: 370_000 },
         { type: 'seek', offsetMs: 75_000 },
         { type: 'play' },
         { type: 'pause' },
       ],
       currentTime: 75,
       playing: false,
-      seeks: [75],
+      seeks: [370, 75],
     });
 });
 
@@ -341,7 +357,10 @@ test('durable mobile touch flow flips and studies a flashcard', async ({
   await activate(page.getByRole('button', { name: 'Show answer' }));
   await expect(page.getByText('Reusable knowledge artifacts.')).toBeVisible();
   await activate(page.getByRole('button', { name: 'Got it' }));
-  await expect(page.getByText('1 studied')).toBeVisible();
+  await expect(page.getByText('Review saved')).toBeVisible();
+  await expect(
+    page.locator('.result-deck-progress-row span').last(),
+  ).toHaveText('Progress unavailable');
 });
 
 test('isolates partial, corrupted, empty, and legacy fixture states', async ({

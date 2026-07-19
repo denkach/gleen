@@ -99,6 +99,29 @@ it('freezes the complete DEN-25 result fixture contract', async () => {
   expect(den25Model.tabs.transcript.status).toBe('ready');
   if (den25Model.tabs.transcript.status !== 'ready') return;
   expect(den25Model.tabs.transcript.data.segments).toHaveLength(36);
+  expect(den25Model.userState?.reviews).toHaveLength(11);
+});
+
+it('keeps DEN-25 owner state out of legacy and public fixtures', async () => {
+  isUiPreviewEnabled.mockReturnValue(true);
+
+  for (const id of [
+    'result-complete',
+    'result-legacy',
+    'result-den-25-public',
+  ]) {
+    render(
+      await FixtureVideoPage({
+        params: Promise.resolve({ id }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    const fixtureModel = (
+      fixtureResultWorkspace.mock.calls.at(-1)?.[0] as
+        { initialModel: ResultWorkspaceModel } | undefined
+    )?.initialModel;
+    expect(fixtureModel?.userState).toBeNull();
+  }
 });
 
 it('renders the real app shell and New analysis home when preview is enabled', async () => {

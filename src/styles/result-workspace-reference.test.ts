@@ -48,6 +48,15 @@ describe('DEN-25 result shell geometry', () => {
     );
   });
 
+  it('gives coarse-pointer artifact edit, source, copy, and timestamp controls a 44px target', () => {
+    expect(css).toMatch(
+      /@media \(pointer: coarse\)[\s\S]*?\.result-summary-actions button,[\s\S]*?\.result-artifact-edit-button,[\s\S]*?\.result-summary-(?:overview|title-input|point-input)[\s\S]*?{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/,
+    );
+    expect(css).toMatch(
+      /@media \(pointer: coarse\)[\s\S]*?\.result-moment-thumb,[\s\S]*?\.result-moment-time,[\s\S]*?\.result-moment-copy input,[\s\S]*?\.result-moment-copy textarea\s*{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/,
+    );
+  });
+
   it('keeps the custom player surface and complete controls inside fullscreen', () => {
     expect(css).toContain(':is(:fullscreen, :-webkit-full-screen)');
     expect(css).toMatch(

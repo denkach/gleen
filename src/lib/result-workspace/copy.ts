@@ -90,6 +90,8 @@ export interface ResultCopy {
   readonly flashcardsGotIt: string;
   readonly flashcardsGotItHint: string;
   readonly flashcardsReviewed: string;
+  readonly flashcardsProgressUnknown: string;
+  readonly flashcardsReviewUnavailable: string;
   readonly flashcardsReviewSaved: string;
   readonly flashcardsReviewFailed: string;
   readonly flashcardsQuestionField: string;
@@ -275,6 +277,8 @@ export const resultCopy = {
     flashcardsGotIt: 'Got it',
     flashcardsGotItHint: 'Easy',
     flashcardsReviewed: 'Reviewed cards',
+    flashcardsProgressUnknown: 'Progress unavailable',
+    flashcardsReviewUnavailable: 'Review saving is unavailable',
     flashcardsReviewSaved: 'Review saved',
     flashcardsReviewFailed: 'Review could not be saved',
     flashcardsQuestionField: 'Flashcard question',
@@ -433,6 +437,8 @@ export const resultCopy = {
     flashcardsGotIt: 'Знаю',
     flashcardsGotItHint: 'Легко',
     flashcardsReviewed: 'Опрацьовані картки',
+    flashcardsProgressUnknown: 'Прогрес недоступний',
+    flashcardsReviewUnavailable: 'Збереження оцінок недоступне',
     flashcardsReviewSaved: 'Оцінку збережено',
     flashcardsReviewFailed: 'Не вдалося зберегти оцінку',
     flashcardsQuestionField: 'Запитання картки',
@@ -591,6 +597,8 @@ export const resultCopy = {
     flashcardsGotIt: 'Знаю',
     flashcardsGotItHint: 'Легко',
     flashcardsReviewed: 'Изученные карточки',
+    flashcardsProgressUnknown: 'Прогресс недоступен',
+    flashcardsReviewUnavailable: 'Сохранение оценок недоступно',
     flashcardsReviewSaved: 'Оценка сохранена',
     flashcardsReviewFailed: 'Не удалось сохранить оценку',
     flashcardsQuestionField: 'Вопрос карточки',
@@ -749,6 +757,8 @@ export const resultCopy = {
     flashcardsGotIt: 'Entendido',
     flashcardsGotItHint: 'Fácil',
     flashcardsReviewed: 'Tarjetas repasadas',
+    flashcardsProgressUnknown: 'Progreso no disponible',
+    flashcardsReviewUnavailable: 'No se pueden guardar repasos',
     flashcardsReviewSaved: 'Repaso guardado',
     flashcardsReviewFailed: 'No se pudo guardar el repaso',
     flashcardsQuestionField: 'Pregunta de la tarjeta',
@@ -908,6 +918,8 @@ export const resultCopy = {
     flashcardsGotIt: 'Gewusst',
     flashcardsGotItHint: 'Einfach',
     flashcardsReviewed: 'Gelernte Karten',
+    flashcardsProgressUnknown: 'Fortschritt nicht verfügbar',
+    flashcardsReviewUnavailable: 'Bewertungen können nicht gespeichert werden',
     flashcardsReviewSaved: 'Bewertung gespeichert',
     flashcardsReviewFailed: 'Bewertung konnte nicht gespeichert werden',
     flashcardsQuestionField: 'Kartenfrage',

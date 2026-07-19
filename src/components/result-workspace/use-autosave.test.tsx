@@ -30,6 +30,7 @@ function Harness({
         />
       </label>
       <output>{autosave.status}</output>
+      <output aria-label="Saved revision">{autosave.revision}</output>
       <button type="button" onClick={autosave.retry}>
         Retry
       </button>
@@ -117,6 +118,23 @@ describe('useAutosave', () => {
       '2026-07-18T00:01:00.000Z',
     );
     expect(input).toHaveValue('Latest');
+  });
+
+  it('exposes the last successfully saved revision to dependent mutations', async () => {
+    const save = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt: '2026-07-18T00:03:00.000Z',
+    });
+    render(<Harness save={save} />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Title' }), {
+      target: { value: 'Edited' },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(700));
+
+    expect(screen.getByLabelText('Saved revision')).toHaveTextContent(
+      '2026-07-18T00:03:00.000Z',
+    );
   });
 
   it('shows a conflict without offering a stale-revision retry', async () => {

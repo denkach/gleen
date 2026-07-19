@@ -1143,17 +1143,10 @@ body:has(.result-page-layout) {
   stroke: color-mix(in srgb, var(--result-text) 13%, transparent);
 }
 
-.result-summary-title-row {
-  min-height: 28px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .result-summary-title-input {
-  min-width: 0;
-  flex: 1;
-  padding: 4px 7px;
+  min-height: 36px;
+  margin-top: 10px;
+  padding: 7px;
   color: var(--result-text-secondary);
   font: 600 12px var(--font-body);
 }
@@ -1584,6 +1577,11 @@ body:has(.result-page-layout) {
 .result-review-button.got {
   border-color: color-mix(in srgb, var(--artifact-export) 31%, transparent);
   color: var(--artifact-export);
+}
+
+.result-review-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .result-timeline-head {
@@ -2116,6 +2114,23 @@ body:has(.result-page-layout)
 
   .result-progress-input,
   .result-volume-input {
+    min-height: 44px;
+  }
+
+  .result-summary-actions button,
+  .result-artifact-edit-button,
+  .result-summary-overview,
+  .result-summary-title-input,
+  .result-summary-point-input {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .result-moment-thumb,
+  .result-moment-time,
+  .result-moment-copy input,
+  .result-moment-copy textarea {
+    min-width: 44px;
     min-height: 44px;
   }
 }

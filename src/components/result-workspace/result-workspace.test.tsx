@@ -724,6 +724,14 @@ describe('ResultWorkspace', () => {
     expect(screen.getByText('Structured sections')).toBeVisible();
     expect(screen.getByText('Reading time')).toBeVisible();
     expect(screen.getByText('Study cards')).toBeVisible();
+    const hero = document.querySelector('.result-summary-hero');
+    const stats = document.querySelector('.result-summary-stats');
+    expect(hero?.nextElementSibling).toBe(stats);
+    expect(
+      screen
+        .getByRole('textbox', { name: 'Summary title' })
+        .closest('.result-summary-content'),
+    ).not.toBeNull();
 
     const disclosure = screen.getByRole('button', {
       name: /legacy text remains readable/i,
@@ -754,7 +762,9 @@ describe('ResultWorkspace', () => {
 
   it('flips and navigates flashcards, records study actions, and supports reduced motion', async () => {
     const user = userEvent.setup();
-    renderWorkspace();
+    renderWorkspaceWithActions({
+      saveFlashcardReview: vi.fn().mockResolvedValue({ status: 'saved' }),
+    });
     await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
     const card = screen.getByRole('button', { name: /show answer/i });
     const scene = card.querySelector('[data-flashcard-scene]');
@@ -778,7 +788,10 @@ describe('ResultWorkspace', () => {
       expect(screen.getByRole('button', { name: label })).toBeVisible();
     }
     await user.click(screen.getByRole('button', { name: 'Got it' }));
-    expect(screen.getByText(/1 \/ 2 reviewed cards/i)).toBeVisible();
+    expect(document.querySelector('.result-deck-progress')).toHaveAttribute(
+      'data-reviewed-count',
+      '1',
+    );
     expect(card.closest('[data-reduced-motion]')).toBeTruthy();
   });
 
@@ -809,7 +822,10 @@ describe('ResultWorkspace', () => {
     });
 
     await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
-    expect(screen.getByText(/1 \/ 2 reviewed cards/i)).toBeVisible();
+    expect(document.querySelector('.result-deck-progress')).toHaveAttribute(
+      'data-reviewed-count',
+      '1',
+    );
 
     await user.click(screen.getByRole('button', { name: 'Got it' }));
 
@@ -819,12 +835,18 @@ describe('ResultWorkspace', () => {
       cardIndex: 0,
       rating: 'got_it',
     });
-    expect(screen.getByText(/2 \/ 2 reviewed cards/i)).toBeVisible();
+    expect(document.querySelector('.result-deck-progress')).toHaveAttribute(
+      'data-reviewed-count',
+      '2',
+    );
     expect(screen.getByText('What stays grounded?')).toBeVisible();
 
     review.resolve({ status: 'error' });
     await waitFor(() =>
-      expect(screen.getByText(/1 \/ 2 reviewed cards/i)).toBeVisible(),
+      expect(document.querySelector('.result-deck-progress')).toHaveAttribute(
+        'data-reviewed-count',
+        '1',
+      ),
     );
     expect(screen.getByRole('status')).toHaveTextContent(
       'Review could not be saved',
@@ -863,6 +885,182 @@ describe('ResultWorkspace', () => {
     });
   });
 
+  it('rates an edited flashcard against the revision returned by its successful autosave', async () => {
+    const user = userEvent.setup();
+    const updatedAt = '2026-07-18T00:04:00.000Z';
+    const saveArtifact = vi.fn().mockResolvedValue({
+      status: 'saved',
+      updatedAt,
+    });
+    const saveFlashcardReview = vi.fn().mockResolvedValue({ status: 'saved' });
+    renderWorkspaceWithActions({ saveArtifact, saveFlashcardReview });
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+    await user.click(screen.getByRole('button', { name: 'Edit flashcards' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Flashcard question' }),
+      ' updated',
+    );
+    await waitFor(() => expect(saveArtifact).toHaveBeenCalled(), {
+      timeout: 1_200,
+    });
+    await waitFor(() => expect(screen.getByText('Saved')).toBeVisible());
+
+    await user.click(screen.getByRole('button', { name: 'Got it' }));
+
+    expect(saveFlashcardReview).toHaveBeenCalledWith(
+      expect.objectContaining({ artifactRevision: updatedAt }),
+    );
+  });
+
+  it('resumes at the first unreviewed card and renders prototype position progress', async () => {
+    const user = userEvent.setup();
+    renderWorkspaceWithActions({
+      saveFlashcardReview: vi.fn().mockResolvedValue({ status: 'saved' }),
+      value: {
+        ...model,
+        tabs: {
+          ...model.tabs,
+          flashcards: {
+            status: 'ready',
+            data: {
+              schemaVersion: 1,
+              cards: [
+                { front: 'Reviewed', back: 'One' },
+                { front: 'Resume here', back: 'Two' },
+                { front: 'Later', back: 'Three' },
+              ],
+            },
+          },
+        },
+        userState: {
+          ...model.userState!,
+          reviews: [
+            {
+              artifactRevision: model.revisions.flashcards!,
+              cardIndex: 0,
+              rating: 'got_it',
+            },
+          ],
+        },
+      },
+    });
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+
+    expect(screen.getByText('Resume here')).toBeVisible();
+    expect(
+      screen.getByText('2 / 3', {
+        selector: '.result-deck-progress-row span:last-child',
+      }),
+    ).toBeVisible();
+    expect(document.querySelector('.result-deck-progress')).toHaveAttribute(
+      'data-reviewed-count',
+      '1',
+    );
+  });
+
+  it('resumes an all-reviewed deck at its final card', async () => {
+    const user = userEvent.setup();
+    renderWorkspaceWithActions({
+      saveFlashcardReview: vi.fn().mockResolvedValue({ status: 'saved' }),
+      value: {
+        ...model,
+        userState: {
+          ...model.userState!,
+          reviews: [0, 1].map((cardIndex) => ({
+            artifactRevision: model.revisions.flashcards!,
+            cardIndex,
+            rating: 'got_it' as const,
+          })),
+        },
+      },
+    });
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+
+    expect(screen.getByText('What stays grounded?')).toBeVisible();
+    expect(
+      screen.getByText('2 / 2', {
+        selector: '.result-deck-progress-row span:last-child',
+      }),
+    ).toBeVisible();
+  });
+
+  it('renders unknown flashcard progress truthfully and does not coerce it to zero', async () => {
+    const user = userEvent.setup();
+    renderWorkspaceWithActions({
+      saveFlashcardReview: vi.fn().mockResolvedValue({ status: 'saved' }),
+      value: { ...model, userState: null },
+    });
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+
+    expect(screen.getByText('Progress unavailable')).toBeVisible();
+    expect(document.querySelector('.result-deck-progress')).toHaveAttribute(
+      'data-reviewed-count',
+      'unknown',
+    );
+    expect(screen.queryByText(/0 \/ 2 reviewed/i)).toBeNull();
+  });
+
+  it('rolls repeated in-flight same-card ratings back to the persisted baseline when both fail', async () => {
+    const user = userEvent.setup();
+    const first = deferred<ResultMutationState>();
+    const second = deferred<ResultMutationState>();
+    const saveFlashcardReview = vi
+      .fn()
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    renderWorkspaceWithActions({
+      saveFlashcardReview,
+      value: {
+        ...model,
+        overview: { ...model.overview, flashcardCount: 1 },
+        tabs: {
+          ...model.tabs,
+          flashcards: {
+            status: 'ready',
+            data: {
+              schemaVersion: 1,
+              cards: [{ front: 'Only card', back: 'Only answer' }],
+            },
+          },
+        },
+      },
+    });
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+    await user.click(screen.getByRole('button', { name: 'Again' }));
+    await user.click(screen.getByRole('button', { name: 'Got it' }));
+    expect(document.querySelector('.result-deck-progress')).toHaveAttribute(
+      'data-reviewed-count',
+      '1',
+    );
+
+    first.resolve({ status: 'error' });
+    await waitFor(() => expect(saveFlashcardReview).toHaveBeenCalledTimes(2));
+    second.resolve({ status: 'error' });
+
+    await waitFor(() =>
+      expect(document.querySelector('.result-deck-progress')).toHaveAttribute(
+        'data-reviewed-count',
+        '0',
+      ),
+    );
+  });
+
+  it('does not claim a review can persist when no review action is supplied', async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+
+    expect(
+      screen.getByRole('button', {
+        name: /got it.*review saving is unavailable/i,
+      }),
+    ).toBeDisabled();
+    expect(document.querySelector('.result-deck-progress')).toHaveAttribute(
+      'data-reviewed-count',
+      '0',
+    );
+  });
+
   it('clamps the current flashcard when a refreshed deck is shorter', async () => {
     const user = userEvent.setup();
     const view = renderWorkspace();
@@ -896,7 +1094,11 @@ describe('ResultWorkspace', () => {
     );
 
     expect(screen.getByText('Refreshed card')).toBeVisible();
-    expect(screen.getByText('1 / 1')).toBeVisible();
+    expect(
+      screen.getByText('1 / 1', {
+        selector: '.result-deck-progress-row span:last-child',
+      }),
+    ).toBeVisible();
   });
 
   it('preserves a local artifact draft across same-revision parent rerenders', async () => {
