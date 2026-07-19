@@ -101,6 +101,7 @@ function valuesEqual(left: unknown, right: unknown): boolean {
 }
 
 function mergeDraftValue<T>(base: T, draft: T, incoming: T): T {
+  if (valuesEqual(draft, incoming)) return incoming;
   if (valuesEqual(draft, base)) return incoming;
   if (valuesEqual(incoming, base)) return draft;
   if (Array.isArray(base) && Array.isArray(draft) && Array.isArray(incoming)) {

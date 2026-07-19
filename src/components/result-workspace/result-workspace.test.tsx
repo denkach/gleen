@@ -533,9 +533,10 @@ describe('ResultWorkspace', () => {
     vi.useFakeTimers();
     window.history.replaceState(null, '', '/#summary');
     const saveTitle = vi.fn();
+    const updatedAt = '2026-07-18T00:04:00.000Z';
     const saveArtifact = vi.fn().mockResolvedValue({
       status: 'saved',
-      updatedAt: '2026-07-18T00:04:00.000Z',
+      updatedAt,
     });
     const view = render(revisionWorkspace(model, saveTitle, saveArtifact));
     await act(() => vi.advanceTimersByTimeAsync(0));
@@ -585,6 +586,37 @@ describe('ResultWorkspace', () => {
         overview: 'External server overview',
       }),
     });
+    expect(screen.getByText('Saved')).toBeVisible();
+    view.rerender(
+      revisionWorkspace(
+        {
+          ...model,
+          revisions: { ...model.revisions, summary: updatedAt },
+          tabs: {
+            ...model.tabs,
+            summary: {
+              status: 'ready',
+              data: {
+                ...summaryFixture.data,
+                title: 'Dirty local Summary',
+                outcome: 'External server overview',
+                overview: 'External server overview',
+                sections: summaryFixture.data.sections.map((section) => ({
+                  ...section,
+                })),
+                keyPoints: summaryFixture.data.keyPoints.map((point) => ({
+                  ...point,
+                })),
+              },
+            },
+          },
+        },
+        saveTitle,
+        saveArtifact,
+      ),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(screen.getByText('Saved')).toBeVisible();
     await act(() => vi.advanceTimersByTimeAsync(1_400));
     expect(saveArtifact).toHaveBeenCalledTimes(1);
     expect(saveTitle).not.toHaveBeenCalled();
@@ -598,9 +630,10 @@ describe('ResultWorkspace', () => {
     vi.useFakeTimers();
     window.history.replaceState(null, '', '/#flashcards');
     const saveTitle = vi.fn();
+    const updatedAt = '2026-07-18T00:04:00.000Z';
     const saveArtifact = vi.fn().mockResolvedValue({
       status: 'saved',
-      updatedAt: '2026-07-18T00:04:00.000Z',
+      updatedAt,
     });
     const view = render(revisionWorkspace(model, saveTitle, saveArtifact));
     await act(() => vi.advanceTimersByTimeAsync(0));
@@ -658,6 +691,34 @@ describe('ResultWorkspace', () => {
         ],
       },
     });
+    expect(screen.getByText('Saved')).toBeVisible();
+    view.rerender(
+      revisionWorkspace(
+        {
+          ...model,
+          revisions: { ...model.revisions, flashcards: updatedAt },
+          tabs: {
+            ...model.tabs,
+            flashcards: {
+              status: 'ready',
+              data: {
+                ...flashcardsFixture.data,
+                cards: flashcardsFixture.data.cards.map((card, index) => ({
+                  ...card,
+                  ...(index === 0
+                    ? { front: 'Dirty local question?' }
+                    : { back: 'External server answer.' }),
+                })),
+              },
+            },
+          },
+        },
+        saveTitle,
+        saveArtifact,
+      ),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(screen.getByText('Saved')).toBeVisible();
     await act(() => vi.advanceTimersByTimeAsync(1_400));
     expect(saveArtifact).toHaveBeenCalledTimes(1);
     expect(saveTitle).not.toHaveBeenCalled();
@@ -671,9 +732,10 @@ describe('ResultWorkspace', () => {
     vi.useFakeTimers();
     window.history.replaceState(null, '', '/#timestamps');
     const saveTitle = vi.fn();
+    const updatedAt = '2026-07-18T00:04:00.000Z';
     const saveArtifact = vi.fn().mockResolvedValue({
       status: 'saved',
-      updatedAt: '2026-07-18T00:04:00.000Z',
+      updatedAt,
     });
     const view = render(revisionWorkspace(model, saveTitle, saveArtifact));
     await act(() => vi.advanceTimersByTimeAsync(0));
@@ -732,6 +794,36 @@ describe('ResultWorkspace', () => {
         ],
       },
     });
+    expect(screen.getByText('Saved')).toBeVisible();
+    view.rerender(
+      revisionWorkspace(
+        {
+          ...model,
+          revisions: { ...model.revisions, timestamps: updatedAt },
+          tabs: {
+            ...model.tabs,
+            timestamps: {
+              status: 'ready',
+              data: {
+                ...timestampsFixture.data,
+                chapters: timestampsFixture.data.chapters.map(
+                  (chapter, index) => ({
+                    ...chapter,
+                    ...(index === 0
+                      ? { title: 'Dirty local chapter' }
+                      : { description: 'External server details.' }),
+                  }),
+                ),
+              },
+            },
+          },
+        },
+        saveTitle,
+        saveArtifact,
+      ),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(screen.getByText('Saved')).toBeVisible();
     await act(() => vi.advanceTimersByTimeAsync(1_400));
     expect(saveArtifact).toHaveBeenCalledTimes(1);
     expect(saveTitle).not.toHaveBeenCalled();

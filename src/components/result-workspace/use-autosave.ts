@@ -81,6 +81,7 @@ export function useAutosave<T>({
   useEffect(() => {
     if (propRevisionRef.current !== revision) {
       let active = true;
+      const confirmsLatestSave = revisionRef.current === revision;
       propRevisionRef.current = revision;
       revisionRef.current = revision;
       lastSavedValue.current = serverValue;
@@ -89,7 +90,7 @@ export function useAutosave<T>({
         if (!active) return;
         setSavedRevision(revision);
         setSavedValue(serverValue);
-        setStatus(dirty ? 'saving' : 'idle');
+        setStatus(dirty ? 'saving' : confirmsLatestSave ? 'saved' : 'idle');
       });
       if (dirty) schedule();
       return () => {
