@@ -75,4 +75,26 @@ describe('DEN-25 result shell geometry', () => {
       /@media \(max-width: 620px\)[\s\S]*?body:has\(\.result-page-layout\) \.result-source-actions\s*{[^}]*display:\s*none;/,
     );
   });
+
+  it('clamps the result statement to the approved desktop and mobile limits', () => {
+    expect(css).toMatch(
+      /\.result-overview-outcome\s*{[^}]*-webkit-line-clamp:\s*3;/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 620px\)[\s\S]*?\.result-overview-outcome\s*{[^}]*-webkit-line-clamp:\s*4;/,
+    );
+  });
+
+  it('collapses Overview metrics to one column at the mobile transition', () => {
+    expect(css).toMatch(
+      /@media \(max-width: 620px\)[\s\S]*?\.result-overview-metrics\s*{[^}]*grid-template-columns:\s*1fr;/,
+    );
+  });
+
+  it('limits card hover and pressed feedback to available cards', () => {
+    expect(css).toContain(".artifact-link-card[aria-disabled='false']:hover");
+    expect(css).toContain(".artifact-link-card[aria-disabled='false']:active");
+    expect(css).not.toMatch(/\.artifact-link-card:hover/);
+    expect(css).not.toMatch(/\.artifact-link-card:active/);
+  });
 });

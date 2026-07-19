@@ -12,6 +12,7 @@ import type {
   ResultMutationState,
   ResultSaveState,
 } from '@/lib/result-workspace/actions';
+import { getAddressableResultArtifacts } from '@/lib/result-workspace/artifact-availability';
 import { resultCopy, type ResultCopy } from '@/lib/result-workspace/copy';
 import {
   initializeResultArtifactNavigation,
@@ -67,20 +68,10 @@ function ResultArtifacts({
 }>) {
   const [tab, setTab] = useState<TabValue>('overview');
   const [draftModel, setDraftModel] = useState(model);
-  const availableArtifacts = useMemo<readonly ResultArtifact[]>(() => {
-    const artifacts: ResultArtifact[] = ['overview'];
-    if (model.tabs.summary.status === 'ready') artifacts.push('summary');
-    if (model.tabs.flashcards.status === 'ready') artifacts.push('flashcards');
-    if (model.tabs.timestamps.status === 'ready') artifacts.push('timestamps');
-    if (model.tabs.transcript.status === 'ready') artifacts.push('transcript');
-    artifacts.push('export');
-    return artifacts;
-  }, [
-    model.tabs.flashcards.status,
-    model.tabs.summary.status,
-    model.tabs.timestamps.status,
-    model.tabs.transcript.status,
-  ]);
+  const availableArtifacts = useMemo(
+    () => getAddressableResultArtifacts(model.tabs),
+    [model.tabs],
+  );
   useEffect(() => {
     let subscribed = true;
     const initialArtifact =

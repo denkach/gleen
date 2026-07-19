@@ -424,6 +424,36 @@ describe('ResultWorkspace', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it.each([
+    { availableExports: [] as string[] },
+    { availableExports: ['future-export-id'] },
+  ])(
+    'opens Export from Overview when pre-generated destinations are %j',
+    async ({ availableExports }) => {
+      const user = userEvent.setup();
+      window.history.replaceState(null, '', '/app/video/result#overview');
+      renderWorkspace({
+        ...model,
+        overview: { ...model.overview, availableExports },
+      });
+
+      await user.click(
+        screen.getByRole('button', {
+          name: new RegExp(
+            `${resultCopy.en.overviewOpenArtifact}: ${resultCopy.en.tabExport}`,
+            'i',
+          ),
+        }),
+      );
+
+      expect(window.location.hash).toBe('#export');
+      expect(
+        screen.getByRole('tab', { name: resultCopy.en.tabExport }),
+      ).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByText('Local export')).toBeVisible();
+    },
+  );
+
   it('canonicalizes an unavailable initial artifact hash to Overview', async () => {
     window.history.replaceState(null, '', '/app/video/result#flashcards');
     const replaceState = vi.spyOn(window.history, 'replaceState');

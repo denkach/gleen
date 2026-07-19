@@ -205,6 +205,54 @@ describe('OverviewTab', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([
+    [
+      { status: 'unavailable' as const, reason: 'pending' as const },
+      resultCopy.en.stateProcessing,
+    ],
+    [
+      {
+        status: 'unavailable' as const,
+        reason: 'failed' as const,
+        errorCode: 'summary_failed',
+      },
+      resultCopy.en.stateFailed,
+    ],
+    [
+      { status: 'unavailable' as const, reason: 'malformed' as const },
+      resultCopy.en.stateMalformed,
+    ],
+    [
+      { status: 'unavailable' as const, reason: 'missing' as const },
+      resultCopy.en.stateMissing,
+    ],
+  ])(
+    'shows a truthful Summary state instead of labeling the intake title as a Result: %#',
+    (summary, explanation) => {
+      renderOverview({
+        ...readyModel,
+        overview: {
+          ...readyModel.overview,
+          outcome: readyModel.source.title,
+          summarySectionCount: null,
+        },
+        tabs: { ...readyModel.tabs, summary },
+      });
+
+      const insight = screen.getByRole('region', {
+        name: resultCopy.en.tabSummary,
+      });
+      expect(within(insight).getByText(explanation)).toHaveClass(
+        'result-overview-outcome',
+      );
+      expect(within(insight).getByText(resultCopy.en.tabSummary)).toBeVisible();
+      expect(within(insight).queryByText(readyModel.source.title)).toBeNull();
+      expect(
+        within(insight).queryByText(resultCopy.en.overviewOutcome),
+      ).toBeNull();
+    },
+  );
+
   it('renders truthful metrics and keeps unknown values distinct from zero', () => {
     renderOverview({
       ...readyModel,
@@ -280,6 +328,67 @@ describe('OverviewTab', () => {
     await user.click(cards[1]!);
     expect(openArtifact).toHaveBeenCalledOnce();
   });
+
+  it('keeps unavailable cards focusable while Enter and Space remain inert', async () => {
+    const user = userEvent.setup();
+    const openArtifact = vi.fn();
+    const events: unknown[] = [];
+    const onAnalytics = (event: Event) =>
+      events.push((event as CustomEvent).detail);
+    window.addEventListener('gleen:analytics', onAnalytics);
+    renderOverview(
+      {
+        ...readyModel,
+        tabs: {
+          ...readyModel.tabs,
+          flashcards: {
+            status: 'unavailable',
+            reason: 'failed',
+            errorCode: 'generation_failed',
+          },
+        },
+      },
+      openArtifact,
+    );
+
+    const card = screen.getByRole('button', {
+      name: new RegExp(
+        `${resultCopy.en.overviewOpenArtifact}: ${resultCopy.en.tabFlashcards}.*${resultCopy.en.stateFailed}`,
+        'i',
+      ),
+    });
+    card.focus();
+    expect(card).toHaveFocus();
+    expect(card).toHaveAttribute('aria-disabled', 'true');
+    await user.keyboard('{Enter}{Space}');
+
+    expect(card).toHaveFocus();
+    expect(openArtifact).not.toHaveBeenCalled();
+    expect(events).toEqual([]);
+    window.removeEventListener('gleen:analytics', onAnalytics);
+  });
+
+  it.each([
+    { availableExports: [] as string[] },
+    { availableExports: ['future-export-id'] },
+  ])(
+    'keeps Export ready when pre-generated destinations are %j',
+    ({ availableExports }) => {
+      renderOverview({
+        ...readyModel,
+        overview: { ...readyModel.overview, availableExports },
+      });
+
+      expect(
+        screen.getByRole('button', {
+          name: new RegExp(
+            `${resultCopy.en.overviewOpenArtifact}: ${resultCopy.en.tabExport}`,
+            'i',
+          ),
+        }),
+      ).toHaveAttribute('data-state', 'ready');
+    },
+  );
 
   it('continues from the saved owner position without changing the artifact', async () => {
     const user = userEvent.setup();

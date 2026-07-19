@@ -43,7 +43,7 @@ export function OverviewTab({
   const overviewTitleId = useId();
   const outcomeLabelId = useId();
   const continueTitleId = useId();
-  const { cards, continuation, metrics, recommendation } =
+  const { cards, continuation, insight, metrics, recommendation } =
     buildOverviewViewModel(model, copy);
   const continueAvailable =
     controller !== null &&
@@ -81,6 +81,7 @@ export function OverviewTab({
       <section
         className="result-overview-insight"
         aria-labelledby={outcomeLabelId}
+        data-state={insight.state}
       >
         <svg
           className="result-overview-prism"
@@ -93,9 +94,9 @@ export function OverviewTab({
         </svg>
         <div id={outcomeLabelId} className="result-overview-eyebrow">
           <span aria-hidden="true">✦</span>
-          {copy.overviewOutcome}
+          {insight.label}
         </div>
-        <p className="result-overview-outcome">{model.overview.outcome}</p>
+        <p className="result-overview-outcome">{insight.text}</p>
       </section>
 
       <ul className="result-overview-metrics" aria-label={copy.overviewTitle}>

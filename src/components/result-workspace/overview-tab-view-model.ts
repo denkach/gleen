@@ -2,6 +2,7 @@ import {
   formatKeyMomentsCount,
   type ResultCopy,
 } from '@/lib/result-workspace/copy';
+import { isResultArtifactAddressable } from '@/lib/result-workspace/artifact-availability';
 import {
   recommendNextArtifact,
   type ResultArtifact,
@@ -39,6 +40,11 @@ export type OverviewViewModel = Readonly<{
     progress: number;
     savedPositionMs: number | null;
     timeLabel: string | null;
+  }>;
+  insight: Readonly<{
+    label: string;
+    state: ArtifactLinkCardState;
+    text: string;
   }>;
   metrics: readonly OverviewMetric[];
   recommendation: Readonly<{
@@ -164,6 +170,12 @@ function buildArtifactCards(
     (destination) =>
       exportNames[destination] ? [exportNames[destination]] : [],
   );
+  const exportDescription =
+    availableExports.length > 0
+      ? availableExports.join(' · ')
+      : [copy.exportMarkdown, copy.exportObsidian, copy.exportNotebookLm].join(
+          ' · ',
+        );
 
   return [
     {
@@ -198,13 +210,32 @@ function buildArtifactCards(
       artifact: 'export',
       accent: 'export',
       label: copy.tabExport,
-      state: availableExports.length > 0 ? 'ready' : 'disabled',
-      description:
-        availableExports.length > 0
-          ? availableExports.join(' · ')
-          : copy.stateUnavailable,
+      state: isResultArtifactAddressable(model.tabs, 'export')
+        ? 'ready'
+        : 'disabled',
+      description: exportDescription,
     },
   ];
+}
+
+function buildInsight(
+  model: ResultWorkspaceModel,
+  copy: ResultCopy,
+): OverviewViewModel['insight'] {
+  const summary = model.tabs.summary;
+  if (summary.status === 'ready') {
+    return {
+      label: copy.overviewOutcome,
+      state: 'ready',
+      text: summary.data.outcome,
+    };
+  }
+  const unavailable = unavailableState(summary, copy);
+  return {
+    label: copy.tabSummary,
+    state: unavailable.cardState,
+    text: unavailable.description,
+  };
 }
 
 function recommendationLabel(
@@ -274,6 +305,7 @@ export function buildOverviewViewModel(
           ? null
           : `${formatOverviewTime(chapterElapsed)} / ${formatOverviewTime(chapterDuration)}`,
     },
+    insight: buildInsight(model, copy),
     metrics: [
       {
         label: copy.overviewDuration,
