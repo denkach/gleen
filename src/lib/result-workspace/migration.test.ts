@@ -232,3 +232,95 @@ describe('DEN-25 ordered playback migration', () => {
     );
   });
 });
+
+describe('DEN-25 atomic result Share migration', () => {
+  const migrationsDirectory = join(process.cwd(), 'supabase', 'migrations');
+  const filename = readdirSync(migrationsDirectory).find((entry) =>
+    entry.endsWith('_den_25_atomic_result_shares.sql'),
+  );
+
+  const readAtomicShareSql = () => {
+    expect(filename).toBeDefined();
+    return readFileSync(join(migrationsDirectory, filename!), 'utf8');
+  };
+
+  it('serializes create, rotation, and revoke through authenticated security-invoker RPCs', () => {
+    const atomicSql = readAtomicShareSql();
+
+    expect(atomicSql).toContain(
+      'create or replace function public.create_owned_result_share',
+    );
+    expect(atomicSql).toContain(
+      'create or replace function public.revoke_owned_result_share',
+    );
+    expect(atomicSql.match(/security invoker/g)).toHaveLength(2);
+    expect(atomicSql.match(/set search_path = ''/g)).toHaveLength(2);
+    expect(atomicSql.match(/pg_catalog\.pg_advisory_xact_lock/g)).toHaveLength(
+      2,
+    );
+    expect(atomicSql).toContain('if caller_id is null then');
+    expect(atomicSql).toContain(
+      'where intake.id = p_analysis_id and intake.user_id = caller_id',
+    );
+    expect(atomicSql).toContain('on conflict (analysis_id, user_id) do update');
+    expect(atomicSql).toContain(
+      'when public.analysis_shares.revoked_at is null then public.analysis_shares.token',
+    );
+    expect(atomicSql).toContain('else excluded.token');
+    expect(atomicSql).toMatch(
+      /revoked_at = pg_catalog\.coalesce\(\s*public\.analysis_shares\.revoked_at,\s*pg_catalog\.now\(\)\s*\)/,
+    );
+  });
+
+  it('allows only authenticated callers to execute owner Share RPCs', () => {
+    const atomicSql = readAtomicShareSql();
+
+    for (const signature of [
+      'public.create_owned_result_share(uuid, text)',
+      'public.revoke_owned_result_share(uuid)',
+    ]) {
+      expect(atomicSql).toContain(
+        `revoke all on function ${signature} from PUBLIC, anon, service_role;`,
+      );
+      expect(atomicSql).toContain(
+        `grant execute on function ${signature} to authenticated;`,
+      );
+    }
+    expect(atomicSql).not.toContain('security definer');
+  });
+
+  it('grants service_role only the table operations used by projection and workflow', () => {
+    const atomicSql = readAtomicShareSql();
+
+    const expectedGrants = [
+      'grant select on table public.analysis_intakes to service_role;',
+      'grant select, update on table public.analysis_jobs to service_role;',
+      'grant select, insert on table public.analysis_job_events to service_role;',
+      'grant select, update on table public.analysis_artifacts to service_role;',
+      'grant select, update on table public.analysis_usage_reservations to service_role;',
+      'grant select on table public.analysis_shares to service_role;',
+    ];
+
+    for (const table of [
+      'analysis_intakes',
+      'analysis_jobs',
+      'analysis_job_events',
+      'analysis_artifacts',
+      'analysis_usage_reservations',
+      'analysis_shares',
+    ]) {
+      expect(atomicSql).toContain(
+        `revoke all on table public.${table} from service_role;`,
+      );
+      expect(atomicSql).not.toContain(
+        `grant all on table public.${table} to service_role;`,
+      );
+    }
+
+    for (const grant of expectedGrants) expect(atomicSql).toContain(grant);
+    expect(atomicSql).not.toMatch(/grant [^;]+ to anon;/);
+    expect(atomicSql).not.toMatch(
+      /grant (insert|update|delete)[^;]*analysis_shares/,
+    );
+  });
+});

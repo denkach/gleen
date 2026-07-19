@@ -19,6 +19,13 @@ test.beforeEach(async ({ page }) => {
 test('creates an anonymous read-only result and revokes it to the neutral unavailable state', async ({
   page,
 }) => {
+  const malformedResponse = await page.request.get('/share/bad');
+  expect(malformedResponse.status()).toBe(404);
+  expect(malformedResponse.headers()['referrer-policy']).toBe('no-referrer');
+  expect(malformedResponse.headers()['cache-control']).not.toMatch(
+    /(?:^|,)\s*(?:public|s-maxage)/i,
+  );
+
   await page.goto(ownerRoute, { waitUntil: 'domcontentloaded' });
   await page.locator('[aria-label="Video source"] iframe').waitFor();
 

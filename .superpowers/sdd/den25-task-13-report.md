@@ -10,14 +10,23 @@
 - Share analytics contain only `created`, `copied`, or `revoked` lifecycle values; tokens and public URLs are not included.
 - No production dependency was added.
 
+## Security review follow-up
+
+- Added CLI-generated migration `20260719070301_den_25_atomic_result_shares.sql` after the 2026 Supabase explicit-grants review superseded the original no-migration conclusion.
+- Owner Share create/revoke now use authenticated `SECURITY INVOKER` RPCs with `search_path = ''`, `auth.uid()` ownership, and the same transaction-scoped advisory lock. Create uses one `INSERT ... ON CONFLICT DO UPDATE` so concurrent first-create and revoked-token rotations converge; revoke is atomic and idempotent, including double revoke.
+- Function execution is revoked from `PUBLIC`, `anon`, and `service_role`, then granted only to `authenticated`. No `SECURITY DEFINER` function was introduced.
+- The secret-key client receives explicit least-privilege `service_role` table grants: intake `SELECT`; jobs `SELECT, UPDATE`; job events `SELECT, INSERT`; artifacts `SELECT, UPDATE`; usage reservations `SELECT, UPDATE`; shares `SELECT`. No sequence or privileged RPC grant is needed by the inspected workflow.
+- `/share/:path*` now emits `Referrer-Policy: no-referrer` through Next configuration. The route remains `force-dynamic`, noindex/nofollow, and never publicly cacheable.
+- Malformed tokens are rejected at the route boundary before the privileged Supabase client is initialized.
+
 ## Supabase boundary and migration decision
 
 - Centralized privileged access in `src/lib/supabase/admin.ts`, marked it `server-only`, disabled session persistence/refresh/URL detection, and reused it from the analysis workflow.
 - Added strict `SUPABASE_SECRET_KEY` validation and an unmistakable server-only warning in `.env.example`.
-- Owner mutations use the authenticated server client, validate the analysis UUID before authentication, verify `analysis_intakes.id + user_id`, and filter every Share mutation by both IDs.
+- Owner mutations use the authenticated server client, validate the analysis UUID before authentication, and delegate to RPCs that derive the owner only from `auth.uid()` and verify the matching `analysis_intakes` row.
 - Anonymous lookup validates before querying, matches the exact token plus `revoked_at is null`, then re-applies the Share's analysis/owner pair to source and artifact queries. Artifact selection is restricted to `status = ready` and explicit columns; no `select('*')` is used.
-- No new migration was required. Task 2 migration `20260718144057_den_25_result_state_and_shares.sql` already provides the token-format check, one-row-per-analysis/owner uniqueness, ownership RLS, authenticated grants, anonymous/PUBLIC revokes, and active-token index. The existing migration contract test remains green.
-- A live Supabase project and local Docker stack were not available in this agent environment, so remote RLS execution and Supabase advisor checks remain staging verification items. Static migration/security tests and repository query-contract tests cover the boundary locally.
+- Task 2 migration `20260718144057_den_25_result_state_and_shares.sql` provides the token-format check, one-row-per-analysis/owner uniqueness, ownership RLS, authenticated grants, anonymous/PUBLIC revokes, and active-token index. The new atomic migration builds on those constraints and adds RPC/grant contracts.
+- A live Supabase project and local Docker stack were not available in this agent environment. `npx supabase db lint --local --schema public --level warning --fail-on error` was attempted and returned `LegacyDbConnectError: Failed to connect`, so runtime RLS/concurrency queries and Supabase advisors remain staging verification items. Static migration/security tests and deferred/reordered repository tests cover the boundary locally.
 
 ## TDD evidence
 
@@ -32,11 +41,11 @@ The work proceeded RED → GREEN across the secret client, environment validatio
 - removal of owner editing, Favorite, Share, progress, and recommendations;
 - create/copy/revoke UI with token-free analytics.
 
-Final focused regression command passed 8 files and 133 tests.
+Security review RED: 8 expected failures and 22 passes across the missing migration, client-side mutation race, and missing header contract. The security slice then passed 30/30; the related regression passed 10 files and 146/146 tests.
 
 ## Browser verification
 
-`PLAYWRIGHT_PORT=3073 npx playwright test tests/e2e/result-share.spec.ts --project=chromium` passed 1/1. It verifies owner creation → anonymous open → read-only controls → owner revocation → identical neutral unavailable state, plus absence of owner email and public-link leakage in analytics.
+`PLAYWRIGHT_PORT=3074 npx playwright test tests/e2e/result-share.spec.ts --project=chromium` passed 1/1 after the security follow-up. It verifies the real malformed-token 404/referrer/non-public-cache response plus owner creation → anonymous open → read-only controls → owner revocation → identical neutral unavailable state, absence of owner email, and public-link exclusion from analytics.
 
 The prescribed port 3017 was already occupied by a stale unrelated Next.js server, causing Playwright's `reuseExistingServer` to attach to a route set that returned 404. The unchanged test passed on clean port 3073, confirming this was an environment collision rather than an application failure.
 
@@ -46,8 +55,8 @@ The prescribed port 3017 was already occupied by a stale unrelated Next.js serve
 - `npm run lint`: PASS.
 - `npm run typecheck`: PASS.
 - Focused Vitest suite: PASS — 8 files, 133/133 tests.
-- `npm test`: PASS — 106 files, 823/823 tests. The repository's existing jsdom `window.scrollTo` warnings remained non-failing.
-- Dedicated Chromium Share flow: PASS — 1/1.
+- `npm test`: PASS — 106 files, 829/829 tests. The repository's existing jsdom `window.scrollTo` warnings remained non-failing.
+- Dedicated Chromium Share/header flow: PASS — 1/1.
 - Production build: PASS with the safe public placeholder values used by browser/CI verification; compilation, TypeScript, 23/23 static pages, and dynamic `/share/[token]` route generation completed.
 - `git diff --check`: PASS.
 - Generated `next-env.d.ts` was restored after the build.
@@ -70,4 +79,4 @@ The prescribed port 3017 was already occupied by a stale unrelated Next.js serve
 
 ## Remaining risk
 
-The remaining risk is environment-specific Supabase verification: run the migration suite against the target project, exercise owner/anonymous/revoked requests with real Auth/RLS, and run the Supabase security/performance advisors before release. No local test or build failure remains.
+The remaining risk is environment-specific Supabase verification: apply the generated migration to the target project, exercise concurrent owner/foreign/anonymous/revoked requests with real Auth/RLS, and run the Supabase security/performance advisors before release. Local database lint could not connect because no local Postgres/Docker stack was available.

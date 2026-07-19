@@ -9,6 +9,14 @@ import { createResultShareToken, resultShareTokenSchema } from './share';
 
 type Result = { data: unknown; error: { code?: string } | null };
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 function fakeClient(results: Result[]) {
   const calls: Array<{ table: string; operation: string; args: unknown[] }> =
     [];
@@ -63,6 +71,29 @@ function fakeClient(results: Result[]) {
     calls,
     client: {
       from: vi.fn((table: string) => new Query(table)),
+      rpc: vi.fn(),
+    } as unknown as SupabaseResultShareClient,
+  };
+}
+
+function rpcClient(
+  handler: (
+    functionName: string,
+    arguments_: Readonly<Record<string, unknown>>,
+  ) => PromiseLike<Result>,
+) {
+  const calls: Array<{
+    functionName: string;
+    arguments_: Readonly<Record<string, unknown>>;
+  }> = [];
+  return {
+    calls,
+    client: {
+      from: vi.fn(),
+      rpc: vi.fn((functionName, arguments_) => {
+        calls.push({ functionName, arguments_ });
+        return handler(functionName, arguments_);
+      }),
     } as unknown as SupabaseResultShareClient,
   };
 }
@@ -97,107 +128,166 @@ describe('result share tokens', () => {
 });
 
 describe('owner result share repository', () => {
-  it('reuses the current active token after explicit ownership lookup', async () => {
-    const { client, calls } = fakeClient([
-      { data: { id: analysisId }, error: null },
-      { data: { token, revoked_at: null }, error: null },
+  it('converges concurrent first creates despite reordered RPC responses', async () => {
+    const first = deferred<Result>();
+    const second = deferred<Result>();
+    const candidates = ['A'.repeat(43), 'B'.repeat(43)];
+    let candidateIndex = 0;
+    const { client, calls } = rpcClient((_, arguments_) =>
+      arguments_.p_token === candidates[0] ? first.promise : second.promise,
+    );
+    const repository = createSupabaseResultShareRepository(
+      client,
+      () => candidates[candidateIndex++]!,
+    );
+
+    const firstCreate = repository.createOwned({ userId, analysisId });
+    const secondCreate = repository.createOwned({ userId, analysisId });
+    second.resolve({ data: token, error: null });
+    first.resolve({ data: token, error: null });
+
+    await expect(Promise.all([firstCreate, secondCreate])).resolves.toEqual([
+      token,
+      token,
     ]);
-
-    await expect(
-      createSupabaseResultShareRepository(client).createOwned({
-        userId,
-        analysisId,
-      }),
-    ).resolves.toBe(token);
-
-    expect(calls).toContainEqual({
-      table: 'analysis_intakes',
-      operation: 'eq',
-      args: ['user_id', userId],
-    });
-    expect(calls).toContainEqual({
-      table: 'analysis_shares',
-      operation: 'eq',
-      args: ['analysis_id', analysisId],
-    });
-    expect(calls).toContainEqual({
-      table: 'analysis_shares',
-      operation: 'eq',
-      args: ['user_id', userId],
-    });
-    expect(calls.some(({ operation }) => operation === 'insert')).toBe(false);
+    expect(calls).toEqual([
+      {
+        functionName: 'create_owned_result_share',
+        arguments_: { p_analysis_id: analysisId, p_token: 'A'.repeat(43) },
+      },
+      {
+        functionName: 'create_owned_result_share',
+        arguments_: { p_analysis_id: analysisId, p_token: 'B'.repeat(43) },
+      },
+    ]);
   });
 
-  it('rotates a revoked row to a new active token for the same owner', async () => {
-    const { client, calls } = fakeClient([
-      { data: { id: analysisId }, error: null },
-      { data: { token, revoked_at: '2026-07-18T10:00:00.000Z' }, error: null },
-      { data: { token: 'B'.repeat(43) }, error: null },
-    ]);
-
+  it('converges concurrent revoked-token rotations on the database winner', async () => {
+    const first = deferred<Result>();
+    const second = deferred<Result>();
+    const winner = 'C'.repeat(43);
+    const candidates = ['B'.repeat(43), winner];
+    const { client } = rpcClient((_, arguments_) =>
+      arguments_.p_token === 'B'.repeat(43) ? first.promise : second.promise,
+    );
     const repository = createSupabaseResultShareRepository(client, () =>
-      'B'.repeat(43),
+      candidates.shift()!,
     );
-    await expect(repository.createOwned({ userId, analysisId })).resolves.toBe(
-      'B'.repeat(43),
+
+    const firstRotation = repository.createOwned({ userId, analysisId });
+    const secondRotation = repository.createOwned({ userId, analysisId });
+    second.resolve({ data: winner, error: null });
+    first.resolve({ data: winner, error: null });
+
+    await expect(Promise.all([firstRotation, secondRotation])).resolves.toEqual(
+      [winner, winner],
     );
-    expect(calls).toContainEqual({
-      table: 'analysis_shares',
-      operation: 'update',
-      args: [{ token: 'B'.repeat(43), revoked_at: null }],
-    });
-    expect(calls).toContainEqual({
-      table: 'analysis_shares',
-      operation: 'eq',
-      args: ['token', token],
-    });
   });
 
-  it('does not create or revoke for a foreign analysis', async () => {
-    const create = fakeClient([{ data: null, error: null }]);
+  it('returns neutral failures when the RPC rejects foreign ownership', async () => {
+    const { client, calls } = rpcClient(() =>
+      Promise.resolve({ data: null, error: { code: 'P0002' } }),
+    );
+    const repository = createSupabaseResultShareRepository(client);
+
     await expect(
-      createSupabaseResultShareRepository(create.client).createOwned({
-        userId,
-        analysisId,
-      }),
+      repository.createOwned({ userId, analysisId }),
     ).resolves.toBeNull();
-    expect(create.calls.some(({ table }) => table === 'analysis_shares')).toBe(
+    await expect(repository.revokeOwned({ userId, analysisId })).resolves.toBe(
       false,
     );
-
-    const revoke = fakeClient([{ data: null, error: null }]);
-    await expect(
-      createSupabaseResultShareRepository(revoke.client).revokeOwned({
-        userId,
-        analysisId,
-      }),
-    ).resolves.toBe(false);
-    expect(revoke.calls.some(({ table }) => table === 'analysis_shares')).toBe(
-      false,
-    );
+    expect(calls).toEqual([
+      {
+        functionName: 'create_owned_result_share',
+        arguments_: {
+          p_analysis_id: analysisId,
+          p_token: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+        },
+      },
+      {
+        functionName: 'revoke_owned_result_share',
+        arguments_: { p_analysis_id: analysisId },
+      },
+    ]);
   });
 
-  it('revokes only the active row matching both owner identifiers', async () => {
-    const { client, calls } = fakeClient([
-      { data: { id: analysisId }, error: null },
-      { data: { token }, error: null },
+  it('treats double revoke as saved and delegates ordering to one atomic RPC', async () => {
+    const first = deferred<Result>();
+    const second = deferred<Result>();
+    let call = 0;
+    const { client, calls } = rpcClient(() =>
+      call++ === 0 ? first.promise : second.promise,
+    );
+    const repository = createSupabaseResultShareRepository(client);
+
+    const firstRevoke = repository.revokeOwned({ userId, analysisId });
+    const secondRevoke = repository.revokeOwned({ userId, analysisId });
+    second.resolve({ data: true, error: null });
+    first.resolve({ data: true, error: null });
+
+    await expect(Promise.all([firstRevoke, secondRevoke])).resolves.toEqual([
+      true,
+      true,
     ]);
-    await expect(
-      createSupabaseResultShareRepository(client).revokeOwned({
-        userId,
-        analysisId,
+    expect(calls).toEqual([
+      {
+        functionName: 'revoke_owned_result_share',
+        arguments_: { p_analysis_id: analysisId },
+      },
+      {
+        functionName: 'revoke_owned_result_share',
+        arguments_: { p_analysis_id: analysisId },
+      },
+    ]);
+  });
+
+  it('keeps create and revoke as single atomic RPCs under reordered responses', async () => {
+    const create = deferred<Result>();
+    const revoke = deferred<Result>();
+    const { client, calls } = rpcClient((functionName) =>
+      functionName === 'create_owned_result_share'
+        ? create.promise
+        : revoke.promise,
+    );
+    const repository = createSupabaseResultShareRepository(client, () => token);
+
+    const createResult = repository.createOwned({ userId, analysisId });
+    const revokeResult = repository.revokeOwned({ userId, analysisId });
+    revoke.resolve({ data: true, error: null });
+    create.resolve({ data: token, error: null });
+
+    await expect(Promise.all([createResult, revokeResult])).resolves.toEqual([
+      token,
+      true,
+    ]);
+    expect(calls).toEqual([
+      {
+        functionName: 'create_owned_result_share',
+        arguments_: { p_analysis_id: analysisId, p_token: token },
+      },
+      {
+        functionName: 'revoke_owned_result_share',
+        arguments_: { p_analysis_id: analysisId },
+      },
+    ]);
+  });
+
+  it('strictly rejects malformed scalar RPC output', async () => {
+    const { client } = rpcClient((functionName) =>
+      Promise.resolve({
+        data:
+          functionName === 'create_owned_result_share' ? `${token}=` : 'true',
+        error: null,
       }),
-    ).resolves.toBe(true);
-    expect(calls).toContainEqual({
-      table: 'analysis_shares',
-      operation: 'is',
-      args: ['revoked_at', null],
-    });
-    expect(calls).toContainEqual({
-      table: 'analysis_shares',
-      operation: 'eq',
-      args: ['user_id', userId],
-    });
+    );
+    const repository = createSupabaseResultShareRepository(client);
+
+    await expect(
+      repository.createOwned({ userId, analysisId }),
+    ).resolves.toBeNull();
+    await expect(repository.revokeOwned({ userId, analysisId })).resolves.toBe(
+      false,
+    );
   });
 });
 

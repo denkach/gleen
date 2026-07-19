@@ -14,4 +14,14 @@ describe('Workflow production build integration', () => {
     expect(nextConfig).toContain("serverExternalPackages: ['@vercel/queue']");
     expect(packageJson.scripts?.build).toBe('next build --webpack');
   });
+
+  it('prevents public Share URLs from leaking in referrers or shared caches', () => {
+    const nextConfig = readFileSync(
+      join(process.cwd(), 'next.config.ts'),
+      'utf8',
+    );
+    expect(nextConfig).toContain("source: '/share/:path*'");
+    expect(nextConfig).toContain("key: 'Referrer-Policy'");
+    expect(nextConfig).toContain("value: 'no-referrer'");
+  });
 });

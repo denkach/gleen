@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { ResultWorkspace } from '@/components/result-workspace/result-workspace';
 import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultShareTokenSchema } from '@/lib/result-workspace/share';
 import {
   loadPublicResultProjection,
   type SupabaseResultShareClient,
@@ -25,9 +26,11 @@ export default async function PublicResultPage({
   params,
 }: PublicResultPageProps) {
   const { token } = await params;
+  const parsedToken = resultShareTokenSchema.safeParse(token);
+  if (!parsedToken.success) notFound();
   const projection = await loadPublicResultProjection(
     createAdminSupabaseClient() as unknown as SupabaseResultShareClient,
-    token,
+    parsedToken.data,
   );
   if (!projection) notFound();
 
