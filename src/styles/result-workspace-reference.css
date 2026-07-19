@@ -2243,11 +2243,12 @@ body:has(.result-page-layout) {
 }
 
 .result-sheet {
-  --result-sheet-inline: max(12px, env(safe-area-inset-left));
+  --result-sheet-inline-start: max(12px, env(safe-area-inset-left));
+  --result-sheet-inline-end: max(12px, env(safe-area-inset-right));
   top: auto;
-  right: var(--result-sheet-inline);
+  right: var(--result-sheet-inline-end);
   bottom: max(8px, env(safe-area-inset-bottom));
-  left: var(--result-sheet-inline);
+  left: var(--result-sheet-inline-start);
   width: auto;
   max-width: none;
   max-height: min(78dvh, 680px);

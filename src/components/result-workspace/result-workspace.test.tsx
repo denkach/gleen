@@ -29,6 +29,40 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+function stubMobileResultViewport(initialMatches: boolean) {
+  let matches = initialMatches;
+  const listeners = new Set<() => void>();
+  const mobileQuery = {
+    get matches() {
+      return matches;
+    },
+    media: '(max-width: 620px)',
+    addEventListener: (_type: string, listener: () => void) =>
+      listeners.add(listener),
+    removeEventListener: (_type: string, listener: () => void) =>
+      listeners.delete(listener),
+  };
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) =>
+      query === mobileQuery.media
+        ? mobileQuery
+        : {
+            matches: false,
+            media: query,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+          },
+    ),
+  );
+  return {
+    setMatches(nextMatches: boolean) {
+      matches = nextMatches;
+      listeners.forEach((listener) => listener());
+    },
+  };
+}
+
 const controller: VideoPlayerController = {
   subscribe: () => () => undefined,
   getSnapshot: () => ({
@@ -545,6 +579,118 @@ describe('ResultWorkspace', () => {
     expect(
       document.querySelector('.result-mobile-navigation'),
     ).not.toBeInTheDocument();
+  });
+
+  it('mounts mobile surfaces only below the breakpoint and closes Chapters cleanly on rotation to desktop', async () => {
+    const callbacks: IntersectionObserverCallback[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      vi.fn(function Observer(callback: IntersectionObserverCallback) {
+        callbacks.push(callback);
+        return {
+          observe: vi.fn(),
+          unobserve: vi.fn(),
+          disconnect: vi.fn(),
+          takeRecords: vi.fn(() => []),
+          root: null,
+          rootMargin: '0px',
+          thresholds: [0, 0.4],
+        };
+      }),
+    );
+    const viewport = stubMobileResultViewport(false);
+    const analytics: unknown[] = [];
+    const onAnalytics = (event: Event) =>
+      analytics.push((event as CustomEvent).detail);
+    window.addEventListener('gleen:analytics', onAnalytics);
+    const user = userEvent.setup();
+
+    try {
+      renderWorkspace();
+      const playerStage = await waitFor(() => {
+        expect(callbacks).toHaveLength(1);
+        return document.querySelector('.result-player-stage') as HTMLElement;
+      });
+      const fullPlayerControl = playerStage.querySelector(
+        '.result-center-play',
+      ) as HTMLButtonElement;
+      act(() =>
+        callbacks[0](
+          [
+            {
+              target: playerStage,
+              isIntersecting: false,
+              intersectionRatio: 0,
+            } as unknown as IntersectionObserverEntry,
+          ],
+          {} as IntersectionObserver,
+        ),
+      );
+
+      expect(
+        screen.queryByTestId('mobile-mini-player'),
+      ).not.toBeInTheDocument();
+      expect(
+        document.querySelector('.result-mobile-chapters-trigger'),
+      ).not.toBeInTheDocument();
+      expect(
+        analytics.filter(
+          (event) =>
+            (event as { name?: string }).name ===
+            'result_mobile_miniplayer_shown',
+        ),
+      ).toHaveLength(0);
+
+      act(() => viewport.setMatches(true));
+      expect(await screen.findByTestId('mobile-mini-player')).toBeVisible();
+      expect(
+        screen.getByTestId('mobile-mini-player').querySelectorAll('iframe'),
+      ).toHaveLength(0);
+      expect(document.querySelectorAll('.result-youtube-player')).toHaveLength(
+        1,
+      );
+      expect(
+        analytics.filter(
+          (event) =>
+            (event as { name?: string }).name ===
+            'result_mobile_miniplayer_shown',
+        ),
+      ).toHaveLength(1);
+
+      const chapterTrigger = document.querySelector(
+        '.result-mobile-chapters-trigger',
+      ) as HTMLButtonElement;
+      await user.click(chapterTrigger);
+      expect(
+        screen.getByRole('dialog', { name: resultCopy.en.sheetChaptersTitle }),
+      ).toBeVisible();
+
+      act(() => viewport.setMatches(false));
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', {
+            name: resultCopy.en.sheetChaptersTitle,
+          }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(
+        screen.queryByTestId('mobile-mini-player'),
+      ).not.toBeInTheDocument();
+      expect(
+        document.querySelector('.result-mobile-navigation'),
+      ).not.toBeInTheDocument();
+      expect(document.body).not.toHaveAttribute('data-scroll-locked');
+      expect(fullPlayerControl).toHaveFocus();
+      expect(
+        analytics.filter(
+          (event) =>
+            (event as { name?: string }).name ===
+            'result_mobile_miniplayer_shown',
+        ),
+      ).toHaveLength(1);
+    } finally {
+      window.removeEventListener('gleen:analytics', onAnalytics);
+    }
   });
 
   it('opens localized More and Chapters sheets with selection, Escape, and focus restoration', async () => {

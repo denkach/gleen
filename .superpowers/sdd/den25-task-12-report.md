@@ -8,6 +8,7 @@ Implemented the approved mobile result-workspace study flow without adding a sec
 - mobile result navigation provides Overview, Summary, Flashcards, Timestamps, and More, with Transcript and Export in a Radix-backed bottom sheet;
 - a controller-backed mini-player appears after less than 40% of the full player is visible and reuses the existing player controller for play/pause, chapter access, and expansion;
 - mobile Chapters uses the same bottom-sheet primitive, seeks the shared controller, starts playback, and restores focus after close;
+- mini-player, mobile navigation, chapter trigger, and Chapters sheet mount only while the result media query is at or below 620px; moving above the breakpoint closes an open sheet, releases its scroll lock, and restores focus to a visible full-player control;
 - per-analysis, per-artifact scroll positions are stored in session storage, restored in `requestAnimationFrame`, and clamped without rewriting the artifact hash;
 - horizontal swipe navigation uses the approved 56 px / 1.4 ratio and rejects form controls, buttons, sliders, swipe guards, horizontal scrollers, and active text selections;
 - safe-area, reduced-motion, keyboard focus, and 44 px touch-target behavior is covered by the reference stylesheet and tests.
@@ -35,17 +36,20 @@ No production dependency was added. The existing Radix Dialog primitive is reuse
 - `src/components/result-workspace/use-result-scroll-memory.test.tsx`
 - `src/components/ui/dialog.tsx`
 - `src/styles/result-workspace-reference.css`
+- `src/styles/result-workspace-reference.test.ts`
+- `tests/e2e/result-workspace.spec.ts`
 
 ## Verification
 
 - Focused hook and AppShell tests: 4 files, 20 tests passed.
-- Complete result-workspace unit/integration suite: 61 tests passed.
-- Full Vitest suite: 103 files, 796 tests passed.
+- Related hooks, AppShell, and result stylesheet suites: 5 files, 33 tests passed.
+- Complete result-workspace unit/integration suite: 62 tests passed.
+- Full Vitest suite: 103 files, 798 tests passed.
 - `npm run format:check`: passed.
 - `npm run lint`: passed with zero warnings.
 - `npm run typecheck`: passed.
 - Production build with placeholder public build-time values: compiled, typechecked, and generated 23/23 routes. No `.env` file was created; generated `next-env.d.ts` was restored.
-- External Playwright `mobile-chrome` durable result flow: passed.
+- External Playwright `mobile-chrome` durable result flow: passed from a clean server on port 3063. The test uses the visible five-item mobile result navigation, confirms the desktop tab is hidden on mobile, and asserts one source iframe.
 - External Playwright Chromium reduced-motion result flow: passed.
 - `git diff --check`: passed.
 
@@ -55,7 +59,7 @@ The plain `npm run build` first stopped at the repository's intentional required
 
 The in-app browser sandbox was intentionally skipped per the task brief. Verification used external Playwright instead.
 
-The combined desktop/tablet/mobile geometry check on port 3017 resolved a legacy `.source-panel` DOM even though this worktree renders `.result-source-column`, consistent with a stale reused local server. A clean-port rerun was interrupted before producing a result and was not restarted at the controller's direction. The controller will perform the final external geometry rerun from a clean server. This is the only remaining verification risk; unit, focused integration, reduced-motion browser, mobile durable browser, lint, type, format, and production build checks are green.
+The earlier combined desktop/tablet/mobile geometry attempt on port 3017 resolved a legacy `.source-panel` DOM even though this worktree renders `.result-source-column`, consistent with a stale reused local server. That stale-port result is not counted as passing evidence in this report. The review-requested mobile durable flow was rerun twice on clean port 3063 and passed both times. Unit, focused integration, reduced-motion browser, clean-port mobile browser, lint, type, format, and production build checks are green.
 
 ## React review
 

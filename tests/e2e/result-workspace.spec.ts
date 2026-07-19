@@ -369,7 +369,20 @@ test('durable mobile touch flow flips and studies a flashcard', async ({
   await gotoFixture(page, den25OwnerRoute);
   const activate = async (locator: import('@playwright/test').Locator) =>
     isMobile ? locator.tap() : locator.click();
-  await activate(page.getByRole('tab', { name: 'Flashcards' }));
+  const flashcardsDestination = () =>
+    isMobile
+      ? page
+          .locator('.result-mobile-navigation')
+          .getByRole('button', { name: 'Flashcards' })
+      : page.getByRole('tab', { name: 'Flashcards' });
+  if (isMobile) {
+    await expect(page.locator('.result-mobile-navigation')).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Flashcards' })).toBeHidden();
+  }
+  await expect(page.locator('[aria-label="Video source"] iframe')).toHaveCount(
+    1,
+  );
+  await activate(flashcardsDestination());
   await activate(page.getByRole('button', { name: 'Show answer' }));
   await expect(
     page.getByRole('button', { name: 'Show question' }),
@@ -383,7 +396,7 @@ test('durable mobile touch flow flips and studies a flashcard', async ({
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.locator('[aria-label="Video source"] iframe').waitFor();
-  await page.getByRole('tab', { name: 'Flashcards' }).click();
+  await activate(flashcardsDestination());
   await expect(page.locator('.result-deck-progress')).toHaveAttribute(
     'data-reviewed-count',
     '12',

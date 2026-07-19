@@ -42,6 +42,15 @@ describe('DEN-25 result shell geometry', () => {
     );
   });
 
+  it('keeps landscape sheet safe-area insets asymmetric', () => {
+    expect(css).toMatch(
+      /\.result-sheet\s*{[^}]*--result-sheet-inline-start:\s*max\(12px,\s*env\(safe-area-inset-left\)\);[^}]*--result-sheet-inline-end:\s*max\(12px,\s*env\(safe-area-inset-right\)\);/,
+    );
+    expect(css).toMatch(
+      /\.result-sheet\s*{[^}]*right:\s*var\(--result-sheet-inline-end\);[^}]*left:\s*var\(--result-sheet-inline-start\);/,
+    );
+  });
+
   it('gives coarse-pointer range controls a 44px target', () => {
     expect(css).toMatch(
       /@media \(pointer: coarse\)[\s\S]*?\.result-progress-input,[\s\S]*?\.result-volume-input\s*{[^}]*min-height:\s*44px;/,

@@ -69,6 +69,7 @@ type ResultArtifactsProps = Readonly<{
   copy: ResultCopy;
   favorite: boolean;
   favoritePending: boolean;
+  mobileResultLayout: boolean;
   onFavorite?: () => void;
   onShare?: () => void;
   saveFlashcardReview?: MutationAction;
@@ -185,6 +186,7 @@ function ResultArtifacts({
   copy,
   favorite,
   favoritePending,
+  mobileResultLayout,
   onFavorite,
   onShare,
   saveFlashcardReview,
@@ -193,7 +195,6 @@ function ResultArtifacts({
   exportUiState,
   onExportUiStateChange,
 }: ResultArtifactsProps) {
-  const mobileResultLayout = useMobileResultLayout();
   const [tab, setTab] = useState<TabValue>('overview');
   const [draftState, setDraftState] = useState(() => ({
     base: model,
@@ -664,6 +665,20 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
     });
     setChapterSheetOpen(true);
   }, [lifecycleKey, setChapterSheetOpen]);
+  const handleMobileResultLayoutChange = useCallback(
+    (mobile: boolean) => {
+      if (mobile || !chapterSheetOpen) return;
+      chapterSheetTriggerRef.current =
+        playerStageRef.current?.querySelector<HTMLElement>(
+          '.result-center-play, .result-control-button:not(:disabled)',
+        ) ?? null;
+      setChapterSheetOpen(false);
+    },
+    [chapterSheetOpen, setChapterSheetOpen],
+  );
+  const mobileResultLayout = useMobileResultLayout(
+    handleMobileResultLayoutChange,
+  );
   const expandPlayer = useCallback(() => {
     trackResultEvent({
       name: 'result_mobile_miniplayer_expanded',
@@ -712,7 +727,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           playerLifecycleKey={lifecycleKey}
           initialPositionMs={playbackPositionMs}
           onPlayerReady={updateController}
-          onOpenChapters={openChapterSheet}
+          onOpenChapters={mobileResultLayout ? openChapterSheet : undefined}
           playerStageRef={playerStageRef}
         />
         <ResultArtifactsStateOwner
@@ -723,11 +738,12 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           saveArtifact={props.saveArtifact}
           favorite={favorite}
           favoritePending={favoritePending}
+          mobileResultLayout={mobileResultLayout}
           onFavorite={favoriteAction}
           onShare={props.onShare}
           saveFlashcardReview={props.saveFlashcardReview}
         />
-        {!playerVisible ? (
+        {mobileResultLayout && !playerVisible ? (
           <MobileMiniPlayer
             analysisId={lifecycleKey}
             chapters={chapters}
@@ -738,14 +754,16 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
             title={model.source.title}
           />
         ) : null}
-        <ChapterSheet
-          analysisId={lifecycleKey}
-          chapters={chapters}
-          copy={copy}
-          open={chapterSheetOpen}
-          onOpenChange={setChapterSheetOpen}
-          restoreFocusRef={chapterSheetTriggerRef}
-        />
+        {mobileResultLayout || chapterSheetOpen ? (
+          <ChapterSheet
+            analysisId={lifecycleKey}
+            chapters={chapters}
+            copy={copy}
+            open={chapterSheetOpen}
+            onOpenChange={setChapterSheetOpen}
+            restoreFocusRef={chapterSheetTriggerRef}
+          />
+        ) : null}
       </ResultLayout>
     </PlayerProvider>
   );
