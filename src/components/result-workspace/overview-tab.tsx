@@ -33,10 +33,12 @@ export function OverviewTab({
   model,
   openTab,
   copy,
+  publicMode = false,
 }: Readonly<{
   model: ResultWorkspaceModel;
   openTab: (tab: ArtifactDestination) => void;
   copy: ResultCopy;
+  publicMode?: boolean;
 }>) {
   const controller = useVideoPlayer();
   const playerStatus = useVideoPlayerSnapshot(selectPlayerStatus);
@@ -105,35 +107,39 @@ export function OverviewTab({
         ))}
       </ul>
 
-      <section
-        className="result-overview-continue"
-        aria-labelledby={continueTitleId}
-      >
-        <div className="result-overview-section-copy">
-          <span id={continueTitleId}>{copy.overviewContinueWatching}</span>
-          <strong>{continuation.chapterTitle ?? copy.stateUnavailable}</strong>
-          <small>{continuation.timeLabel ?? continueState}</small>
-        </div>
-        <div
-          className="result-overview-watch-progress"
-          role="progressbar"
-          aria-label={copy.playerProgress}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(continuation.progress * 100)}
+      {!publicMode ? (
+        <section
+          className="result-overview-continue"
+          aria-labelledby={continueTitleId}
         >
-          <span style={{ width: `${continuation.progress * 100}%` }} />
-        </div>
-        <button
-          type="button"
-          className="result-overview-continue-action"
-          aria-disabled={!continueAvailable}
-          onClick={continueAvailable ? continueWatching : undefined}
-        >
-          {copy.overviewContinueWatching}
-          <span aria-hidden="true">→</span>
-        </button>
-      </section>
+          <div className="result-overview-section-copy">
+            <span id={continueTitleId}>{copy.overviewContinueWatching}</span>
+            <strong>
+              {continuation.chapterTitle ?? copy.stateUnavailable}
+            </strong>
+            <small>{continuation.timeLabel ?? continueState}</small>
+          </div>
+          <div
+            className="result-overview-watch-progress"
+            role="progressbar"
+            aria-label={copy.playerProgress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(continuation.progress * 100)}
+          >
+            <span style={{ width: `${continuation.progress * 100}%` }} />
+          </div>
+          <button
+            type="button"
+            className="result-overview-continue-action"
+            aria-disabled={!continueAvailable}
+            onClick={continueAvailable ? continueWatching : undefined}
+          >
+            {copy.overviewContinueWatching}
+            <span aria-hidden="true">→</span>
+          </button>
+        </section>
+      ) : null}
 
       <ul className="result-overview-artifacts" aria-label={copy.tabsLabel}>
         {cards.map((card) => (
@@ -147,31 +153,33 @@ export function OverviewTab({
         ))}
       </ul>
 
-      <section
-        className="result-overview-recommendation"
-        aria-label={copy.overviewRecommended}
-      >
-        <div>
-          <span>{copy.overviewRecommended}</span>
-          <strong>{recommendation.label}</strong>
-        </div>
-        <button
-          type="button"
-          data-state={recommendation.available ? 'ready' : 'disabled'}
-          aria-disabled={!recommendation.available}
-          onClick={
-            recommendation.available
-              ? () => openArtifact(recommendation.artifact)
-              : undefined
-          }
+      {!publicMode ? (
+        <section
+          className="result-overview-recommendation"
+          aria-label={copy.overviewRecommended}
         >
-          {recommendation.label}
-          <span aria-hidden="true">→</span>
-        </button>
-        {!recommendation.available ? (
-          <small>{recommendation.description}</small>
-        ) : null}
-      </section>
+          <div>
+            <span>{copy.overviewRecommended}</span>
+            <strong>{recommendation.label}</strong>
+          </div>
+          <button
+            type="button"
+            data-state={recommendation.available ? 'ready' : 'disabled'}
+            aria-disabled={!recommendation.available}
+            onClick={
+              recommendation.available
+                ? () => openArtifact(recommendation.artifact)
+                : undefined
+            }
+          >
+            {recommendation.label}
+            <span aria-hidden="true">→</span>
+          </button>
+          {!recommendation.available ? (
+            <small>{recommendation.description}</small>
+          ) : null}
+        </section>
+      ) : null}
     </section>
   );
 }

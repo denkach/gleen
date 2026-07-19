@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 
+import { validatePublicEnv } from '@/env';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import {
   createSupabaseAnalysisRepository,
@@ -25,6 +26,10 @@ import {
   createSupabaseResultUserStateRepository,
   type SupabaseResultUserStateClient,
 } from './user-state-repository';
+import {
+  createSupabaseResultShareRepository,
+  type SupabaseResultShareClient,
+} from './share-repository';
 
 export type ResultSaveState =
   | Readonly<{ status: 'saved'; updatedAt: string }>
@@ -32,6 +37,9 @@ export type ResultSaveState =
 
 export type ResultMutationState =
   Readonly<{ status: 'saved' }> | Readonly<{ status: 'conflict' | 'error' }>;
+
+export type ResultShareState =
+  Readonly<{ status: 'created'; url: string }> | Readonly<{ status: 'error' }>;
 
 const resultPreferenceSchema = z
   .object({
@@ -48,6 +56,8 @@ const flashcardReviewSchema = z
     rating: flashcardRatingSchema,
   })
   .strict();
+
+const resultShareSchema = z.object({ analysisId: z.uuid() }).strict();
 
 export async function saveResultTitle(
   input: unknown,
@@ -141,6 +151,49 @@ export async function saveFlashcardReview(
       supabase as unknown as SupabaseResultUserStateClient,
     ).saveFlashcardReview({ userId: data.user.id, ...parsed.data });
     return { status: 'saved' };
+  } catch {
+    return { status: 'error' };
+  }
+}
+
+export async function createResultShare(
+  input: unknown,
+): Promise<ResultShareState> {
+  const parsed = resultShareSchema.safeParse(input);
+  if (!parsed.success) return { status: 'error' };
+
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return { status: 'error' };
+    const token = await createSupabaseResultShareRepository(
+      supabase as unknown as SupabaseResultShareClient,
+    ).createOwned({ userId: data.user.id, analysisId: parsed.data.analysisId });
+    if (!token) return { status: 'error' };
+    const env = validatePublicEnv(process.env);
+    return {
+      status: 'created',
+      url: new URL(`/share/${token}`, env.NEXT_PUBLIC_APP_URL).toString(),
+    };
+  } catch {
+    return { status: 'error' };
+  }
+}
+
+export async function revokeResultShare(
+  input: unknown,
+): Promise<ResultMutationState> {
+  const parsed = resultShareSchema.safeParse(input);
+  if (!parsed.success) return { status: 'error' };
+
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return { status: 'error' };
+    const revoked = await createSupabaseResultShareRepository(
+      supabase as unknown as SupabaseResultShareClient,
+    ).revokeOwned({ userId: data.user.id, analysisId: parsed.data.analysisId });
+    return revoked ? { status: 'saved' } : { status: 'error' };
   } catch {
     return { status: 'error' };
   }

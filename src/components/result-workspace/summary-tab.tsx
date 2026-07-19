@@ -68,6 +68,7 @@ export function SummaryTab({
   saveArtifact,
   flashcardCount,
   copy,
+  readOnly = false,
 }: Readonly<{
   analysisId: string;
   summary: SummaryPresentation;
@@ -77,6 +78,7 @@ export function SummaryTab({
   saveArtifact: (input: unknown) => Promise<ResultSaveState>;
   flashcardCount: number | null;
   copy: ResultCopy;
+  readOnly?: boolean;
 }>) {
   const player = useVideoPlayer();
   const value = summary;
@@ -133,19 +135,23 @@ export function SummaryTab({
       <header className="result-summary-hero">
         <div className="result-summary-hero-copy">
           <p className="result-summary-eyebrow">{copy.summaryOneSentence}</p>
-          <textarea
-            aria-label={copy.summaryOverviewField}
-            value={value.overview}
-            onChange={(event) =>
-              setValue((current) => ({
-                ...current,
-                outcome: event.target.value,
-                overview: event.target.value,
-              }))
-            }
-            rows={3}
-            className="result-summary-overview"
-          />
+          {readOnly ? (
+            <p className="result-summary-overview">{value.overview}</p>
+          ) : (
+            <textarea
+              aria-label={copy.summaryOverviewField}
+              value={value.overview}
+              onChange={(event) =>
+                setValue((current) => ({
+                  ...current,
+                  outcome: event.target.value,
+                  overview: event.target.value,
+                }))
+              }
+              rows={3}
+              className="result-summary-overview"
+            />
+          )}
         </div>
         <svg
           className="result-summary-prism"
@@ -210,7 +216,7 @@ export function SummaryTab({
                 {section.supportingQuote ? (
                   <blockquote>“{section.supportingQuote}”</blockquote>
                 ) : null}
-                {index === 0 ? (
+                {!readOnly && index === 0 ? (
                   <input
                     aria-label={copy.summaryTitleField}
                     value={value.title}
@@ -223,26 +229,30 @@ export function SummaryTab({
                     className="result-summary-title-input"
                   />
                 ) : null}
-                <textarea
-                  aria-label={formatResultCopy(copy.summaryPointField, {
-                    count: index + 1,
-                  })}
-                  value={point?.text ?? section.summary}
-                  rows={2}
-                  onChange={(event) => {
-                    const text = event.target.value;
-                    setValue((current) => ({
-                      ...current,
-                      sections: current.sections.map((item, itemIndex) =>
-                        itemIndex === index ? { ...item, summary: text } : item,
-                      ),
-                      keyPoints: current.keyPoints.map((item, itemIndex) =>
-                        itemIndex === index ? { ...item, text } : item,
-                      ),
-                    }));
-                  }}
-                  className="result-summary-point-input"
-                />
+                {!readOnly ? (
+                  <textarea
+                    aria-label={formatResultCopy(copy.summaryPointField, {
+                      count: index + 1,
+                    })}
+                    value={point?.text ?? section.summary}
+                    rows={2}
+                    onChange={(event) => {
+                      const text = event.target.value;
+                      setValue((current) => ({
+                        ...current,
+                        sections: current.sections.map((item, itemIndex) =>
+                          itemIndex === index
+                            ? { ...item, summary: text }
+                            : item,
+                        ),
+                        keyPoints: current.keyPoints.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, text } : item,
+                        ),
+                      }));
+                    }}
+                    className="result-summary-point-input"
+                  />
+                ) : null}
                 <div className="result-summary-actions">
                   <button
                     type="button"
@@ -266,7 +276,7 @@ export function SummaryTab({
           );
         })}
       </ol>
-      <AutosaveStatus {...autosave} copy={copy} />
+      {!readOnly ? <AutosaveStatus {...autosave} copy={copy} /> : null}
       {copyMessage ? (
         <p className="result-artifact-message" role="status" aria-live="polite">
           {copyMessage}

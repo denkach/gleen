@@ -8,6 +8,8 @@ const {
   savePreference,
   savePlaybackPositionRepository,
   saveFlashcardReviewRepository,
+  createOwnedShare,
+  revokeOwnedShare,
 } = vi.hoisted(() => ({
   getUser: vi.fn(),
   saveOwnedTitle: vi.fn(),
@@ -16,6 +18,8 @@ const {
   savePreference: vi.fn(),
   savePlaybackPositionRepository: vi.fn(),
   saveFlashcardReviewRepository: vi.fn(),
+  createOwnedShare: vi.fn(),
+  revokeOwnedShare: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -34,8 +38,16 @@ vi.mock('./user-state-repository', () => ({
     saveFlashcardReview: saveFlashcardReviewRepository,
   })),
 }));
+vi.mock('./share-repository', () => ({
+  createSupabaseResultShareRepository: vi.fn(() => ({
+    createOwned: createOwnedShare,
+    revokeOwned: revokeOwnedShare,
+  })),
+}));
 
 import {
+  createResultShare,
+  revokeResultShare,
   saveFlashcardReview,
   savePlaybackPosition,
   saveResultArtifact,
@@ -260,5 +272,75 @@ describe('result owner-state server actions', () => {
     await expect(
       saveResultPreference({ analysisId, favorite: true }),
     ).resolves.toEqual({ status: 'error' });
+  });
+});
+
+describe('result share server actions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.gleen.example/base');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://gleen.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test');
+    getUser.mockResolvedValue({ data: { user: { id: userId } } });
+    createOwnedShare.mockResolvedValue('A'.repeat(43));
+    revokeOwnedShare.mockResolvedValue(true);
+  });
+
+  it('rejects malformed input before authentication', async () => {
+    await expect(createResultShare({ analysisId: 'foreign' })).resolves.toEqual(
+      {
+        status: 'error',
+      },
+    );
+    await expect(revokeResultShare({ analysisId: 'foreign' })).resolves.toEqual(
+      {
+        status: 'error',
+      },
+    );
+    expect(getUser).not.toHaveBeenCalled();
+  });
+
+  it('does not create or revoke a link without an authenticated owner', async () => {
+    getUser.mockResolvedValue({ data: { user: null } });
+    await expect(createResultShare({ analysisId })).resolves.toEqual({
+      status: 'error',
+    });
+    await expect(revokeResultShare({ analysisId })).resolves.toEqual({
+      status: 'error',
+    });
+    expect(createOwnedShare).not.toHaveBeenCalled();
+    expect(revokeOwnedShare).not.toHaveBeenCalled();
+  });
+
+  it('creates an absolute root share URL for the authenticated owner', async () => {
+    await expect(createResultShare({ analysisId })).resolves.toEqual({
+      status: 'created',
+      url: `https://app.gleen.example/share/${'A'.repeat(43)}`,
+    });
+    expect(createOwnedShare).toHaveBeenCalledWith({ userId, analysisId });
+  });
+
+  it('maps foreign ownership and repository failures to a controlled error', async () => {
+    createOwnedShare
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(new Error('private detail'));
+    await expect(createResultShare({ analysisId })).resolves.toEqual({
+      status: 'error',
+    });
+    await expect(createResultShare({ analysisId })).resolves.toEqual({
+      status: 'error',
+    });
+  });
+
+  it('revokes only through the authenticated owner repository', async () => {
+    await expect(revokeResultShare({ analysisId })).resolves.toEqual({
+      status: 'saved',
+    });
+    expect(revokeOwnedShare).toHaveBeenCalledWith({ userId, analysisId });
+
+    revokeOwnedShare.mockResolvedValue(false);
+    await expect(revokeResultShare({ analysisId })).resolves.toEqual({
+      status: 'error',
+    });
   });
 });

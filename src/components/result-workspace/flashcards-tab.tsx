@@ -81,6 +81,7 @@ export function FlashcardsTab({
   saveFlashcardReview,
   reviews,
   copy,
+  readOnly = false,
 }: Readonly<{
   analysisId: string;
   artifact: FlashcardsArtifact;
@@ -91,6 +92,7 @@ export function FlashcardsTab({
   saveFlashcardReview?: ReviewAction;
   reviews: ResultUserState['reviews'] | null;
   copy: ResultCopy;
+  readOnly?: boolean;
 }>) {
   const value = artifact;
   const setValue = (
@@ -209,45 +211,49 @@ export function FlashcardsTab({
   return (
     <section className="result-flashcards" data-artifact="flashcards">
       <header className="result-flashcards-top">
-        <div
-          className="result-deck-progress"
-          data-reviewed-count={reviewsKnown ? reviewedCards.size : 'unknown'}
-          aria-label={`${copy.flashcardsDeckProgress}: ${reviewsKnown ? `${safeIndex + 1} / ${value.cards.length}. ${reviewedCards.size} ${copy.flashcardsReviewed}` : copy.flashcardsProgressUnknown}`}
-        >
-          <div className="result-deck-progress-row">
-            <span>{copy.flashcardsDeckProgress}</span>
-            <span>
-              {reviewsKnown
-                ? `${safeIndex + 1} / ${value.cards.length}`
-                : copy.flashcardsProgressUnknown}
-            </span>
+        {!readOnly ? (
+          <div
+            className="result-deck-progress"
+            data-reviewed-count={reviewsKnown ? reviewedCards.size : 'unknown'}
+            aria-label={`${copy.flashcardsDeckProgress}: ${reviewsKnown ? `${safeIndex + 1} / ${value.cards.length}. ${reviewedCards.size} ${copy.flashcardsReviewed}` : copy.flashcardsProgressUnknown}`}
+          >
+            <div className="result-deck-progress-row">
+              <span>{copy.flashcardsDeckProgress}</span>
+              <span>
+                {reviewsKnown
+                  ? `${safeIndex + 1} / ${value.cards.length}`
+                  : copy.flashcardsProgressUnknown}
+              </span>
+            </div>
+            <div className="result-deck-bar" aria-hidden="true">
+              <span
+                style={{
+                  width: reviewsKnown
+                    ? `${((safeIndex + 1) / value.cards.length) * 100}%`
+                    : '0%',
+                }}
+              />
+            </div>
           </div>
-          <div className="result-deck-bar" aria-hidden="true">
-            <span
-              style={{
-                width: reviewsKnown
-                  ? `${((safeIndex + 1) / value.cards.length) * 100}%`
-                  : '0%',
-              }}
-            />
-          </div>
-        </div>
+        ) : null}
         <span className="result-small-stat">
           {formatResultCopy(copy.flashcardsCardsCount, {
             count: value.cards.length,
           })}
         </span>
-        <button
-          type="button"
-          className="result-artifact-edit-button"
-          aria-pressed={editing}
-          onClick={() => setEditing((current) => !current)}
-        >
-          {editing ? copy.flashcardsDoneEditing : copy.flashcardsEdit}
-        </button>
+        {!readOnly ? (
+          <button
+            type="button"
+            className="result-artifact-edit-button"
+            aria-pressed={editing}
+            onClick={() => setEditing((current) => !current)}
+          >
+            {editing ? copy.flashcardsDoneEditing : copy.flashcardsEdit}
+          </button>
+        ) : null}
       </header>
 
-      {editing ? (
+      {editing && !readOnly ? (
         <div className="result-flashcard-editor">
           {(['front', 'back'] as const).map((side) => (
             <label key={side}>
@@ -342,27 +348,29 @@ export function FlashcardsTab({
         </button>
       </div>
 
-      <div className="result-review-actions">
-        {reviewButtons.map((item) => (
-          <button
-            key={item.rating}
-            type="button"
-            className={`result-review-button ${item.className}`}
-            aria-label={
-              reviewUnavailableReason
-                ? `${String(copy[item.label])}. ${reviewUnavailableReason}`
-                : String(copy[item.label])
-            }
-            disabled={Boolean(reviewUnavailableReason)}
-            onClick={() => reviewCard(item.rating)}
-          >
-            <span>
-              {item.symbol} {copy[item.label]}
-            </span>
-            <small>{copy[item.hint]}</small>
-          </button>
-        ))}
-      </div>
+      {!readOnly ? (
+        <div className="result-review-actions">
+          {reviewButtons.map((item) => (
+            <button
+              key={item.rating}
+              type="button"
+              className={`result-review-button ${item.className}`}
+              aria-label={
+                reviewUnavailableReason
+                  ? `${String(copy[item.label])}. ${reviewUnavailableReason}`
+                  : String(copy[item.label])
+              }
+              disabled={Boolean(reviewUnavailableReason)}
+              onClick={() => reviewCard(item.rating)}
+            >
+              <span>
+                {item.symbol} {copy[item.label]}
+              </span>
+              <small>{copy[item.hint]}</small>
+            </button>
+          ))}
+        </div>
+      ) : null}
       {reviewMessage ? (
         <p className="result-artifact-message" role="status" aria-live="polite">
           {reviewMessage}

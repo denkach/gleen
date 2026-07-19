@@ -14,6 +14,9 @@ import type {
   SummaryPresentation,
 } from '@/lib/result-workspace/presentation';
 import { flashcardRatingSchema } from '@/lib/result-workspace/user-state';
+import { resultCopy } from '@/lib/result-workspace/copy';
+
+const shareFixtureStorageKey = 'gleen:result-share-fixture';
 
 const fixtureFlashcardReviewSchema = z
   .object({
@@ -208,9 +211,11 @@ function readStoredModel(storageKey: string): ResultWorkspaceModel | undefined {
 export function FixtureResultWorkspace({
   initialModel,
   fixturePlayerStartMs,
+  mode = 'owner',
 }: Readonly<{
   initialModel: ResultWorkspaceModel;
   fixturePlayerStartMs?: number;
+  mode?: 'owner' | 'public';
 }>) {
   const storageKey = `gleen:result-fixture:${initialModel.source.intakeId}`;
   const [model, setModel] = useState(initialModel);
@@ -227,6 +232,11 @@ export function FixtureResultWorkspace({
     hydrated && model === initialModel
       ? (readStoredModel(storageKey) ?? model)
       : model;
+  const publicShareAvailable = useSyncExternalStore(
+    subscribeToHydration,
+    () => window.localStorage.getItem(shareFixtureStorageKey) !== 'revoked',
+    () => true,
+  );
 
   const update = (
     transform: (
@@ -249,9 +259,20 @@ export function FixtureResultWorkspace({
   };
 
   if (!hydrated || !fixturePlayerReady) return null;
+  if (mode === 'public' && !publicShareAvailable) {
+    return (
+      <main className="result-public-unavailable">
+        <section>
+          <h1>{resultCopy.en.publicViewUnavailable}</h1>
+          <p>{resultCopy.en.publicViewExpired}</p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <ResultWorkspace
+      mode={mode}
       model={displayedModel}
       saveTitle={async (input) => {
         const edit = resultTitleEditSchema.parse(input);
@@ -278,7 +299,7 @@ export function FixtureResultWorkspace({
         }));
       }}
       saveFlashcardReview={
-        displayedModel.userState
+        mode === 'owner' && displayedModel.userState
           ? async (input) => {
               const review = fixtureFlashcardReviewSchema.parse(input);
               if (review.analysisId !== displayedModel.source.intakeId)
@@ -312,6 +333,25 @@ export function FixtureResultWorkspace({
                 };
               });
               return { status: 'saved' };
+            }
+          : undefined
+      }
+      createShare={
+        mode === 'owner'
+          ? async () => {
+              window.localStorage.setItem(shareFixtureStorageKey, 'active');
+              return {
+                status: 'created',
+                url: `${window.location.origin}/app-shell-fixture/app/video/result-den-25-public`,
+              } as const;
+            }
+          : undefined
+      }
+      revokeShare={
+        mode === 'owner'
+          ? async () => {
+              window.localStorage.setItem(shareFixtureStorageKey, 'revoked');
+              return { status: 'saved' } as const;
             }
           : undefined
       }

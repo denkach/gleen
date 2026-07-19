@@ -1,6 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-
 import type { TranscriptSegment } from '@/lib/youtube-intake/providers';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 import {
   generateFlashcards,
@@ -182,18 +181,8 @@ export async function executeAnalysisPipeline({
   }
 }
 
-function trustedSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const secret = process.env.SUPABASE_SECRET_KEY?.trim();
-  if (!url || !secret)
-    throw new Error('Trusted Supabase configuration missing');
-  return createClient(url, secret, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
-
 async function loadGeneratorContext(
-  client: ReturnType<typeof trustedSupabaseClient>,
+  client: ReturnType<typeof createAdminSupabaseClient>,
   analysisId: string,
 ): Promise<GeneratorContext> {
   const { data, error } = await client
@@ -219,7 +208,7 @@ async function executeProductionPipeline(jobId: string) {
   'use step';
   const { validateAnalysisProviderEnv } = await import('@/env');
   const { createOpenRouterProvider } = await import('./openrouter-provider');
-  const client = trustedSupabaseClient();
+  const client = createAdminSupabaseClient();
   const repository = createSupabaseAnalysisRepository(
     client as unknown as SupabaseAnalysisClient,
   );

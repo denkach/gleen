@@ -12,6 +12,7 @@ import {
 import type {
   ResultMutationState,
   ResultSaveState,
+  ResultShareState,
 } from '@/lib/result-workspace/actions';
 import { trackResultEvent } from '@/lib/analytics/result-events';
 import { getAddressableResultArtifacts } from '@/lib/result-workspace/artifact-availability';
@@ -53,6 +54,7 @@ import {
 import type { VideoPlayerController } from './player-controller';
 import { ResultHeader } from './result-header';
 import { ResultNavigation } from './result-navigation';
+import { ResultShareDialog } from './result-share-dialog';
 import { SourcePanel } from './source-panel';
 import { useArtifactSwipe } from './use-artifact-swipe';
 import { useMobileResultLayout } from './use-mobile-result-layout';
@@ -62,6 +64,7 @@ import { useResultScrollMemory } from './use-result-scroll-memory';
 
 type SaveAction = (input: unknown) => Promise<ResultSaveState>;
 type MutationAction = (input: unknown) => Promise<ResultMutationState>;
+type ShareAction = (input: unknown) => Promise<ResultShareState>;
 type TabValue = ResultArtifact;
 type ResultArtifactsProps = Readonly<{
   model: ResultWorkspaceModel;
@@ -79,7 +82,10 @@ type ResultArtifactsProps = Readonly<{
   onTranscriptUiStateChange: (nextState: TranscriptUiState) => void;
   exportUiState: ExportUiState;
   onExportUiStateChange: (nextState: ExportUiState) => void;
+  publicMode: boolean;
 }>;
+
+const unavailableSaveAction: SaveAction = async () => ({ status: 'error' });
 
 function valuesEqual(left: unknown, right: unknown): boolean {
   if (Object.is(left, right)) return true;
@@ -197,6 +203,7 @@ function ResultArtifacts({
   onTranscriptUiStateChange,
   exportUiState,
   onExportUiStateChange,
+  publicMode,
 }: ResultArtifactsProps) {
   const [tab, setTab] = useState<TabValue>('overview');
   const [draftState, setDraftState] = useState(() => ({
@@ -316,33 +323,42 @@ function ResultArtifacts({
       <Tabs value={tab} onValueChange={selectTab}>
         <ResultHeader
           title={
-            <EditableTitle
-              analysisId={model.source.intakeId}
-              title={draftModel.source.title}
-              serverTitle={model.source.title}
-              onTitleChange={(title) =>
-                setDraftModel((current) => ({
-                  ...current,
-                  source: { ...current.source, title },
-                }))
-              }
-              revision={model.revisions.title}
-              saveTitle={saveTitle}
-            />
+            publicMode ? (
+              <h1>{model.source.title}</h1>
+            ) : (
+              <EditableTitle
+                analysisId={model.source.intakeId}
+                title={draftModel.source.title}
+                serverTitle={model.source.title}
+                onTitleChange={(title) =>
+                  setDraftModel((current) => ({
+                    ...current,
+                    source: { ...current.source, title },
+                  }))
+                }
+                revision={model.revisions.title}
+                saveTitle={saveTitle}
+              />
+            )
           }
           subtitle={model.source.channelTitle}
           favorite={favorite}
           favoritePending={favoritePending}
           copy={copy}
-          onFavorite={onFavorite}
-          onShare={onShare}
+          onFavorite={publicMode ? undefined : onFavorite}
+          onShare={publicMode ? undefined : onShare}
           navigation={
             <ResultNavigation accent={accent} copy={copy} items={triggers} />
           }
         />
         <div className="result-artifact-content" {...swipeHandlers}>
           <TabsContent value="overview">
-            <OverviewTab model={model} openTab={selectTab} copy={copy} />
+            <OverviewTab
+              model={model}
+              openTab={selectTab}
+              copy={copy}
+              publicMode={publicMode}
+            />
           </TabsContent>
           <TabsContent
             value="summary"
@@ -372,6 +388,7 @@ function ResultArtifacts({
                 saveArtifact={saveArtifact}
                 flashcardCount={model.overview.flashcardCount}
                 copy={copy}
+                readOnly={publicMode}
               />
             ) : (
               <ArtifactState state={model.tabs.summary} />
@@ -406,6 +423,7 @@ function ResultArtifacts({
                 saveFlashcardReview={saveFlashcardReview}
                 reviews={model.userState?.reviews ?? null}
                 copy={copy}
+                readOnly={publicMode}
               />
             ) : (
               <ArtifactState state={model.tabs.flashcards} />
@@ -441,6 +459,7 @@ function ResultArtifacts({
                 thumbnailUrl={model.source.thumbnailUrl}
                 sourceTitle={model.source.title}
                 copy={copy}
+                readOnly={publicMode}
               />
             ) : (
               <ArtifactState state={model.tabs.timestamps} />
@@ -510,12 +529,15 @@ function ResultArtifactsStateOwner({
 export type ResultWorkspaceProps = Readonly<{
   model: ResultWorkspaceModel;
   copy?: ResultCopy;
-  saveTitle: SaveAction;
-  saveArtifact: SaveAction;
+  mode?: 'owner' | 'public';
+  saveTitle?: SaveAction;
+  saveArtifact?: SaveAction;
   savePreference?: MutationAction;
   savePlaybackPosition?: MutationAction;
   saveFlashcardReview?: MutationAction;
   onShare?: () => void;
+  createShare?: ShareAction;
+  revokeShare?: MutationAction;
 }>;
 
 function PlaybackPersistence({
@@ -554,6 +576,7 @@ function ResultLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 
 export function ResultWorkspace(props: ResultWorkspaceProps) {
   const { model, copy = resultCopy.en } = props;
+  const publicMode = props.mode === 'public';
   const parentController = useVideoPlayer();
   const lifecycleKey = model.source.intakeId;
   const playerStageRef = useRef<HTMLDivElement>(null);
@@ -649,7 +672,13 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
         announce(copy.favoriteError);
       });
   }, [copy, favorite, favoritePending, lifecycleKey, savePreference]);
-  const favoriteAction = savePreference ? toggleFavorite : undefined;
+  const favoriteAction =
+    !publicMode && savePreference ? toggleFavorite : undefined;
+  const [shareOpen, setShareOpen] = useState(false);
+  const managedShare = Boolean(props.createShare && props.revokeShare);
+  const shareAction = publicMode
+    ? undefined
+    : (props.onShare ?? (managedShare ? () => setShareOpen(true) : undefined));
   const chapters =
     model.tabs.timestamps.status === 'ready'
       ? model.tabs.timestamps.data.chapters
@@ -702,11 +731,13 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
 
   return (
     <PlayerProvider controller={parentController ?? controller ?? null}>
-      <PlaybackPersistence
-        analysisId={model.source.intakeId}
-        initialPositionMs={playbackPositionMs}
-        savePlaybackPosition={props.savePlaybackPosition}
-      />
+      {!publicMode ? (
+        <PlaybackPersistence
+          analysisId={model.source.intakeId}
+          initialPositionMs={playbackPositionMs}
+          savePlaybackPosition={props.savePlaybackPosition}
+        />
+      ) : null}
       <ResultLayout>
         {favoriteMessage ? (
           <span className="sr-only" role="status" aria-live="polite">
@@ -730,7 +761,7 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           favorite={favorite}
           favoritePending={favoritePending}
           onFavorite={favoriteAction}
-          onShare={props.onShare}
+          onShare={shareAction}
           playerLifecycleKey={lifecycleKey}
           initialPositionMs={playbackPositionMs}
           onPlayerReady={updateController}
@@ -741,15 +772,18 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
           key={lifecycleKey}
           model={model}
           copy={copy}
-          saveTitle={props.saveTitle}
-          saveArtifact={props.saveArtifact}
+          saveTitle={props.saveTitle ?? unavailableSaveAction}
+          saveArtifact={props.saveArtifact ?? unavailableSaveAction}
           favorite={favorite}
           favoritePending={favoritePending}
           mobileResultLayout={mobileResultLayout}
           workspaceFocusRef={workspaceFocusRef}
           onFavorite={favoriteAction}
-          onShare={props.onShare}
-          saveFlashcardReview={props.saveFlashcardReview}
+          onShare={shareAction}
+          saveFlashcardReview={
+            publicMode ? undefined : props.saveFlashcardReview
+          }
+          publicMode={publicMode}
         />
         {mobileResultLayout && !playerVisible ? (
           <MobileMiniPlayer
@@ -771,6 +805,17 @@ export function ResultWorkspace(props: ResultWorkspaceProps) {
             onOpenChange={setChapterSheetOpen}
             responsiveFallbackRef={workspaceFocusRef}
             restoreFocusRef={chapterSheetTriggerRef}
+          />
+        ) : null}
+        {!publicMode && props.createShare && props.revokeShare ? (
+          <ResultShareDialog
+            key={`share-${lifecycleKey}`}
+            analysisId={lifecycleKey}
+            copy={copy}
+            createShare={props.createShare}
+            revokeShare={props.revokeShare}
+            open={shareOpen}
+            onOpenChange={setShareOpen}
           />
         ) : null}
       </ResultLayout>

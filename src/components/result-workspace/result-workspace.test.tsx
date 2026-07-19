@@ -14,6 +14,7 @@ import { resultCopy } from '@/lib/result-workspace/copy';
 import type {
   ResultMutationState,
   ResultSaveState,
+  ResultShareState,
 } from '@/lib/result-workspace/actions';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
@@ -291,6 +292,39 @@ function renderWorkspaceWithActions({
 }
 
 describe('ResultWorkspace', () => {
+  it('renders public mode without owner editing, autosave, Favorite, Share, recommendations, or private progress', async () => {
+    const user = userEvent.setup();
+    render(
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          mode="public"
+          model={{ ...model, userState: null }}
+          copy={resultCopy.en}
+        />
+      </PlayerProvider>,
+    );
+
+    expect(screen.queryByLabelText('Add to favorites')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Share result')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Result title')).not.toBeInTheDocument();
+    expect(screen.queryByText('Recommended next')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    expect(screen.queryByLabelText('Summary overview')).not.toBeInTheDocument();
+    expect(screen.queryByText('Saving')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Flashcards' }));
+    expect(
+      screen.queryByRole('button', { name: 'Edit flashcards' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /I forgot/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Progress unavailable')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Timestamps' }));
+    expect(screen.queryByLabelText('Chapter 1 title')).not.toBeInTheDocument();
+  });
   afterEach(async () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
@@ -1443,6 +1477,70 @@ describe('ResultWorkspace', () => {
     expect(shareButtons).toHaveLength(2);
     await user.click(shareButtons[1]);
     expect(onShare).toHaveBeenCalledOnce();
+  });
+
+  it('creates, copies, and revokes an owned public link without analytics token leakage', async () => {
+    const user = userEvent.setup();
+    const url = `https://app.gleen.example/share/${'A'.repeat(43)}`;
+    const createShare = vi
+      .fn<(input: unknown) => Promise<ResultShareState>>()
+      .mockResolvedValue({ status: 'created', url });
+    const revokeShare = vi
+      .fn<(input: unknown) => Promise<ResultMutationState>>()
+      .mockResolvedValue({ status: 'saved' });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const analytics: unknown[] = [];
+    window.addEventListener('gleen:analytics', (event) =>
+      analytics.push((event as CustomEvent).detail),
+    );
+
+    render(
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          model={model}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+          createShare={createShare}
+          revokeShare={revokeShare}
+        />
+      </PlayerProvider>,
+    );
+
+    await user.click(
+      screen.getAllByRole('button', { name: 'Share result' })[0]!,
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Create public link' }),
+    );
+    expect(createShare).toHaveBeenCalledWith({
+      analysisId: model.source.intakeId,
+    });
+    expect(screen.getByLabelText('Public link')).toHaveValue(url);
+
+    await user.click(screen.getByRole('button', { name: 'Copy link' }));
+    expect(writeText).toHaveBeenCalledWith(url);
+    await user.click(screen.getByRole('button', { name: 'Revoke link' }));
+    expect(revokeShare).toHaveBeenCalledWith({
+      analysisId: model.source.intakeId,
+    });
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Public link')).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      resultCopy.en.shareRevoked,
+    );
+    expect(JSON.stringify(analytics)).not.toContain('A'.repeat(43));
+    expect(analytics).toEqual(
+      expect.arrayContaining([
+        { name: 'result_share_changed', action: 'created' },
+        { name: 'result_share_changed', action: 'copied' },
+        { name: 'result_share_changed', action: 'revoked' },
+      ]),
+    );
   });
 
   it('shares Favorite pending state and ignores repeated actions', async () => {

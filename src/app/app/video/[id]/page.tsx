@@ -8,6 +8,8 @@ import {
 } from '@/lib/analysis-pipeline/supabase-repository';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import {
+  createResultShare,
+  revokeResultShare,
   saveFlashcardReview,
   savePlaybackPosition,
   saveResultArtifact,
@@ -93,6 +95,8 @@ export default async function VideoIntakePage(props: VideoIntakePageProps) {
         savePreference={saveResultPreference}
         savePlaybackPosition={savePlaybackPosition}
         saveFlashcardReview={saveFlashcardReview}
+        createShare={createResultShare}
+        revokeShare={revokeResultShare}
       />
     );
   }

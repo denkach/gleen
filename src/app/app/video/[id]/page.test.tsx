@@ -18,6 +18,8 @@ const {
   saveResultArtifact,
   saveResultPreference,
   saveResultTitle,
+  createResultShare,
+  revokeResultShare,
 } = vi.hoisted(() => ({
   findOwned: vi.fn(),
   findOwnedState: vi.fn(),
@@ -37,6 +39,8 @@ const {
   saveResultArtifact: vi.fn(),
   saveResultPreference: vi.fn(),
   saveResultTitle: vi.fn(),
+  createResultShare: vi.fn(),
+  revokeResultShare: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ notFound, redirect }));
@@ -73,6 +77,8 @@ vi.mock('@/lib/result-workspace/presentation', () => ({
   normalizeResultWorkspace,
 }));
 vi.mock('@/lib/result-workspace/actions', () => ({
+  createResultShare,
+  revokeResultShare,
   saveResultTitle,
   saveResultArtifact,
   saveResultPreference,
@@ -199,6 +205,8 @@ describe('owned intake readiness page', () => {
           savePreference: saveResultPreference,
           savePlaybackPosition,
           saveFlashcardReview,
+          createShare: createResultShare,
+          revokeShare: revokeResultShare,
         }),
       );
     },

@@ -8,6 +8,7 @@ import { unavailableUsage } from '@/lib/app-shell';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
 import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
+import { resultCopy } from '@/lib/result-workspace/copy';
 import type { ResultUserState } from '@/lib/result-workspace/user-state';
 import {
   outputLocaleSchema,
@@ -558,6 +559,18 @@ export default async function FixtureReadinessPage({
           ),
         }
       : undefined;
+  if (id === 'result-den-25-public' && result) {
+    return (
+      <main className="result-public-page">
+        <p className="result-public-notice">{resultCopy.en.publicViewShared}</p>
+        <FixtureResultWorkspace
+          mode="public"
+          initialModel={normalizeResultWorkspace(intake, result, null)}
+          fixturePlayerStartMs={0}
+        />
+      </main>
+    );
+  }
   return (
     <AppShell
       identity={{
