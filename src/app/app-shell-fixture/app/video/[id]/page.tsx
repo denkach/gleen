@@ -481,9 +481,11 @@ export default async function FixtureReadinessPage({
 }: Readonly<{
   params: Promise<{ id: string }>;
   searchParams: Promise<{
+    favoriteSave?: string;
     flashcardPreset?: string;
     outputLocale?: string;
     summaryPreset?: string;
+    visualCase?: string;
   }>;
 }>) {
   if (
@@ -494,18 +496,30 @@ export default async function FixtureReadinessPage({
   )
     notFound();
   const { id } = await params;
-  const { flashcardPreset, outputLocale, summaryPreset } = await searchParams;
+  const {
+    favoriteSave,
+    flashcardPreset,
+    outputLocale,
+    summaryPreset,
+    visualCase,
+  } = await searchParams;
   if (!allowedIds.has(id)) notFound();
   const den25Fixture = id.startsWith('result-den-25');
+  const longVisualFixture = den25Fixture && visualCase === 'long';
+  const den25UserState = longVisualFixture
+    ? { ...den25UserStateSeed, playbackPositionMs: 11_100_000 }
+    : den25UserStateSeed;
   const intake = {
     ...fixtureSavedIntake,
     id: resultAnalysisIds[id] ?? id,
     ...(den25Fixture
       ? {
           youtubeVideoId: 'den25fixture',
-          title: 'How purpose becomes consistent action',
+          title: longVisualFixture
+            ? 'How purpose becomes consistent action across teams, products, decisions, and every difficult moment that follows'
+            : 'How purpose becomes consistent action',
           channelTitle: 'Gleen Local Fixture',
-          durationSeconds: 1_043,
+          durationSeconds: longVisualFixture ? 11_645 : 1_043,
           thumbnailUrl: '/app-icons.svg',
           transcriptSegments: den25SourceTranscriptSegments,
         }
@@ -583,18 +597,19 @@ export default async function FixtureReadinessPage({
     >
       {result ? (
         <FixtureResultWorkspace
+          favoriteSaveFails={favoriteSave === 'failure'}
           initialModel={normalizeResultWorkspace(
             intake,
             result,
             den25Fixture && id !== 'result-den-25-public'
-              ? den25UserStateSeed
+              ? den25UserState
               : null,
           )}
           fixturePlayerStartMs={
             den25Fixture
               ? id === 'result-den-25-public'
                 ? 0
-                : den25UserStateSeed.playbackPositionMs
+                : den25UserState.playbackPositionMs
               : undefined
           }
         />

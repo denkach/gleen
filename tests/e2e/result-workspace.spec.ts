@@ -52,15 +52,34 @@ test.beforeEach(async ({ page }) => {
       getCurrentTime() {
         return state.currentTime;
       }
+      getDuration() {
+        return 90;
+      }
+      getPlaybackRate() {
+        return 1.25;
+      }
+      getAvailablePlaybackRates() {
+        return [1, 1.25, 1.5, 2];
+      }
+      getVolume() {
+        return 100;
+      }
+      isMuted() {
+        return false;
+      }
       getIframe() {
         return this.iframe;
       }
+      mute() {}
       pauseVideo() {}
       playVideo() {}
+      setPlaybackRate() {}
+      setVolume() {}
       seekTo(seconds: number) {
         state.currentTime = seconds;
         state.seeks.push(seconds);
       }
+      unMute() {}
     }
     Object.assign(window, { YT: { Player } });
   });
@@ -218,6 +237,30 @@ test('DEN-25 fixture renders one current workspace and one local player mount', 
     });
 });
 
+test('keeps the 18-moment desktop chapter rail on one horizontal row', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await gotoFixture(
+    page,
+    '/app-shell-fixture/app/video/result-den-25#overview',
+  );
+
+  const geometry = await page
+    .locator('.result-chapter-rail')
+    .evaluate((rail) => {
+      const cards = [...rail.querySelectorAll('.result-chapter-card')];
+      return {
+        firstTop: cards[0]?.getBoundingClientRect().top,
+        seventhTop: cards[6]?.getBoundingClientRect().top,
+        clientWidth: rail.clientWidth,
+        scrollWidth: rail.scrollWidth,
+      };
+    });
+  expect(geometry.seventhTop).toBe(geometry.firstTop);
+  expect(geometry.scrollWidth).toBeGreaterThan(geometry.clientWidth);
+});
+
 test('supports keyboard tab navigation and summary seeking', async ({
   page,
 }) => {
@@ -241,11 +284,13 @@ test('supports keyboard tab navigation and summary seeking', async ({
 test('seeks from timestamps and transcript controls', async ({ page }) => {
   await gotoFixture(page, route);
   await page.getByRole('tab', { name: 'Timestamps' }).click();
-  await page
+  const timestamp = page
     .getByRole('tabpanel', { name: 'Timestamps' })
     .locator('.result-timeline')
-    .getByRole('button', { name: '1:03', exact: true })
-    .click();
+    .getByRole('button', { name: '1:03', exact: true });
+  await timestamp.scrollIntoViewIfNeeded();
+  const timestampScroll = await page.evaluate(() => window.scrollY);
+  await timestamp.click();
   await expect
     .poll(() =>
       page.evaluate(() =>
@@ -253,6 +298,9 @@ test('seeks from timestamps and transcript controls', async ({ page }) => {
       ),
     )
     .toBe(63);
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBe(timestampScroll);
 
   await page.getByRole('tab', { name: 'Transcript' }).click();
   await page
@@ -440,7 +488,9 @@ test('isolates partial, corrupted, empty, and legacy fixture states', async ({
   }
   await gotoFixture(page, '/app-shell-fixture/app/video/result-legacy');
   await page.getByRole('tab', { name: 'Summary' }).click();
-  await expect(page.getByText('Legacy point')).toBeVisible();
+  await expect(
+    page.getByRole('textbox', { name: 'Summary point 1' }),
+  ).toHaveValue('Legacy point');
   await expect(page.getByRole('button', { name: /\d+:\d+/ })).toHaveCount(0);
 });
 
@@ -448,11 +498,211 @@ test('removes nonessential result motion for reduced-motion users', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await gotoFixture(page, route);
-  await page.getByRole('tab', { name: 'Flashcards' }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoFixture(
+    page,
+    '/app-shell-fixture/app/video/result-den-25#flashcards',
+  );
+  await page
+    .locator('.result-mobile-navigation')
+    .getByRole('button', { name: 'Flashcards' })
+    .click();
   await expect(
     page
       .getByRole('button', { name: 'Show answer' })
       .locator('[data-flashcard-scene]'),
   ).toHaveCSS('transition-duration', '1e-05s');
+
+  await page.getByLabel('Analysis artifacts').scrollIntoViewIfNeeded();
+  const miniPlayer = page.getByTestId('mobile-mini-player');
+  await expect(miniPlayer).toBeVisible();
+  await expect(miniPlayer).toHaveCSS('animation-name', 'none');
+  await miniPlayer.getByRole('button', { name: 'Chapters' }).click();
+  await expect(page.getByRole('dialog', { name: 'Chapters' })).toHaveCSS(
+    'animation-name',
+    'none',
+  );
+});
+
+test('restores Transcript reading position after visiting Flashcards', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoFixture(
+    page,
+    '/app-shell-fixture/app/video/result-den-25#transcript',
+  );
+  const transcriptList = page.locator('.result-transcript-list');
+  await transcriptList.scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollBy(0, 360));
+  const transcriptScroll = await page.evaluate(() => window.scrollY);
+
+  const navigation = page.locator('.result-mobile-navigation');
+  await navigation.getByRole('button', { name: 'Flashcards' }).click();
+  await expect(page).toHaveURL(/#flashcards$/);
+  await navigation.getByRole('button', { name: 'More' }).click();
+  await page
+    .getByRole('dialog', { name: 'More artifacts' })
+    .getByRole('button', { name: 'Transcript' })
+    .click();
+
+  await expect(page).toHaveURL(/#transcript$/);
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBe(transcriptScroll);
+});
+
+test('traps and restores focus for Chapters and More sheets', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoFixture(page, '/app-shell-fixture/app/video/result-den-25');
+  await page.getByLabel('Analysis artifacts').scrollIntoViewIfNeeded();
+
+  const chapterTrigger = page
+    .getByTestId('mobile-mini-player')
+    .getByRole('button', { name: 'Chapters' });
+  await chapterTrigger.focus();
+  await chapterTrigger.click();
+  const chapters = page.getByRole('dialog', { name: 'Chapters' });
+  await expect(chapters).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Boolean(document.activeElement?.closest('[role="dialog"]')),
+      ),
+    )
+    .toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(chapters).toBeHidden();
+  await expect(chapterTrigger).toBeFocused();
+
+  const moreTrigger = page
+    .locator('.result-mobile-navigation')
+    .getByRole('button', { name: 'More' });
+  await moreTrigger.focus();
+  await moreTrigger.click();
+  const more = page.getByRole('dialog', { name: 'More artifacts' });
+  await expect(more).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(more).toBeHidden();
+  await expect(moreTrigger).toBeFocused();
+});
+
+test('keeps a single mini-player through orientation changes', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoFixture(page, '/app-shell-fixture/app/video/result-den-25');
+  await page.getByLabel('Analysis artifacts').scrollIntoViewIfNeeded();
+  await expect(page.getByTestId('mobile-mini-player')).toHaveCount(1);
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect(page.getByTestId('mobile-mini-player')).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('mobile-mini-player')).toHaveCount(1);
+  await expect(page.locator('[aria-label="Video source"] iframe')).toHaveCount(
+    1,
+  );
+});
+
+test('keeps core result actions available at 200 percent zoom', async ({
+  context,
+  page,
+}) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  const session = await context.newCDPSession(page);
+  await session.send('Emulation.setDeviceMetricsOverride', {
+    width: 384,
+    height: 512,
+    deviceScaleFactor: 2,
+    mobile: false,
+  });
+  await gotoFixture(page, '/app-shell-fixture/app/video/result-den-25');
+
+  await expect(page.locator('.result-mobile-navigation')).toBeVisible();
+  await expect(
+    page
+      .locator('.result-mobile-navigation')
+      .getByRole('button', { name: 'More' }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test('preserves long titles and 3 hour playback controls', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await gotoFixture(
+    page,
+    '/app-shell-fixture/app/video/result-den-25?visualCase=long#overview',
+  );
+
+  await expect(page.getByText('3:14:05', { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByLabel('Analysis artifacts').scrollIntoViewIfNeeded();
+  const miniPlayer = page.getByTestId('mobile-mini-player');
+  await expect(miniPlayer).toBeVisible();
+  await expect(miniPlayer.getByText('3:05:00')).toBeVisible();
+  await expect(miniPlayer.getByRole('button')).toHaveCount(3);
+});
+
+test('shows truthful partial, failed, and disconnected artifact states', async ({
+  page,
+}) => {
+  await gotoFixture(page, '/app-shell-fixture/app/video/result-den-25-partial');
+  await expect(
+    page.getByText('Processing', { exact: true }).first(),
+  ).toBeVisible();
+
+  await gotoFixture(page, '/app-shell-fixture/app/video/result-partial');
+  await page.getByRole('tab', { name: 'Flashcards' }).click();
+  await expect(page.getByText(/could not be generated/i)).toBeVisible();
+
+  await gotoFixture(page, '/app-shell-fixture/app/video/result-den-25#export');
+  await page.getByRole('tab', { name: 'Export' }).click();
+  await expect(page.getByText('Connection required')).toBeVisible();
+});
+
+test('rolls Favorite back when the fixture mutation loses the network', async ({
+  page,
+}) => {
+  await gotoFixture(
+    page,
+    '/app-shell-fixture/app/video/result-den-25?favoriteSave=failure',
+  );
+  const favorite = page.locator('.result-page-header button[aria-pressed]');
+  await expect(favorite).toHaveAccessibleName('Add to favorites');
+  await favorite.click();
+  await expect(favorite).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('status')).toHaveText(
+    'Favorite could not be updated',
+  );
+  await expect(favorite).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('keeps artifact hashes understandable through Back and Forward', async ({
+  page,
+}) => {
+  await gotoFixture(
+    page,
+    '/app-shell-fixture/app/video/result-den-25#overview',
+  );
+  await page.getByRole('tab', { name: 'Summary' }).click();
+  await page.getByRole('tab', { name: 'Flashcards' }).click();
+  await expect(page).toHaveURL(/#flashcards$/);
+
+  await page.goBack();
+  await expect(page).toHaveURL(/#summary$/);
+  await expect(page.getByRole('tabpanel', { name: 'Summary' })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/#overview$/);
+  await page.goForward();
+  await expect(page).toHaveURL(/#summary$/);
 });

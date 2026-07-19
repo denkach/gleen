@@ -564,7 +564,11 @@ body:has(.result-page-layout) {
 .result-chapter-rail {
   display: grid;
   grid-template-columns: repeat(6, minmax(98px, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(98px, 1fr);
   gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 3px;
 }
 
 .result-chapter-card {

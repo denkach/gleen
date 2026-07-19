@@ -48,7 +48,11 @@ declare global {
   }
 }
 
-function installFixturePlayer(fixtureId: string, initialOffsetMs: number) {
+function installFixturePlayer(
+  fixtureId: string,
+  initialOffsetMs: number,
+  durationSeconds: number,
+) {
   const hadPreviousApi = Object.prototype.hasOwnProperty.call(window, 'YT');
   const hadPreviousState = Object.prototype.hasOwnProperty.call(
     window,
@@ -94,6 +98,26 @@ function installFixturePlayer(fixtureId: string, initialOffsetMs: number) {
       return state.currentTime;
     }
 
+    getDuration() {
+      return durationSeconds;
+    }
+
+    getPlaybackRate() {
+      return 1.25;
+    }
+
+    getAvailablePlaybackRates() {
+      return [1, 1.25, 1.5, 2];
+    }
+
+    getVolume() {
+      return 100;
+    }
+
+    isMuted() {
+      return false;
+    }
+
     getIframe() {
       return this.iframe;
     }
@@ -106,6 +130,12 @@ function installFixturePlayer(fixtureId: string, initialOffsetMs: number) {
       state.play();
     }
 
+    mute() {}
+
+    setPlaybackRate() {}
+
+    setVolume() {}
+
     seekTo(seconds: number) {
       state.currentTime = seconds;
       state.seeks.push(seconds);
@@ -114,6 +144,8 @@ function installFixturePlayer(fixtureId: string, initialOffsetMs: number) {
         offsetMs: Math.round(seconds * 1_000),
       });
     }
+
+    unMute() {}
   }
 
   const api = { Player } as unknown as NonNullable<Window['YT']>;
@@ -135,17 +167,22 @@ function installFixturePlayer(fixtureId: string, initialOffsetMs: number) {
 function useFixturePlayerReady(
   fixtureId: string,
   initialOffsetMs: number | undefined,
+  durationSeconds: number,
 ) {
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
       if (initialOffsetMs !== undefined) {
-        const cleanup = installFixturePlayer(fixtureId, initialOffsetMs);
+        const cleanup = installFixturePlayer(
+          fixtureId,
+          initialOffsetMs,
+          durationSeconds,
+        );
         onStoreChange();
         return cleanup;
       }
       return () => undefined;
     },
-    [fixtureId, initialOffsetMs],
+    [durationSeconds, fixtureId, initialOffsetMs],
   );
   const getSnapshot = useCallback(
     () =>
@@ -209,10 +246,12 @@ function readStoredModel(storageKey: string): ResultWorkspaceModel | undefined {
 }
 
 export function FixtureResultWorkspace({
+  favoriteSaveFails = false,
   initialModel,
   fixturePlayerStartMs,
   mode = 'owner',
 }: Readonly<{
+  favoriteSaveFails?: boolean;
   initialModel: ResultWorkspaceModel;
   fixturePlayerStartMs?: number;
   mode?: 'owner' | 'public';
@@ -222,6 +261,7 @@ export function FixtureResultWorkspace({
   const fixturePlayerReady = useFixturePlayerReady(
     initialModel.source.intakeId,
     fixturePlayerStartMs,
+    initialModel.source.durationSeconds,
   );
   const hydrated = useSyncExternalStore(
     subscribeToHydration,
@@ -333,6 +373,35 @@ export function FixtureResultWorkspace({
                 };
               });
               return { status: 'saved' };
+            }
+          : undefined
+      }
+      savePreference={
+        mode === 'owner' && displayedModel.userState
+          ? async (input) => {
+              const preference = z
+                .object({
+                  analysisId: z.uuid(),
+                  favorite: z.boolean(),
+                })
+                .strict()
+                .parse(input);
+              if (favoriteSaveFails) {
+                await new Promise((resolve) => setTimeout(resolve, 250));
+                return { status: 'error' } as const;
+              }
+              return update((current) =>
+                current.userState &&
+                preference.analysisId === current.source.intakeId
+                  ? {
+                      ...current,
+                      userState: {
+                        ...current.userState,
+                        favorite: preference.favorite,
+                      },
+                    }
+                  : current,
+              );
             }
           : undefined
       }
