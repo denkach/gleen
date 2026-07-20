@@ -8,7 +8,17 @@ const testSupabaseKey = 'sb_publishable_test';
 export default defineConfig({
   testDir: './tests/e2e',
   testIgnore: 'ui-production.spec.ts',
+  snapshotPathTemplate:
+    '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}',
   retries: process.env.CI ? 2 : 0,
+  expect: {
+    toHaveScreenshot: {
+      // Keep local design review strict while allowing only the stable font
+      // rasterization delta between macOS baselines and Ubuntu CI Chromium.
+      maxDiffPixelRatio: process.env.CI ? 0.025 : 0.002,
+      threshold: 0.25,
+    },
+  },
   use: {
     baseURL,
     trace: 'on-first-retry',

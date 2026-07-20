@@ -23,26 +23,100 @@ const context: GeneratorContext = {
 describe('artifact generators', () => {
   it('passes locale and preset to focused summary generation', async () => {
     const provider = createDeterministicProvider({
-      gleen_summary_v2: {
-        schemaVersion: 2,
+      gleen_summary_v3: {
+        schemaVersion: 3,
         title: 'Title',
-        overview: 'Overview',
-        keyPoints: [{ text: 'Point', sourceOffsetMs: 1_000 }],
+        outcome: 'Outcome',
+        sections: [
+          {
+            title: 'Point',
+            summary: 'Second idea',
+            details: 'Grounded details',
+            supportingQuote: 'Second idea',
+            sourceOffsetMs: 1_000,
+          },
+        ],
       },
     });
 
-    await generateSummary(provider, context);
+    const result = await generateSummary(provider, context);
 
     expect(provider.requests[0]).toMatchObject({
-      name: 'gleen_summary_v2',
+      name: 'gleen_summary_v3',
       jsonSchema: {
-        properties: { schemaVersion: { type: 'integer', const: 2 } },
+        properties: { schemaVersion: { type: 'integer', const: 3 } },
       },
     });
     expect(provider.requests[0]?.input).toContain('Output locale: uk');
     expect(provider.requests[0]?.input).toContain('Preset: detailed');
     expect(provider.requests[0]?.input).toContain('[0ms] First idea');
     expect(provider.requests[0]?.system).toContain('sourceOffsetMs');
+    expect(provider.requests[0]?.system).toContain('supportingQuote');
+    expect(result.value.sections[0]).toMatchObject({
+      supportingQuote: 'Second idea',
+      sourceOffsetMs: 1_000,
+    });
+  });
+
+  it('nulls ungrounded quotes and section offsets outside the duration', async () => {
+    const provider = createDeterministicProvider({
+      gleen_summary_v3: {
+        schemaVersion: 3,
+        title: 'Title',
+        outcome: 'Outcome',
+        sections: [
+          {
+            title: 'Point',
+            summary: 'A summary',
+            details: 'Details',
+            supportingQuote: 'This was never said',
+            sourceOffsetMs: 120_001,
+          },
+          {
+            title: 'Normalized grounding',
+            summary: 'A summary',
+            details: 'Details',
+            supportingQuote: '  SECOND   IDEA ',
+            sourceOffsetMs: null,
+          },
+          {
+            title: 'Fabricated in-range offset',
+            summary: 'A summary',
+            details: 'Details',
+            supportingQuote: null,
+            sourceOffsetMs: 500,
+          },
+          {
+            title: 'Quote at the wrong real segment',
+            summary: 'A summary',
+            details: 'Details',
+            supportingQuote: 'Second idea',
+            sourceOffsetMs: 0,
+          },
+        ],
+      },
+    });
+
+    const result = await generateSummary(provider, context);
+
+    expect(result.value.sections).toEqual([
+      expect.objectContaining({
+        supportingQuote: null,
+        sourceOffsetMs: null,
+      }),
+      expect.objectContaining({
+        supportingQuote: 'SECOND   IDEA',
+        sourceOffsetMs: null,
+      }),
+      expect.objectContaining({
+        supportingQuote: null,
+        sourceOffsetMs: null,
+      }),
+      expect.objectContaining({
+        supportingQuote: 'Second idea',
+        sourceOffsetMs: null,
+      }),
+    ]);
   });
 
   it('passes the requested card count to flashcard generation', async () => {

@@ -1,6 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-
 import type { TranscriptSegment } from '@/lib/youtube-intake/providers';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 import {
   generateFlashcards,
@@ -10,11 +9,13 @@ import {
 } from './generators';
 import { ProviderError, type StructuredGenerationProvider } from './provider';
 import type { AnalysisRepository } from './repository';
+import { transcriptArtifactV2Schema } from './artifact-schemas';
 import {
   createSupabaseAnalysisRepository,
   type SupabaseAnalysisClient,
 } from './supabase-repository';
 import { createNoopUsageLedger, type UsageLedger } from './usage-ledger';
+import { enrichTranscriptSegments } from './transcript-enrichment';
 
 type PipelineDependencies = Readonly<{
   jobId: string;
@@ -22,6 +23,7 @@ type PipelineDependencies = Readonly<{
   provider: StructuredGenerationProvider;
   ledger: UsageLedger;
   context: GeneratorContext;
+  transcriptEnricher?: typeof enrichTranscriptSegments;
 }>;
 
 const stages = [
@@ -61,6 +63,7 @@ export async function executeAnalysisPipeline({
   provider,
   ledger,
   context,
+  transcriptEnricher = enrichTranscriptSegments,
 }: PipelineDependencies): Promise<void> {
   let snapshot = await repository.findSnapshotByJobId(jobId);
   for (const stage of stages) {
@@ -83,16 +86,39 @@ export async function executeAnalysisPipeline({
     ({ kind }) => kind === 'transcript',
   );
   if (transcript && transcript.status !== 'ready') {
+    let transcriptContent:
+      | ReturnType<typeof transcriptArtifactV2Schema.parse>
+      | {
+          schemaVersion: 1;
+          language: string;
+          segments: readonly TranscriptSegment[];
+        };
+    try {
+      const enrichedSegments = transcriptEnricher(context.transcriptSegments);
+      if (enrichedSegments.length !== context.transcriptSegments.length)
+        throw new Error('Transcript enrichment changed segment count');
+      transcriptContent = transcriptArtifactV2Schema.parse({
+        schemaVersion: 2,
+        language: context.transcriptLanguage,
+        segments: context.transcriptSegments.map((segment, index) => ({
+          ...segment,
+          segmentType: enrichedSegments[index]?.segmentType,
+          speakerLabel: null,
+        })),
+      });
+    } catch {
+      transcriptContent = {
+        schemaVersion: 1,
+        language: context.transcriptLanguage,
+        segments: context.transcriptSegments,
+      };
+    }
     await repository.saveArtifactReady({
       jobId,
       analysisId: snapshot.job.analysisId,
       kind: 'transcript',
-      schemaVersion: 1,
-      content: {
-        schemaVersion: 1,
-        language: context.transcriptLanguage,
-        segments: context.transcriptSegments,
-      },
+      schemaVersion: transcriptContent.schemaVersion,
+      content: transcriptContent,
     });
   }
 
@@ -155,18 +181,8 @@ export async function executeAnalysisPipeline({
   }
 }
 
-function trustedSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const secret = process.env.SUPABASE_SECRET_KEY?.trim();
-  if (!url || !secret)
-    throw new Error('Trusted Supabase configuration missing');
-  return createClient(url, secret, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
-
 async function loadGeneratorContext(
-  client: ReturnType<typeof trustedSupabaseClient>,
+  client: ReturnType<typeof createAdminSupabaseClient>,
   analysisId: string,
 ): Promise<GeneratorContext> {
   const { data, error } = await client
@@ -192,7 +208,7 @@ async function executeProductionPipeline(jobId: string) {
   'use step';
   const { validateAnalysisProviderEnv } = await import('@/env');
   const { createOpenRouterProvider } = await import('./openrouter-provider');
-  const client = trustedSupabaseClient();
+  const client = createAdminSupabaseClient();
   const repository = createSupabaseAnalysisRepository(
     client as unknown as SupabaseAnalysisClient,
   );

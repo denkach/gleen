@@ -14,6 +14,7 @@ import type { RetryActionResult } from '@/lib/analysis-pipeline/retry-actions';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 import {
+  saveFlashcardReview,
   saveResultArtifact,
   saveResultTitle,
 } from '@/lib/result-workspace/actions';
@@ -223,6 +224,7 @@ export function AnalysisProcessingScreen({
             model={normalizeResultWorkspace(intake, snapshot)}
             saveTitle={saveResultTitle}
             saveArtifact={saveResultArtifact}
+            saveFlashcardReview={saveFlashcardReview}
           />
         </>
       )}

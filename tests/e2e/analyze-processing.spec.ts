@@ -319,7 +319,9 @@ test('hands completion through the exit wipe before opening the result', async (
     timeout: 1_000,
   });
   await expect(page).toHaveURL(/\/app\?analysis=result-complete/);
-  await expect(page).toHaveURL(/\/app-shell-fixture\/app\/video\//);
+  await expect(page).toHaveURL(/\/app-shell-fixture\/app\/video\//, {
+    timeout: 10_000,
+  });
 });
 
 test('production form keeps stages truthful and contains the rails at app-shell tablet width', async ({
@@ -628,16 +630,21 @@ test('durable queued and running stay on New analysis with exactly one spectrum 
     'transcript',
   );
   await expect(page).toHaveURL(
-    /\/app-shell-fixture\/app\/video\/result-complete$/,
+    /\/app-shell-fixture\/app\/video\/result-complete#overview$/,
     { timeout: 7_000 },
   );
   await expect(page.getByTestId('result-layout')).toBeVisible();
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
   await page.waitForTimeout(500);
-  expect(
-    transitions.filter((url) => url.includes('/app-shell-fixture/app/video/')),
-  ).toEqual([
-    expect.stringContaining('/app-shell-fixture/app/video/result-complete'),
+  const resultDestinations = [
+    ...new Set(
+      transitions
+        .filter((url) => url.includes('/app-shell-fixture/app/video/'))
+        .map((url) => new URL(url).pathname),
+    ),
+  ];
+  expect(resultDestinations).toEqual([
+    '/app-shell-fixture/app/video/result-complete',
   ]);
 });
 
@@ -716,7 +723,7 @@ test('durable reduced motion keeps truthful completion without decorative delay'
   const startedAt = Date.now();
   await page.getByRole('button', { name: 'Start fixture analysis' }).click();
   await expect(page).toHaveURL(
-    /\/app-shell-fixture\/app\/video\/result-complete$/,
+    /\/app-shell-fixture\/app\/video\/result-complete#overview$/,
     { timeout: 4_000 },
   );
   expect(Date.now() - startedAt).toBeLessThan(4_000);

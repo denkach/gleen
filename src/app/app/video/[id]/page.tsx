@@ -8,10 +8,23 @@ import {
 } from '@/lib/analysis-pipeline/supabase-repository';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import {
+  createResultShare,
+  revokeResultShare,
+  saveFlashcardReview,
+  savePlaybackPosition,
   saveResultArtifact,
+  saveResultPreference,
   saveResultTitle,
 } from '@/lib/result-workspace/actions';
+import { defaultOnboardingState } from '@/lib/onboarding/preferences';
+import { getOnboardingState } from '@/lib/onboarding/repository';
+import { createSupabaseOnboardingStorage } from '@/lib/onboarding/supabase-storage';
+import { resultCopy } from '@/lib/result-workspace/copy';
 import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
+import {
+  createSupabaseResultUserStateRepository,
+  type SupabaseResultUserStateClient,
+} from '@/lib/result-workspace/user-state-repository';
 import {
   createSupabaseIntakeRepository,
   type SupabaseIntakeClient,
@@ -54,14 +67,39 @@ export default async function VideoIntakePage(props: VideoIntakePageProps) {
   const snapshot = await repository.findOwnedSnapshot(userId, intake.id);
   if (!snapshot) notFound();
 
-  if (snapshot.job.status === 'complete' || snapshot.job.status === 'partial')
+  if (snapshot.job.status === 'complete' || snapshot.job.status === 'partial') {
+    let userState = null;
+    let interfaceLocale = defaultOnboardingState.interfaceLocale;
+    try {
+      userState = await createSupabaseResultUserStateRepository(
+        supabase as unknown as SupabaseResultUserStateClient,
+      ).findOwned(userId, intake.id);
+    } catch {
+      // Artifact data remains usable, but private progress must stay unknown.
+    }
+    try {
+      const profile = await getOnboardingState(
+        createSupabaseOnboardingStorage(supabase),
+        userId,
+      );
+      if (profile.ok) interfaceLocale = profile.data.interfaceLocale;
+    } catch {
+      // The safe English fallback keeps owned result data readable.
+    }
     return (
       <ResultWorkspace
-        model={normalizeResultWorkspace(intake, snapshot)}
+        model={normalizeResultWorkspace(intake, snapshot, userState)}
+        copy={resultCopy[interfaceLocale]}
         saveTitle={saveResultTitle}
         saveArtifact={saveResultArtifact}
+        savePreference={saveResultPreference}
+        savePlaybackPosition={savePlaybackPosition}
+        saveFlashcardReview={saveFlashcardReview}
+        createShare={createResultShare}
+        revokeShare={revokeResultShare}
       />
     );
+  }
 
   redirect(`/app?analysis=${encodeURIComponent(intake.id)}`);
 }

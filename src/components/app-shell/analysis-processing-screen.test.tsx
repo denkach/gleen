@@ -1,4 +1,10 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -11,6 +17,11 @@ const realtime = vi.hoisted(() => {
   channel.subscribe.mockReturnValue(channel);
   return { channel, create: vi.fn(() => channel), remove: vi.fn() };
 });
+const resultActions = vi.hoisted(() => ({
+  saveArtifact: vi.fn(),
+  saveFlashcardReview: vi.fn().mockResolvedValue({ status: 'saved' }),
+  saveTitle: vi.fn(),
+}));
 
 vi.mock('@/lib/supabase/browser', () => ({
   createBrowserSupabaseClient: () => ({
@@ -18,9 +29,35 @@ vi.mock('@/lib/supabase/browser', () => ({
     removeChannel: realtime.remove,
   }),
 }));
+vi.mock('@/lib/result-workspace/actions', () => ({
+  saveResultArtifact: resultActions.saveArtifact,
+  saveFlashcardReview: resultActions.saveFlashcardReview,
+  saveResultTitle: resultActions.saveTitle,
+}));
 vi.mock('@/components/result-workspace/result-workspace', () => ({
-  ResultWorkspace: ({ model }: { model: { revision: number } }) => (
-    <div data-testid="result-workspace">revision {model.revision}</div>
+  ResultWorkspace: ({
+    model,
+    saveFlashcardReview,
+  }: {
+    model: { revision: number };
+    saveFlashcardReview?: (input: unknown) => Promise<unknown>;
+  }) => (
+    <div data-testid="result-workspace">
+      revision {model.revision}
+      <button
+        type="button"
+        onClick={() =>
+          void saveFlashcardReview?.({
+            analysisId: intake.id,
+            artifactRevision: 'revision-4',
+            cardIndex: 0,
+            rating: 'got_it',
+          })
+        }
+      >
+        Rate result
+      </button>
+    </div>
   ),
 }));
 vi.mock('@/lib/result-workspace/presentation', () => ({
@@ -257,6 +294,13 @@ describe('AnalysisProcessingScreen', () => {
     expect(screen.getByTestId('result-workspace')).toHaveTextContent(
       'revision 4',
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Rate result' }));
+    expect(resultActions.saveFlashcardReview).toHaveBeenCalledWith({
+      analysisId: intake.id,
+      artifactRevision: 'revision-4',
+      cardIndex: 0,
+      rating: 'got_it',
+    });
   });
 
   test('hands a live partial snapshot with usable artifacts to the workspace without reload', async () => {

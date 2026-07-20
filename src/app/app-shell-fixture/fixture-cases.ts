@@ -20,4 +20,7 @@ export const fixtureCases = [
   'result-partial',
   'result-corrupted',
   'result-empty',
+  'result-den-25',
+  'result-den-25-partial',
+  'result-den-25-public',
 ] as const;

@@ -9,12 +9,14 @@ import { useAutosave } from './use-autosave';
 export function EditableTitle({
   analysisId,
   title,
+  serverTitle = title,
   onTitleChange,
   revision,
   saveTitle,
 }: Readonly<{
   analysisId: string;
   title: string;
+  serverTitle?: string;
   onTitleChange: (title: string) => void;
   revision: string;
   saveTitle: (input: unknown) => Promise<ResultSaveState>;
@@ -24,7 +26,12 @@ export function EditableTitle({
       saveTitle({ analysisId, expectedUpdatedAt, title: value }),
     [analysisId, saveTitle],
   );
-  const autosave = useAutosave({ value: title, revision, save });
+  const autosave = useAutosave({
+    value: title,
+    serverValue: serverTitle,
+    revision,
+    save,
+  });
 
   return (
     <div className="border-b border-[var(--border-default)] px-6 py-4 max-[720px]:px-4">

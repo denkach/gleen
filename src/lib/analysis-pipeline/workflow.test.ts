@@ -77,11 +77,19 @@ function harness(
   } as unknown as AnalysisRepository;
   const provider = createDeterministicProvider(
     {
-      gleen_summary_v2: {
-        schemaVersion: 2,
+      gleen_summary_v3: {
+        schemaVersion: 3,
         title: 'Title',
-        overview: 'Overview',
-        keyPoints: [{ text: 'Point', sourceOffsetMs: 0 }],
+        outcome: 'Outcome',
+        sections: [
+          {
+            title: 'Point',
+            summary: 'Transcript',
+            details: 'Details',
+            supportingQuote: 'Transcript',
+            sourceOffsetMs: 0,
+          },
+        ],
       },
       gleen_flashcards_v1: {
         schemaVersion: 1,
@@ -113,7 +121,7 @@ const context = {
 };
 
 describe('analysis workflow orchestration', () => {
-  it('persists the validated transcript snapshot as a versioned artifact', async () => {
+  it('persists a non-destructively enriched transcript v2 artifact', async () => {
     const { repository, provider, ledger } = harness();
 
     await executeAnalysisPipeline({
@@ -122,6 +130,39 @@ describe('analysis workflow orchestration', () => {
       provider,
       ledger,
       context,
+    });
+
+    expect(repository.saveArtifactReady).toHaveBeenCalledWith({
+      jobId: 'job-id',
+      analysisId: 'analysis-id',
+      kind: 'transcript',
+      schemaVersion: 2,
+      content: {
+        schemaVersion: 2,
+        language: 'en',
+        segments: [
+          {
+            ...context.transcriptSegments[0],
+            segmentType: 'other',
+            speakerLabel: null,
+          },
+        ],
+      },
+    });
+  });
+
+  it('falls back to the original v1-ready transcript when enrichment fails', async () => {
+    const { repository, provider, ledger } = harness();
+
+    await executeAnalysisPipeline({
+      jobId: 'job-id',
+      repository,
+      provider,
+      ledger,
+      context,
+      transcriptEnricher: () => {
+        throw new Error('enrichment failed');
+      },
     });
 
     expect(repository.saveArtifactReady).toHaveBeenCalledWith({
@@ -137,6 +178,40 @@ describe('analysis workflow orchestration', () => {
     });
   });
 
+  it('persists successful enrichment with source text byte-for-byte', async () => {
+    const { repository, provider, ledger } = harness();
+    const sourceText = '  Transcript spacing stays unchanged.  ';
+
+    await executeAnalysisPipeline({
+      jobId: 'job-id',
+      repository,
+      provider,
+      ledger,
+      context: {
+        ...context,
+        transcriptSegments: [
+          { text: sourceText, offsetMs: 0, durationMs: 1_000 },
+        ],
+      },
+    });
+
+    expect(repository.saveArtifactReady).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'transcript',
+        schemaVersion: 2,
+        content: expect.objectContaining({
+          segments: [
+            expect.objectContaining({
+              text: sourceText,
+              segmentType: 'other',
+              speakerLabel: null,
+            }),
+          ],
+        }),
+      }),
+    );
+  });
+
   it('persists each generated artifact with its content schema version', async () => {
     const { repository, provider, ledger } = harness();
 
@@ -149,10 +224,10 @@ describe('analysis workflow orchestration', () => {
     });
 
     expect(repository.saveArtifactReady).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'transcript', schemaVersion: 1 }),
+      expect.objectContaining({ kind: 'transcript', schemaVersion: 2 }),
     );
     expect(repository.saveArtifactReady).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'summary', schemaVersion: 2 }),
+      expect.objectContaining({ kind: 'summary', schemaVersion: 3 }),
     );
     expect(repository.saveArtifactReady).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'flashcards', schemaVersion: 1 }),
@@ -210,7 +285,7 @@ describe('analysis workflow orchestration', () => {
     });
 
     expect(provider.requests.map(({ name }) => name)).not.toContain(
-      'gleen_summary_v2',
+      'gleen_summary_v3',
     );
   });
 });

@@ -1,4 +1,5 @@
 import {
+  validateSupabaseAdminEnv,
   validateAnalysisProviderEnv,
   validateProviderEnv,
   validatePublicEnv,
@@ -117,5 +118,40 @@ describe('validateAnalysisProviderEnv', () => {
       OPENROUTER_API_KEY: 'secret',
       OPENROUTER_MODEL: 'vendor/model',
     });
+  });
+});
+
+describe('validateSupabaseAdminEnv', () => {
+  it('requires and trims a server-only Supabase secret', () => {
+    expect(() =>
+      validateSupabaseAdminEnv(
+        processEnv({
+          NEXT_PUBLIC_SUPABASE_URL: 'https://gleen.supabase.co',
+        }),
+      ),
+    ).toThrow('SUPABASE_SECRET_KEY is required');
+
+    expect(
+      validateSupabaseAdminEnv(
+        processEnv({
+          NEXT_PUBLIC_SUPABASE_URL: ' https://gleen.supabase.co ',
+          SUPABASE_SECRET_KEY: ' sb_secret_test ',
+        }),
+      ),
+    ).toEqual({
+      NEXT_PUBLIC_SUPABASE_URL: 'https://gleen.supabase.co',
+      SUPABASE_SECRET_KEY: 'sb_secret_test',
+    });
+  });
+
+  it('requires an absolute HTTPS Supabase URL', () => {
+    expect(() =>
+      validateSupabaseAdminEnv(
+        processEnv({
+          NEXT_PUBLIC_SUPABASE_URL: 'http://gleen.supabase.co',
+          SUPABASE_SECRET_KEY: 'sb_secret_test',
+        }),
+      ),
+    ).toThrow('NEXT_PUBLIC_SUPABASE_URL must be an absolute HTTPS URL');
   });
 });

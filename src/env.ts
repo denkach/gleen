@@ -14,7 +14,39 @@ export type AnalysisProviderEnv = Readonly<{
   OPENROUTER_MODEL: string;
 }>;
 
+export type SupabaseAdminEnv = Readonly<{
+  NEXT_PUBLIC_SUPABASE_URL: string;
+  SUPABASE_SECRET_KEY: string;
+}>;
+
 const invalidUrlMessage = 'NEXT_PUBLIC_APP_URL must be an absolute HTTP(S) URL';
+
+function readHttpsSupabaseUrl(input: NodeJS.ProcessEnv): string {
+  const value = input.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!value) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required');
+
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL must be an absolute HTTPS URL');
+  }
+  if (url.protocol !== 'https:') {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL must be an absolute HTTPS URL');
+  }
+  return value;
+}
+
+export function validateSupabaseAdminEnv(
+  input: NodeJS.ProcessEnv,
+): SupabaseAdminEnv {
+  const secret = input.SUPABASE_SECRET_KEY?.trim();
+  if (!secret) throw new Error('SUPABASE_SECRET_KEY is required');
+  return Object.freeze({
+    NEXT_PUBLIC_SUPABASE_URL: readHttpsSupabaseUrl(input),
+    SUPABASE_SECRET_KEY: secret,
+  });
+}
 
 export function validateAnalysisProviderEnv(
   input: NodeJS.ProcessEnv,
@@ -48,7 +80,7 @@ export function validateProviderEnv(input: NodeJS.ProcessEnv): ProviderEnv {
 
 export function validatePublicEnv(input: NodeJS.ProcessEnv): PublicEnv {
   const value = input.NEXT_PUBLIC_APP_URL?.trim();
-  const supabaseUrlValue = input.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const supabaseUrlValue = readHttpsSupabaseUrl(input);
   const supabasePublishableKey =
     input.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
 
@@ -66,22 +98,6 @@ export function validatePublicEnv(input: NodeJS.ProcessEnv): PublicEnv {
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error(invalidUrlMessage);
-  }
-
-  if (!supabaseUrlValue) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL is required');
-  }
-
-  let supabaseUrl: URL;
-
-  try {
-    supabaseUrl = new URL(supabaseUrlValue);
-  } catch {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL must be an absolute HTTPS URL');
-  }
-
-  if (supabaseUrl.protocol !== 'https:') {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL must be an absolute HTTPS URL');
   }
 
   if (!supabasePublishableKey) {

@@ -1,5 +1,13 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
+
+import { resultCopy } from '@/lib/result-workspace/copy';
 
 import { SourcePanel } from './source-panel';
 
@@ -15,10 +23,65 @@ const source = {
 test('renders the approved source metadata and accessible player', () => {
   render(<SourcePanel source={source} />);
   expect(screen.getByRole('heading', { name: source.title })).toBeVisible();
-  expect(screen.getByText(source.channel)).toBeVisible();
+  expect(screen.getAllByText(source.channel)[0]).toBeVisible();
   expect(screen.getByText(source.duration)).toBeVisible();
   expect(screen.getByText(source.language)).toBeVisible();
   expect(screen.getByTitle(`Play ${source.title}`)).toBeInTheDocument();
+});
+
+test('renders the prototype source identity actions only when they are functional', () => {
+  const onFavorite = vi.fn();
+  const onShare = vi.fn();
+  render(
+    <SourcePanel
+      source={source}
+      favorite={false}
+      onFavorite={onFavorite}
+      onShare={onShare}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add to favorites' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Share result' }));
+  expect(onFavorite).toHaveBeenCalledOnce();
+  expect(onShare).toHaveBeenCalledOnce();
+});
+
+test('constructs one custom-controls iframe and restores the saved playback position', async () => {
+  const seekTo = vi.fn();
+  const playerOptions: Array<{ playerVars: { controls?: 0 | 1 } }> = [];
+  Object.assign(window, {
+    YT: {
+      Player: vi.fn(function Player(
+        element: HTMLElement,
+        options: {
+          playerVars: { controls?: 0 | 1 };
+          events: { onReady(): void };
+        },
+      ) {
+        playerOptions.push(options);
+        const iframe = document.createElement('iframe');
+        element.replaceWith(iframe);
+        queueMicrotask(() => options.events.onReady());
+        return {
+          destroy: vi.fn(() => iframe.remove()),
+          getCurrentTime: vi.fn(() => 0),
+          getDuration: vi.fn(() => 755),
+          getIframe: () => iframe,
+          pauseVideo: vi.fn(),
+          playVideo: vi.fn(),
+          seekTo,
+        };
+      }),
+    },
+  });
+
+  render(<SourcePanel source={source} initialPositionMs={42_000} />);
+
+  await waitFor(() => expect(playerOptions).toHaveLength(1));
+  expect(playerOptions[0]?.playerVars.controls).toBe(0);
+  expect(document.querySelectorAll('iframe')).toHaveLength(1);
+  expect(seekTo).toHaveBeenCalledWith(42, true);
 });
 
 test('falls back to the thumbnail when the embedded player reports a runtime failure', async () => {
@@ -64,3 +127,54 @@ test('falls back to the thumbnail when the player is unavailable and hides a bro
   expect(thumbnail).not.toBeVisible();
   expect(screen.getByText('Video preview unavailable')).toBeVisible();
 });
+
+test('uses localized source, chapter, unavailable, and metadata wording', () => {
+  render(
+    <SourcePanel
+      source={source}
+      copy={resultCopy.de}
+      playerAvailable={false}
+      chapters={[{ offsetMs: 0, title: 'Start', description: 'Einführung' }]}
+    />,
+  );
+
+  expect(screen.getByLabelText('Videoquelle')).toBeVisible();
+  expect(screen.getByText('Player nicht verfügbar')).toBeVisible();
+  expect(screen.getByText('1 Schlüsselmoment')).toBeVisible();
+  expect(screen.getByText('Kanal')).toBeVisible();
+  expect(screen.getByText('Dauer')).toBeVisible();
+  expect(screen.getByText('Sprache')).toBeVisible();
+});
+
+test.each([
+  ['en', 1, '1 key moment'],
+  ['en', 2, '2 key moments'],
+  ['de', 1, '1 Schlüsselmoment'],
+  ['de', 2, '2 Schlüsselmomente'],
+  ['es', 1, '1 momento clave'],
+  ['es', 2, '2 momentos clave'],
+  ['ru', 1, '1 ключевой момент'],
+  ['ru', 2, '2 ключевых момента'],
+  ['ru', 5, '5 ключевых моментов'],
+  ['uk', 1, '1 ключовий момент'],
+  ['uk', 2, '2 ключові моменти'],
+  ['uk', 5, '5 ключових моментів'],
+] as const)(
+  'pluralizes %s key-moment count %i as localized copy',
+  (locale, count, expected) => {
+    render(
+      <SourcePanel
+        source={source}
+        copy={resultCopy[locale]}
+        playerAvailable={false}
+        chapters={Array.from({ length: count }, (_, index) => ({
+          offsetMs: index * 10_000,
+          title: `Chapter ${index + 1}`,
+          description: '',
+        }))}
+      />,
+    );
+
+    expect(screen.getByText(expected)).toBeVisible();
+  },
+);

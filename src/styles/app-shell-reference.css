@@ -1016,6 +1016,9 @@
     background: rgba(10, 10, 15, 0.91);
     backdrop-filter: blur(20px);
   }
+  .bottom-nav[data-result-video-route='true'] {
+    display: none;
+  }
   .bottom-link {
     display: flex;
     flex-direction: column;

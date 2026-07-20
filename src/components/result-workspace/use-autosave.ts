@@ -9,19 +9,28 @@ export type AutosaveState =
 
 export function useAutosave<T>({
   value,
+  serverValue,
   revision,
   save,
   delayMs = 700,
 }: Readonly<{
   value: T;
+  serverValue: T;
   revision: string;
   save: (value: T, revision: string) => Promise<ResultSaveState>;
   delayMs?: number;
-}>): Readonly<{ status: AutosaveState; retry: () => void }> {
+}>): Readonly<{
+  status: AutosaveState;
+  revision: string;
+  isSaved: boolean;
+  retry: () => void;
+}> {
   const [status, setStatus] = useState<AutosaveState>('idle');
+  const [savedRevision, setSavedRevision] = useState(revision);
+  const [savedValue, setSavedValue] = useState(serverValue);
   const [cycle, setCycle] = useState(0);
   const latestValue = useRef(value);
-  const lastSavedValue = useRef(value);
+  const lastSavedValue = useRef(serverValue);
   const revisionRef = useRef(revision);
   const propRevisionRef = useRef(revision);
   const saveRef = useRef(save);
@@ -51,7 +60,9 @@ export function useAutosave<T>({
         .then((result) => {
           if (result.status === 'saved') {
             revisionRef.current = result.updatedAt;
+            setSavedRevision(result.updatedAt);
             lastSavedValue.current = savingValue;
+            setSavedValue(savingValue);
             setStatus('saved');
             if (!Object.is(latestValue.current, savingValue)) {
               setCycle((current) => current + 1);
@@ -69,19 +80,37 @@ export function useAutosave<T>({
 
   useEffect(() => {
     if (propRevisionRef.current !== revision) {
+      let active = true;
+      const confirmsLatestSave = revisionRef.current === revision;
       propRevisionRef.current = revision;
       revisionRef.current = revision;
-      lastSavedValue.current = value;
-      setStatus('idle');
-      return;
+      lastSavedValue.current = serverValue;
+      const dirty = !Object.is(value, serverValue);
+      queueMicrotask(() => {
+        if (!active) return;
+        setSavedRevision(revision);
+        setSavedValue(serverValue);
+        setStatus(dirty ? 'saving' : confirmsLatestSave ? 'saved' : 'idle');
+      });
+      if (dirty) schedule();
+      return () => {
+        active = false;
+        window.clearTimeout(timerRef.current);
+      };
     }
-    if (!Object.is(value, lastSavedValue.current)) schedule();
+    if (!Object.is(value, lastSavedValue.current)) {
+      setStatus('saving');
+      schedule();
+    }
     return () => window.clearTimeout(timerRef.current);
-  }, [cycle, revision, schedule, value]);
+  }, [cycle, revision, schedule, serverValue, value]);
 
   const retry = useCallback(() => {
     if (status !== 'conflict') setCycle((current) => current + 1);
   }, [status]);
 
-  return { status, retry };
+  const isSaved =
+    Object.is(value, savedValue) && (status === 'idle' || status === 'saved');
+
+  return { status, revision: savedRevision, isSaved, retry };
 }

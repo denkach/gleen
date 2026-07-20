@@ -12,6 +12,7 @@ import '../styles/landing-reference.css';
 import '../styles/auth-reference.css';
 import '../styles/onboarding-reference.css';
 import '../styles/app-shell-reference.css';
+import '../styles/result-workspace-reference.css';
 
 const { NEXT_PUBLIC_APP_URL } = validatePublicEnv(process.env);
 const landingDescription =
