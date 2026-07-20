@@ -3011,6 +3011,11 @@ body:has(.result-page-layout) {
     flex-wrap: wrap;
   }
 
+  .result-transcript-filters {
+    /* Keep the 375px prototype wrap stable across platform font metrics. */
+    padding-right: 4px;
+  }
+
   .result-transcript-unavailable {
     order: 3;
     flex-basis: 100%;

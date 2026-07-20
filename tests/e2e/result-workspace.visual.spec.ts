@@ -193,6 +193,19 @@ for (const viewport of mobileViewports) {
       page.getByRole('tabpanel', { name: 'Transcript' }),
     ).toBeVisible();
     await expect(miniPlayer).toBeVisible();
+
+    if (viewport.width === 375) {
+      const filters = page.locator('.result-transcript-filters');
+      const [allBox, storyBox] = await Promise.all([
+        filters.getByRole('button', { name: 'All' }).boundingBox(),
+        filters.getByRole('button', { name: 'Story' }).boundingBox(),
+      ]);
+
+      expect(allBox).not.toBeNull();
+      expect(storyBox).not.toBeNull();
+      expect(storyBox!.y).toBeGreaterThan(allBox!.y);
+    }
+
     await capture(
       page,
       `den-25-${viewport.width}x${viewport.height}-mobile-transcript-mini.png`,
