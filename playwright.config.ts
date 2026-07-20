@@ -13,7 +13,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   expect: {
     toHaveScreenshot: {
-      maxDiffPixelRatio: 0.002,
+      // Keep local design review strict while allowing only the stable font
+      // rasterization delta between macOS baselines and Ubuntu CI Chromium.
+      maxDiffPixelRatio: process.env.CI ? 0.025 : 0.002,
       threshold: 0.25,
     },
   },
