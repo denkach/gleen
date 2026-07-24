@@ -9,6 +9,7 @@ const {
   findOwnedSnapshot,
   getOnboardingState,
   getUser,
+  markOpened,
   normalizeResultWorkspace,
   notFound,
   redirect,
@@ -26,6 +27,7 @@ const {
   findOwnedSnapshot: vi.fn(),
   getOnboardingState: vi.fn(),
   getUser: vi.fn(),
+  markOpened: vi.fn(),
   normalizeResultWorkspace: vi.fn(),
   notFound: vi.fn((): never => {
     throw new Error('NEXT_NOT_FOUND');
@@ -56,6 +58,7 @@ vi.mock('@/lib/analysis-pipeline/supabase-repository', () => ({
 vi.mock('@/lib/result-workspace/user-state-repository', () => ({
   createSupabaseResultUserStateRepository: vi.fn(() => ({
     findOwned: findOwnedState,
+    markOpened,
   })),
 }));
 vi.mock('@/lib/onboarding/repository', () => ({ getOnboardingState }));
@@ -156,6 +159,7 @@ describe('owned intake readiness page', () => {
     findOwned.mockResolvedValue(intake);
     findOwnedSnapshot.mockResolvedValue(snapshot);
     findOwnedState.mockResolvedValue(userState);
+    markOpened.mockResolvedValue(undefined);
     getOnboardingState.mockResolvedValue({
       ok: true,
       data: {
@@ -194,6 +198,11 @@ describe('owned intake readiness page', () => {
         terminalSnapshot,
         userState,
       );
+      expect(markOpened).toHaveBeenCalledWith({
+        userId: 'user-1',
+        analysisId: intake.id,
+        openedAt: expect.any(String),
+      });
       expect(screen.getByTestId('result-workspace')).toHaveTextContent(
         intake.title,
       );
@@ -248,6 +257,25 @@ describe('owned intake readiness page', () => {
     expect(screen.getByTestId('result-workspace')).toBeVisible();
   });
 
+  test('renders owned terminal content when marking it opened fails', async () => {
+    findOwnedSnapshot.mockResolvedValue({
+      ...snapshot,
+      job: { ...snapshot.job, status: 'partial', stage: 'artifacts' },
+    });
+    markOpened.mockRejectedValue(new Error('state unavailable'));
+
+    render(
+      await VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
+    );
+
+    expect(markOpened).toHaveBeenCalledWith({
+      userId: 'user-1',
+      analysisId: intake.id,
+      openedAt: expect.any(String),
+    });
+    expect(screen.getByTestId('result-workspace')).toBeVisible();
+  });
+
   test.each(['queued', 'running', 'failed'] as const)(
     'redirects a %s snapshot to the normalized resumable analysis route',
     async (status) => {
@@ -264,6 +292,7 @@ describe('owned intake readiness page', () => {
         `/app?analysis=${encodeURIComponent(intake.id)}`,
       );
       expect(normalizeResultWorkspace).not.toHaveBeenCalled();
+      expect(markOpened).not.toHaveBeenCalled();
     },
   );
 

@@ -50,6 +50,7 @@ export type ResultUserStateRepository = Readonly<{
   savePreference(
     input: OwnerKey & Readonly<{ favorite: boolean }>,
   ): Promise<void>;
+  markOpened(input: OwnerKey & Readonly<{ openedAt: string }>): Promise<void>;
   savePlaybackPosition(
     input: Readonly<{
       analysisId: string;
@@ -181,6 +182,27 @@ export function createSupabaseResultUserStateRepository(
                 analysis_id: input.analysisId,
                 user_id: input.userId,
                 favorite: input.favorite,
+              },
+              { onConflict: 'analysis_id,user_id' },
+            )
+            .eq('analysis_id', input.analysisId)
+            .eq('user_id', input.userId),
+        );
+      } catch (error) {
+        throw repositoryError(error);
+      }
+    },
+
+    async markOpened(input) {
+      try {
+        await ensureMutation(
+          client
+            .from('analysis_result_states')
+            .upsert(
+              {
+                analysis_id: input.analysisId,
+                user_id: input.userId,
+                last_opened_at: input.openedAt,
               },
               { onConflict: 'analysis_id,user_id' },
             )

@@ -70,12 +70,22 @@ export default async function VideoIntakePage(props: VideoIntakePageProps) {
   if (snapshot.job.status === 'complete' || snapshot.job.status === 'partial') {
     let userState = null;
     let interfaceLocale = defaultOnboardingState.interfaceLocale;
+    const userStateRepository = createSupabaseResultUserStateRepository(
+      supabase as unknown as SupabaseResultUserStateClient,
+    );
     try {
-      userState = await createSupabaseResultUserStateRepository(
-        supabase as unknown as SupabaseResultUserStateClient,
-      ).findOwned(userId, intake.id);
+      userState = await userStateRepository.findOwned(userId, intake.id);
     } catch {
       // Artifact data remains usable, but private progress must stay unknown.
+    }
+    try {
+      await userStateRepository.markOpened({
+        userId,
+        analysisId: intake.id,
+        openedAt: new Date().toISOString(),
+      });
+    } catch {
+      // Recently-opened state must never hide an owned result workspace.
     }
     try {
       const profile = await getOnboardingState(

@@ -163,6 +163,30 @@ describe('Supabase result user-state repository', () => {
     expect(mutation.eq).toHaveBeenCalledWith('user_id', userId);
   });
 
+  it('upserts the server-confirmed opened timestamp through the owner composite key', async () => {
+    const mutation = query({ data: null, error: null });
+    const repository = createSupabaseResultUserStateRepository({
+      from: vi.fn().mockReturnValue(mutation),
+      rpc: vi.fn(),
+    });
+    const openedAt = '2026-07-24T12:00:00.000Z';
+
+    await expect(
+      repository.markOpened({ userId, analysisId, openedAt }),
+    ).resolves.toBeUndefined();
+
+    expect(mutation.upsert).toHaveBeenCalledWith(
+      {
+        analysis_id: analysisId,
+        user_id: userId,
+        last_opened_at: openedAt,
+      },
+      { onConflict: 'analysis_id,user_id' },
+    );
+    expect(mutation.eq).toHaveBeenCalledWith('analysis_id', analysisId);
+    expect(mutation.eq).toHaveBeenCalledWith('user_id', userId);
+  });
+
   it('persists playback through the strictly ordered owner RPC', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: true, error: null });
     const repository = createSupabaseResultUserStateRepository({
