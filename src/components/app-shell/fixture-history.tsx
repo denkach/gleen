@@ -5,20 +5,13 @@ import type { HistoryWorkspaceProps } from '@/components/history/history-workspa
 import { parseHistoryQuery } from '@/lib/history/query';
 import type { HistoryItem } from '@/lib/history/repository';
 
-export const historyVisualCases = [
-  'default',
-  'duplicate',
-  'filters',
-  'sort',
-  'partial',
-  'empty',
-  'search-empty',
-  'filtered-empty',
-  'rename',
-  'delete',
-] as const;
+import type {
+  HistoryFixtureAction,
+  HistoryVisualCase,
+} from './fixture-history-contract';
 
-export type HistoryVisualCase = (typeof historyVisualCases)[number];
+export { historyVisualCases } from './fixture-history-contract';
+export type { HistoryVisualCase } from './fixture-history-contract';
 
 const fixtureRows = [
   {
@@ -128,39 +121,65 @@ const fixtureFacets = {
   sources: ['YouTube'],
 } as const;
 
-const fixtureActions: HistoryWorkspaceProps['actions'] = {
-  async toggleHistoryFavorite() {
-    return { ok: true, data: undefined };
-  },
-  async renameHistoryItem() {
-    return {
-      ok: true,
-      data: { updatedAt: '2026-07-24T12:00:00.000Z' },
-    };
-  },
-  async deleteHistoryItem() {
-    return { ok: true, data: undefined };
-  },
-  async reanalyzeHistoryDuplicate() {
-    return {
-      ok: true,
-      data: {
-        redirectTo: '/app/video/00000000-0000-4000-8000-000000000099',
-      },
-    };
-  },
-  async markHistoryItemOpened() {
-    return { ok: true, data: undefined };
-  },
-  async loadMoreHistory() {
-    return {
-      ok: true,
-      data: { items: [], nextCursor: null },
-    };
-  },
+const loadMoreItem: HistoryItem = {
+  ...fixtureItems[0],
+  id: '00000000-0000-4000-8000-000000000007',
+  sourceId: 'history-fixture-thumbnail--06',
+  title: 'A seventh saved analysis',
+  analyzedAt: '2026-06-27T10:21:00.000Z',
+  analyzedAtLabel: 'Jun 27 · 10:21',
+  titleRevision: '2026-06-27T10:21:00.000Z',
 };
 
-function fixtureQuery(visualCase: HistoryVisualCase) {
+function fixtureActions(
+  fixtureAction: HistoryFixtureAction,
+): HistoryWorkspaceProps['actions'] {
+  return {
+    async toggleHistoryFavorite() {
+      return fixtureAction === 'favorite-failure'
+        ? {
+            ok: false,
+            code: 'failed',
+            message: 'Favorite could not be saved.',
+          }
+        : { ok: true, data: undefined };
+    },
+    async renameHistoryItem() {
+      return {
+        ok: true,
+        data: { updatedAt: '2026-07-24T12:00:00.000Z' },
+      };
+    },
+    async deleteHistoryItem() {
+      return { ok: true, data: undefined };
+    },
+    async reanalyzeHistoryDuplicate() {
+      return {
+        ok: true,
+        data: {
+          redirectTo: '/app/video/00000000-0000-4000-8000-000000000099',
+        },
+      };
+    },
+    async markHistoryItemOpened() {
+      return { ok: true, data: undefined };
+    },
+    async loadMoreHistory() {
+      return {
+        ok: true,
+        data: {
+          items: fixtureAction === 'load-more' ? [loadMoreItem] : [],
+          nextCursor: null,
+        },
+      };
+    },
+  };
+}
+
+function fixtureQuery(
+  visualCase: HistoryVisualCase,
+  queryInput: Readonly<Record<string, string | readonly string[] | undefined>>,
+) {
   if (visualCase === 'search-empty') {
     return parseHistoryQuery({ q: 'calm systems' });
   }
@@ -170,7 +189,7 @@ function fixtureQuery(visualCase: HistoryVisualCase) {
   if (visualCase === 'filters') {
     return parseHistoryQuery({ status: ['ready', 'processing'] });
   }
-  return parseHistoryQuery({});
+  return parseHistoryQuery(queryInput);
 }
 
 function itemsFor(visualCase: HistoryVisualCase): readonly HistoryItem[] {
@@ -197,11 +216,26 @@ function itemsFor(visualCase: HistoryVisualCase): readonly HistoryItem[] {
 
 export function FixtureHistory({
   visualCase,
-}: Readonly<{ visualCase: HistoryVisualCase }>) {
+  fixtureAction = 'success',
+  queryInput = {},
+}: Readonly<{
+  visualCase: HistoryVisualCase;
+  fixtureAction?: HistoryFixtureAction;
+  queryInput?: Readonly<Record<string, string | readonly string[] | undefined>>;
+}>) {
+  const query = fixtureQuery(visualCase, queryInput);
+  const navigationParameters = new URLSearchParams({
+    visualCase,
+    ...(fixtureAction === 'success' ? {} : { fixtureAction }),
+  });
+
   return (
     <HistoryWorkspace
-      initialPage={{ items: itemsFor(visualCase), nextCursor: null }}
-      query={fixtureQuery(visualCase)}
+      initialPage={{
+        items: itemsFor(visualCase),
+        nextCursor: fixtureAction === 'load-more' ? 'fixture-next-page' : null,
+      }}
+      query={query}
       facets={fixtureFacets}
       verifiedDuplicate={visualCase === 'duplicate' ? fixtureItems[0] : null}
       initialOverlay={
@@ -212,7 +246,8 @@ export function FixtureHistory({
           ? visualCase
           : null
       }
-      actions={fixtureActions}
+      actions={fixtureActions(fixtureAction)}
+      navigationPath={`/app-shell-fixture/history?${navigationParameters.toString()}`}
     />
   );
 }

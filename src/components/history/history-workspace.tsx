@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useRef, useState, type FormEvent } from 'react';
+import { useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 
 import { HistoryFilters } from '@/components/history/history-filters';
 import { HistoryList } from '@/components/history/history-list';
@@ -43,6 +43,7 @@ export type HistoryWorkspaceProps = Readonly<{
   verifiedDuplicate?: HistoryItem | null;
   loadError?: boolean;
   initialOverlay?: 'filters' | 'sort' | 'rename' | 'delete' | null;
+  navigationPath?: string;
   actions: HistoryWorkspaceActions;
 }>;
 
@@ -74,11 +75,6 @@ function appliedFilterCount(query: HistoryQuery): number {
   );
 }
 
-function historyUrl(query: HistoryQuery): string {
-  const parameters = serializeHistoryQuery(query).toString();
-  return parameters ? `/app/history?${parameters}` : '/app/history';
-}
-
 function resultAnnouncement(count: number): string {
   if (count === 0) return 'No saved analyses';
   if (count === 1) return '1 saved analysis';
@@ -93,6 +89,18 @@ function duplicateReassurance(item: HistoryItem): string {
   return `Open the saved${version} version. No credits will be used.`;
 }
 
+function subscribeToHydrationSignal() {
+  return () => undefined;
+}
+
+function clientHydrationSnapshot() {
+  return true;
+}
+
+function serverHydrationSnapshot() {
+  return false;
+}
+
 export function HistoryWorkspace({
   initialPage,
   query,
@@ -100,6 +108,7 @@ export function HistoryWorkspace({
   verifiedDuplicate = null,
   loadError = false,
   initialOverlay = null,
+  navigationPath = '/app/history',
   actions,
 }: HistoryWorkspaceProps) {
   return (
@@ -111,6 +120,7 @@ export function HistoryWorkspace({
       verifiedDuplicate={verifiedDuplicate}
       loadError={loadError}
       initialOverlay={initialOverlay}
+      navigationPath={navigationPath}
       actions={actions}
     />
   );
@@ -125,7 +135,8 @@ type HistoryWorkspaceStateProps = Pick<
   | 'loadError'
   | 'initialOverlay'
   | 'actions'
->;
+> &
+  Readonly<{ navigationPath: string }>;
 
 function HistoryWorkspaceState({
   initialPage,
@@ -134,6 +145,7 @@ function HistoryWorkspaceState({
   verifiedDuplicate,
   loadError,
   initialOverlay,
+  navigationPath,
   actions,
 }: HistoryWorkspaceStateProps) {
   const router = useRouter();
@@ -144,9 +156,20 @@ function HistoryWorkspaceState({
   const [announcement, setAnnouncement] = useState(() =>
     resultAnnouncement(initialPage.items.length),
   );
+  const hydrated = useSyncExternalStore(
+    subscribeToHydrationSignal,
+    clientHydrationSnapshot,
+    serverHydrationSnapshot,
+  );
 
   function navigate(nextQuery: HistoryQuery) {
-    router.push(historyUrl(nextQuery));
+    const serialized = serializeHistoryQuery(nextQuery).toString();
+    const separator = navigationPath.includes('?') ? '&' : '?';
+    router.push(
+      serialized
+        ? `${navigationPath}${separator}${serialized}`
+        : navigationPath,
+    );
   }
 
   function search(value: string) {
@@ -217,6 +240,7 @@ function HistoryWorkspaceState({
     <section
       className="history-workspace history-bottom-nav-clearance"
       aria-label="History"
+      data-history-hydrated={hydrated ? 'true' : 'false'}
     >
       <header className="history-page-head">
         <div className="history-page-head__copy">

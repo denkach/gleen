@@ -2,11 +2,13 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { AppShell } from '@/components/app-shell/app-shell';
+import { FixtureHistory } from '@/components/app-shell/fixture-history';
 import {
-  FixtureHistory,
+  historyFixtureActions,
   historyVisualCases,
+  type HistoryFixtureAction,
   type HistoryVisualCase,
-} from '@/components/app-shell/fixture-history';
+} from '@/components/app-shell/fixture-history-contract';
 import { unavailableUsage } from '@/lib/app-shell';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 
@@ -22,7 +24,7 @@ const fixtureIdentity = {
 
 type FixtureHistoryPageProps = Readonly<{
   searchParams: Promise<
-    Readonly<{ visualCase?: string | readonly string[] | undefined }>
+    Readonly<Record<string, string | readonly string[] | undefined>>
   >;
 }>;
 
@@ -30,6 +32,13 @@ function isHistoryVisualCase(value: unknown): value is HistoryVisualCase {
   return (
     typeof value === 'string' &&
     historyVisualCases.includes(value as HistoryVisualCase)
+  );
+}
+
+function isHistoryFixtureAction(value: unknown): value is HistoryFixtureAction {
+  return (
+    typeof value === 'string' &&
+    historyFixtureActions.includes(value as HistoryFixtureAction)
   );
 }
 
@@ -45,8 +54,13 @@ export default async function FixtureHistoryPage({
     notFound();
   }
 
-  const { visualCase = 'default' } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { visualCase = 'default', fixtureAction = 'success' } =
+    resolvedSearchParams;
   if (!isHistoryVisualCase(visualCase)) {
+    notFound();
+  }
+  if (!isHistoryFixtureAction(fixtureAction)) {
     notFound();
   }
 
@@ -56,7 +70,11 @@ export default async function FixtureHistoryPage({
       usage={unavailableUsage}
       pathnameOverride="/app/history"
     >
-      <FixtureHistory visualCase={visualCase} />
+      <FixtureHistory
+        visualCase={visualCase}
+        fixtureAction={fixtureAction}
+        queryInput={resolvedSearchParams}
+      />
     </AppShell>
   );
 }
