@@ -128,41 +128,70 @@ describe('HistoryItemActions', () => {
     const props = setup();
     await openMenu(user);
 
-    expect(
-      screen.getByRole('menuitem', { name: 'Continue studying' }),
-    ).toHaveAttribute('href', item.href);
+    expect(screen.getByRole('menuitem', { name: 'Open' })).toHaveAttribute(
+      'href',
+      item.href,
+    );
     expect(screen.getByRole('menuitem', { name: 'Export' })).toHaveAttribute(
       'href',
       `${item.href}#export`,
     );
     const preventNavigation = (event: MouseEvent) => event.preventDefault();
     document.addEventListener('click', preventNavigation);
-    await user.click(
-      screen.getByRole('menuitem', { name: 'Continue studying' }),
-    );
+    await user.click(screen.getByRole('menuitem', { name: 'Open' }));
     document.removeEventListener('click', preventNavigation);
     expect(props.markOpened).toHaveBeenCalledWith({ analysisId: item.id });
+  });
 
-    render(
-      <HistoryItemActions
-        {...props}
-        item={{
+  it.each([
+    ['ready', 'Ready', '/app/video/ready', 'Open'],
+    ['partial', 'Partial', '/app/video/partial', 'Open'],
+    ['processing', 'Processing', '/app?analysis=processing', 'Continue'],
+    ['failed', 'Failed', '/app?analysis=failed', 'Continue'],
+  ] as const)(
+    'uses only the approved destination label for %s',
+    async (key, label, href, expectedLabel) => {
+      const user = userEvent.setup();
+      setup({
+        item: {
           ...item,
-          id: '33333333-3333-4333-8333-333333333333',
-          title: 'Processing title',
-          href: '/app?analysis=33333333-3333-4333-8333-333333333333',
-          status: { key: 'processing', label: 'Processing' },
-          canExport: false,
-          readyArtifacts: [],
-        }}
-      />,
-    );
+          id: key,
+          title: `${label} title`,
+          href,
+          status: { key, label },
+          canExport: key === 'ready' || key === 'partial',
+        },
+      });
+
+      await user.click(
+        screen.getByRole('button', { name: `Actions for ${label} title` }),
+      );
+      expect(
+        screen.getByRole('menuitem', { name: expectedLabel }),
+      ).toHaveAttribute('href', href);
+      expect(
+        screen.queryByRole('menuitem', {
+          name: 'Continue studying',
+        }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it('does not expose Export when no artifacts are ready', async () => {
+    const user = userEvent.setup();
+    setup({
+      item: {
+        ...item,
+        id: 'processing',
+        title: 'Processing title',
+        href: '/app?analysis=processing',
+        status: { key: 'processing', label: 'Processing' },
+        canExport: false,
+        readyArtifacts: [],
+      },
+    });
     await user.click(
       screen.getByRole('button', { name: 'Actions for Processing title' }),
-    );
-    expect(screen.getByRole('menuitem', { name: 'Continue' })).toHaveAttribute(
-      'href',
-      '/app?analysis=33333333-3333-4333-8333-333333333333',
     );
     expect(
       screen.queryByRole('menuitem', { name: 'Export' }),

@@ -161,10 +161,8 @@ export function HistoryItemActions({
 
   const openLabel =
     item.status.key === 'ready' || item.status.key === 'partial'
-      ? 'Continue studying'
-      : item.status.key === 'processing'
-        ? 'Continue'
-        : 'Open';
+      ? 'Open'
+      : 'Continue';
 
   return (
     <div className="history-item-actions">
