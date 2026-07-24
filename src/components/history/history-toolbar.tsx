@@ -24,23 +24,11 @@ const sortOptions = [
   ['title-desc', 'Z–A'],
 ] as const satisfies readonly (readonly [HistorySort, string])[];
 
-function appliedFilterCount(query: HistoryQuery): number {
-  return (
-    query.status.length +
-    Number(query.language !== null) +
-    Number(query.source !== null) +
-    Number(query.date !== 'all') +
-    Number(query.favorite)
-  );
-}
-
 export type HistoryToolbarProps = Readonly<{
   query: HistoryQuery;
   onSearch(value: string): void;
   onSortChange(sort: HistorySort): void;
-  filterControls: ReactNode;
-  filtersOpen?: boolean;
-  onFiltersOpenChange?(open: boolean): void;
+  filterControl: ReactNode;
 }>;
 
 export function HistoryToolbar({ query, ...props }: HistoryToolbarProps) {
@@ -51,13 +39,10 @@ function HistoryToolbarState({
   query,
   onSearch,
   onSortChange,
-  filterControls,
-  filtersOpen = false,
-  onFiltersOpenChange,
+  filterControl,
 }: HistoryToolbarProps) {
   const [search, setSearch] = useState(query.q);
   const searchRef = useRef<HTMLInputElement>(null);
-  const count = appliedFilterCount(query);
   const currentSort =
     sortOptions.find(([value]) => value === query.sort)?.[1] ?? 'Newest';
 
@@ -92,18 +77,7 @@ function HistoryToolbarState({
       </form>
 
       <div>
-        <button
-          type="button"
-          aria-label={
-            count === 0 ? 'Filters, none applied' : `Filters, ${count} applied`
-          }
-          aria-expanded={filtersOpen}
-          onClick={() => onFiltersOpenChange?.(!filtersOpen)}
-        >
-          Filters
-          {count > 0 ? <span aria-hidden="true">{count}</span> : null}
-        </button>
-        {filterControls}
+        {filterControl}
 
         <DropdownMenu>
           <DropdownMenuTrigger aria-label={`Sort history: ${currentSort}`}>

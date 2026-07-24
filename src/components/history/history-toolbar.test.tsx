@@ -27,7 +27,7 @@ describe('HistoryToolbar', () => {
         query={query}
         onSearch={onSearch}
         onSortChange={onSortChange}
-        filterControls={null}
+        filterControl={<button type="button">Filters</button>}
       />,
     );
 
@@ -55,7 +55,7 @@ describe('HistoryToolbar', () => {
         query={query}
         onSearch={vi.fn()}
         onSortChange={vi.fn()}
-        filterControls={null}
+        filterControl={<button type="button">Filters</button>}
       />,
     );
 
@@ -75,13 +75,18 @@ describe('HistoryToolbar', () => {
         query={query}
         onSearch={vi.fn()}
         onSortChange={vi.fn()}
-        filterControls={<div>Controlled filters</div>}
+        filterControl={
+          <button type="button" aria-label="Filters, 5 applied">
+            Controlled filters
+          </button>
+        }
       />,
     );
 
     expect(
       screen.getByRole('button', { name: 'Filters, 5 applied' }),
-    ).toHaveTextContent('5');
+    ).toHaveTextContent('Controlled filters');
+    expect(screen.getAllByRole('button', { name: /filters/i })).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'List view' })).toHaveAttribute(
       'aria-pressed',
       'true',

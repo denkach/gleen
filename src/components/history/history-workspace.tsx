@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { HistoryFilters } from '@/components/history/history-filters';
 import { HistoryToolbar } from '@/components/history/history-toolbar';
 import type { HistoryActionResult } from '@/lib/history/actions';
 import {
@@ -19,17 +20,6 @@ import type {
 export type HistoryFilterDraft = Readonly<
   Pick<HistoryQuery, 'status' | 'language' | 'source' | 'date' | 'favorite'>
 >;
-
-export type HistoryFilterControlsProps = Readonly<{
-  draft: HistoryFilterDraft;
-  facets: HistoryFacets;
-  open: boolean;
-  onOpenChange(open: boolean): void;
-  onChange(draft: HistoryFilterDraft): void;
-  onApply(): void;
-  onReset(): void;
-  onClearAll(): void;
-}>;
 
 export type HistoryWorkspaceActions = Readonly<{
   toggleHistoryFavorite(input: unknown): Promise<HistoryActionResult>;
@@ -49,7 +39,6 @@ export type HistoryWorkspaceProps = Readonly<{
   facets: HistoryFacets;
   verifiedDuplicate?: HistoryItem | null;
   actions: HistoryWorkspaceActions;
-  renderFilters?: (props: HistoryFilterControlsProps) => ReactNode;
 }>;
 
 function filterDraftFromQuery(query: HistoryQuery): HistoryFilterDraft {
@@ -85,7 +74,6 @@ export function HistoryWorkspace({
   initialPage,
   query,
   facets,
-  renderFilters,
 }: HistoryWorkspaceProps) {
   return (
     <HistoryWorkspaceState
@@ -93,21 +81,19 @@ export function HistoryWorkspace({
       initialPage={initialPage}
       query={query}
       facets={facets}
-      renderFilters={renderFilters}
     />
   );
 }
 
 type HistoryWorkspaceStateProps = Pick<
   HistoryWorkspaceProps,
-  'initialPage' | 'query' | 'facets' | 'renderFilters'
+  'initialPage' | 'query' | 'facets'
 >;
 
 function HistoryWorkspaceState({
   initialPage,
   query,
   facets,
-  renderFilters,
 }: HistoryWorkspaceStateProps) {
   const router = useRouter();
   const [draft, setDraft] = useState(() => filterDraftFromQuery(query));
@@ -140,27 +126,24 @@ function HistoryWorkspaceState({
     setFiltersOpen(false);
   }
 
-  const filterControls =
-    renderFilters?.({
-      draft,
-      facets,
-      open: filtersOpen,
-      onOpenChange: setFiltersOpen,
-      onChange: setDraft,
-      onApply: applyFilters,
-      onReset: resetFilters,
-      onClearAll: clearAllFilters,
-    }) ?? null;
-
   return (
     <section aria-label="History">
       <HistoryToolbar
         query={query}
         onSearch={search}
         onSortChange={changeSort}
-        filterControls={filterControls}
-        filtersOpen={filtersOpen}
-        onFiltersOpenChange={setFiltersOpen}
+        filterControl={
+          <HistoryFilters
+            draft={draft}
+            facets={facets}
+            open={filtersOpen}
+            onOpenChange={setFiltersOpen}
+            onChange={setDraft}
+            onApply={applyFilters}
+            onReset={resetFilters}
+            onClearAll={clearAllFilters}
+          />
+        }
       />
 
       <div role="status" aria-live="polite" aria-atomic="true">

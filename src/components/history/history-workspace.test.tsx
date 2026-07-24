@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,7 +10,6 @@ vi.mock('next/navigation', () => ({
 
 import {
   HistoryWorkspace,
-  type HistoryFilterControlsProps,
   type HistoryWorkspaceProps,
 } from './history-workspace';
 import type { HistoryQuery } from '@/lib/history/query';
@@ -38,42 +37,7 @@ const actions: HistoryWorkspaceProps['actions'] = {
   markHistoryItemOpened: vi.fn(),
 };
 
-function renderFilters(props: HistoryFilterControlsProps) {
-  return (
-    <div>
-      <output data-testid="draft">{JSON.stringify(props.draft)}</output>
-      <button
-        type="button"
-        onClick={() =>
-          props.onChange({
-            ...props.draft,
-            status: ['failed'],
-            language: null,
-            source: null,
-            date: 'today',
-            favorite: false,
-          })
-        }
-      >
-        Change draft
-      </button>
-      <button type="button" onClick={props.onApply}>
-        Apply
-      </button>
-      <button type="button" onClick={props.onReset}>
-        Reset
-      </button>
-      <button type="button" onClick={props.onClearAll}>
-        Clear all
-      </button>
-    </div>
-  );
-}
-
-function renderWorkspace(
-  queryOverride: HistoryQuery = query,
-  renderFiltersOverride = renderFilters,
-) {
+function renderWorkspace(queryOverride: HistoryQuery = query) {
   return render(
     <HistoryWorkspace
       initialPage={{ items: [], nextCursor: null }}
@@ -81,7 +45,6 @@ function renderWorkspace(
       facets={{ languages: ['en', 'sk'], sources: ['YouTube'] }}
       verifiedDuplicate={null}
       actions={actions}
-      renderFilters={renderFiltersOverride}
     />,
   );
 }
@@ -116,20 +79,65 @@ describe('HistoryWorkspace URL state', () => {
     const user = userEvent.setup();
     renderWorkspace();
 
-    await user.click(screen.getByRole('button', { name: 'Change draft' }));
-    expect(push).not.toHaveBeenCalled();
-    expect(screen.getByTestId('draft')).toHaveTextContent(
-      '"status":["failed"]',
+    const filterTrigger = screen.getByRole('button', {
+      name: 'Filters, 5 applied',
+    });
+    await user.click(filterTrigger);
+    const desktopPanel = screen.getByRole('region', {
+      name: 'Filter results',
+    });
+
+    await user.click(
+      within(desktopPanel).getByRole('checkbox', { name: 'Failed' }),
     );
-
-    await user.click(screen.getByRole('button', { name: 'Reset' }));
+    await user.click(
+      within(desktopPanel).getByRole('checkbox', { name: 'Ready' }),
+    );
+    await user.selectOptions(
+      within(desktopPanel).getByRole('combobox', { name: 'Language' }),
+      '',
+    );
+    await user.selectOptions(
+      within(desktopPanel).getByRole('combobox', { name: 'Source' }),
+      '',
+    );
+    await user.selectOptions(
+      within(desktopPanel).getByRole('combobox', { name: 'Date range' }),
+      'today',
+    );
+    await user.click(
+      within(desktopPanel).getByRole('checkbox', {
+        name: 'Show favorites only',
+      }),
+    );
     expect(push).not.toHaveBeenCalled();
-    expect(screen.getByTestId('draft')).toHaveTextContent('"status":[]');
-    expect(screen.getByTestId('draft')).toHaveTextContent('"language":null');
-    expect(screen.getByTestId('draft')).toHaveTextContent('"date":"all"');
 
-    await user.click(screen.getByRole('button', { name: 'Change draft' }));
-    await user.click(screen.getByRole('button', { name: 'Apply' }));
+    await user.click(
+      within(desktopPanel).getByRole('button', { name: 'Reset' }),
+    );
+    expect(push).not.toHaveBeenCalled();
+    expect(
+      within(desktopPanel).getByRole('checkbox', { name: 'Failed' }),
+    ).not.toBeChecked();
+    expect(
+      within(desktopPanel).getByRole('combobox', { name: 'Language' }),
+    ).toHaveValue('');
+    expect(
+      within(desktopPanel).getByRole('combobox', { name: 'Date range' }),
+    ).toHaveValue('all');
+
+    await user.click(
+      within(desktopPanel).getByRole('checkbox', { name: 'Failed' }),
+    );
+    await user.selectOptions(
+      within(desktopPanel).getByRole('combobox', { name: 'Date range' }),
+      'today',
+    );
+    await user.click(
+      within(desktopPanel).getByRole('button', {
+        name: 'Apply filters (2)',
+      }),
+    );
     expect(push).toHaveBeenCalledWith(
       '/app/history?q=prisms&status=failed&date=today&sort=recent',
     );
@@ -139,8 +147,15 @@ describe('HistoryWorkspace URL state', () => {
     const user = userEvent.setup();
     renderWorkspace();
 
-    await user.click(screen.getByRole('button', { name: 'Change draft' }));
-    await user.click(screen.getByRole('button', { name: 'Clear all' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Filters, 5 applied' }),
+    );
+    await user.click(
+      within(screen.getByRole('region', { name: 'Filter results' })).getByRole(
+        'button',
+        { name: 'Clear all' },
+      ),
+    );
 
     expect(push).toHaveBeenCalledWith('/app/history?q=prisms&sort=recent');
   });
@@ -148,7 +163,9 @@ describe('HistoryWorkspace URL state', () => {
   it('resynchronizes search and filter drafts from new query props for Back/Forward', async () => {
     const user = userEvent.setup();
     const view = renderWorkspace();
-    await user.click(screen.getByRole('button', { name: 'Change draft' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Filters, 5 applied' }),
+    );
 
     const restoredQuery: HistoryQuery = {
       ...query,
@@ -167,22 +184,29 @@ describe('HistoryWorkspace URL state', () => {
         facets={{ languages: ['en', 'sk'], sources: ['YouTube'] }}
         verifiedDuplicate={null}
         actions={actions}
-        renderFilters={renderFilters}
       />,
     );
 
     expect(
       screen.getByRole('searchbox', { name: 'Search history' }),
     ).toHaveValue('restored');
-    expect(screen.getByTestId('draft')).toHaveTextContent(
-      '"status":["processing"]',
+    await user.click(
+      screen.getByRole('button', { name: 'Filters, 3 applied' }),
     );
-    expect(screen.getByTestId('draft')).toHaveTextContent('"language":"sk"');
+    const restoredPanel = screen.getByRole('region', {
+      name: 'Filter results',
+    });
+    expect(
+      within(restoredPanel).getByRole('checkbox', { name: 'Processing' }),
+    ).toBeChecked();
+    expect(
+      within(restoredPanel).getByRole('combobox', { name: 'Language' }),
+    ).toHaveValue('sk');
   });
 
   it('never navigates from the disabled grid control and announces results politely', async () => {
     const user = userEvent.setup();
-    renderWorkspace(query, () => <></>);
+    renderWorkspace(query);
 
     const status = screen.getByRole('status');
     expect(status).toHaveAttribute('aria-live', 'polite');
