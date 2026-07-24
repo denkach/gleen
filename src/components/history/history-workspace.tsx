@@ -178,6 +178,7 @@ function HistoryWorkspaceState({
     const failureMessage = 'We could not start another analysis. Try again.';
     reanalysisPendingRef.current = true;
     setReanalyzing(true);
+    let navigationStarted = false;
     try {
       const result = await actions.reanalyzeHistoryDuplicate({
         analysisId: verifiedDuplicate.id,
@@ -196,11 +197,14 @@ function HistoryWorkspaceState({
         return;
       }
       router.push(result.data.redirectTo);
+      navigationStarted = true;
     } catch {
       setAnnouncement(failureMessage);
     } finally {
-      reanalysisPendingRef.current = false;
-      setReanalyzing(false);
+      if (!navigationStarted) {
+        reanalysisPendingRef.current = false;
+        setReanalyzing(false);
+      }
     }
   }
 

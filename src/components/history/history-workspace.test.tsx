@@ -147,6 +147,58 @@ describe('HistoryWorkspace URL state', () => {
     );
   });
 
+  it('stays locked after a valid reanalysis redirect until navigation unmounts', async () => {
+    const user = userEvent.setup();
+    let resolveReanalysis:
+      | ((
+          result: Awaited<ReturnType<typeof actions.reanalyzeHistoryDuplicate>>,
+        ) => void)
+      | undefined;
+    vi.mocked(actions.reanalyzeHistoryDuplicate).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveReanalysis = resolve;
+        }),
+    );
+
+    render(
+      <HistoryWorkspace
+        initialPage={{ items: [], nextCursor: null }}
+        query={query}
+        facets={{ languages: [], sources: [] }}
+        verifiedDuplicate={historyItem}
+        actions={actions}
+      />,
+    );
+
+    const reanalyze = screen.getByRole('button', {
+      name: 'Analyze another version',
+    });
+    const form = reanalyze.closest('form')!;
+    await user.click(reanalyze);
+
+    await act(async () => {
+      resolveReanalysis?.({
+        ok: true,
+        data: {
+          redirectTo: '/app/video/33333333-3333-4333-8333-333333333333',
+        },
+      });
+    });
+
+    const pending = screen.getByRole('button', {
+      name: 'Starting another analysis…',
+    });
+    expect(pending).toBeDisabled();
+    await user.click(pending);
+    fireEvent.submit(form);
+    expect(actions.reanalyzeHistoryDuplicate).toHaveBeenCalledOnce();
+    expect(push).toHaveBeenCalledOnce();
+    expect(push).toHaveBeenCalledWith(
+      '/app/video/33333333-3333-4333-8333-333333333333',
+    );
+  });
+
   it('announces rejected duplicate reanalysis and never follows an unsafe redirect', async () => {
     const user = userEvent.setup();
     let rejectReanalysis: ((reason: unknown) => void) | undefined;
