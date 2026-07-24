@@ -128,7 +128,7 @@ export function createIntakeActions(dependencies: IntakeActionDependencies) {
               status: 'ready',
               rawUrl,
               configuration: parsed.data,
-              redirectTo: `${resultPathPrefix}/${result.intake.id}`,
+              analysisId: result.intake.id,
             };
       } catch (error) {
         return errorState(rawUrl, configuration, codeFrom(error));

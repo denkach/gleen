@@ -4,6 +4,8 @@ node_modules
 coverage
 playwright-report
 test-results
+src/app/.well-known/workflow/**/*.js
+src/app/.well-known/workflow/**/*.json
 supabase/.temp/**
 design/reference-v3/**
 design/screenshots/**

@@ -86,4 +86,23 @@ describe('auth actions', () => {
       },
     });
   });
+
+  it('preserves a safe continuation for sign-up magic links', async () => {
+    auth.signInWithOtp.mockResolvedValue({ data: {}, error: null });
+    const { sendMagicLink } = await import('./actions');
+    const form = new FormData();
+    form.set('email', 'new@example.com');
+    form.set('intent', 'sign-up');
+    form.set('next', '/app?continuation=normalized');
+    await sendMagicLink({ status: 'idle' }, form);
+    expect(auth.signInWithOtp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: {
+          emailRedirectTo:
+            'https://gleen.example/auth/callback?next=%2Fapp%3Fcontinuation%3Dnormalized',
+          shouldCreateUser: true,
+        },
+      }),
+    );
+  });
 });

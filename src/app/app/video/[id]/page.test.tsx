@@ -3,15 +3,44 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 
-const { findOwned, getUser, notFound, redirect } = vi.hoisted(() => ({
+const {
+  findOwned,
+  findOwnedState,
+  findOwnedSnapshot,
+  getOnboardingState,
+  getUser,
+  normalizeResultWorkspace,
+  notFound,
+  redirect,
+  resultWorkspace,
+  saveFlashcardReview,
+  savePlaybackPosition,
+  saveResultArtifact,
+  saveResultPreference,
+  saveResultTitle,
+  createResultShare,
+  revokeResultShare,
+} = vi.hoisted(() => ({
   findOwned: vi.fn(),
+  findOwnedState: vi.fn(),
+  findOwnedSnapshot: vi.fn(),
+  getOnboardingState: vi.fn(),
   getUser: vi.fn(),
+  normalizeResultWorkspace: vi.fn(),
   notFound: vi.fn((): never => {
     throw new Error('NEXT_NOT_FOUND');
   }),
   redirect: vi.fn((path: string): never => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
+  resultWorkspace: vi.fn(),
+  saveFlashcardReview: vi.fn(),
+  savePlaybackPosition: vi.fn(),
+  saveResultArtifact: vi.fn(),
+  saveResultPreference: vi.fn(),
+  saveResultTitle: vi.fn(),
+  createResultShare: vi.fn(),
+  revokeResultShare: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ notFound, redirect }));
@@ -21,7 +50,43 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/youtube-intake/supabase-repository', () => ({
   createSupabaseIntakeRepository: vi.fn(() => ({ findOwned })),
 }));
+vi.mock('@/lib/analysis-pipeline/supabase-repository', () => ({
+  createSupabaseAnalysisRepository: vi.fn(() => ({ findOwnedSnapshot })),
+}));
+vi.mock('@/lib/result-workspace/user-state-repository', () => ({
+  createSupabaseResultUserStateRepository: vi.fn(() => ({
+    findOwned: findOwnedState,
+  })),
+}));
+vi.mock('@/lib/onboarding/repository', () => ({ getOnboardingState }));
+vi.mock('@/lib/onboarding/supabase-storage', () => ({
+  createSupabaseOnboardingStorage: vi.fn(() => 'profile-storage'),
+}));
+vi.mock('@/components/app-shell/analysis-processing-screen', () => ({
+  AnalysisProcessingScreen: ({ intake }: { intake: AnalysisIntake }) => (
+    <h1>{intake.title}</h1>
+  ),
+}));
+vi.mock('@/components/result-workspace/result-workspace', () => ({
+  ResultWorkspace: (props: { model: { source: { title: string } } }) => {
+    resultWorkspace(props);
+    return <div data-testid="result-workspace">{props.model.source.title}</div>;
+  },
+}));
+vi.mock('@/lib/result-workspace/presentation', () => ({
+  normalizeResultWorkspace,
+}));
+vi.mock('@/lib/result-workspace/actions', () => ({
+  createResultShare,
+  revokeResultShare,
+  saveResultTitle,
+  saveResultArtifact,
+  saveResultPreference,
+  savePlaybackPosition,
+  saveFlashcardReview,
+}));
 
+import { resultCopy } from '@/lib/result-workspace/copy';
 import VideoIntakePage, { generateMetadata } from './page';
 
 const intake = {
@@ -49,22 +114,165 @@ const intake = {
   createdAt: '2026-07-12T10:00:00.000Z',
 } satisfies AnalysisIntake;
 
+const snapshot = {
+  job: {
+    id: 'job-1',
+    analysisId: intake.id,
+    userId: 'user-1',
+    workflowRunId: null,
+    status: 'running',
+    stage: 'transcript',
+    attempt: 1,
+    revision: 2,
+    errorCode: null,
+    startedAt: null,
+    completedAt: null,
+    createdAt: '2026-07-17T00:00:00Z',
+    updatedAt: '2026-07-17T00:00:00Z',
+  },
+  events: [],
+  artifacts: [],
+  usageReservation: {
+    id: 'reservation-1',
+    jobId: 'job-1',
+    userId: 'user-1',
+    status: 'reserved',
+    updatedAt: '2026-07-17T00:00:00Z',
+  },
+} as const;
+
+const userState = {
+  favorite: true,
+  playbackPositionMs: 12_000,
+  lastArtifact: 'flashcards' as const,
+  lastStudyAction: 'flashcards_reviewed' as const,
+  reviews: [],
+};
+
 describe('owned intake readiness page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
     findOwned.mockResolvedValue(intake);
+    findOwnedSnapshot.mockResolvedValue(snapshot);
+    findOwnedState.mockResolvedValue(userState);
+    getOnboardingState.mockResolvedValue({
+      ok: true,
+      data: {
+        interfaceLocale: 'de',
+        outputLocale: 'en',
+        summaryPreset: 'balanced',
+        flashcardPreset: 18,
+        onboardingStep: 3,
+        onboardingCompletedAt: '2026-07-12T10:00:00.000Z',
+      },
+    });
+    normalizeResultWorkspace.mockReturnValue({
+      source: { title: intake.title },
+    });
   });
 
-  test('loads the asynchronously addressed owned intake', async () => {
+  test.each(['complete', 'partial'] as const)(
+    'renders a normalized workspace directly for a %s terminal snapshot',
+    async (status) => {
+      const terminalSnapshot = {
+        ...snapshot,
+        job: {
+          ...snapshot.job,
+          status,
+          stage: status === 'complete' ? 'complete' : 'artifacts',
+        },
+      };
+      findOwnedSnapshot.mockResolvedValue(terminalSnapshot);
+
+      render(
+        await VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
+      );
+
+      expect(normalizeResultWorkspace).toHaveBeenCalledWith(
+        intake,
+        terminalSnapshot,
+        userState,
+      );
+      expect(screen.getByTestId('result-workspace')).toHaveTextContent(
+        intake.title,
+      );
+      expect(resultWorkspace).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          copy: resultCopy.de,
+          saveTitle: saveResultTitle,
+          saveArtifact: saveResultArtifact,
+          savePreference: saveResultPreference,
+          savePlaybackPosition,
+          saveFlashcardReview,
+          createShare: createResultShare,
+          revokeShare: revokeResultShare,
+        }),
+      );
+    },
+  );
+
+  test('falls back to English copy when profile storage is unavailable', async () => {
+    findOwnedSnapshot.mockResolvedValue({
+      ...snapshot,
+      job: { ...snapshot.job, status: 'complete', stage: 'complete' },
+    });
+    getOnboardingState.mockResolvedValue({ ok: false, code: 'storage' });
+
     render(
       await VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
     );
 
+    expect(resultWorkspace).toHaveBeenLastCalledWith(
+      expect.objectContaining({ copy: resultCopy.en }),
+    );
+  });
+
+  test('renders with unavailable owner state without fabricating progress', async () => {
+    const terminalSnapshot = {
+      ...snapshot,
+      job: { ...snapshot.job, status: 'complete', stage: 'complete' },
+    };
+    findOwnedSnapshot.mockResolvedValue(terminalSnapshot);
+    findOwnedState.mockRejectedValue(new Error('state unavailable'));
+
+    render(
+      await VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
+    );
+
+    expect(normalizeResultWorkspace).toHaveBeenCalledWith(
+      intake,
+      terminalSnapshot,
+      null,
+    );
+    expect(screen.getByTestId('result-workspace')).toBeVisible();
+  });
+
+  test.each(['queued', 'running', 'failed'] as const)(
+    'redirects a %s snapshot to the normalized resumable analysis route',
+    async (status) => {
+      findOwnedSnapshot.mockResolvedValue({
+        ...snapshot,
+        job: { ...snapshot.job, status },
+      });
+      await expect(
+        VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
+      ).rejects.toThrow(
+        `NEXT_REDIRECT:/app?analysis=${encodeURIComponent(intake.id)}`,
+      );
+      expect(redirect).toHaveBeenCalledWith(
+        `/app?analysis=${encodeURIComponent(intake.id)}`,
+      );
+      expect(normalizeResultWorkspace).not.toHaveBeenCalled();
+    },
+  );
+
+  test('loads the asynchronously addressed owned intake before redirecting', async () => {
+    await expect(
+      VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
+    ).rejects.toThrow('NEXT_REDIRECT');
     expect(findOwned).toHaveBeenCalledWith('user-1', intake.id);
-    expect(
-      screen.getByRole('heading', { name: intake.title }),
-    ).toBeInTheDocument();
+    expect(findOwnedSnapshot).toHaveBeenCalledWith('user-1', intake.id);
   });
 
   test('redirects an expired session before querying intake data', async () => {

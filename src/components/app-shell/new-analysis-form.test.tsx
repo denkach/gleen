@@ -20,6 +20,22 @@ const routerPush = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: routerPush }),
 }));
+vi.mock('./inline-analysis-processing', () => ({
+  InlineAnalysisProcessing: ({
+    analysisId,
+    selectedArtifactKinds,
+  }: {
+    analysisId: string;
+    selectedArtifactKinds: readonly string[];
+  }) => (
+    <div
+      data-testid="analyze-processing-visual"
+      data-analysis-state="queued"
+      data-analysis-id={analysisId}
+      data-selected-artifacts={selectedArtifactKinds.join(',')}
+    />
+  ),
+}));
 
 afterEach(() => {
   routerPush.mockClear();
@@ -49,6 +65,74 @@ function renderForm(
 }
 
 describe('NewAnalysisForm', () => {
+  test('threads the selected artifact configuration into durable processing', () => {
+    const initial = createInitialIntakeActionState(defaults);
+    render(
+      <NewAnalysisForm
+        initialState={{
+          ...initial,
+          status: 'ready',
+          analysisId: 'analysis-1',
+          configuration: {
+            ...initial.configuration,
+            artifacts: ['summary', 'transcript'],
+          },
+        }}
+      />,
+    );
+    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
+      'data-selected-artifacts',
+      'summary,transcript',
+    );
+  });
+  test('cleans a continuation from the URL before one automatic submit', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/app?continuation=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ',
+    );
+    const action = vi.fn(
+      async (state: IntakeActionState, formData: FormData) => {
+        void formData;
+        expect(window.location.pathname).toBe('/app');
+        expect(window.location.search).toBe('');
+        return state;
+      },
+    );
+    const initialState = {
+      ...createInitialIntakeActionState(defaults),
+      rawUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    };
+
+    const { rerender } = render(
+      <NewAnalysisForm
+        initialState={initialState}
+        action={action}
+        reanalyzeAction={action}
+        autoSubmit
+      />,
+    );
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <NewAnalysisForm
+        initialState={initialState}
+        action={action}
+        reanalyzeAction={action}
+        autoSubmit
+      />,
+    );
+    await act(async () => Promise.resolve());
+    expect(action).toHaveBeenCalledTimes(1);
+    const formData = action.mock.calls[0]?.[1] as FormData;
+    expect(formData.get('rawUrl')).toBe(initialState.rawUrl);
+    expect(formData.getAll('artifacts')).toEqual([
+      'summary',
+      'timestamps',
+      'transcript',
+    ]);
+  });
+
   test('persists output language and summary preset and submits each named value once', async () => {
     const user = userEvent.setup();
     const action = vi.fn(
@@ -345,7 +429,7 @@ describe('NewAnalysisForm', () => {
     );
   });
 
-  test('shows a four-second processing, completion, and exit handoff before navigation', async () => {
+  test('keeps queued processing inline without router navigation or a second spectrum', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(10_000);
     let resolveAction!: (state: IntakeActionState) => void;
@@ -369,44 +453,15 @@ describe('NewAnalysisForm', () => {
       resolveAction({
         ...createInitialIntakeActionState(defaults),
         status: 'ready',
-        redirectTo: '/app/video/ready-123',
+        analysisId: '550e8400-e29b-41d4-a716-446655440000',
       });
       await vi.runAllTicks();
     });
     expect(routerPush).not.toHaveBeenCalled();
-
-    await act(async () => vi.advanceTimersByTime(2_749));
-    expect(routerPush).not.toHaveBeenCalled();
-    await act(async () => vi.advanceTimersByTime(1));
-    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
-      'data-analysis-state',
-      'complete',
-    );
-    expect(routerPush).not.toHaveBeenCalled();
-
-    expect(screen.getByText('Your artifacts are ready')).toBeInTheDocument();
-    expect(
-      screen.getByText('Opening the result workspace'),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('analyze-processing-visual')).not.toHaveAttribute(
-      'data-analysis-exiting',
-      'true',
-    );
-    await act(async () => vi.advanceTimersByTime(399));
-    expect(routerPush).not.toHaveBeenCalled();
-    await act(async () => vi.advanceTimersByTime(1));
-    expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
-      'data-analysis-exiting',
-      'true',
-    );
-    await act(async () => vi.advanceTimersByTime(599));
-    expect(routerPush).not.toHaveBeenCalled();
-
-    await act(async () => vi.advanceTimersByTime(1));
-    expect(routerPush).toHaveBeenCalledWith('/app/video/ready-123');
+    expect(screen.getAllByTestId('analyze-processing-visual')).toHaveLength(1);
   });
 
-  test('navigates immediately on readiness when reduced motion is requested', async () => {
+  test('does not navigate early when reduced motion is requested', async () => {
     vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }));
     let resolveAction!: (state: IntakeActionState) => void;
     const action = vi.fn(
@@ -427,11 +482,11 @@ describe('NewAnalysisForm', () => {
       resolveAction({
         ...createInitialIntakeActionState(defaults),
         status: 'ready',
-        redirectTo: '/app/video/ready-123',
+        analysisId: '550e8400-e29b-41d4-a716-446655440000',
       }),
     );
 
-    expect(routerPush).toHaveBeenCalledWith('/app/video/ready-123');
+    expect(routerPush).not.toHaveBeenCalled();
   });
 
   test('cancels a pending readiness navigation when the form unmounts', async () => {

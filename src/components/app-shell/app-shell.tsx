@@ -15,6 +15,13 @@ import { AppIcon } from './app-icon';
 
 const unavailableDescriptionId = 'app-shell-unavailable-description';
 
+function isResultVideoRoute(pathname: string): boolean {
+  return (
+    /^\/app\/video\/[^/]+\/?$/.test(pathname) ||
+    /^\/app-shell-fixture\/app\/video\/[^/]+\/?$/.test(pathname)
+  );
+}
+
 type AppShellProps = Readonly<{
   children: React.ReactNode;
   identity: AppIdentity;
@@ -59,6 +66,7 @@ export function AppShell({
   const currentItem =
     appNavigation.find((item) => isAppNavigationItemActive(pathname, item)) ??
     appNavigation[0];
+  const resultVideoRoute = isResultVideoRoute(pathname);
 
   return (
     <div className="app-shell">
@@ -135,7 +143,11 @@ export function AppShell({
         </main>
       </div>
 
-      <nav className="bottom-nav" aria-label="Mobile navigation">
+      <nav
+        className="bottom-nav"
+        aria-label="Mobile navigation"
+        data-result-video-route={resultVideoRoute || undefined}
+      >
         {appNavigation.map((item) => {
           const active = isAppNavigationItemActive(pathname, item);
           return (

@@ -117,10 +117,18 @@ export function createDevelopmentIntakeFixture(
       createdAt: '2026-07-12T12:00:00.000Z',
     }),
   };
+  const pipeline = {
+    createAndStart: async () => undefined,
+  };
   return {
     userId,
     configuration,
     saved: fixtureSavedIntake,
-    service: createIntakeService({ metadata, transcript, repository }),
+    service: createIntakeService({
+      metadata,
+      transcript,
+      repository,
+      pipeline,
+    }),
   };
 }

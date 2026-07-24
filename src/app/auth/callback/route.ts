@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 import { safeInternalRedirect } from '@/lib/auth/redirects';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createCallbackSupabaseClient } from '@/lib/supabase/callback';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   const recovery = url.searchParams.get('type') === 'recovery';
@@ -17,7 +17,8 @@ export async function GET(request: Request) {
     );
   }
 
-  const supabase = await createServerSupabaseClient();
+  const response = NextResponse.redirect(new URL(next, url.origin));
+  const supabase = createCallbackSupabaseClient(request, response);
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
@@ -26,5 +27,5 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.redirect(new URL(next, url.origin));
+  return response;
 }

@@ -14,6 +14,8 @@ type SupabaseResult = Readonly<{
 }>;
 
 type FilterQuery = Readonly<{
+  select(columns?: string): FilterQuery;
+  update(values: Record<string, unknown>): FilterQuery;
   eq(column: string, value: unknown): FilterQuery;
   neq(column: string, value: unknown): FilterQuery;
   order(column: string, options: { ascending: boolean }): FilterQuery;
@@ -23,6 +25,7 @@ type FilterQuery = Readonly<{
 
 type TableQuery = Readonly<{
   select(columns?: string): FilterQuery;
+  update(values: Record<string, unknown>): FilterQuery;
   insert(values: Record<string, unknown>): Readonly<{
     select(columns?: string): Readonly<{
       single(): PromiseLike<SupabaseResult>;
@@ -39,6 +42,17 @@ export type SupabaseIntakeClient = Readonly<{
       refreshed_snapshot: Record<string, unknown>;
     }>,
   ): PromiseLike<SupabaseResult>;
+}>;
+
+export type ResultTitleRepository = Readonly<{
+  saveOwnedTitle(
+    input: Readonly<{
+      userId: string;
+      analysisId: string;
+      title: string;
+      expectedUpdatedAt: string;
+    }>,
+  ): Promise<string | null>;
 }>;
 
 const transcriptSegmentSchema = z.object({
@@ -68,6 +82,7 @@ const intakeRowSchema = z.object({
   status: z.enum(['ready', 'processing', 'complete', 'failed']),
   reanalysis_of: z.uuid().nullable(),
   created_at: z.iso.datetime({ offset: true }),
+  updated_at: z.iso.datetime({ offset: true }),
 });
 
 export class IntakeRepositoryError extends Error {
@@ -79,7 +94,7 @@ export class IntakeRepositoryError extends Error {
   }
 }
 
-function parseIntakeRow(input: unknown): AnalysisIntake {
+export function parseIntakeRow(input: unknown): AnalysisIntake {
   const parsed = intakeRowSchema.safeParse(input);
   if (!parsed.success) throw new IntakeRepositoryError();
   const row = parsed.data;
@@ -107,6 +122,7 @@ function parseIntakeRow(input: unknown): AnalysisIntake {
     status: row.status,
     reanalysisOf: row.reanalysis_of,
     createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -144,7 +160,7 @@ function unwrapRequired(result: SupabaseResult): AnalysisIntake {
 
 export function createSupabaseIntakeRepository(
   client: SupabaseIntakeClient,
-): IntakeRepository {
+): IntakeRepository & ResultTitleRepository {
   const findReusable: IntakeRepository['findReusable'] = async (
     userId,
     duplicateKey,
@@ -163,6 +179,19 @@ export function createSupabaseIntakeRepository(
 
   return {
     findReusable,
+
+    async saveOwnedTitle(input): Promise<string | null> {
+      const result = await client
+        .from('analysis_intakes')
+        .update({ title: input.title })
+        .eq('id', input.analysisId)
+        .eq('user_id', input.userId)
+        .eq('updated_at', input.expectedUpdatedAt)
+        .select('updated_at')
+        .maybeSingle();
+      const data = ensureUpdatedAt(result);
+      return data;
+    },
 
     async insertReady(input) {
       const result = await client
@@ -202,4 +231,14 @@ export function createSupabaseIntakeRepository(
       return unwrapRequired(result);
     },
   };
+}
+
+function ensureUpdatedAt(result: SupabaseResult): string | null {
+  if (result.error) throw new IntakeRepositoryError();
+  if (result.data === null) return null;
+  const parsed = z
+    .object({ updated_at: z.iso.datetime({ offset: true }) })
+    .safeParse(result.data);
+  if (!parsed.success) throw new IntakeRepositoryError();
+  return parsed.data.updated_at;
 }

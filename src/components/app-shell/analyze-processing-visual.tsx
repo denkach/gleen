@@ -1,10 +1,27 @@
+'use client';
+
 import {
   artifactRailDefinitions,
   getAnalysisVisualPresentation,
   orderedAnalysisStages,
   type AnalysisVisualState,
 } from '@/lib/analyze-processing/analysis-visual-state';
-import type { ReactNode } from 'react';
+import {
+  defaultArtifactSelection,
+  type IntakeConfiguration,
+} from '@/lib/youtube-intake/configuration';
+import { useEffect, useRef, type ReactNode } from 'react';
+
+type ArtifactRailState = 'queued' | 'ready' | 'failed' | 'not selected';
+type ArtifactKind = IntakeConfiguration['artifacts'][number];
+type ArtifactRailId = (typeof artifactRailDefinitions)[number]['id'];
+
+const artifactKindByRail = {
+  summary: 'summary',
+  timestamps: 'timestamps',
+  flashcards: 'flashcards',
+  export: 'transcript',
+} as const satisfies Record<ArtifactRailId, ArtifactKind>;
 
 export type AnalyzeProcessingVisualProps = Readonly<{
   state: AnalysisVisualState;
@@ -12,6 +29,10 @@ export type AnalyzeProcessingVisualProps = Readonly<{
   submittedUrl: string;
   errorMessage?: string;
   onRetry?: () => void;
+  retryDisabled?: boolean;
+  controls?: ReactNode;
+  artifactStates?: Readonly<Record<string, ArtifactRailState>>;
+  selectedArtifactKinds?: readonly IntakeConfiguration['artifacts'][number][];
   idleContent?: ReactNode;
 }>;
 
@@ -21,11 +42,37 @@ export function AnalyzeProcessingVisual({
   submittedUrl,
   errorMessage,
   onRetry,
+  retryDisabled = false,
+  controls,
+  artifactStates,
+  selectedArtifactKinds = defaultArtifactSelection,
   idleContent,
 }: AnalyzeProcessingVisualProps) {
   const presentation = getAnalysisVisualPresentation(state);
   const isError = presentation.mode === 'error';
   const isComplete = presentation.mode === 'complete';
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const previousMode = useRef<'idle' | 'processing' | 'complete' | 'error'>(
+    'idle',
+  );
+  const selectedArtifacts = new Set(selectedArtifactKinds);
+  const railState = (railId: ArtifactRailId): ArtifactRailState => {
+    const artifactKind = artifactKindByRail[railId];
+    return selectedArtifacts.has(artifactKind)
+      ? (artifactStates?.[artifactKind] ?? (isComplete ? 'ready' : 'queued'))
+      : 'not selected';
+  };
+
+  useEffect(() => {
+    const previous = previousMode.current;
+    previousMode.current = presentation.mode;
+    if (presentation.mode === 'error' && previous !== 'error') {
+      terminalRef.current?.focus();
+    } else if (presentation.mode === 'processing' && previous === 'idle') {
+      titleRef.current?.focus();
+    }
+  }, [presentation.mode]);
 
   return (
     <div
@@ -57,10 +104,24 @@ export function AnalyzeProcessingVisual({
             <div className="analyze-status-kicker">
               {isError ? 'ANALYSIS INTERRUPTED' : 'ANALYSIS IN PROGRESS'}
             </div>
-            <h2 className="analyze-status-title">{presentation.title}</h2>
-            <div className="analyze-status-subtitle">
+            <h2 ref={titleRef} tabIndex={-1} className="analyze-status-title">
+              {presentation.title}
+            </h2>
+            <div
+              ref={terminalRef}
+              tabIndex={isError ? -1 : undefined}
+              className="analyze-status-subtitle"
+            >
               {errorMessage ?? presentation.subtitle}
             </div>
+            <ul className="sr-only" aria-label="Artifact status">
+              {artifactRailDefinitions.map((rail) => (
+                <li key={rail.id}>
+                  {rail.label.charAt(0) + rail.label.slice(1).toLowerCase()}{' '}
+                  {railState(rail.id)}
+                </li>
+              ))}
+            </ul>
             <div className="analyze-steps">
               {orderedAnalysisStages.map((stage) => {
                 const stageState = presentation.completedStages.includes(
@@ -84,14 +145,17 @@ export function AnalyzeProcessingVisual({
               You can safely leave this page. We’ll save the result to your
               history.
             </div>
-            {isError && onRetry ? (
+            {controls ? (
+              <div className="analyze-controls">{controls}</div>
+            ) : isError && onRetry ? (
               <div className="analyze-controls">
                 <button
                   className="analyze-control"
                   type="button"
                   onClick={onRetry}
+                  disabled={retryDisabled}
                 >
-                  Try again
+                  {retryDisabled ? 'Retrying…' : 'Try again'}
                 </button>
               </div>
             ) : null}
@@ -105,7 +169,7 @@ export function AnalyzeProcessingVisual({
                   <div className={`analyze-rail ${rail.tone}`} key={rail.id}>
                     <span>{rail.label}</span>
                     <span className="analyze-track" />
-                    <small>{isComplete ? 'ready' : 'queued'}</small>
+                    <small>{railState(rail.id)}</small>
                   </div>
                 ))}
               </div>

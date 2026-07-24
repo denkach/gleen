@@ -9,6 +9,7 @@ export default defineConfig([
     '.next/**',
     'out/**',
     'build/**',
+    'src/app/.well-known/workflow/**',
     'next-env.d.ts',
     'design/reference-v3/**',
     'design/screenshots/**',

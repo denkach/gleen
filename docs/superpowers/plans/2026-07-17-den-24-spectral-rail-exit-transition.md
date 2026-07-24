@@ -23,10 +23,12 @@
 ### Task 1: Production visual timeline
 
 **Files:**
+
 - Modify: `src/components/app-shell/new-analysis-form.tsx`
 - Test: `src/components/app-shell/new-analysis-form.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `AnalysisVisualState` and the server action's `redirectTo` result.
 - Produces: `isExiting: boolean` passed to `AnalyzeProcessingVisual`.
 
@@ -61,11 +63,13 @@ Expected: all form tests PASS.
 ### Task 2: Restrained exit treatment
 
 **Files:**
+
 - Modify: `src/components/app-shell/analyze-processing-visual.tsx`
 - Modify: `src/styles/app-shell-reference.css`
 - Test: `src/components/app-shell/analyze-processing-visual.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `isExiting?: boolean` from `NewAnalysisForm`.
 - Produces: `data-analysis-exiting="true"` and `.analyze-shell.exiting` for styling and browser verification.
 
@@ -92,9 +96,11 @@ Expected: all visual tests PASS.
 ### Task 3: End-to-end verification
 
 **Files:**
+
 - Modify: `tests/e2e/analyze-processing.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `data-analysis-state` and `data-analysis-exiting` browser contracts.
 - Produces: regression coverage for the completion-to-result handoff.
 

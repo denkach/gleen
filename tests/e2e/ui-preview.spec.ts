@@ -40,6 +40,7 @@ for (const viewport of [
       path: testInfo.outputPath(
         `${viewport.name}-${viewport.width}x${viewport.height}.png`,
       ),
+      caret: 'initial',
       fullPage: true,
     });
   });

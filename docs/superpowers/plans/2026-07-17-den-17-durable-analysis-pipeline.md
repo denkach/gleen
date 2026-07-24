@@ -48,12 +48,14 @@
 ### Task 1: Persistent Pipeline Contract
 
 **Files:**
+
 - Create: `supabase/migrations/202607170001_create_analysis_pipeline.sql`
 - Create: `src/lib/analysis-pipeline/domain.ts`
 - Create: `src/lib/analysis-pipeline/domain.test.ts`
 - Create: `src/lib/analysis-pipeline/migration.test.ts`
 
 **Interfaces:**
+
 - Produces: `AnalysisJob`, `AnalysisJobEvent`, `AnalysisArtifact`, `UsageReservation`, `AnalysisSnapshot`, `parseAnalysisSnapshot(input: unknown): AnalysisSnapshot`.
 - Consumes: existing `analysis_intakes.id`, `analysis_intakes.user_id`, and selected artifact values.
 
@@ -64,7 +66,9 @@
 import { parseAnalysisSnapshot } from './domain';
 
 it('parses a partial snapshot with one ready and one failed artifact', () => {
-  const snapshot = parseAnalysisSnapshot(snapshotRowFixture({ status: 'partial' }));
+  const snapshot = parseAnalysisSnapshot(
+    snapshotRowFixture({ status: 'partial' }),
+  );
   expect(snapshot.job.status).toBe('partial');
   expect(snapshot.artifacts.map(({ kind, status }) => [kind, status])).toEqual([
     ['summary', 'ready'],
@@ -73,7 +77,9 @@ it('parses a partial snapshot with one ready and one failed artifact', () => {
 });
 
 it('rejects content on a failed artifact', () => {
-  expect(() => parseAnalysisSnapshot(failedArtifactWithContentFixture())).toThrow();
+  expect(() =>
+    parseAnalysisSnapshot(failedArtifactWithContentFixture()),
+  ).toThrow();
 });
 ```
 
@@ -85,7 +91,9 @@ it('defines owned RLS policies and atomic pipeline RPCs', () => {
   expect(sql).toContain('create function public.retry_analysis_pipeline');
   expect(sql).toContain('analysis_jobs_select_own');
   expect(sql).toContain('analysis_artifacts_select_own');
-  expect(sql).toContain("alter publication supabase_realtime add table public.analysis_jobs");
+  expect(sql).toContain(
+    'alter publication supabase_realtime add table public.analysis_jobs',
+  );
 });
 ```
 
@@ -159,13 +167,24 @@ Add ownership RLS policies using `auth.uid() = user_id` for authenticated reads,
 
 ```ts
 export const jobStatusSchema = z.enum([
-  'queued', 'running', 'partial', 'complete', 'failed',
+  'queued',
+  'running',
+  'partial',
+  'complete',
+  'failed',
 ]);
 export const jobStageSchema = z.enum([
-  'validating', 'transcript', 'structuring', 'artifacts', 'complete',
+  'validating',
+  'transcript',
+  'structuring',
+  'artifacts',
+  'complete',
 ]);
 export const artifactKindSchema = z.enum([
-  'transcript', 'summary', 'flashcards', 'timestamps',
+  'transcript',
+  'summary',
+  'flashcards',
+  'timestamps',
 ]);
 export type AnalysisJobStatus = z.infer<typeof jobStatusSchema>;
 export type AnalysisJobStage = z.infer<typeof jobStageSchema>;
@@ -198,6 +217,7 @@ git commit -m "feat(den-17): add analysis pipeline persistence"
 ### Task 2: Idempotent Supabase Repository and Usage Ledger
 
 **Files:**
+
 - Create: `src/lib/analysis-pipeline/repository.ts`
 - Create: `src/lib/analysis-pipeline/supabase-repository.ts`
 - Create: `src/lib/analysis-pipeline/supabase-repository.test.ts`
@@ -205,6 +225,7 @@ git commit -m "feat(den-17): add analysis pipeline persistence"
 - Create: `src/lib/analysis-pipeline/usage-ledger.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1 domain types and database RPCs.
 - Produces: `AnalysisRepository`, `createSupabaseAnalysisRepository(client)`, `UsageLedger`, and `createNoopUsageLedger(repository)`.
 
@@ -212,9 +233,15 @@ git commit -m "feat(den-17): add analysis pipeline persistence"
 
 ```ts
 it('does not replace an already ready artifact', async () => {
-  const repository = createSupabaseAnalysisRepository(clientWithReadyArtifact());
+  const repository = createSupabaseAnalysisRepository(
+    clientWithReadyArtifact(),
+  );
   await repository.saveArtifactReady({
-    jobId, analysisId, kind: 'summary', schemaVersion: 1, content: summary,
+    jobId,
+    analysisId,
+    kind: 'summary',
+    schemaVersion: 1,
+    content: summary,
   });
   expect(fakeClient.updates).toHaveLength(0);
 });
@@ -222,7 +249,10 @@ it('does not replace an already ready artifact', async () => {
 it('settles and releases through repository state transitions', async () => {
   const ledger = createNoopUsageLedger(repository);
   await ledger.settle(jobId);
-  expect(repository.setReservationStatus).toHaveBeenCalledWith(jobId, 'settled');
+  expect(repository.setReservationStatus).toHaveBeenCalledWith(
+    jobId,
+    'settled',
+  );
 });
 ```
 
@@ -236,15 +266,24 @@ Expected: FAIL because repository and ledger modules do not exist.
 
 ```ts
 export type AnalysisRepository = Readonly<{
-  createForAnalysis(userId: string, analysisId: string): Promise<AnalysisSnapshot>;
-  findOwnedSnapshot(userId: string, analysisId: string): Promise<AnalysisSnapshot | null>;
+  createForAnalysis(
+    userId: string,
+    analysisId: string,
+  ): Promise<AnalysisSnapshot>;
+  findOwnedSnapshot(
+    userId: string,
+    analysisId: string,
+  ): Promise<AnalysisSnapshot | null>;
   findSnapshotByJobId(jobId: string): Promise<AnalysisSnapshot>;
   attachWorkflowRun(jobId: string, runId: string): Promise<void>;
   recordEvent(input: NewAnalysisEvent): Promise<void>;
   setJobState(jobId: string, state: JobStateUpdate): Promise<void>;
   saveArtifactReady(input: ReadyArtifactWrite): Promise<void>;
   saveArtifactFailed(input: FailedArtifactWrite): Promise<void>;
-  setReservationStatus(jobId: string, status: 'settled' | 'released'): Promise<void>;
+  setReservationStatus(
+    jobId: string,
+    status: 'settled' | 'released',
+  ): Promise<void>;
   prepareRetry(userId: string, analysisId: string): Promise<AnalysisSnapshot>;
 }>;
 ```
@@ -272,7 +311,9 @@ export type UsageLedger = Readonly<{
   release(jobId: string): Promise<void>;
 }>;
 
-export function createNoopUsageLedger(repository: AnalysisRepository): UsageLedger {
+export function createNoopUsageLedger(
+  repository: AnalysisRepository,
+): UsageLedger {
   return {
     settle: (jobId) => repository.setReservationStatus(jobId, 'settled'),
     release: (jobId) => repository.setReservationStatus(jobId, 'released'),
@@ -294,6 +335,7 @@ git commit -m "feat(den-17): add idempotent pipeline repository"
 ### Task 3: Structured OpenRouter Provider
 
 **Files:**
+
 - Modify: `src/env.ts`
 - Modify: `src/env.test.ts`
 - Create: `src/lib/analysis-pipeline/provider.ts`
@@ -301,6 +343,7 @@ git commit -m "feat(den-17): add idempotent pipeline repository"
 - Create: `src/lib/analysis-pipeline/openrouter-provider.test.ts`
 
 **Interfaces:**
+
 - Consumes: native `fetch`, Zod schemas supplied by generators.
 - Produces: `StructuredGenerationProvider.generate<T>(request): Promise<GenerationResult<T>>`, `ProviderError`, `validateAnalysisProviderEnv`.
 
@@ -308,21 +351,34 @@ git commit -m "feat(den-17): add idempotent pipeline repository"
 
 ```ts
 it('requires server-only OpenRouter configuration', () => {
-  expect(() => validateAnalysisProviderEnv({})).toThrow('OPENROUTER_API_KEY is required');
+  expect(() => validateAnalysisProviderEnv({})).toThrow(
+    'OPENROUTER_API_KEY is required',
+  );
 });
 
 it('sends strict schema and mandatory privacy routing', async () => {
-  const provider = createOpenRouterProvider({ apiKey: 'secret', model: 'model/id', fetch: fetchSpy });
+  const provider = createOpenRouterProvider({
+    apiKey: 'secret',
+    model: 'model/id',
+    fetch: fetchSpy,
+  });
   await provider.generate(requestFixture());
   expect(JSON.parse(fetchSpy.mock.calls[0][1]!.body as string)).toMatchObject({
     model: 'model/id',
     response_format: { type: 'json_schema', json_schema: { strict: true } },
-    provider: { require_parameters: true, data_collection: 'deny', zdr: true, allow_fallbacks: true },
+    provider: {
+      require_parameters: true,
+      data_collection: 'deny',
+      zdr: true,
+      allow_fallbacks: true,
+    },
   });
 });
 
 it.each([408, 429, 502, 503])('classifies %i as retryable', async (status) => {
-  await expect(providerForStatus(status).generate(requestFixture())).rejects.toMatchObject({ retryable: true });
+  await expect(
+    providerForStatus(status).generate(requestFixture()),
+  ).rejects.toMatchObject({ retryable: true });
 });
 ```
 
@@ -340,7 +396,9 @@ export type AnalysisProviderEnv = Readonly<{
   OPENROUTER_MODEL: string;
 }>;
 
-export function validateAnalysisProviderEnv(input: NodeJS.ProcessEnv): AnalysisProviderEnv {
+export function validateAnalysisProviderEnv(
+  input: NodeJS.ProcessEnv,
+): AnalysisProviderEnv {
   const apiKey = input.OPENROUTER_API_KEY?.trim();
   const model = input.OPENROUTER_MODEL?.trim();
   if (!apiKey) throw new Error('OPENROUTER_API_KEY is required');
@@ -365,7 +423,9 @@ export class ProviderError extends Error {
     readonly code: SafeAnalysisErrorCode,
     readonly retryable: boolean,
     readonly retryAfterMs?: number,
-  ) { super(code); }
+  ) {
+    super(code);
+  }
 }
 ```
 
@@ -385,6 +445,7 @@ git commit -m "feat(den-17): add structured OpenRouter adapter"
 ### Task 4: Versioned Artifact Generators
 
 **Files:**
+
 - Create: `src/lib/analysis-pipeline/artifact-schemas.ts`
 - Create: `src/lib/analysis-pipeline/artifact-schemas.test.ts`
 - Create: `src/lib/analysis-pipeline/generators.ts`
@@ -392,6 +453,7 @@ git commit -m "feat(den-17): add structured OpenRouter adapter"
 - Create: `src/lib/analysis-pipeline/deterministic-provider.ts`
 
 **Interfaces:**
+
 - Consumes: `StructuredGenerationProvider`, normalized transcript segments, intake configuration.
 - Produces: `generateSummary`, `generateFlashcards`, `generateTimestamps`, and deterministic provider fixtures.
 
@@ -399,11 +461,19 @@ git commit -m "feat(den-17): add structured OpenRouter adapter"
 
 ```ts
 it('rejects a flashcard without a front or back', () => {
-  expect(flashcardsArtifactSchema.safeParse({ schemaVersion: 1, cards: [{ front: '', back: 'A' }] }).success).toBe(false);
+  expect(
+    flashcardsArtifactSchema.safeParse({
+      schemaVersion: 1,
+      cards: [{ front: '', back: 'A' }],
+    }).success,
+  ).toBe(false);
 });
 
 it('passes locale and preset to summary generation', async () => {
-  await generateSummary(provider, contextFixture({ outputLocale: 'uk', summaryPreset: 'detailed' }));
+  await generateSummary(
+    provider,
+    contextFixture({ outputLocale: 'uk', summaryPreset: 'detailed' }),
+  );
   expect(provider.requests[0]).toMatchObject({ name: 'gleen_summary_v1' });
   expect(provider.requests[0].input).toContain('Output locale: uk');
   expect(provider.requests[0].input).toContain('Preset: detailed');
@@ -428,12 +498,28 @@ export const summaryArtifactSchema = z.object({
 
 export const flashcardsArtifactSchema = z.object({
   schemaVersion: z.literal(1),
-  cards: z.array(z.object({ front: z.string().trim().min(1), back: z.string().trim().min(1) })).min(1).max(30),
+  cards: z
+    .array(
+      z.object({
+        front: z.string().trim().min(1),
+        back: z.string().trim().min(1),
+      }),
+    )
+    .min(1)
+    .max(30),
 });
 
 export const timestampsArtifactSchema = z.object({
   schemaVersion: z.literal(1),
-  chapters: z.array(z.object({ offsetMs: z.number().int().nonnegative(), title: z.string().trim().min(1), description: z.string().trim().min(1) })).min(1),
+  chapters: z
+    .array(
+      z.object({
+        offsetMs: z.number().int().nonnegative(),
+        title: z.string().trim().min(1),
+        description: z.string().trim().min(1),
+      }),
+    )
+    .min(1),
 });
 ```
 
@@ -442,7 +528,10 @@ export const timestampsArtifactSchema = z.object({
 Keep each system prompt limited to one artifact, interpolate only normalized transcript text plus explicit locale/preset, and validate timestamps against video duration after provider parsing. The deterministic provider returns fixture values by request `name` and can be configured to throw a `ProviderError` a fixed number of times.
 
 ```ts
-export async function generateSummary(provider: StructuredGenerationProvider, context: GeneratorContext) {
+export async function generateSummary(
+  provider: StructuredGenerationProvider,
+  context: GeneratorContext,
+) {
   return provider.generate({
     name: 'gleen_summary_v1',
     system: SUMMARY_SYSTEM_PROMPT,
@@ -467,6 +556,7 @@ git commit -m "feat(den-17): add artifact generators"
 ### Task 5: Durable Workflow and Selective Retry
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 - Create: `src/lib/analysis-pipeline/workflow.ts`
@@ -475,6 +565,7 @@ git commit -m "feat(den-17): add artifact generators"
 - Create: `src/lib/analysis-pipeline/start.test.ts`
 
 **Interfaces:**
+
 - Consumes: repository, generators, provider, usage ledger.
 - Produces: `runAnalysisWorkflow(input: { jobId: string }): Promise<void>` and `startAnalysis(jobId: string): Promise<{ runId: string }>`.
 
@@ -489,7 +580,13 @@ Expected: `workflow` appears in `dependencies`; explain in the commit that it is
 ```ts
 it('persists stages and settles after all requested artifacts succeed', async () => {
   await executeAnalysisPipeline({ jobId, repository, provider, ledger });
-  expect(repository.recordedStages).toEqual(['validating','transcript','structuring','artifacts','complete']);
+  expect(repository.recordedStages).toEqual([
+    'validating',
+    'transcript',
+    'structuring',
+    'artifacts',
+    'complete',
+  ]);
   expect(ledger.settle).toHaveBeenCalledWith(jobId);
 });
 
@@ -566,6 +663,7 @@ git commit -m "feat(den-17): orchestrate durable analysis workflow"
 ### Task 6: Start Jobs from Intake and Reanalysis
 
 **Files:**
+
 - Modify: `src/lib/youtube-intake/service.ts`
 - Modify: `src/lib/youtube-intake/service.test.ts`
 - Modify: `src/lib/youtube-intake/actions.ts`
@@ -573,6 +671,7 @@ git commit -m "feat(den-17): orchestrate durable analysis workflow"
 - Modify: `src/lib/youtube-intake/action-factory.ts`
 
 **Interfaces:**
+
 - Consumes: `AnalysisRepository.createForAnalysis`, `startAnalysis`.
 - Produces: every newly inserted intake/reanalysis has a queued job before redirect; duplicates reuse their existing analysis.
 
@@ -581,7 +680,10 @@ git commit -m "feat(den-17): orchestrate durable analysis workflow"
 ```ts
 it('creates and starts a job after inserting a new intake', async () => {
   const result = await service.submit(validSubmitInput);
-  expect(pipeline.createForAnalysis).toHaveBeenCalledWith(userId, result.intake.id);
+  expect(pipeline.createForAnalysis).toHaveBeenCalledWith(
+    userId,
+    result.intake.id,
+  );
   expect(pipeline.start).toHaveBeenCalledWith(jobId);
 });
 
@@ -592,7 +694,10 @@ it('does not start another job for a reusable duplicate', async () => {
 
 it('creates a fresh job for reanalysis', async () => {
   const result = await service.reanalyze(userId, sourceId);
-  expect(pipeline.createForAnalysis).toHaveBeenCalledWith(userId, result.intake.id);
+  expect(pipeline.createForAnalysis).toHaveBeenCalledWith(
+    userId,
+    result.intake.id,
+  );
 });
 ```
 
@@ -633,6 +738,7 @@ git commit -m "feat(den-17): start pipeline from accepted intake"
 ### Task 7: Server Snapshot, Live Processing UI, and Retry Action
 
 **Files:**
+
 - Create: `src/lib/analysis-pipeline/client-state.ts`
 - Create: `src/lib/analysis-pipeline/client-state.test.ts`
 - Create: `src/lib/analysis-pipeline/retry-actions.ts`
@@ -646,6 +752,7 @@ git commit -m "feat(den-17): start pipeline from accepted intake"
 - Modify: `src/styles/app-shell-reference.css`
 
 **Interfaces:**
+
 - Consumes: `AnalysisSnapshot`, Supabase browser client, existing `AnalyzeProcessingVisual`.
 - Produces: `toAnalysisVisualState(snapshot): AnalysisVisualState`, `retryAnalysis(formData): Promise<RetryActionResult>`, and `AnalysisProcessingScreen`.
 
@@ -685,13 +792,19 @@ Expected: FAIL because live processing modules are absent.
 - [ ] **Step 3: Implement monotonic client-state mapping**
 
 ```ts
-export function toAnalysisVisualState(snapshot: AnalysisSnapshot): AnalysisVisualState {
+export function toAnalysisVisualState(
+  snapshot: AnalysisSnapshot,
+): AnalysisVisualState {
   if (snapshot.job.status === 'complete') return 'complete';
-  if (snapshot.job.status === 'failed' || snapshot.job.status === 'partial') return 'error';
+  if (snapshot.job.status === 'failed' || snapshot.job.status === 'partial')
+    return 'error';
   return snapshot.job.stage;
 }
 
-export function chooseNewestSnapshot(current: AnalysisSnapshot, incoming: AnalysisSnapshot) {
+export function chooseNewestSnapshot(
+  current: AnalysisSnapshot,
+  incoming: AnalysisSnapshot,
+) {
   return incoming.revision > current.revision ? incoming : current;
 }
 ```
@@ -701,7 +814,9 @@ Use an explicit monotonically increasing revision or updated-at/event ordering f
 - [ ] **Step 4: Implement authenticated selective retry**
 
 ```ts
-export async function retryAnalysis(formData: FormData): Promise<RetryActionResult> {
+export async function retryAnalysis(
+  formData: FormData,
+): Promise<RetryActionResult> {
   'use server';
   const user = await requireCurrentUser();
   const analysisId = z.string().uuid().parse(formData.get('analysisId'));
@@ -722,7 +837,10 @@ useEffect(() => {
   if (isTerminal(snapshot.job.status)) return;
   const channel = subscribeToAnalysis(analysisId, () => refreshSnapshot());
   const fallback = startPollingWhenUnhealthy(channel, refreshSnapshot, 3000);
-  return () => { fallback.stop(); void channel.unsubscribe(); };
+  return () => {
+    fallback.stop();
+    void channel.unsubscribe();
+  };
 }, [analysisId, snapshot.job.status]);
 ```
 
@@ -754,6 +872,7 @@ git commit -m "feat(den-17): connect Spectral Rail to durable jobs"
 ### Task 8: End-to-End Fixtures and Full Verification
 
 **Files:**
+
 - Modify: `src/app/app-shell-fixture/fixture-cases.ts`
 - Modify: `src/app/app-shell-fixture/app/video/[id]/page.tsx`
 - Modify: `tests/e2e/analyze-processing.spec.ts`
@@ -762,20 +881,25 @@ git commit -m "feat(den-17): connect Spectral Rail to durable jobs"
 - Modify: `README.md`
 
 **Interfaces:**
+
 - Consumes: complete production flow and deterministic snapshot fixtures.
 - Produces: browser regression coverage and documented server environment variables.
 
 - [ ] **Step 1: Add failing browser scenarios**
 
 ```ts
-test('processing survives reload and continues from persisted transcript stage', async ({ page }) => {
+test('processing survives reload and continues from persisted transcript stage', async ({
+  page,
+}) => {
   await page.goto('/app-shell-fixture/app/video/processing-transcript');
   await expect(page.getByText('Finding transcript')).toBeVisible();
   await page.reload();
   await expect(page.getByText('Finding transcript')).toBeVisible();
 });
 
-test('partial result keeps ready artifacts and Try again resumes failed work', async ({ page }) => {
+test('partial result keeps ready artifacts and Try again resumes failed work', async ({
+  page,
+}) => {
   await page.goto('/app-shell-fixture/app/video/partial');
   await expect(page.getByText('Summary ready')).toBeVisible();
   await page.getByRole('button', { name: 'Try again' }).click();

@@ -76,6 +76,115 @@ describe('AnalyzeProcessingVisual', () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
+  it('disables retry while a new attempt is pending', () => {
+    render(
+      <AnalyzeProcessingVisual
+        state="error"
+        submittedUrl="https://youtu.be/dQw4w9WgXcQ"
+        onRetry={vi.fn()}
+        retryDisabled
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Retrying…' })).toBeDisabled();
+  });
+
+  it('renders explicit partial controls and truthful artifact states', () => {
+    render(
+      <AnalyzeProcessingVisual
+        state="error"
+        submittedUrl=""
+        selectedArtifactKinds={['summary', 'timestamps', 'transcript']}
+        artifactStates={{ summary: 'ready', timestamps: 'failed' }}
+        controls={
+          <>
+            <button type="button">View available results</button>
+            <button type="button">Retry failed artifact</button>
+          </>
+        }
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'View available results' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Retry failed artifact' }),
+    ).toBeVisible();
+    expect(screen.getByText('SUMMARY').parentElement).toHaveTextContent(
+      'ready',
+    );
+    expect(screen.getByText('TIMESTAMPS').parentElement).toHaveTextContent(
+      'failed',
+    );
+    expect(
+      screen.getByRole('list', { name: 'Artifact status' }),
+    ).toHaveTextContent('Summary ready');
+    expect(screen.getByText('FLASHCARDS').parentElement).toHaveTextContent(
+      'not selected',
+    );
+  });
+
+  it('truthfully represents a custom artifact selection in visual and semantic status', () => {
+    render(
+      <AnalyzeProcessingVisual
+        state="artifacts"
+        submittedUrl=""
+        selectedArtifactKinds={['flashcards']}
+      />,
+    );
+    expect(screen.getByText('FLASHCARDS').parentElement).toHaveTextContent(
+      'queued',
+    );
+    expect(screen.getByText('SUMMARY').parentElement).toHaveTextContent(
+      'not selected',
+    );
+    const statuses = screen.getByRole('list', { name: 'Artifact status' });
+    expect(statuses).toHaveTextContent('Flashcards queued');
+    expect(statuses).toHaveTextContent('Summary not selected');
+  });
+
+  it.each(['ready', 'failed'] as const)(
+    'maps a %s Transcript artifact to the visible and semantic Export rail',
+    (status) => {
+      render(
+        <AnalyzeProcessingVisual
+          state="error"
+          submittedUrl=""
+          selectedArtifactKinds={['transcript']}
+          artifactStates={{ transcript: status }}
+        />,
+      );
+      expect(screen.getByText('EXPORT').parentElement).toHaveTextContent(
+        status,
+      );
+      expect(
+        screen.getByRole('list', { name: 'Artifact status' }),
+      ).toHaveTextContent(`Export ${status}`);
+    },
+  );
+
+  it('moves focus to processing and then terminal context only on transitions', () => {
+    const { rerender } = render(
+      <AnalyzeProcessingVisual
+        state="idle"
+        submittedUrl=""
+        idleContent={<input aria-label="URL" />}
+      />,
+    );
+    screen.getByLabelText('URL').focus();
+    rerender(<AnalyzeProcessingVisual state="submitting" submittedUrl="" />);
+    expect(
+      screen.getByRole('heading', { name: 'Analyzing your video' }),
+    ).toHaveFocus();
+    rerender(
+      <AnalyzeProcessingVisual
+        state="error"
+        submittedUrl=""
+        errorMessage="Stopped safely."
+      />,
+    );
+    expect(screen.getByText('Stopped safely.')).toHaveFocus();
+  });
+
   it('updates immediately when its controlled state changes', () => {
     const { container, rerender } = render(
       <AnalyzeProcessingVisual

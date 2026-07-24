@@ -1,6 +1,12 @@
 'use server';
 
 import { validateProviderEnv } from '@/env';
+import { startAnalysis } from '@/lib/analysis-pipeline/start';
+import {
+  createSupabaseAnalysisRepository,
+  type SupabaseAnalysisClient,
+} from '@/lib/analysis-pipeline/supabase-repository';
+import { createNoopUsageLedger } from '@/lib/analysis-pipeline/usage-ledger';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 import type { IntakeActionState } from './action-state';
@@ -21,12 +27,28 @@ async function authenticatedService() {
   if (!user) return null;
 
   const environment = validateProviderEnv(process.env);
+  const analysisRepository = createSupabaseAnalysisRepository(
+    supabase as unknown as SupabaseAnalysisClient,
+  );
   const service = createIntakeService({
     metadata: createYouTubeProvider(environment.YOUTUBE_DATA_API_KEY),
     transcript: createSupadataProvider(environment.SUPADATA_API_KEY),
     repository: createSupabaseIntakeRepository(
       supabase as unknown as SupabaseIntakeClient,
     ),
+    pipeline: {
+      async createAndStart(userId, analysisId) {
+        const snapshot = await analysisRepository.createForAnalysis(
+          userId,
+          analysisId,
+        );
+        await startAnalysis(
+          snapshot.job.id,
+          analysisRepository,
+          createNoopUsageLedger(analysisRepository),
+        );
+      },
+    },
   });
   return { userId: user.id, service };
 }

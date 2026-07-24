@@ -6,6 +6,89 @@ const authViewports = [
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
 
+test('opens account access from the landing-page sign-in action', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  const signIn = page.getByRole('link', { name: 'Sign in' });
+  await expect(signIn).toHaveAttribute('href', '/sign-in');
+  await signIn.click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(
+    page.getByRole('heading', { name: 'Sign in to Gleen' }),
+  ).toBeVisible();
+});
+
+test('landing URL preserves the normalized analysis continuation in sign in next', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
+  await page.getByRole('button', { name: 'Transform video' }).click();
+
+  await expect(page).toHaveURL(/\/sign-in\?next=/);
+  const next = new URL(page.url()).searchParams.get('next');
+  expect(next).toBe(
+    '/app?continuation=' +
+      encodeURIComponent('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+  );
+});
+
+test('landing continuation survives switching from sign in to sign up', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('YouTube URL').fill('https://youtu.be/dQw4w9WgXcQ');
+  await page.getByRole('button', { name: 'Transform video' }).click();
+  await expect(page).toHaveURL(/\/sign-in\?next=/);
+  const next = new URL(page.url()).searchParams.get('next');
+  await page.getByRole('link', { name: 'Create an account' }).click();
+  await expect(page).toHaveURL(/\/sign-up\?next=/);
+  expect(new URL(page.url()).searchParams.get('next')).toBe(next);
+});
+
+test('authenticated continuation auto-submits exactly once with the default artifacts', async ({
+  page,
+}) => {
+  const actionRequests: string[] = [];
+  page.on('request', (request) => {
+    if (
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/app-shell-fixture'
+    ) {
+      actionRequests.push(request.postData() ?? '');
+    }
+  });
+  await page.goto(
+    '/app-shell-fixture?continuation=' +
+      encodeURIComponent('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+  );
+
+  await expect(page.getByTestId('analyze-processing-visual')).toHaveAttribute(
+    'data-submitted-url',
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  );
+  await expect.poll(() => actionRequests.length).toBe(1);
+  await expect
+    .poll(async () => {
+      const before = actionRequests.length;
+      await page.waitForTimeout(500);
+      return actionRequests.length === before;
+    })
+    .toBe(true);
+  expect(actionRequests).toHaveLength(1);
+  const fields = [
+    ...actionRequests[0].matchAll(/name="([^"]+)"[^\n]*\n\r?\n([^\r\n]*)/g),
+  ].map(([, name, value]) => [name, value] as const);
+  expect(
+    fields
+      .filter(([name]) => name.endsWith('artifacts'))
+      .map(([, value]) => value),
+  ).toEqual(['summary', 'timestamps', 'transcript']);
+  expect(fields.some(([, value]) => value === 'flashcards')).toBe(false);
+});
+
 for (const viewport of authViewports) {
   test(`renders approved account access at ${viewport.name}`, async ({
     page,

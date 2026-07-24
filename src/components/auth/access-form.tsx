@@ -18,9 +18,13 @@ const initialState: AuthActionState = { status: 'idle' };
 
 type AccessFormProps = Readonly<{
   intent: 'sign-in' | 'sign-up';
+  nextPath?: string;
 }>;
 
-export function AccessForm({ intent }: AccessFormProps) {
+export function AccessForm({
+  intent,
+  nextPath = '/onboarding',
+}: AccessFormProps) {
   const [mode, setMode] = useState<'link' | 'password'>('link');
   const passwordAction =
     intent === 'sign-in' ? signInWithPassword : signUpWithPassword;
@@ -42,6 +46,7 @@ export function AccessForm({ intent }: AccessFormProps) {
   }, [state.redirectTo]);
 
   const isSignIn = intent === 'sign-in';
+  const alternatePath = `${isSignIn ? '/sign-up' : '/sign-in'}?next=${encodeURIComponent(nextPath)}`;
   const submitLabel =
     mode === 'password'
       ? isSignIn
@@ -61,7 +66,7 @@ export function AccessForm({ intent }: AccessFormProps) {
           : 'Start with Google or create an account using your email.'}
       </p>
       <form action={googleFormAction}>
-        <input type="hidden" name="next" value="/onboarding" />
+        <input type="hidden" name="next" value={nextPath} />
         <button
           className="btn oauth-btn"
           type="submit"
@@ -76,7 +81,7 @@ export function AccessForm({ intent }: AccessFormProps) {
       <div className="auth-divider">OR USE EMAIL</div>
       <form action={emailFormAction}>
         <input type="hidden" name="intent" value={intent} />
-        <input type="hidden" name="next" value="/onboarding" />
+        <input type="hidden" name="next" value={nextPath} />
         <div className="form-group">
           <label className="form-label" htmlFor={`${intent}-email`}>
             Email address
@@ -133,7 +138,7 @@ export function AccessForm({ intent }: AccessFormProps) {
       ) : null}
       <p className="auth-footer">
         {isSignIn ? 'New to Gleen? ' : 'Already have an account? '}
-        <Link href={isSignIn ? '/sign-up' : '/sign-in'}>
+        <Link href={alternatePath}>
           {isSignIn ? 'Create an account' : 'Sign in'}
         </Link>
       </p>

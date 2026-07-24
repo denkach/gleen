@@ -24,6 +24,7 @@ import {
   type IntakeActionState,
 } from '@/lib/youtube-intake/actions';
 import type { AnalysisVisualState } from '@/lib/analyze-processing/analysis-visual-state';
+import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import {
   supportedLocales,
   type OnboardingState,
@@ -31,6 +32,7 @@ import {
 
 import { AppIcon } from './app-icon';
 import { AnalyzeProcessingVisual } from './analyze-processing-visual';
+import { InlineAnalysisProcessing } from './inline-analysis-processing';
 
 type IntakeAction = (
   previousState: IntakeActionState,
@@ -42,6 +44,8 @@ type NewAnalysisFormProps = Readonly<{
   action?: IntakeAction;
   reanalyzeAction?: IntakeAction;
   resultPathPrefix?: string;
+  initialSnapshot?: AnalysisSnapshot;
+  autoSubmit?: boolean;
 }>;
 
 const artifactOptions = [
@@ -50,10 +54,6 @@ const artifactOptions = [
   ['transcript', 'Transcript'],
   ['flashcards', 'Flashcards'],
 ] as const;
-
-const processingMinimumDuration = 3_000;
-const completionCopyDuration = 400;
-const exitTransitionDuration = 600;
 
 const localeNames: Record<(typeof supportedLocales)[number], string> = {
   uk: 'Українська',
@@ -86,6 +86,8 @@ export function NewAnalysisForm({
   initialState,
   reanalyzeAction = reanalyzeIntake,
   resultPathPrefix = '/app/video',
+  initialSnapshot,
+  autoSubmit = false,
 }: NewAnalysisFormProps) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -115,76 +117,23 @@ export function NewAnalysisForm({
   const [clientMessage, setClientMessage] = useState<string>();
   const [submittedUrl, setSubmittedUrl] = useState(initialState.rawUrl);
   const [visualState, setVisualState] = useState<AnalysisVisualState>('idle');
-  const [isExiting, setIsExiting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const submissionStartedAt = useRef<number | undefined>(undefined);
-  const visualTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const navigationScheduledFor = useRef<string | undefined>(undefined);
-
-  const clearVisualTimers = useCallback(() => {
-    for (const timer of visualTimers.current) clearTimeout(timer);
-    visualTimers.current = [];
-  }, []);
+  const autoSubmitted = useRef(false);
 
   const startVisualTimeline = useCallback(() => {
-    clearVisualTimers();
-    navigationScheduledFor.current = undefined;
-    setIsExiting(false);
     setVisualState('submitting');
-  }, [clearVisualTimers]);
-
-  useEffect(() => clearVisualTimers, [clearVisualTimers]);
+  }, []);
 
   useEffect(() => {
-    const isReanalysisRedirect = Boolean(reanalyzeState.redirectTo);
-    const redirectTo = reanalyzeState.redirectTo ?? state.redirectTo;
-    if (!redirectTo) return;
-
-    if (isReanalysisRedirect) {
-      router.push(redirectTo);
-      return;
-    }
-
-    if (navigationScheduledFor.current === redirectTo) return;
-    navigationScheduledFor.current = redirectTo;
-
-    const reducedMotion = window.matchMedia?.(
-      '(prefers-reduced-motion: reduce)',
-    ).matches;
-    if (reducedMotion || submissionStartedAt.current === undefined) {
-      clearVisualTimers();
-      router.push(redirectTo);
-      return;
-    }
-
-    const elapsed = Date.now() - submissionStartedAt.current;
-    const processingRemainder = Math.max(
-      0,
-      processingMinimumDuration - elapsed,
-    );
-    visualTimers.current.push(
-      setTimeout(() => setVisualState('complete'), processingRemainder),
-      setTimeout(
-        () => setIsExiting(true),
-        processingRemainder + completionCopyDuration,
-      ),
-      setTimeout(
-        () => router.push(redirectTo),
-        processingRemainder + completionCopyDuration + exitTransitionDuration,
-      ),
-    );
-  }, [clearVisualTimers, reanalyzeState.redirectTo, router, state.redirectTo]);
+    if (reanalyzeState.redirectTo) router.push(reanalyzeState.redirectTo);
+  }, [reanalyzeState.redirectTo, router]);
 
   useEffect(() => {
-    if (pending) return;
-    if (state.status === 'error') {
-      clearVisualTimers();
-      return;
-    }
-    if (!state.redirectTo && ['idle', 'duplicate'].includes(state.status)) {
-      clearVisualTimers();
-    }
-  }, [clearVisualTimers, pending, state.redirectTo, state.status]);
+    if (!autoSubmit || autoSubmitted.current || !formRef.current) return;
+    autoSubmitted.current = true;
+    window.history.replaceState(window.history.state, '', '/app');
+    formRef.current.requestSubmit();
+  }, [autoSubmit]);
 
   const selectionSummary = artifactOptions
     .filter(([value]) => selectedArtifacts.includes(value))
@@ -197,7 +146,6 @@ export function NewAnalysisForm({
       setSubmittedUrl(
         new FormData(event.currentTarget).get('rawUrl')?.toString() ?? '',
       );
-      submissionStartedAt.current = Date.now();
       startVisualTimeline();
       const submitter = (event.nativeEvent as SubmitEvent).submitter;
       if (submitter instanceof HTMLButtonElement) submitter.disabled = true;
@@ -209,7 +157,7 @@ export function NewAnalysisForm({
 
   const resolvedWithoutRedirect =
     !pending &&
-    !state.redirectTo &&
+    !state.analysisId &&
     ['idle', 'duplicate'].includes(state.status);
   const displayVisualState = pending
     ? visualState
@@ -222,58 +170,66 @@ export function NewAnalysisForm({
 
   return (
     <>
-      <AnalyzeProcessingVisual
-        state={displayVisualState}
-        isExiting={isExiting}
-        submittedUrl={state.rawUrl || submittedUrl}
-        errorMessage={
-          displayVisualState === 'error' ? state.message : undefined
-        }
-        onRetry={
-          displayVisualState === 'error'
-            ? () => formRef.current?.requestSubmit()
-            : undefined
-        }
-        idleContent={
-          <form
-            ref={formRef}
-            id="new-analysis-form"
-            action={formAction}
-            className="beam-form app-beam-form"
-            aria-describedby="intake-status"
-            aria-hidden={isVisualBusy ? true : undefined}
-            inert={isVisualBusy ? true : undefined}
-            onSubmit={validateArtifacts}
-          >
-            <AppIcon name="link" className="link-icon" />
-            <input
-              aria-label="YouTube URL"
-              name="rawUrl"
-              type="url"
-              placeholder="Paste a YouTube link"
-              defaultValue={state.rawUrl}
-              required
-              disabled={pending}
-            />
-            <input type="hidden" name="outputLocale" value={outputLocale} />
-            <input type="hidden" name="summaryPreset" value={summaryPreset} />
-            <input
-              type="hidden"
-              name="flashcardPreset"
-              value={flashcardPreset}
-            />
-            {selectedArtifacts.map((artifact) => (
+      {state.analysisId ? (
+        <InlineAnalysisProcessing
+          analysisId={state.analysisId}
+          initialSnapshot={initialSnapshot}
+          resultPathPrefix={resultPathPrefix}
+          selectedArtifactKinds={state.configuration.artifacts}
+        />
+      ) : (
+        <AnalyzeProcessingVisual
+          state={displayVisualState}
+          submittedUrl={state.rawUrl || submittedUrl}
+          errorMessage={
+            displayVisualState === 'error' ? state.message : undefined
+          }
+          onRetry={
+            displayVisualState === 'error'
+              ? () => formRef.current?.requestSubmit()
+              : undefined
+          }
+          idleContent={
+            <form
+              ref={formRef}
+              id="new-analysis-form"
+              action={formAction}
+              className="beam-form app-beam-form"
+              aria-describedby="intake-status"
+              aria-hidden={isVisualBusy ? true : undefined}
+              inert={isVisualBusy ? true : undefined}
+              onSubmit={validateArtifacts}
+            >
+              <AppIcon name="link" className="link-icon" />
               <input
-                key={artifact}
-                type="hidden"
-                name="artifacts"
-                value={artifact}
+                aria-label="YouTube URL"
+                name="rawUrl"
+                type="url"
+                placeholder="Paste a YouTube link"
+                defaultValue={state.rawUrl}
+                required
+                disabled={pending}
               />
-            ))}
-            <SubmitButton pending={pending} />
-          </form>
-        }
-      />
+              <input type="hidden" name="outputLocale" value={outputLocale} />
+              <input type="hidden" name="summaryPreset" value={summaryPreset} />
+              <input
+                type="hidden"
+                name="flashcardPreset"
+                value={flashcardPreset}
+              />
+              {selectedArtifacts.map((artifact) => (
+                <input
+                  key={artifact}
+                  type="hidden"
+                  name="artifacts"
+                  value={artifact}
+                />
+              ))}
+              <SubmitButton pending={pending} />
+            </form>
+          }
+        />
+      )}
 
       <div className={`analysis-form-meta${pending ? ' pending' : ''}`}>
         <Dialog open={advancedOpen} onOpenChange={setAdvancedOpen}>

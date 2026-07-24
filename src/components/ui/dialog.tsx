@@ -73,8 +73,10 @@ export interface DialogContentProps extends Omit<
   title: string;
   description?: string;
   children: ReactNode;
+  closeLabel?: string;
   initialFocusRef?: RefObject<HTMLElement | null>;
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
+  onCloseAutoFocus?: (event: Event) => void;
   onInteractOutside?: (event: Event) => void;
   onPointerDownOutside?: (event: Event) => void;
 }
@@ -88,6 +90,7 @@ export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
       'aria-describedby': ariaDescribedBy,
       children,
       className,
+      closeLabel = 'Close dialog',
       description,
       initialFocusRef,
       title,
@@ -141,7 +144,7 @@ export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
           <div className="ui-dialog-body">{children}</div>
           <DialogPrimitive.Close
             className="ui-dialog-close"
-            aria-label="Close dialog"
+            aria-label={closeLabel}
           >
             <span aria-hidden="true">×</span>
           </DialogPrimitive.Close>

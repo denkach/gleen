@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { withWorkflow } from 'workflow/next';
 
 import { validatePublicEnv } from './src/env';
 
@@ -6,6 +7,15 @@ validatePublicEnv(process.env);
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['127.0.0.1'],
+  serverExternalPackages: ['@vercel/queue'],
+  async headers() {
+    return [
+      {
+        source: '/share/:path*',
+        headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }],
+      },
+    ];
+  },
   turbopack: {
     root: process.cwd(),
     resolveAlias:
@@ -18,4 +28,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withWorkflow(nextConfig);
