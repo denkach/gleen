@@ -64,10 +64,17 @@ function HistoryToolbarState({
   }
 
   return (
-    <div>
-      <form role="search" onSubmit={submitSearch}>
-        <label htmlFor="history-search">Search history</label>
+    <div className="history-toolbar">
+      <form
+        className="history-toolbar__search"
+        role="search"
+        onSubmit={submitSearch}
+      >
+        <label className="app-visually-hidden" htmlFor="history-search">
+          Search history
+        </label>
         <input
+          className="history-toolbar__search-input"
           ref={searchRef}
           id="history-search"
           type="search"
@@ -76,14 +83,21 @@ function HistoryToolbarState({
         />
       </form>
 
-      <div>
+      <div className="history-toolbar__controls">
         {filterControl}
 
         <DropdownMenu>
-          <DropdownMenuTrigger aria-label={`Sort history: ${currentSort}`}>
+          <DropdownMenuTrigger
+            className="history-toolbar__sort"
+            aria-label={`Sort history: ${currentSort}`}
+          >
             Sort: {currentSort}
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" aria-label="Sort history">
+          <DropdownMenuContent
+            className="history-toolbar__sort-menu"
+            align="end"
+            aria-label="Sort history"
+          >
             {sortOptions.map(([value, label]) => (
               <DropdownMenuItem
                 key={value}
@@ -96,12 +110,22 @@ function HistoryToolbarState({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div role="group" aria-label="History view">
-          <button type="button" aria-label="List view" aria-pressed="true">
+        <div
+          className="history-toolbar__view"
+          role="group"
+          aria-label="History view"
+        >
+          <button
+            type="button"
+            className="history-toolbar__view-button history-toolbar__view-button--active"
+            aria-label="List view"
+            aria-pressed="true"
+          >
             List
           </button>
           <button
             type="button"
+            className="history-toolbar__view-button"
             aria-label="Grid view unavailable"
             aria-disabled="true"
             disabled

@@ -162,7 +162,7 @@ function DesktopHistoryFilters({
       {open ? (
         <section
           id={panelId}
-          className="history-filters__desktop-panel"
+          className="history-filters__desktop-panel history-filter-panel"
           role="region"
           aria-labelledby={titleId}
         >
@@ -231,7 +231,7 @@ function MobileHistoryFilters({
           title="Filters"
           description="Refine the saved analyses shown in history."
           closeLabel="Close filters"
-          className="history-filters__mobile-sheet"
+          className="history-filters__mobile-sheet history-filter-sheet"
         >
           <span
             className="history-filters__drag-affordance"

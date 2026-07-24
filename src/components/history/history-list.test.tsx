@@ -113,6 +113,18 @@ describe('HistoryList', () => {
     const desktop = screen.getByTestId('history-desktop-list');
     const mobile = screen.getByTestId('history-mobile-list');
 
+    expect(desktop).toHaveClass(
+      'history-list__desktop',
+      'history-list__desktop-mode',
+    );
+    expect(within(desktop).getByRole('table')).toHaveClass('history-table');
+    expect(mobile).toHaveClass(
+      'history-list__mobile',
+      'history-list__card-mode',
+    );
+    expect(within(desktop).getAllByRole('row')[1]).toHaveClass('history-row');
+    expect(mobile.querySelector('article')).toHaveClass('history-card');
+
     for (const header of ['Video', 'Details', 'Status', 'Actions']) {
       expect(
         within(desktop).getByRole('columnheader', { name: header }),
@@ -121,6 +133,11 @@ describe('HistoryList', () => {
     for (const status of ['Ready', 'Partial', 'Processing', 'Failed']) {
       expect(within(desktop).getByText(status)).toBeInTheDocument();
       expect(within(mobile).getByText(status)).toBeInTheDocument();
+    }
+    for (const status of ['ready', 'partial', 'processing', 'failed']) {
+      expect(
+        within(desktop).getByText(status[0].toUpperCase() + status.slice(1)),
+      ).toHaveClass(`history-item-status--${status}`);
     }
 
     expect(

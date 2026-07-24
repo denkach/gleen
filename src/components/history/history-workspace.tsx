@@ -149,7 +149,10 @@ function HistoryWorkspaceState({
   }
 
   return (
-    <section aria-label="History">
+    <section
+      className="history-workspace history-bottom-nav-clearance"
+      aria-label="History"
+    >
       <HistoryToolbar
         query={query}
         onSearch={search}
@@ -169,7 +172,12 @@ function HistoryWorkspaceState({
         }
       />
 
-      <div role="status" aria-live="polite" aria-atomic="true">
+      <div
+        className="history-workspace__announcer"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {announcement}
       </div>
 

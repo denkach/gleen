@@ -78,6 +78,19 @@ function renderWorkspace(queryOverride: HistoryQuery = query) {
 beforeEach(() => vi.clearAllMocks());
 
 describe('HistoryWorkspace URL state', () => {
+  it('exposes the stable page and bottom-navigation clearance hooks', () => {
+    renderWorkspace();
+
+    const workspace = screen.getByRole('region', { name: 'History' });
+    expect(workspace).toHaveClass(
+      'history-workspace',
+      'history-bottom-nav-clearance',
+    );
+    expect(screen.getByRole('status')).toHaveClass(
+      'history-workspace__announcer',
+    );
+  });
+
   it('removes the cursor and serializes canonical URLs for search and sort', async () => {
     const user = userEvent.setup();
     renderWorkspace();

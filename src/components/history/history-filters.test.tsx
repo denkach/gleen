@@ -102,6 +102,10 @@ describe('HistoryFilters', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
 
     const panel = screen.getByRole('region', { name: 'Filter results' });
+    expect(panel).toHaveClass(
+      'history-filters__desktop-panel',
+      'history-filter-panel',
+    );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(
       document.querySelectorAll('[data-history-filter-presentation]'),
@@ -217,7 +221,10 @@ describe('HistoryFilters', () => {
     await user.click(mobileTrigger);
 
     const sheet = await screen.findByRole('dialog', { name: 'Filters' });
-    expect(sheet).toHaveClass('history-filters__mobile-sheet');
+    expect(sheet).toHaveClass(
+      'history-filters__mobile-sheet',
+      'history-filter-sheet',
+    );
     expect(
       within(sheet).getByTestId('history-filters-drag-affordance'),
     ).toBeInTheDocument();

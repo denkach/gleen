@@ -244,12 +244,12 @@ export function HistoryList({
   return (
     <div className="history-list">
       <div
-        className="history-list__desktop"
+        className="history-list__desktop history-list__desktop-mode"
         data-testid="history-desktop-list"
         aria-hidden={mobile}
         inert={mobile ? true : undefined}
       >
-        <table>
+        <table className="history-table">
           <thead>
             <tr>
               <th scope="col">Video</th>
@@ -301,7 +301,7 @@ export function HistoryList({
       </div>
 
       <div
-        className="history-list__mobile"
+        className="history-list__mobile history-list__card-mode"
         data-testid="history-mobile-list"
         aria-hidden={!mobile}
         inert={!mobile ? true : undefined}

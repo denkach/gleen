@@ -17,6 +17,33 @@ const query: HistoryQuery = {
 };
 
 describe('HistoryToolbar', () => {
+  it('exposes stable toolbar, search, sort, and view-mode hooks', () => {
+    const { container } = render(
+      <HistoryToolbar
+        query={query}
+        onSearch={vi.fn()}
+        onSortChange={vi.fn()}
+        filterControl={<button type="button">Filters</button>}
+      />,
+    );
+
+    expect(container.firstElementChild).toHaveClass('history-toolbar');
+    expect(screen.getByRole('search')).toHaveClass('history-toolbar__search');
+    expect(screen.getByRole('button', { name: /sort history/i })).toHaveClass(
+      'history-toolbar__sort',
+    );
+    expect(screen.getByRole('group', { name: 'History view' })).toHaveClass(
+      'history-toolbar__view',
+    );
+    expect(screen.getByRole('button', { name: 'List view' })).toHaveClass(
+      'history-toolbar__view-button',
+      'history-toolbar__view-button--active',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Grid view unavailable' }),
+    ).toHaveClass('history-toolbar__view-button');
+  });
+
   it('submits search on Enter and exposes every sort choice', async () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
