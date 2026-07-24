@@ -1,7 +1,12 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-import type { HistoryRepository } from '@/lib/history/repository';
+import {
+  decodeHistoryCursor,
+  parseHistoryQuery,
+  serializeHistoryQuery,
+} from '@/lib/history/query';
+import type { HistoryPage, HistoryRepository } from '@/lib/history/repository';
 import { createSupabaseHistoryRepository } from '@/lib/history/supabase-repository';
 import type { SupabaseHistoryClient } from '@/lib/history/supabase-repository';
 import { resultTitleEditSchema } from '@/lib/result-workspace/edit-schemas';
@@ -35,7 +40,7 @@ type HistoryAuthenticatedContext = Readonly<{
   userId: string;
   history: Pick<
     HistoryRepository,
-    'findOwnedReusableDuplicate' | 'deleteOwned'
+    'findOwnedReusableDuplicate' | 'deleteOwned' | 'listOwned'
   >;
   intake: Pick<IntakeRepository, 'findOwned'> & ResultTitleRepository;
   userState: Pick<ResultUserStateRepository, 'savePreference' | 'markOpened'>;
@@ -51,6 +56,12 @@ export type HistoryActionDependencies = Readonly<{
 const analysisIdentitySchema = z.object({ analysisId: z.uuid() }).strict();
 const favoriteSchema = analysisIdentitySchema
   .extend({ favorite: z.boolean() })
+  .strict();
+const loadMoreSchema = z
+  .object({
+    query: z.string().max(2_048),
+    cursor: z.string().min(1).max(1_024),
+  })
   .strict();
 
 const failures = {
@@ -107,7 +118,58 @@ export function createHistoryActions(dependencies: HistoryActionDependencies) {
     return { ok: true, data };
   }
 
+  function parseLoadMoreInput(
+    input: unknown,
+  ): Readonly<{ query: ReturnType<typeof parseHistoryQuery> }> | null {
+    const parsed = loadMoreSchema.safeParse(input);
+    if (!parsed.success) return null;
+
+    const parameters = new URLSearchParams(parsed.data.query);
+    if (parameters.has('cursor')) return null;
+
+    const queryWithoutCursor = parseHistoryQuery(parameters);
+    if (
+      serializeHistoryQuery(queryWithoutCursor).toString() !== parsed.data.query
+    ) {
+      return null;
+    }
+
+    const cursor = decodeHistoryCursor(parsed.data.cursor);
+    if (!cursor || cursor.sort !== queryWithoutCursor.sort) return null;
+
+    const query = parseHistoryQuery(
+      new URLSearchParams(
+        `${parsed.data.query}${
+          parsed.data.query ? '&' : ''
+        }cursor=${encodeURIComponent(parsed.data.cursor)}`,
+      ),
+    );
+    return query.cursor ? { query } : null;
+  }
+
   return {
+    async loadMoreHistory(
+      input: unknown,
+    ): Promise<HistoryActionResult<HistoryPage>> {
+      const parsed = parseLoadMoreInput(input);
+      if (!parsed) return failures.invalid;
+
+      const context = await authenticate();
+      if ('ok' in context) return context;
+      try {
+        return {
+          ok: true,
+          data: await context.history.listOwned(
+            context.userId,
+            parsed.query,
+            20,
+          ),
+        };
+      } catch {
+        return failures.failed;
+      }
+    },
+
     async toggleHistoryFavorite(input: unknown): Promise<HistoryActionResult> {
       const parsed = favoriteSchema.safeParse(input);
       if (!parsed.success) return failures.invalid;
@@ -271,6 +333,13 @@ export async function toggleHistoryFavorite(
 ): Promise<HistoryActionResult> {
   'use server';
   return productionActions.toggleHistoryFavorite(input);
+}
+
+export async function loadMoreHistory(
+  input: unknown,
+): Promise<HistoryActionResult<HistoryPage>> {
+  'use server';
+  return productionActions.loadMoreHistory(input);
 }
 
 export async function renameHistoryItem(

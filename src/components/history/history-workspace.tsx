@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { HistoryFilters } from '@/components/history/history-filters';
+import { HistoryList } from '@/components/history/history-list';
 import { HistoryToolbar } from '@/components/history/history-toolbar';
 import type { HistoryActionResult } from '@/lib/history/actions';
 import {
@@ -31,6 +32,7 @@ export type HistoryWorkspaceActions = Readonly<{
     input: unknown,
   ): Promise<HistoryActionResult<Readonly<{ redirectTo: string }>>>;
   markHistoryItemOpened(input: unknown): Promise<HistoryActionResult>;
+  loadMoreHistory(input: unknown): Promise<HistoryActionResult<HistoryPage>>;
 }>;
 
 export type HistoryWorkspaceProps = Readonly<{
@@ -84,6 +86,7 @@ export function HistoryWorkspace({
   initialPage,
   query,
   facets,
+  actions,
 }: HistoryWorkspaceProps) {
   return (
     <HistoryWorkspaceState
@@ -91,23 +94,28 @@ export function HistoryWorkspace({
       initialPage={initialPage}
       query={query}
       facets={facets}
+      actions={actions}
     />
   );
 }
 
 type HistoryWorkspaceStateProps = Pick<
   HistoryWorkspaceProps,
-  'initialPage' | 'query' | 'facets'
+  'initialPage' | 'query' | 'facets' | 'actions'
 >;
 
 function HistoryWorkspaceState({
   initialPage,
   query,
   facets,
+  actions,
 }: HistoryWorkspaceStateProps) {
   const router = useRouter();
   const [draft, setDraft] = useState(() => filterDraftFromQuery(query));
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [announcement, setAnnouncement] = useState(() =>
+    resultAnnouncement(initialPage.items.length),
+  );
 
   function navigate(nextQuery: HistoryQuery) {
     router.push(historyUrl(nextQuery));
@@ -136,6 +144,10 @@ function HistoryWorkspaceState({
     setFiltersOpen(false);
   }
 
+  function clearSearch() {
+    navigate({ ...query, q: '', cursor: null });
+  }
+
   return (
     <section aria-label="History">
       <HistoryToolbar
@@ -158,8 +170,17 @@ function HistoryWorkspaceState({
       />
 
       <div role="status" aria-live="polite" aria-atomic="true">
-        {resultAnnouncement(initialPage.items.length)}
+        {announcement}
       </div>
+
+      <HistoryList
+        initialPage={initialPage}
+        query={query}
+        actions={actions}
+        onClearSearch={clearSearch}
+        onClearFilters={clearAllFilters}
+        onAnnouncement={setAnnouncement}
+      />
     </section>
   );
 }

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
+import { encodeHistoryCursor } from './query';
 import { createHistoryActions } from './actions';
 
 const userId = '11111111-1111-4111-8111-111111111111';
@@ -10,6 +11,7 @@ function dependencies() {
   const history = {
     findOwnedReusableDuplicate: vi.fn(),
     deleteOwned: vi.fn(),
+    listOwned: vi.fn(),
   };
   const intake = {
     findOwned: vi.fn(),
@@ -70,6 +72,16 @@ describe('History server actions', () => {
     ).resolves.toMatchObject({ ok: false, code: 'unauthorized' });
     await expect(
       actions.markHistoryItemOpened({ analysisId }),
+    ).resolves.toMatchObject({ ok: false, code: 'unauthorized' });
+    await expect(
+      actions.loadMoreHistory({
+        query: '',
+        cursor: encodeHistoryCursor({
+          sort: 'newest',
+          value: expectedUpdatedAt,
+          id: analysisId,
+        }),
+      }),
     ).resolves.toMatchObject({ ok: false, code: 'unauthorized' });
 
     expect(deps.intake.findOwned).not.toHaveBeenCalled();
@@ -268,5 +280,71 @@ describe('History server actions', () => {
     const result = await actions.deleteHistoryItem({ analysisId });
     expect(result).toMatchObject({ ok: false, code: 'failed' });
     if (!result.ok) expect(result.message).not.toContain('provider');
+  });
+
+  test('loads an owner-scoped page from a canonical serialized query and cursor', async () => {
+    const deps = dependencies();
+    const cursor = encodeHistoryCursor({
+      sort: 'oldest',
+      value: expectedUpdatedAt,
+      id: analysisId,
+    });
+    const page = { items: [], nextCursor: null };
+    deps.history.listOwned.mockResolvedValue(page);
+    const actions = createHistoryActions(deps);
+
+    await expect(
+      actions.loadMoreHistory({
+        query:
+          'q=systems&status=ready&language=en&source=youtube&date=30d&favorite=true&sort=oldest',
+        cursor,
+      }),
+    ).resolves.toEqual({ ok: true, data: page });
+
+    expect(deps.history.listOwned).toHaveBeenCalledWith(
+      userId,
+      {
+        q: 'systems',
+        status: ['ready'],
+        language: 'en',
+        source: 'youtube',
+        date: '30d',
+        favorite: true,
+        sort: 'oldest',
+        cursor: {
+          sort: 'oldest',
+          value: expectedUpdatedAt,
+          id: analysisId,
+        },
+      },
+      20,
+    );
+    expect(deps.revalidateHistory).not.toHaveBeenCalled();
+  });
+
+  test('strictly rejects malformed, non-canonical, and sort-mismatched pagination input', async () => {
+    const deps = dependencies();
+    const actions = createHistoryActions(deps);
+    const oldestCursor = encodeHistoryCursor({
+      sort: 'oldest',
+      value: expectedUpdatedAt,
+      id: analysisId,
+    });
+
+    for (const input of [
+      { query: 'unknown=value', cursor: oldestCursor },
+      { query: 'q=%20systems%20&sort=oldest', cursor: oldestCursor },
+      { query: 'sort=newest', cursor: oldestCursor },
+      { query: 'sort=oldest', cursor: 'not-a-cursor' },
+      { query: 'sort=oldest', cursor: oldestCursor, userId: 'attacker' },
+    ]) {
+      await expect(actions.loadMoreHistory(input)).resolves.toMatchObject({
+        ok: false,
+        code: 'invalid',
+      });
+    }
+
+    expect(deps.authenticate).not.toHaveBeenCalled();
+    expect(deps.history.listOwned).not.toHaveBeenCalled();
   });
 });

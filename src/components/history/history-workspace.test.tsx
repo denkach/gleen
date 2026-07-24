@@ -13,6 +13,7 @@ import {
   type HistoryWorkspaceProps,
 } from './history-workspace';
 import type { HistoryQuery } from '@/lib/history/query';
+import type { HistoryItem } from '@/lib/history/repository';
 
 const query: HistoryQuery = {
   q: 'prisms',
@@ -35,6 +36,31 @@ const actions: HistoryWorkspaceProps['actions'] = {
   deleteHistoryItem: vi.fn(),
   reanalyzeHistoryDuplicate: vi.fn(),
   markHistoryItemOpened: vi.fn(),
+  loadMoreHistory: vi.fn(),
+};
+
+const historyItem: HistoryItem = {
+  id: '22222222-2222-4222-8222-222222222222',
+  sourceId: 'video-1',
+  href: '/app/video/22222222-2222-4222-8222-222222222222',
+  title: 'Integrated history item',
+  channel: 'Signal Lab',
+  thumbnailUrl: null,
+  source: 'https://youtube.com/watch?v=video-1',
+  language: 'English',
+  outputLocale: 'en',
+  durationSeconds: 120,
+  durationLabel: '2:00',
+  analyzedAt: '2026-07-24T10:00:00.000Z',
+  analyzedAtLabel: 'Jul 24, 2026',
+  lastOpenedAt: null,
+  lastOpenedAtLabel: null,
+  status: { key: 'ready', label: 'Ready' },
+  favorite: false,
+  selectedArtifacts: ['summary'],
+  readyArtifacts: ['summary'],
+  canExport: true,
+  titleRevision: '2026-07-24T10:00:00.000Z',
 };
 
 function renderWorkspace(queryOverride: HistoryQuery = query) {
@@ -221,5 +247,36 @@ describe('HistoryWorkspace URL state', () => {
     const grid = screen.getByRole('button', { name: 'Grid view unavailable' });
     await user.click(grid);
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it('integrates the responsive list with real actions and shared announcements', async () => {
+    const user = userEvent.setup();
+    vi.mocked(actions.toggleHistoryFavorite).mockResolvedValue({
+      ok: true,
+      data: undefined,
+    });
+    render(
+      <HistoryWorkspace
+        initialPage={{ items: [historyItem], nextCursor: null }}
+        query={{ ...query, q: '', status: [], cursor: null }}
+        facets={{ languages: [], sources: [] }}
+        actions={actions}
+      />,
+    );
+
+    expect(screen.getByTestId('history-desktop-list')).toBeInTheDocument();
+    expect(screen.getByTestId('history-mobile-list')).toBeInTheDocument();
+    await user.click(
+      within(screen.getByTestId('history-desktop-list')).getByRole('button', {
+        name: 'Add Integrated history item to favorites',
+      }),
+    );
+    expect(actions.toggleHistoryFavorite).toHaveBeenCalledWith({
+      analysisId: historyItem.id,
+      favorite: true,
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Integrated history item added to favorites.',
+    );
   });
 });
