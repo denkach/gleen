@@ -176,7 +176,7 @@ describe('FixtureHistory', () => {
     );
 
     for (let index = 1; index <= 6; index += 1) {
-      const selector = `.history-fixture-thumbnail--0${String(index)}`;
+      const selector = `.history-item-media__fallback.history-fixture-thumbnail--0${String(index)}`;
       expect(css).toContain(selector);
       const rule = css.slice(
         css.indexOf(selector),

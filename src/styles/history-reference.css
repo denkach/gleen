@@ -738,7 +738,7 @@
   height: 100%;
 }
 
-.history-fixture-thumbnail--01 {
+.history-item-media__fallback.history-fixture-thumbnail--01 {
   background:
     radial-gradient(
       circle at 72% 22%,
@@ -752,7 +752,7 @@
     );
 }
 
-.history-fixture-thumbnail--02 {
+.history-item-media__fallback.history-fixture-thumbnail--02 {
   background:
     linear-gradient(
       128deg,
@@ -763,7 +763,7 @@
     var(--surface-raised);
 }
 
-.history-fixture-thumbnail--03 {
+.history-item-media__fallback.history-fixture-thumbnail--03 {
   background:
     radial-gradient(
       circle at 80% 15%,
@@ -773,7 +773,7 @@
     var(--surface-panel);
 }
 
-.history-fixture-thumbnail--04 {
+.history-item-media__fallback.history-fixture-thumbnail--04 {
   background:
     radial-gradient(
       ellipse at 65% 40%,
@@ -783,7 +783,7 @@
     var(--surface-raised);
 }
 
-.history-fixture-thumbnail--05 {
+.history-item-media__fallback.history-fixture-thumbnail--05 {
   background: linear-gradient(
     145deg,
     var(--surface-raised),
@@ -791,7 +791,7 @@
   );
 }
 
-.history-fixture-thumbnail--06 {
+.history-item-media__fallback.history-fixture-thumbnail--06 {
   background:
     radial-gradient(
       circle at 75% 30%,
