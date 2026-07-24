@@ -197,11 +197,11 @@ describe('History server actions', () => {
     ).resolves.toMatchObject({ ok: false, code: 'not-found' });
   });
 
-  test('reanalyzes only the server-confirmed reusable source id', async () => {
+  test('reanalyzes only the server-confirmed reusable analysis id', async () => {
     const deps = dependencies();
     deps.history.findOwnedReusableDuplicate.mockResolvedValue({
       id: analysisId,
-      sourceId: analysisId,
+      sourceId: 'dQw4w9WgXcQ',
     });
     deps.reanalyze.mockResolvedValue({
       redirectTo: '/app/video/33333333-3333-4333-8333-333333333333',

@@ -185,7 +185,7 @@ export function createHistoryActions(dependencies: HistoryActionDependencies) {
         );
         if (!reusable) return failures['not-found'];
 
-        return success(await context.reanalyze(reusable.sourceId));
+        return success(await context.reanalyze(reusable.id));
       } catch {
         return failures.failed;
       }
