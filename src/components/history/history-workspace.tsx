@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 
 import { HistoryFilters } from '@/components/history/history-filters';
 import { HistoryList } from '@/components/history/history-list';
@@ -134,6 +134,8 @@ function HistoryWorkspaceState({
   const router = useRouter();
   const [draft, setDraft] = useState(() => filterDraftFromQuery(query));
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [reanalyzing, setReanalyzing] = useState(false);
+  const reanalysisPendingRef = useRef(false);
   const [announcement, setAnnouncement] = useState(() =>
     resultAnnouncement(initialPage.items.length),
   );
@@ -171,9 +173,11 @@ function HistoryWorkspaceState({
 
   async function analyzeAnotherVersion(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!verifiedDuplicate) return;
+    if (!verifiedDuplicate || reanalysisPendingRef.current) return;
 
     const failureMessage = 'We could not start another analysis. Try again.';
+    reanalysisPendingRef.current = true;
+    setReanalyzing(true);
     try {
       const result = await actions.reanalyzeHistoryDuplicate({
         analysisId: verifiedDuplicate.id,
@@ -194,6 +198,9 @@ function HistoryWorkspaceState({
       router.push(result.data.redirectTo);
     } catch {
       setAnnouncement(failureMessage);
+    } finally {
+      reanalysisPendingRef.current = false;
+      setReanalyzing(false);
     }
   }
 
@@ -229,7 +236,11 @@ function HistoryWorkspaceState({
           <div className="history-duplicate-banner__actions">
             <Link href={verifiedDuplicate.href}>Open saved result</Link>
             <form onSubmit={analyzeAnotherVersion}>
-              <button type="submit">Analyze another version</button>
+              <button type="submit" disabled={reanalyzing}>
+                {reanalyzing
+                  ? 'Starting another analysis…'
+                  : 'Analyze another version'}
+              </button>
             </form>
           </div>
         </aside>

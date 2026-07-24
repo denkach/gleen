@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -10,6 +10,7 @@ const migrationPath = join(
 );
 const sql = readFileSync(migrationPath, 'utf8');
 const normalizedSql = sql.replace(/\s+/g, ' ').trim();
+const migrationDirectory = join(process.cwd(), 'supabase', 'migrations');
 
 describe('DEN-19 History database contract', () => {
   it('defines the secure indexed History read model', () => {
@@ -38,9 +39,7 @@ describe('DEN-19 History database contract', () => {
       'add column if not exists last_opened_at timestamptz',
     );
     expect(sql).toContain('with (security_invoker = true)');
-    expect(normalizedSql).toContain(
-      'intake.output_locale, intake.summary_preset, intake.duration_seconds',
-    );
+    expect(normalizedSql).not.toContain('intake.summary_preset');
     expect(normalizedSql).toContain(
       'job.analysis_id = intake.id and job.user_id = intake.user_id',
     );
@@ -59,5 +58,38 @@ describe('DEN-19 History database contract', () => {
     expect(sql).toContain('for delete to authenticated');
     expect(sql).toContain('(select auth.uid()) = user_id');
     expect(sql.toLowerCase()).not.toContain('security definer');
+  });
+
+  it('appends the persisted summary preset in a forward-compatible view migration', () => {
+    const forwardMigration = readdirSync(migrationDirectory).find((name) =>
+      name.endsWith('_den_19_history_preset.sql'),
+    );
+    expect(forwardMigration).toBeDefined();
+    if (!forwardMigration) return;
+
+    const forwardSql = readFileSync(
+      join(migrationDirectory, forwardMigration),
+      'utf8',
+    );
+    const normalizedForwardSql = forwardSql.replace(/\s+/g, ' ').trim();
+    const baseColumns = normalizedSql.match(
+      /as select (.+?) from public\.analysis_intakes as intake/u,
+    )?.[1];
+    const forwardColumns = normalizedForwardSql.match(
+      /as select (.+?) from public\.analysis_intakes as intake/u,
+    )?.[1];
+
+    expect(normalizedForwardSql).toContain(
+      'create or replace view public.analysis_history with (security_invoker = true) as select',
+    );
+    expect(baseColumns).toBeDefined();
+    expect(forwardColumns).toBe(`${baseColumns}, intake.summary_preset`);
+    expect(forwardSql).toContain(
+      'revoke all on public.analysis_history from public, anon',
+    );
+    expect(forwardSql).toContain(
+      'grant select on public.analysis_history to authenticated',
+    );
+    expect(forwardSql.toLowerCase()).not.toContain('security definer');
   });
 });

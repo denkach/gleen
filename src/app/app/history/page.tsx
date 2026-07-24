@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { z } from 'zod';
 
 import { HistoryWorkspace } from '@/components/history/history-workspace';
 import {
@@ -48,11 +49,14 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
 
   const rawSearchParams = await searchParams;
   const query = parseHistoryQuery(rawSearchParams);
-  const duplicateCandidate =
+  const duplicateCandidateResult =
     typeof rawSearchParams.duplicate === 'string' &&
     rawSearchParams.duplicate.length > 0
-      ? rawSearchParams.duplicate
+      ? z.uuid().safeParse(rawSearchParams.duplicate)
       : null;
+  const duplicateCandidate = duplicateCandidateResult?.success
+    ? duplicateCandidateResult.data
+    : null;
   const repository = createSupabaseHistoryRepository(
     supabase as unknown as SupabaseHistoryClient,
   );

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -149,8 +149,14 @@ describe('HistoryWorkspace URL state', () => {
 
   it('announces rejected duplicate reanalysis and never follows an unsafe redirect', async () => {
     const user = userEvent.setup();
+    let rejectReanalysis: ((reason: unknown) => void) | undefined;
     vi.mocked(actions.reanalyzeHistoryDuplicate)
-      .mockRejectedValueOnce(new Error('private database detail'))
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectReanalysis = reject;
+          }),
+      )
       .mockResolvedValueOnce({
         ok: true,
         data: { redirectTo: 'https://attacker.example/result' },
@@ -170,6 +176,12 @@ describe('HistoryWorkspace URL state', () => {
       name: 'Analyze another version',
     });
     await user.click(reanalyze);
+    expect(
+      screen.getByRole('button', { name: 'Starting another analysis…' }),
+    ).toBeDisabled();
+    await act(async () => {
+      rejectReanalysis?.(new Error('private database detail'));
+    });
     expect(screen.getByRole('status')).toHaveTextContent(
       'We could not start another analysis. Try again.',
     );
@@ -177,7 +189,11 @@ describe('HistoryWorkspace URL state', () => {
       'private database detail',
     );
 
-    await user.click(reanalyze);
+    const recovered = screen.getByRole('button', {
+      name: 'Analyze another version',
+    });
+    expect(recovered).toBeEnabled();
+    await user.click(recovered);
     expect(push).not.toHaveBeenCalled();
     expect(screen.getByRole('status')).toHaveTextContent(
       'We could not start another analysis. Try again.',
@@ -186,11 +202,17 @@ describe('HistoryWorkspace URL state', () => {
 
   it('announces a structured duplicate rejection without navigation', async () => {
     const user = userEvent.setup();
-    vi.mocked(actions.reanalyzeHistoryDuplicate).mockResolvedValue({
-      ok: false,
-      code: 'not-found',
-      message: 'This saved analysis is no longer available.',
-    });
+    let resolveReanalysis:
+      | ((
+          result: Awaited<ReturnType<typeof actions.reanalyzeHistoryDuplicate>>,
+        ) => void)
+      | undefined;
+    vi.mocked(actions.reanalyzeHistoryDuplicate).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveReanalysis = resolve;
+        }),
+    );
 
     render(
       <HistoryWorkspace
@@ -202,13 +224,33 @@ describe('HistoryWorkspace URL state', () => {
       />,
     );
 
+    const reanalyze = screen.getByRole('button', {
+      name: 'Analyze another version',
+    });
+    await user.click(reanalyze);
+    expect(
+      screen.getByRole('button', { name: 'Starting another analysis…' }),
+    ).toBeDisabled();
     await user.click(
-      screen.getByRole('button', { name: 'Analyze another version' }),
+      screen.getByRole('button', { name: 'Starting another analysis…' }),
     );
+    fireEvent.submit(reanalyze.closest('form')!);
+    expect(actions.reanalyzeHistoryDuplicate).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      resolveReanalysis?.({
+        ok: false,
+        code: 'not-found',
+        message: 'This saved analysis is no longer available.',
+      });
+    });
 
     expect(screen.getByRole('status')).toHaveTextContent(
       'This saved analysis is no longer available.',
     );
+    expect(
+      screen.getByRole('button', { name: 'Analyze another version' }),
+    ).toBeEnabled();
     expect(push).not.toHaveBeenCalled();
   });
 

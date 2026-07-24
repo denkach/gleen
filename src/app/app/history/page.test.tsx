@@ -63,6 +63,7 @@ vi.mock('@/lib/history/actions', () => ({
 
 import HistoryPage from './page';
 
+const ownerId = '11111111-1111-4111-8111-111111111111';
 const verifiedDuplicate: HistoryItem = {
   id: '22222222-2222-4222-8222-222222222222',
   sourceId: 'video-1',
@@ -99,7 +100,7 @@ function renderPage(
 describe('HistoryPage server boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } } });
+    getUser.mockResolvedValue({ data: { user: { id: ownerId } } });
     listOwned.mockResolvedValue({ items: [], nextCursor: null });
     listFacets.mockResolvedValue({
       languages: ['en'],
@@ -130,7 +131,7 @@ describe('HistoryPage server boundary', () => {
     });
 
     expect(listOwned).toHaveBeenCalledWith(
-      'owner-1',
+      ownerId,
       {
         q: 'prisms',
         status: ['ready', 'failed'],
@@ -143,7 +144,7 @@ describe('HistoryPage server boundary', () => {
       },
       20,
     );
-    expect(listFacets).toHaveBeenCalledWith('owner-1');
+    expect(listFacets).toHaveBeenCalledWith(ownerId);
     expect(
       screen.getByRole('heading', { name: 'History', level: 1 }),
     ).toBeInTheDocument();
@@ -162,7 +163,7 @@ describe('HistoryPage server boundary', () => {
     });
 
     expect(listOwned).toHaveBeenCalledWith(
-      'owner-1',
+      ownerId,
       {
         q: 'first',
         status: ['processing'],
@@ -183,7 +184,7 @@ describe('HistoryPage server boundary', () => {
     await renderPage({ duplicate: verifiedDuplicate.id });
 
     expect(findOwnedReusableDuplicate).toHaveBeenCalledWith(
-      'owner-1',
+      ownerId,
       verifiedDuplicate.id,
     );
     expect(
@@ -206,6 +207,18 @@ describe('HistoryPage server boundary', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('ignores a malformed scalar duplicate without failing normal History', async () => {
+    await renderPage({ duplicate: 'not-a-uuid' });
+
+    expect(findOwnedReusableDuplicate).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('heading', { name: 'No analyses yet' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('You already analyzed this video'),
+    ).not.toBeInTheDocument();
+  });
+
   test.each(['stale', 'foreign', 'processing', 'failed'])(
     'renders no banner when the repository rejects a %s duplicate candidate',
     async () => {
@@ -214,7 +227,7 @@ describe('HistoryPage server boundary', () => {
       await renderPage({ duplicate: verifiedDuplicate.id });
 
       expect(findOwnedReusableDuplicate).toHaveBeenCalledWith(
-        'owner-1',
+        ownerId,
         verifiedDuplicate.id,
       );
       expect(
