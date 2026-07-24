@@ -71,6 +71,12 @@ export function toHistoryItem(
     source: row.canonicalUrl,
     language: row.transcriptLanguage,
     outputLocale: row.outputLocale,
+    summaryPresetLabel:
+      row.summaryPreset === null
+        ? null
+        : row.summaryPreset === 'detailed'
+          ? 'Detailed'
+          : 'Balanced',
     durationSeconds: row.durationSeconds,
     durationLabel: formatDuration(row.durationSeconds),
     analyzedAt: row.analyzedAt,

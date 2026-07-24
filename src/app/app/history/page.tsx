@@ -1,55 +1,96 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { HistoryWorkspace } from '@/components/history/history-workspace';
 import {
-  createSupabaseAnalysisRepository,
-  type SupabaseAnalysisClient,
-} from '@/lib/analysis-pipeline/supabase-repository';
-import { historyEntryPresentation } from '@/lib/analysis-pipeline/recovery';
+  deleteHistoryItem,
+  loadMoreHistory,
+  markHistoryItemOpened,
+  reanalyzeHistoryDuplicate,
+  renameHistoryItem,
+  toggleHistoryFavorite,
+} from '@/lib/history/actions';
+import { parseHistoryQuery } from '@/lib/history/query';
+import type {
+  HistoryFacets,
+  HistoryItem,
+  HistoryPage as HistoryPageData,
+} from '@/lib/history/repository';
+import {
+  createSupabaseHistoryRepository,
+  type SupabaseHistoryClient,
+} from '@/lib/history/supabase-repository';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'History — Gleen',
 };
 
-export default async function HistoryPage() {
+const historyActions = {
+  toggleHistoryFavorite,
+  renameHistoryItem,
+  deleteHistoryItem,
+  reanalyzeHistoryDuplicate,
+  markHistoryItemOpened,
+  loadMoreHistory,
+};
+
+type HistoryPageProps = Readonly<{
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}>;
+
+export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/session-expired');
-  const rows = await createSupabaseAnalysisRepository(
-    supabase as unknown as SupabaseAnalysisClient,
-  ).listOwnedHistory(user.id, 50);
 
+  const rawSearchParams = await searchParams;
+  const query = parseHistoryQuery(rawSearchParams);
+  const duplicateCandidate =
+    typeof rawSearchParams.duplicate === 'string' &&
+    rawSearchParams.duplicate.length > 0
+      ? rawSearchParams.duplicate
+      : null;
+  const repository = createSupabaseHistoryRepository(
+    supabase as unknown as SupabaseHistoryClient,
+  );
+
+  let historyData:
+    readonly [HistoryPageData, HistoryFacets, HistoryItem | null] | null = null;
+  try {
+    historyData = await Promise.all([
+      repository.listOwned(user.id, query, 20),
+      repository.listFacets(user.id),
+      duplicateCandidate
+        ? repository.findOwnedReusableDuplicate(user.id, duplicateCandidate)
+        : Promise.resolve(null),
+    ]);
+  } catch {
+    historyData = null;
+  }
+
+  if (!historyData) {
+    return (
+      <HistoryWorkspace
+        initialPage={{ items: [], nextCursor: null }}
+        query={query}
+        facets={{ languages: [], sources: [] }}
+        loadError
+        actions={historyActions}
+      />
+    );
+  }
+
+  const [initialPage, facets, verifiedDuplicate] = historyData;
   return (
-    <section className="destination-state" aria-labelledby="history-title">
-      <div className="page-head">
-        <div>
-          <span className="eyebrow">Your library</span>
-          <h1 id="history-title">History</h1>
-        </div>
-      </div>
-      <div className="panel destination-panel">
-        {rows.length === 0 ? (
-          <p>No analyses yet.</p>
-        ) : (
-          <ul>
-            {rows.map((row) => {
-              const presentation = historyEntryPresentation(row);
-              return (
-                <li key={row.id}>
-                  <Link href={presentation.href}>
-                    <strong>{row.title}</strong>{' '}
-                    <span>{presentation.statusLabel}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-    </section>
+    <HistoryWorkspace
+      initialPage={initialPage}
+      query={query}
+      facets={facets}
+      verifiedDuplicate={verifiedDuplicate}
+      actions={historyActions}
+    />
   );
 }

@@ -56,6 +56,7 @@ select
   intake.thumbnail_url,
   intake.transcript_language,
   intake.output_locale,
+  intake.summary_preset,
   intake.duration_seconds,
   intake.selected_artifacts,
   ready.ready_artifacts,

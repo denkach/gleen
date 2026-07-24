@@ -13,6 +13,7 @@ export type HistoryDatabaseRow = Readonly<{
   thumbnailUrl: string | null;
   transcriptLanguage: string | null;
   outputLocale: string;
+  summaryPreset: 'balanced' | 'detailed' | null;
   durationSeconds: number | null;
   selectedArtifacts: readonly ArtifactKind[];
   readyArtifacts: readonly ArtifactKind[];
@@ -38,6 +39,7 @@ export type HistoryItem = Readonly<{
   source: string;
   language: string | null;
   outputLocale: string;
+  summaryPresetLabel: 'Balanced' | 'Detailed' | null;
   durationSeconds: number | null;
   durationLabel: string | null;
   analyzedAt: string;

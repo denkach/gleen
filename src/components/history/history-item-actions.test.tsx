@@ -16,6 +16,7 @@ const item: HistoryItem = {
   source: 'https://youtube.com/watch?v=video-1',
   language: 'English',
   outputLocale: 'en',
+  summaryPresetLabel: 'Balanced',
   durationSeconds: 2_829,
   durationLabel: '47:09',
   analyzedAt: '2026-07-06T09:12:00.000Z',

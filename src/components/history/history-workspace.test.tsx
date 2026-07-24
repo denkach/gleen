@@ -49,6 +49,7 @@ const historyItem: HistoryItem = {
   source: 'https://youtube.com/watch?v=video-1',
   language: 'English',
   outputLocale: 'en',
+  summaryPresetLabel: 'Detailed',
   durationSeconds: 120,
   durationLabel: '2:00',
   analyzedAt: '2026-07-24T10:00:00.000Z',
@@ -78,6 +79,187 @@ function renderWorkspace(queryOverride: HistoryQuery = query) {
 beforeEach(() => vi.clearAllMocks());
 
 describe('HistoryWorkspace URL state', () => {
+  it('mounts the approved page heading and spectral New analysis action', () => {
+    renderWorkspace();
+
+    const heading = screen.getByRole('heading', { name: 'History', level: 1 });
+    expect(heading.closest('.history-page-head')).toBeInTheDocument();
+    expect(screen.getByText('Your library')).toHaveClass(
+      'history-page-head__eyebrow',
+    );
+    expect(
+      screen.getByText(
+        'Open a saved result without spending another analysis.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'New analysis' })).toHaveAttribute(
+      'href',
+      '/app',
+    );
+    expect(screen.getByRole('link', { name: 'New analysis' })).toHaveClass(
+      'history-new-analysis',
+    );
+  });
+
+  it('renders the verified duplicate and reanalyzes with only its confirmed id', async () => {
+    const user = userEvent.setup();
+    vi.mocked(actions.reanalyzeHistoryDuplicate).mockResolvedValue({
+      ok: true,
+      data: {
+        redirectTo: '/app/video/33333333-3333-4333-8333-333333333333',
+      },
+    });
+
+    render(
+      <HistoryWorkspace
+        initialPage={{ items: [], nextCursor: null }}
+        query={query}
+        facets={{ languages: [], sources: [] }}
+        verifiedDuplicate={historyItem}
+        actions={actions}
+      />,
+    );
+
+    const banner = screen
+      .getByText('You already analyzed this video')
+      .closest('.history-duplicate-banner');
+    expect(banner).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Open the saved English · Detailed version. No credits will be used.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Open saved result' }),
+    ).toHaveAttribute('href', historyItem.href);
+
+    const reanalyze = screen.getByRole('button', {
+      name: 'Analyze another version',
+    });
+    expect(reanalyze.closest('form')).toBeInTheDocument();
+    await user.click(reanalyze);
+
+    expect(actions.reanalyzeHistoryDuplicate).toHaveBeenCalledWith({
+      analysisId: historyItem.id,
+    });
+    expect(push).toHaveBeenCalledWith(
+      '/app/video/33333333-3333-4333-8333-333333333333',
+    );
+  });
+
+  it('announces rejected duplicate reanalysis and never follows an unsafe redirect', async () => {
+    const user = userEvent.setup();
+    vi.mocked(actions.reanalyzeHistoryDuplicate)
+      .mockRejectedValueOnce(new Error('private database detail'))
+      .mockResolvedValueOnce({
+        ok: true,
+        data: { redirectTo: 'https://attacker.example/result' },
+      });
+
+    render(
+      <HistoryWorkspace
+        initialPage={{ items: [], nextCursor: null }}
+        query={query}
+        facets={{ languages: [], sources: [] }}
+        verifiedDuplicate={historyItem}
+        actions={actions}
+      />,
+    );
+
+    const reanalyze = screen.getByRole('button', {
+      name: 'Analyze another version',
+    });
+    await user.click(reanalyze);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'We could not start another analysis. Try again.',
+    );
+    expect(screen.getByRole('status')).not.toHaveTextContent(
+      'private database detail',
+    );
+
+    await user.click(reanalyze);
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'We could not start another analysis. Try again.',
+    );
+  });
+
+  it('announces a structured duplicate rejection without navigation', async () => {
+    const user = userEvent.setup();
+    vi.mocked(actions.reanalyzeHistoryDuplicate).mockResolvedValue({
+      ok: false,
+      code: 'not-found',
+      message: 'This saved analysis is no longer available.',
+    });
+
+    render(
+      <HistoryWorkspace
+        initialPage={{ items: [], nextCursor: null }}
+        query={query}
+        facets={{ languages: [], sources: [] }}
+        verifiedDuplicate={historyItem}
+        actions={actions}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Analyze another version' }),
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'This saved analysis is no longer available.',
+    );
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('omits unavailable duplicate metadata instead of inventing copy', () => {
+    render(
+      <HistoryWorkspace
+        initialPage={{ items: [], nextCursor: null }}
+        query={query}
+        facets={{ languages: [], sources: [] }}
+        verifiedDuplicate={{
+          ...historyItem,
+          language: null,
+          summaryPresetLabel: null,
+        }}
+        actions={actions}
+      />,
+    );
+
+    expect(
+      screen.getByText('Open the saved version. No credits will be used.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Balanced|Detailed/u)).not.toBeInTheDocument();
+  });
+
+  it('renders the safe load error under the same approved page heading', () => {
+    render(
+      <HistoryWorkspace
+        initialPage={{ items: [], nextCursor: null }}
+        query={query}
+        facets={{ languages: [], sources: [] }}
+        loadError
+        actions={actions}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'History', level: 1 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'New analysis' })).toHaveAttribute(
+      'href',
+      '/app',
+    );
+    expect(
+      screen.getByRole('heading', { name: 'History is unavailable' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Try again' })).toHaveAttribute(
+      'href',
+      '/app/history',
+    );
+  });
+
   it('exposes the stable page and bottom-navigation clearance hooks', () => {
     renderWorkspace();
 

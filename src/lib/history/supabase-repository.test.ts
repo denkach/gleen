@@ -35,6 +35,7 @@ function databaseRow(
     thumbnail_url: 'https://i.ytimg.com/vi/video-1/hqdefault.jpg',
     transcript_language: 'en',
     output_locale: 'en',
+    summary_preset: 'detailed',
     duration_seconds: 900,
     selected_artifacts: ['summary', 'flashcards'],
     ready_artifacts: ['summary'],
@@ -494,7 +495,10 @@ describe('Supabase History repository', () => {
         'owner-1',
         'analysis-1',
       ),
-    ).resolves.toMatchObject({ id: 'analysis-1' });
+    ).resolves.toMatchObject({
+      id: 'analysis-1',
+      summaryPresetLabel: 'Detailed',
+    });
 
     expect(recorded).toContainEqual(['from', 'analysis_history']);
     expect(recorded).toContainEqual(['eq', 'user_id', 'owner-1']);

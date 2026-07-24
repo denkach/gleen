@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState, type FormEvent } from 'react';
 
 import { HistoryFilters } from '@/components/history/history-filters';
 import { HistoryList } from '@/components/history/history-list';
@@ -40,6 +41,7 @@ export type HistoryWorkspaceProps = Readonly<{
   query: HistoryQuery;
   facets: HistoryFacets;
   verifiedDuplicate?: HistoryItem | null;
+  loadError?: boolean;
   actions: HistoryWorkspaceActions;
 }>;
 
@@ -82,10 +84,20 @@ function resultAnnouncement(count: number): string {
   return `${count} saved analyses`;
 }
 
+function duplicateReassurance(item: HistoryItem): string {
+  const details = [item.language, item.summaryPresetLabel].filter(
+    (value): value is string => value !== null,
+  );
+  const version = details.length > 0 ? ` ${details.join(' · ')}` : '';
+  return `Open the saved${version} version. No credits will be used.`;
+}
+
 export function HistoryWorkspace({
   initialPage,
   query,
   facets,
+  verifiedDuplicate = null,
+  loadError = false,
   actions,
 }: HistoryWorkspaceProps) {
   return (
@@ -94,6 +106,8 @@ export function HistoryWorkspace({
       initialPage={initialPage}
       query={query}
       facets={facets}
+      verifiedDuplicate={verifiedDuplicate}
+      loadError={loadError}
       actions={actions}
     />
   );
@@ -101,13 +115,20 @@ export function HistoryWorkspace({
 
 type HistoryWorkspaceStateProps = Pick<
   HistoryWorkspaceProps,
-  'initialPage' | 'query' | 'facets' | 'actions'
+  | 'initialPage'
+  | 'query'
+  | 'facets'
+  | 'verifiedDuplicate'
+  | 'loadError'
+  | 'actions'
 >;
 
 function HistoryWorkspaceState({
   initialPage,
   query,
   facets,
+  verifiedDuplicate,
+  loadError,
   actions,
 }: HistoryWorkspaceStateProps) {
   const router = useRouter();
@@ -148,47 +169,128 @@ function HistoryWorkspaceState({
     navigate({ ...query, q: '', cursor: null });
   }
 
+  async function analyzeAnotherVersion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!verifiedDuplicate) return;
+
+    const failureMessage = 'We could not start another analysis. Try again.';
+    try {
+      const result = await actions.reanalyzeHistoryDuplicate({
+        analysisId: verifiedDuplicate.id,
+      });
+      if (!result.ok) {
+        setAnnouncement(result.message);
+        return;
+      }
+
+      if (
+        !/^\/app\/video\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+          result.data.redirectTo,
+        )
+      ) {
+        setAnnouncement(failureMessage);
+        return;
+      }
+      router.push(result.data.redirectTo);
+    } catch {
+      setAnnouncement(failureMessage);
+    }
+  }
+
   return (
     <section
       className="history-workspace history-bottom-nav-clearance"
       aria-label="History"
     >
-      <HistoryToolbar
-        query={query}
-        onSearch={search}
-        onSortChange={changeSort}
-        filterControl={
-          <HistoryFilters
-            draft={draft}
-            appliedCount={appliedFilterCount(query)}
-            facets={facets}
-            open={filtersOpen}
-            onOpenChange={setFiltersOpen}
-            onChange={setDraft}
-            onApply={applyFilters}
-            onReset={resetFilters}
-            onClearAll={clearAllFilters}
+      <header className="history-page-head">
+        <div className="history-page-head__copy">
+          <span className="history-page-head__eyebrow">Your library</span>
+          <h1>History</h1>
+          <p>Open a saved result without spending another analysis.</p>
+        </div>
+        <div className="history-page-head__actions">
+          <Link className="history-new-analysis" href="/app">
+            <span aria-hidden="true">✦</span>
+            New analysis
+          </Link>
+        </div>
+      </header>
+
+      {verifiedDuplicate ? (
+        <aside
+          className="history-duplicate-banner"
+          aria-label="Saved analysis available"
+        >
+          <span aria-hidden="true">▶</span>
+          <div className="history-duplicate-banner__copy">
+            <strong>You already analyzed this video</strong>
+            <p>{duplicateReassurance(verifiedDuplicate)}</p>
+          </div>
+          <div className="history-duplicate-banner__actions">
+            <Link href={verifiedDuplicate.href}>Open saved result</Link>
+            <form onSubmit={analyzeAnotherVersion}>
+              <button type="submit">Analyze another version</button>
+            </form>
+          </div>
+        </aside>
+      ) : null}
+
+      {loadError ? (
+        <>
+          <div
+            className="history-workspace__announcer"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            History is temporarily unavailable.
+          </div>
+          <section className="history-empty history-empty--initial">
+            <h2>History is unavailable</h2>
+            <p>We could not load your saved analyses.</p>
+            <Link href="/app/history">Try again</Link>
+          </section>
+        </>
+      ) : (
+        <>
+          <HistoryToolbar
+            query={query}
+            onSearch={search}
+            onSortChange={changeSort}
+            filterControl={
+              <HistoryFilters
+                draft={draft}
+                appliedCount={appliedFilterCount(query)}
+                facets={facets}
+                open={filtersOpen}
+                onOpenChange={setFiltersOpen}
+                onChange={setDraft}
+                onApply={applyFilters}
+                onReset={resetFilters}
+                onClearAll={clearAllFilters}
+              />
+            }
           />
-        }
-      />
 
-      <div
-        className="history-workspace__announcer"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {announcement}
-      </div>
+          <div
+            className="history-workspace__announcer"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {announcement}
+          </div>
 
-      <HistoryList
-        initialPage={initialPage}
-        query={query}
-        actions={actions}
-        onClearSearch={clearSearch}
-        onClearFilters={clearAllFilters}
-        onAnnouncement={setAnnouncement}
-      />
+          <HistoryList
+            initialPage={initialPage}
+            query={query}
+            actions={actions}
+            onClearSearch={clearSearch}
+            onClearFilters={clearAllFilters}
+            onAnnouncement={setAnnouncement}
+          />
+        </>
+      )}
     </section>
   );
 }

@@ -69,6 +69,7 @@ function item(
     source: `https://youtube.com/watch?v=${id}`,
     language: 'English',
     outputLocale: 'en',
+    summaryPresetLabel: 'Balanced',
     durationSeconds: 2_058,
     durationLabel: '34:18',
     analyzedAt: '2026-07-24T10:00:00.000Z',

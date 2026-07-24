@@ -13,6 +13,7 @@ function row(overrides: Partial<HistoryDatabaseRow> = {}): HistoryDatabaseRow {
     thumbnailUrl: 'https://i.ytimg.com/vi/video-1/hqdefault.jpg',
     transcriptLanguage: 'en',
     outputLocale: 'en',
+    summaryPreset: 'balanced',
     durationSeconds: 900,
     selectedArtifacts: ['summary', 'flashcards'],
     readyArtifacts: ['summary', 'flashcards'],
@@ -95,6 +96,7 @@ describe('history presentation', () => {
         channelTitle: null,
         thumbnailUrl: null,
         transcriptLanguage: null,
+        summaryPreset: null,
         durationSeconds: null,
         lastOpenedAt: null,
       }),
@@ -114,9 +116,23 @@ describe('history presentation', () => {
       lastOpenedAt: null,
       lastOpenedAtLabel: null,
       outputLocale: 'en',
+      summaryPresetLabel: null,
       selectedArtifacts: ['summary', 'flashcards'],
       readyArtifacts: ['summary', 'flashcards'],
       titleRevision: '2026-07-24T14:35:00.000Z',
     });
   });
+
+  test.each([
+    ['balanced', 'Balanced'],
+    ['detailed', 'Detailed'],
+  ] as const)(
+    'maps the persisted %s summary preset to safe copy',
+    (preset, label) => {
+      expect(
+        toHistoryItem(row({ summaryPreset: preset }), formatOptions)
+          .summaryPresetLabel,
+      ).toBe(label);
+    },
+  );
 });

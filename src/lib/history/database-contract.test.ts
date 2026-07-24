@@ -39,6 +39,9 @@ describe('DEN-19 History database contract', () => {
     );
     expect(sql).toContain('with (security_invoker = true)');
     expect(normalizedSql).toContain(
+      'intake.output_locale, intake.summary_preset, intake.duration_seconds',
+    );
+    expect(normalizedSql).toContain(
       'job.analysis_id = intake.id and job.user_id = intake.user_id',
     );
     expect(normalizedSql).toContain(
