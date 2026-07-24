@@ -232,15 +232,24 @@ function HistoryWorkspaceState({
           className="history-duplicate-banner"
           aria-label="Saved analysis available"
         >
-          <span aria-hidden="true">▶</span>
+          <span className="history-duplicate-banner__play" aria-hidden="true" />
           <div className="history-duplicate-banner__copy">
             <strong>You already analyzed this video</strong>
             <p>{duplicateReassurance(verifiedDuplicate)}</p>
           </div>
           <div className="history-duplicate-banner__actions">
-            <Link href={verifiedDuplicate.href}>Open saved result</Link>
+            <Link
+              className="history-duplicate-banner__primary"
+              href={verifiedDuplicate.href}
+            >
+              Open saved result
+            </Link>
             <form onSubmit={analyzeAnotherVersion}>
-              <button type="submit" disabled={reanalyzing}>
+              <button
+                className="history-duplicate-banner__secondary"
+                type="submit"
+                disabled={reanalyzing}
+              >
                 {reanalyzing
                   ? 'Starting another analysis…'
                   : 'Analyze another version'}

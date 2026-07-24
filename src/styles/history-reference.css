@@ -140,6 +140,28 @@
   );
 }
 
+.history-duplicate-banner__play {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-hover);
+  border-radius: 50%;
+  color: var(--text-primary);
+  box-shadow: inset 0 0 18px
+    color-mix(in srgb, var(--artifact-timestamps) 7%, transparent);
+}
+
+.history-duplicate-banner__play::before {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid currentColor;
+  content: '';
+  translate: 1px 0;
+}
+
 .history-duplicate-banner__copy {
   min-width: 0;
 }
@@ -162,18 +184,37 @@
   gap: 12px;
 }
 
+.history-duplicate-banner__actions form {
+  display: contents;
+}
+
 .history-duplicate-banner__actions :is(a, button) {
   min-height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 18px;
-  border: 1px solid var(--border-hover);
   border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--text-primary);
   font: inherit;
   text-decoration: none;
+}
+
+.history-duplicate-banner__primary {
+  border: 1px solid var(--text-primary);
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+  color: var(--background-deep);
+}
+
+.history-duplicate-banner__secondary {
+  border: 1px solid var(--border-hover);
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.history-duplicate-banner__secondary:disabled {
+  cursor: wait;
+  opacity: 0.58;
 }
 
 .history-toolbar {
@@ -1049,6 +1090,10 @@
     padding: 18px;
   }
 
+  .history-duplicate-banner__play {
+    justify-self: center;
+  }
+
   .history-duplicate-banner__actions {
     grid-column: 2;
     align-items: stretch;
@@ -1056,8 +1101,19 @@
     gap: 6px;
   }
 
+  .history-duplicate-banner__actions form {
+    width: 100%;
+    display: block;
+  }
+
   .history-duplicate-banner__actions :is(a, button) {
     width: 100%;
+  }
+
+  .history-duplicate-banner__secondary {
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
   }
 
   .history-toolbar {

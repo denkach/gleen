@@ -84,6 +84,10 @@ describe('HistoryWorkspace URL state', () => {
 
     const heading = screen.getByRole('heading', { name: 'History', level: 1 });
     expect(heading.closest('.history-page-head')).toBeInTheDocument();
+    expect(heading.parentElement).toHaveClass('history-page-head__copy');
+    expect(
+      screen.getByRole('link', { name: 'New analysis' }).parentElement,
+    ).toHaveClass('history-page-head__actions');
     expect(screen.getByText('Your library')).toHaveClass(
       'history-page-head__eyebrow',
     );
@@ -125,17 +129,27 @@ describe('HistoryWorkspace URL state', () => {
       .closest('.history-duplicate-banner');
     expect(banner).toBeInTheDocument();
     expect(
+      banner?.querySelector('.history-duplicate-banner__play'),
+    ).toHaveAttribute('aria-hidden', 'true');
+    expect(
+      screen.getByText('You already analyzed this video').parentElement,
+    ).toHaveClass('history-duplicate-banner__copy');
+    expect(
+      screen.getByRole('link', { name: 'Open saved result' }).parentElement,
+    ).toHaveClass('history-duplicate-banner__actions');
+    expect(
       screen.getByText(
         'Open the saved English · Detailed version. No credits will be used.',
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: 'Open saved result' }),
-    ).toHaveAttribute('href', historyItem.href);
+    const openSaved = screen.getByRole('link', { name: 'Open saved result' });
+    expect(openSaved).toHaveAttribute('href', historyItem.href);
+    expect(openSaved).toHaveClass('history-duplicate-banner__primary');
 
     const reanalyze = screen.getByRole('button', {
       name: 'Analyze another version',
     });
+    expect(reanalyze).toHaveClass('history-duplicate-banner__secondary');
     expect(reanalyze.closest('form')).toBeInTheDocument();
     await user.click(reanalyze);
 
