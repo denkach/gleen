@@ -59,6 +59,16 @@ const emptyFilterDraft: HistoryFilterDraft = {
   favorite: false,
 };
 
+function appliedFilterCount(query: HistoryQuery): number {
+  return (
+    query.status.length +
+    Number(query.language !== null) +
+    Number(query.source !== null) +
+    Number(query.date !== 'all') +
+    Number(query.favorite)
+  );
+}
+
 function historyUrl(query: HistoryQuery): string {
   const parameters = serializeHistoryQuery(query).toString();
   return parameters ? `/app/history?${parameters}` : '/app/history';
@@ -135,6 +145,7 @@ function HistoryWorkspaceState({
         filterControl={
           <HistoryFilters
             draft={draft}
+            appliedCount={appliedFilterCount(query)}
             facets={facets}
             open={filtersOpen}
             onOpenChange={setFiltersOpen}

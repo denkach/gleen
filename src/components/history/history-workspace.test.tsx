@@ -141,6 +141,9 @@ describe('HistoryWorkspace URL state', () => {
     expect(push).toHaveBeenCalledWith(
       '/app/history?q=prisms&status=failed&date=today&sort=recent',
     );
+    expect(
+      screen.getByRole('button', { name: 'Filters, 5 applied' }),
+    ).toBeInTheDocument();
   });
 
   it('Clear all preserves valid search and sort while clearing filters and cursor', async () => {
@@ -158,6 +161,9 @@ describe('HistoryWorkspace URL state', () => {
     );
 
     expect(push).toHaveBeenCalledWith('/app/history?q=prisms&sort=recent');
+    expect(
+      screen.getByRole('button', { name: 'Filters, 5 applied' }),
+    ).toBeInTheDocument();
   });
 
   it('resynchronizes search and filter drafts from new query props for Back/Forward', async () => {

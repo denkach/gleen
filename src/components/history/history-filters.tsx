@@ -33,6 +33,7 @@ const dateOptions = [
 
 export type HistoryFiltersProps = Readonly<{
   draft: HistoryFilterDraft;
+  appliedCount: number;
   facets: HistoryFacets;
   open: boolean;
   onOpenChange(open: boolean): void;
@@ -81,9 +82,6 @@ export function HistoryFilters(props: HistoryFiltersProps) {
   const mobile = useMobileHistoryLayout();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(props.open);
-  const [appliedCount, setAppliedCount] = useState(() =>
-    filterCount(props.draft),
-  );
 
   useEffect(() => {
     if (wasOpenRef.current && !props.open) {
@@ -94,32 +92,15 @@ export function HistoryFilters(props: HistoryFiltersProps) {
     wasOpenRef.current = props.open;
   }, [props.open]);
 
-  const presentationProps: HistoryFiltersPresentationProps = {
-    ...props,
-    appliedCount,
-    onApply: () => {
-      setAppliedCount(filterCount(props.draft));
-      props.onApply();
-    },
-    onClearAll: () => {
-      setAppliedCount(0);
-      props.onClearAll();
-    },
-    triggerRef,
-  };
-
   return mobile ? (
-    <MobileHistoryFilters {...presentationProps} />
+    <MobileHistoryFilters {...props} triggerRef={triggerRef} />
   ) : (
-    <DesktopHistoryFilters {...presentationProps} />
+    <DesktopHistoryFilters {...props} triggerRef={triggerRef} />
   );
 }
 
 type HistoryFiltersPresentationProps = HistoryFiltersProps &
-  Readonly<{
-    appliedCount: number;
-    triggerRef: RefObject<HTMLButtonElement | null>;
-  }>;
+  Readonly<{ triggerRef: RefObject<HTMLButtonElement | null> }>;
 
 function DesktopHistoryFilters({
   draft,

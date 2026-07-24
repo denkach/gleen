@@ -123,3 +123,78 @@ No credentials or `.env` files were created or committed.
   verification should check for any perceptible narrow-screen flash.
 - Browser/visual verification is deferred until the history page, list, and
   Task 9 reference CSS compose these controls into the runnable route.
+
+## Blocking review follow-up
+
+The Task 7 review found that the local `HistoryFilters` applied-count state
+incorrectly promoted a draft as soon as Apply or Clear all invoked navigation.
+That made the trigger and mobile applied note claim the URL was updated before
+new query props arrived.
+
+### Follow-up RED
+
+Added regressions that deliberately keep query/applied props unchanged after
+`router.push`, `onApply`, and `onClearAll`:
+
+```text
+npm test -- src/components/history/history-toolbar.test.tsx \
+  src/components/history/history-workspace.test.tsx \
+  src/components/history/history-filters.test.tsx
+
+Test Files  2 failed | 1 passed (3)
+Tests       4 failed | 12 passed (16)
+
+Expected: Filters, 5 applied
+Received: Filters, 2 applied
+
+Expected: Filters, 5 applied
+Received: Filters, none applied
+
+Expected mobile note: 3 filters applied
+Received: 4 filters applied
+```
+
+### Follow-up fix
+
+- Made `HistoryFilters.appliedCount` required.
+- `HistoryWorkspace` derives that value exclusively from the current validated
+  `query` prop.
+- Removed `HistoryFilters` local applied-count state and the Apply/Clear-all
+  promotion wrappers.
+- The trigger and mobile applied note now remain committed until query props
+  update; `Apply filters (n)` remains draft-derived.
+
+Expanded mobile coverage verifies:
+
+- Reset and all shared status/language/source/date/favorite controls;
+- Escape dismissal and trigger-focus restoration;
+- only one desktop/mobile surface mounted at a time;
+- no duplicate element IDs;
+- active-surface replacement on viewport changes;
+- `matchMedia` change-listener cleanup on unmount.
+
+### Follow-up GREEN
+
+```text
+npm test -- src/components/history/history-toolbar.test.tsx \
+  src/components/history/history-workspace.test.tsx \
+  src/components/history/history-filters.test.tsx
+
+Test Files  3 passed (3)
+Tests       16 passed (16)
+```
+
+Follow-up verification:
+
+- `npm run typecheck`: PASS.
+- `npm run lint`: PASS.
+- `npm run format:check`: PASS.
+- `git diff --check`: PASS.
+
+Follow-up files:
+
+- `src/components/history/history-filters.tsx`
+- `src/components/history/history-filters.test.tsx`
+- `src/components/history/history-workspace.tsx`
+- `src/components/history/history-workspace.test.tsx`
+- `.superpowers/sdd/den19-task-7-report.md`
