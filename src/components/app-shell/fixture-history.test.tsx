@@ -159,6 +159,38 @@ describe('FixtureHistory', () => {
     );
   });
 
+  it('derives deterministic result rows from applied status, search, and sort query state', () => {
+    render(
+      <FixtureHistory
+        visualCase="default"
+        queryInput={{ status: 'ready', q: 'the', sort: 'oldest' }}
+      />,
+    );
+
+    const titles = within(screen.getByTestId('history-desktop-list'))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('link')[1]?.textContent?.trim());
+    expect(titles).toEqual([
+      'The Art of Focus in a Noisy World',
+      'The Hidden Structure of Great Explanations',
+      'How to Learn Anything Faster — The Science of Effective Learning',
+    ]);
+  });
+
+  it('can compose the verified duplicate with an ordinary or overlay fixture', () => {
+    render(<FixtureHistory visualCase="filters" fixtureDuplicate />);
+
+    expect(
+      screen.getByRole('complementary', {
+        name: 'Saved analysis available',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Filter results' }),
+    ).toBeInTheDocument();
+  });
+
   it.each([
     ['empty', 'No analyses yet'],
     ['search-empty', 'No results for “calm systems”'],
@@ -229,4 +261,17 @@ describe('FixtureHistoryPage', () => {
       ).rejects.toThrow('NEXT_NOT_FOUND');
     },
   );
+
+  it('returns not found for an invalid fixture duplicate selector', async () => {
+    isUiPreviewEnabled.mockReturnValue(true);
+
+    await expect(
+      FixtureHistoryPage({
+        searchParams: Promise.resolve({
+          visualCase: 'default',
+          fixtureDuplicate: 'false',
+        }),
+      }),
+    ).rejects.toThrow('NEXT_NOT_FOUND');
+  });
 });

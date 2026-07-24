@@ -121,6 +121,11 @@ const fixtureFacets = {
   sources: ['YouTube'],
 } as const;
 
+const duplicateFixtureItem: HistoryItem = {
+  ...fixtureItems[0],
+  href: '/app-shell-fixture/history/destination?historyAction=open-saved',
+};
+
 const loadMoreItem: HistoryItem = {
   ...fixtureItems[0],
   id: '00000000-0000-4000-8000-000000000007',
@@ -154,6 +159,25 @@ function fixtureActions(
       return { ok: true, data: undefined };
     },
     async reanalyzeHistoryDuplicate() {
+      if (typeof window !== 'undefined') {
+        const current = Number.parseInt(
+          window.sessionStorage.getItem('historyFixtureReanalysisCount') ?? '0',
+          10,
+        );
+        window.sessionStorage.setItem(
+          'historyFixtureReanalysisCount',
+          String(current + 1),
+        );
+        window.sessionStorage.setItem(
+          'historyFixtureIntakeCount',
+          String(
+            Number.parseInt(
+              window.sessionStorage.getItem('historyFixtureIntakeCount') ?? '0',
+              10,
+            ) + 1,
+          ),
+        );
+      }
       return {
         ok: true,
         data: {
@@ -192,7 +216,10 @@ function fixtureQuery(
   return parseHistoryQuery(queryInput);
 }
 
-function itemsFor(visualCase: HistoryVisualCase): readonly HistoryItem[] {
+function itemsFor(
+  visualCase: HistoryVisualCase,
+  query: ReturnType<typeof parseHistoryQuery>,
+): readonly HistoryItem[] {
   if (
     visualCase === 'empty' ||
     visualCase === 'search-empty' ||
@@ -200,44 +227,97 @@ function itemsFor(visualCase: HistoryVisualCase): readonly HistoryItem[] {
   ) {
     return [];
   }
-  if (visualCase !== 'partial') return fixtureItems;
+  const sourceItems: readonly HistoryItem[] =
+    visualCase !== 'partial'
+      ? fixtureItems
+      : fixtureItems.map((item, index) =>
+          index === 1
+            ? {
+                ...item,
+                status: { key: 'partial' as const, label: 'Partial' },
+                readyArtifacts: ['summary'] as const,
+                canExport: true,
+              }
+            : item,
+        );
+  const normalizedSearch = query.q.toLocaleLowerCase('en');
+  const filtered = sourceItems.filter((item) => {
+    if (
+      normalizedSearch &&
+      ![item.title, item.channel, item.language, item.source].some((value) =>
+        value?.toLocaleLowerCase('en').includes(normalizedSearch),
+      )
+    ) {
+      return false;
+    }
+    if (
+      query.status.length > 0 &&
+      !query.status.includes(item.status.key as (typeof query.status)[number])
+    ) {
+      return false;
+    }
+    if (query.language !== null && item.language !== query.language) {
+      return false;
+    }
+    if (query.source !== null && query.source !== 'YouTube') {
+      return false;
+    }
+    if (query.favorite && !item.favorite) {
+      return false;
+    }
+    return true;
+  });
 
-  return fixtureItems.map((item, index) =>
-    index === 1
-      ? {
-          ...item,
-          status: { key: 'partial', label: 'Partial' },
-          readyArtifacts: ['summary'],
-          canExport: true,
-        }
-      : item,
-  );
+  return [...filtered].sort((left, right) => {
+    if (query.sort === 'oldest') {
+      return left.analyzedAt.localeCompare(right.analyzedAt);
+    }
+    if (query.sort === 'title-asc') {
+      return left.title.localeCompare(right.title, 'en');
+    }
+    if (query.sort === 'title-desc') {
+      return right.title.localeCompare(left.title, 'en');
+    }
+    if (query.sort === 'recent') {
+      return (right.lastOpenedAt ?? right.analyzedAt).localeCompare(
+        left.lastOpenedAt ?? left.analyzedAt,
+      );
+    }
+    return right.analyzedAt.localeCompare(left.analyzedAt);
+  });
 }
 
 export function FixtureHistory({
   visualCase,
   fixtureAction = 'success',
+  fixtureDuplicate = false,
   queryInput = {},
 }: Readonly<{
   visualCase: HistoryVisualCase;
   fixtureAction?: HistoryFixtureAction;
+  fixtureDuplicate?: boolean;
   queryInput?: Readonly<Record<string, string | readonly string[] | undefined>>;
 }>) {
   const query = fixtureQuery(visualCase, queryInput);
   const navigationParameters = new URLSearchParams({
     visualCase,
     ...(fixtureAction === 'success' ? {} : { fixtureAction }),
+    ...(fixtureDuplicate ? { fixtureDuplicate: 'true' } : {}),
   });
 
   return (
     <HistoryWorkspace
       initialPage={{
-        items: itemsFor(visualCase),
+        items: itemsFor(visualCase, query),
         nextCursor: fixtureAction === 'load-more' ? 'fixture-next-page' : null,
       }}
       query={query}
       facets={fixtureFacets}
-      verifiedDuplicate={visualCase === 'duplicate' ? fixtureItems[0] : null}
+      verifiedDuplicate={
+        visualCase === 'duplicate' || fixtureDuplicate
+          ? duplicateFixtureItem
+          : null
+      }
       initialOverlay={
         visualCase === 'filters' ||
         visualCase === 'sort' ||

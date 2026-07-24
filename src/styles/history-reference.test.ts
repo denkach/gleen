@@ -8,8 +8,26 @@ const css = readFileSync(
   new URL('./history-reference.css', import.meta.url),
   'utf8',
 );
+const globals = readFileSync(
+  new URL('../app/globals.css', import.meta.url),
+  'utf8',
+);
 
 describe('DEN-19 History CSS contract', () => {
+  it('uses the shared editorial serif token for the approved desktop heading', () => {
+    expect(globals).toMatch(
+      /--font-editorial:\s*Georgia,\s*'Times New Roman',\s*serif;/,
+    );
+    expect(css).toMatch(
+      /\.history-page-head h1\s*{[^}]*font-family:\s*var\(--font-editorial\);/,
+    );
+  });
+
+  it('keeps fixed reference toolbar geometry above the constrained 1280 layout', () => {
+    expect(css).toContain('@media (min-width: 1500px)');
+    expect(css).not.toContain('@media (min-width: 1280px)');
+  });
+
   it('renders the duplicate play emblem and desktop action hierarchy', () => {
     const desktopCss = css.split('@media (max-width: 980px)')[0] ?? '';
 

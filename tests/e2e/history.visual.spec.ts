@@ -1,7 +1,9 @@
 import { expect, test } from './fixtures';
 
-const route = (visualCase: string) =>
-  `/app-shell-fixture/history?visualCase=${visualCase}`;
+const route = (visualCase: string, fixtureDuplicate: boolean) =>
+  `/app-shell-fixture/history?visualCase=${visualCase}${
+    fixtureDuplicate ? '&fixtureDuplicate=true' : ''
+  }`;
 
 async function capture(
   page: import('@playwright/test').Page,
@@ -9,9 +11,12 @@ async function capture(
   width: number,
   height: number,
   name: string,
+  fixtureDuplicate = false,
 ) {
   await page.setViewportSize({ width, height });
-  await page.goto(route(visualCase), { waitUntil: 'domcontentloaded' });
+  await page.goto(route(visualCase, fixtureDuplicate), {
+    waitUntil: 'domcontentloaded',
+  });
   await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'History' })).toHaveAttribute(
     'data-history-hydrated',
@@ -43,9 +48,20 @@ for (const visualCase of ['default', 'duplicate', 'filters', 'sort'] as const) {
       1680,
       944,
       `den-19-1680x944-desktop-${visualCase}.png`,
+      visualCase === 'filters' || visualCase === 'sort',
     );
   });
 }
+
+test('1280 desktop default', async ({ page }) => {
+  await capture(
+    page,
+    'default',
+    1280,
+    900,
+    'den-19-1280x900-desktop-default.png',
+  );
+});
 
 test('980 tablet default', async ({ page }) => {
   await capture(
@@ -69,12 +85,20 @@ for (const viewport of [
       viewport.width,
       viewport.height,
       `den-19-${viewport.width}x${viewport.height}-mobile-list.png`,
+      true,
     );
   });
 }
 
 test('durable 430 mobile filter sheet', async ({ page }) => {
-  await capture(page, 'filters', 430, 932, 'den-19-430x932-mobile-filters.png');
+  await capture(
+    page,
+    'filters',
+    430,
+    932,
+    'den-19-430x932-mobile-filters.png',
+    true,
+  );
 });
 
 for (const visualCase of ['rename', 'delete', 'partial'] as const) {

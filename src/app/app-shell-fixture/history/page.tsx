@@ -55,12 +55,18 @@ export default async function FixtureHistoryPage({
   }
 
   const resolvedSearchParams = await searchParams;
-  const { visualCase = 'default', fixtureAction = 'success' } =
-    resolvedSearchParams;
+  const {
+    visualCase = 'default',
+    fixtureAction = 'success',
+    fixtureDuplicate,
+  } = resolvedSearchParams;
   if (!isHistoryVisualCase(visualCase)) {
     notFound();
   }
   if (!isHistoryFixtureAction(fixtureAction)) {
+    notFound();
+  }
+  if (fixtureDuplicate !== undefined && fixtureDuplicate !== 'true') {
     notFound();
   }
 
@@ -73,6 +79,7 @@ export default async function FixtureHistoryPage({
       <FixtureHistory
         visualCase={visualCase}
         fixtureAction={fixtureAction}
+        fixtureDuplicate={fixtureDuplicate === 'true'}
         queryInput={resolvedSearchParams}
       />
     </AppShell>

@@ -23,34 +23,89 @@ async function openHistory(
   }
 }
 
+async function visibleTitles(page: import('@playwright/test').Page) {
+  return page
+    .locator('.history-row__title:visible, .history-card__title:visible')
+    .allTextContents();
+}
+
 test.describe('DEN-19 History durable behavior', () => {
-  test('durable search, filter, sort, and Back/Forward restore URL state', async ({
+  test('durable applied query controls results and Back/Forward restores the complete view', async ({
     page,
   }) => {
     await openHistory(page);
-
-    await page.getByRole('searchbox', { name: 'Search history' }).fill('calm');
-    await page
-      .getByRole('searchbox', { name: 'Search history' })
-      .press('Enter');
-    await expect(page).toHaveURL(/q=calm/);
-    await waitForHistoryHydration(page);
+    const allTitles = await visibleTitles(page);
+    expect(allTitles).toHaveLength(6);
 
     await page.getByRole('button', { name: /Filter/ }).click();
     const filters = page.getByText('Status').locator('..');
     await filters.getByText('Ready', { exact: true }).click();
+    await expect(page).not.toHaveURL(/status=/);
+    expect(await visibleTitles(page)).toEqual(allTitles);
+    await expect(
+      page.getByRole('button', { name: /Filters?, none applied/ }),
+    ).toBeVisible();
+
     await page.getByRole('button', { name: 'Apply filters (1)' }).click();
     await expect(page).toHaveURL(/status=ready/);
     await waitForHistoryHydration(page);
+    const readyNewest = [
+      'How to Learn Anything Faster — The Science of Effective Learning',
+      'The Hidden Structure of Great Explanations',
+      'A Practical Introduction to Systems Thinking',
+      'The Art of Focus in a Noisy World',
+    ];
+    expect(await visibleTitles(page)).toEqual(readyNewest);
+    await expect(
+      page.getByRole('button', { name: /Filters?, 1 applied/ }),
+    ).toBeVisible();
 
     await page.getByRole('button', { name: /Sort history/ }).click();
     await page.getByRole('menuitem', { name: 'Oldest' }).click();
     await expect(page).toHaveURL(/sort=oldest/);
     await waitForHistoryHydration(page);
+    const readyOldest = [...readyNewest].reverse();
+    expect(await visibleTitles(page)).toEqual(readyOldest);
+    await expect(
+      page.getByRole('button', { name: 'Sort history: Oldest' }),
+    ).toBeVisible();
+
+    const search = page.getByRole('searchbox', { name: 'Search history' });
+    await search.fill('the');
+    await search.press('Enter');
+    await expect(page).toHaveURL(/q=the/);
+    await waitForHistoryHydration(page);
+    const searchedOldest = [
+      'The Art of Focus in a Noisy World',
+      'The Hidden Structure of Great Explanations',
+      'How to Learn Anything Faster — The Science of Effective Learning',
+    ];
+    expect(await visibleTitles(page)).toEqual(searchedOldest);
+
     await page.goBack();
-    await expect(page).not.toHaveURL(/sort=oldest/);
+    await waitForHistoryHydration(page);
+    await expect(search).toHaveValue('');
+    await expect(
+      page.getByRole('button', { name: /Filters?, 1 applied/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Sort history: Oldest' }),
+    ).toBeVisible();
+    expect(await visibleTitles(page)).toEqual(readyOldest);
+    await page.getByRole('button', { name: /Filters?, 1 applied/ }).click();
+    await expect(page.getByRole('checkbox', { name: 'Ready' })).toBeChecked();
+    await page.keyboard.press('Escape');
+
     await page.goForward();
-    await expect(page).toHaveURL(/sort=oldest/);
+    await waitForHistoryHydration(page);
+    await expect(search).toHaveValue('the');
+    await expect(
+      page.getByRole('button', { name: /Filters?, 1 applied/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Sort history: Oldest' }),
+    ).toBeVisible();
+    expect(await visibleTitles(page)).toEqual(searchedOldest);
   });
 
   test('durable favorite success and rollback fixture', async ({ page }) => {
@@ -122,17 +177,61 @@ test.describe('DEN-19 History durable behavior', () => {
     );
   });
 
-  test('durable duplicate reuse and keyboard dismissal restore focus', async ({
+  test('durable duplicate reuse opens the existing result without reanalysis', async ({
     page,
   }) => {
     await page.goto('/app-shell-fixture/history?visualCase=duplicate');
+    await waitForHistoryHydration(page);
+    await page.evaluate(() => window.sessionStorage.clear());
+    await page
+      .getByRole('complementary', { name: 'Saved analysis available' })
+      .getByRole('link', { name: 'Open saved result' })
+      .click();
+    await expect(page).toHaveURL(
+      /history\/destination\?historyAction=open-saved/,
+    );
+    await expect(
+      page.getByTestId('history-existing-result-destination'),
+    ).toContainText('No new analysis was started.');
+    expect(
+      await page.evaluate(
+        () =>
+          window.sessionStorage.getItem('historyFixtureReanalysisCount') ?? '0',
+      ),
+    ).toBe('0');
+    expect(
+      await page.evaluate(
+        () => window.sessionStorage.getItem('historyFixtureIntakeCount') ?? '0',
+      ),
+    ).toBe('0');
+  });
+
+  test('durable duplicate reanalysis invokes exactly one reanalysis path', async ({
+    page,
+  }) => {
+    await page.goto('/app-shell-fixture/history?visualCase=duplicate');
+    await waitForHistoryHydration(page);
+    await page.evaluate(() => window.sessionStorage.clear());
     const banner = page.getByRole('complementary', {
       name: 'Saved analysis available',
     });
-    await expect(
-      banner.getByRole('link', { name: 'Open saved result' }),
-    ).toHaveAttribute('href', /\/app\/video\//);
+    await banner
+      .getByRole('button', { name: 'Analyze another version' })
+      .click();
+    await expect(page).toHaveURL(/\/app\/video\/|\/session-expired/);
+    expect(
+      await page.evaluate(() =>
+        window.sessionStorage.getItem('historyFixtureReanalysisCount'),
+      ),
+    ).toBe('1');
+    expect(
+      await page.evaluate(() =>
+        window.sessionStorage.getItem('historyFixtureIntakeCount'),
+      ),
+    ).toBe('1');
+  });
 
+  test('durable keyboard dismissal restores filter focus', async ({ page }) => {
     await openHistory(page);
     const filterTrigger = page.getByRole('button', { name: /Filter/ });
     await filterTrigger.focus();
@@ -165,8 +264,59 @@ test.describe('DEN-19 History durable behavior', () => {
       });
     expect(Math.max(...motionDurations)).toBeLessThanOrEqual(0.001);
 
-    // 200% browser zoom exposes half of a 1280px-wide desktop CSS viewport.
-    await page.setViewportSize({ width: 640, height: 900 });
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 640,
+      height: 900,
+      deviceScaleFactor: 2,
+      mobile: false,
+    });
+    await openHistory(page);
+    const zoomEvidence = await page.evaluate(() => ({
+      cssViewportWidth: window.innerWidth,
+      devicePixelRatio: window.devicePixelRatio,
+      physicalViewportWidth: window.innerWidth * window.devicePixelRatio,
+    }));
+    expect(zoomEvidence).toEqual({
+      cssViewportWidth: 640,
+      devicePixelRatio: 2,
+      physicalViewportWidth: 1280,
+    });
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth ===
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+    for (const locator of [
+      page.getByRole('searchbox', { name: 'Search history' }),
+      page.getByRole('button', { name: /Filter/ }),
+      page.getByRole('button', { name: /Sort history/ }),
+      page.locator('.history-item-status').first(),
+      page.locator('.history-item-actions').first(),
+    ]) {
+      await expect(locator).toBeVisible();
+      const box = await locator.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(640);
+    }
+    await cdp.send('Emulation.clearDeviceMetricsOverride');
+  });
+
+  test('durable 1280 toolbar remains separated and container-safe', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await openHistory(page);
+    const [searchBox, controlsBox] = await Promise.all([
+      page.locator('.history-toolbar__search').boundingBox(),
+      page.locator('.history-toolbar__controls').boundingBox(),
+    ]);
+    expect(searchBox).not.toBeNull();
+    expect(controlsBox).not.toBeNull();
+    expect(searchBox!.x + searchBox!.width).toBeLessThanOrEqual(controlsBox!.x);
     expect(
       await page.evaluate(
         () =>
