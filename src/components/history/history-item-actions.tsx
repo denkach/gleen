@@ -33,6 +33,8 @@ function failureMessage(
   return result.message;
 }
 
+const rejectedMutationMessage = 'We could not update History. Try again.';
+
 export function HistoryItemActions({
   item,
   toggleFavorite,
@@ -63,25 +65,30 @@ export function HistoryItemActions({
     const next = !previous;
     setOptimisticFavorite(next);
     setFavoritePending(true);
-    const result = await toggleFavorite({
-      analysisId: item.id,
-      favorite: next,
-    });
-    setFavoritePending(false);
+    try {
+      const result = await toggleFavorite({
+        analysisId: item.id,
+        favorite: next,
+      });
+      if (!result.ok) {
+        setOptimisticFavorite(null);
+        onAnnouncement(failureMessage(result));
+        return;
+      }
 
-    if (!result.ok) {
+      onChange({ favorite: next });
       setOptimisticFavorite(null);
-      onAnnouncement(failureMessage(result));
-      return;
+      onAnnouncement(
+        next
+          ? `${item.title} added to favorites.`
+          : `${item.title} removed from favorites.`,
+      );
+    } catch {
+      setOptimisticFavorite(null);
+      onAnnouncement(rejectedMutationMessage);
+    } finally {
+      setFavoritePending(false);
     }
-
-    onChange({ favorite: next });
-    setOptimisticFavorite(null);
-    onAnnouncement(
-      next
-        ? `${item.title} added to favorites.`
-        : `${item.title} removed from favorites.`,
-    );
   }
 
   function openRename() {
@@ -101,20 +108,25 @@ export function HistoryItemActions({
 
     setRenamePending(true);
     setRenameError('');
-    const result = await renameItem({
-      analysisId: item.id,
-      title,
-      expectedUpdatedAt: item.titleRevision,
-    });
-    setRenamePending(false);
-    if (!result.ok) {
-      setRenameError(failureMessage(result));
-      return;
-    }
+    try {
+      const result = await renameItem({
+        analysisId: item.id,
+        title,
+        expectedUpdatedAt: item.titleRevision,
+      });
+      if (!result.ok) {
+        setRenameError(failureMessage(result));
+        return;
+      }
 
-    onChange({ title, titleRevision: result.data.updatedAt });
-    onAnnouncement(`${title} renamed.`);
-    setRenameOpen(false);
+      onChange({ title, titleRevision: result.data.updatedAt });
+      onAnnouncement(`${title} renamed.`);
+      setRenameOpen(false);
+    } catch {
+      setRenameError(rejectedMutationMessage);
+    } finally {
+      setRenamePending(false);
+    }
   }
 
   function openDelete() {
@@ -126,26 +138,33 @@ export function HistoryItemActions({
     if (deletePending) return;
     setDeletePending(true);
     setDeleteError('');
-    const result = await deleteItem({ analysisId: item.id });
-    setDeletePending(false);
-    if (!result.ok) {
-      setDeleteError(failureMessage(result));
-      return;
-    }
+    try {
+      const result = await deleteItem({ analysisId: item.id });
+      if (!result.ok) {
+        setDeleteError(failureMessage(result));
+        return;
+      }
 
-    onDelete();
-    onAnnouncement(`${item.title} deleted.`);
-    setDeleteOpen(false);
+      onDelete();
+      onAnnouncement(`${item.title} deleted.`);
+      setDeleteOpen(false);
+    } catch {
+      setDeleteError(rejectedMutationMessage);
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   function markItemOpened() {
-    void markOpened({ analysisId: item.id });
+    void markOpened({ analysisId: item.id }).catch(() => undefined);
   }
 
   const openLabel =
     item.status.key === 'ready' || item.status.key === 'partial'
       ? 'Continue studying'
-      : 'Open';
+      : item.status.key === 'processing'
+        ? 'Continue'
+        : 'Open';
 
   return (
     <div className="history-item-actions">

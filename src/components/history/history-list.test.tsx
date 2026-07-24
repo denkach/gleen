@@ -188,6 +188,29 @@ describe('HistoryList', () => {
     ).toBeInTheDocument();
   });
 
+  it('deduplicates within a returned page and announces the actual appended count', async () => {
+    const user = userEvent.setup();
+    const appended = item('next', { key: 'ready', label: 'Ready' });
+    const props = renderList({
+      initialPage: { items: [items[0]], nextCursor: 'cursor-1' },
+    });
+    vi.mocked(props.actions.loadMoreHistory).mockResolvedValue({
+      ok: true,
+      data: {
+        items: [appended, { ...appended, title: 'Duplicate in page' }],
+        nextCursor: null,
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+
+    expect(screen.getAllByText('Video next')).toHaveLength(2);
+    expect(screen.queryByText('Duplicate in page')).not.toBeInTheDocument();
+    expect(props.onAnnouncement).toHaveBeenCalledWith(
+      '1 more saved analysis loaded.',
+    );
+  });
+
   it('keeps existing items and shows a localized retry state when Load more fails', async () => {
     const user = userEvent.setup();
     const props = renderList({
@@ -207,6 +230,54 @@ describe('HistoryList', () => {
     expect(
       screen.getByRole('button', { name: 'Try loading more again' }),
     ).toBeInTheDocument();
+  });
+
+  it('shows a localized retry and clears pending state when Load more rejects', async () => {
+    const user = userEvent.setup();
+    const props = renderList({
+      initialPage: { items: [items[0]], nextCursor: 'cursor-1' },
+    });
+    vi.mocked(props.actions.loadMoreHistory).mockRejectedValue(
+      new Error('transport failed'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'We could not load more saved analyses. Try again.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Try loading more again' }),
+    ).toBeEnabled();
+    expect(props.onAnnouncement).toHaveBeenCalledWith(
+      'We could not load more saved analyses. Try again.',
+    );
+  });
+
+  it('keeps pagination available after deleting the last loaded item', async () => {
+    const user = userEvent.setup();
+    const props = renderList({
+      initialPage: { items: [items[0]], nextCursor: 'cursor-1' },
+    });
+
+    await user.click(
+      within(screen.getByTestId('history-desktop-list')).getByRole('button', {
+        name: 'Actions for Video ready',
+      }),
+    );
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: 'Delete analysis' }));
+
+    expect(props.actions.deleteHistoryItem).toHaveBeenCalledWith({
+      analysisId: items[0].id,
+    });
+    expect(screen.getByTestId('history-desktop-list')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Load more' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'No analyses yet' }),
+    ).not.toBeInTheDocument();
   });
 
   it.each([

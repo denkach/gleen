@@ -101,6 +101,28 @@ describe('HistoryItemActions', () => {
     );
   });
 
+  it('rolls back and clears favorite pending state when the action rejects', async () => {
+    const user = userEvent.setup();
+    const props = setup({
+      toggleFavorite: vi.fn().mockRejectedValue(new Error('transport failed')),
+    });
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Add Systems Thinking to favorites',
+      }),
+    );
+
+    const favorite = await screen.findByRole('button', {
+      name: 'Add Systems Thinking to favorites',
+    });
+    expect(favorite).toBeEnabled();
+    expect(favorite).toHaveAttribute('aria-pressed', 'false');
+    expect(props.onAnnouncement).toHaveBeenCalledWith(
+      'We could not update History. Try again.',
+    );
+  });
+
   it('offers the exact saved-result routes and only exposes Export when artifacts are ready', async () => {
     const user = userEvent.setup();
     const props = setup();
@@ -138,7 +160,7 @@ describe('HistoryItemActions', () => {
     await user.click(
       screen.getByRole('button', { name: 'Actions for Processing title' }),
     );
-    expect(screen.getByRole('menuitem', { name: 'Open' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'Continue' })).toHaveAttribute(
       'href',
       '/app?analysis=33333333-3333-4333-8333-333333333333',
     );
@@ -195,6 +217,28 @@ describe('HistoryItemActions', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('preserves rename input and clears pending state when the action rejects', async () => {
+    const user = userEvent.setup();
+    setup({
+      renameItem: vi.fn().mockRejectedValue(new Error('transport failed')),
+    });
+    await openMenu(user);
+    await user.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    const input = screen.getByRole('textbox', { name: 'Title' });
+    await user.clear(input);
+    await user.type(input, 'Preserved title');
+
+    await user.click(screen.getByRole('button', { name: 'Save title' }));
+
+    expect(input).toHaveValue('Preserved title');
+    expect(input).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Save title' })).toBeEnabled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'We could not update History. Try again.',
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
   it('requires delete confirmation and removes only after success', async () => {
     const user = userEvent.setup();
     const deleteItem = vi
@@ -222,5 +266,25 @@ describe('HistoryItemActions', () => {
     await user.click(screen.getByRole('button', { name: 'Delete analysis' }));
     expect(props.onDelete).toHaveBeenCalledOnce();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('keeps delete confirmation and clears pending state when the action rejects', async () => {
+    const user = userEvent.setup();
+    const props = setup({
+      deleteItem: vi.fn().mockRejectedValue(new Error('transport failed')),
+    });
+    await openMenu(user);
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+
+    await user.click(screen.getByRole('button', { name: 'Delete analysis' }));
+
+    expect(props.onDelete).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Delete analysis' }),
+    ).toBeEnabled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'We could not update History. Try again.',
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });

@@ -11,6 +11,8 @@ import type { HistoryItem, HistoryPage } from '@/lib/history/repository';
 import { HistoryItemActions } from './history-item-actions';
 
 const mobileHistoryQuery = '(max-width: 720px)';
+const rejectedLoadMoreMessage =
+  'We could not load more saved analyses. Try again.';
 
 export type HistoryListActions = Readonly<{
   toggleHistoryFavorite(input: unknown): Promise<HistoryActionResult>;
@@ -197,34 +199,39 @@ export function HistoryList({
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     setLoadError('');
-    const result = await actions.loadMoreHistory({
-      query: serializeHistoryQuery({ ...query, cursor: null }).toString(),
-      cursor: nextCursor,
-    });
-    setLoadingMore(false);
+    try {
+      const result = await actions.loadMoreHistory({
+        query: serializeHistoryQuery({ ...query, cursor: null }).toString(),
+        cursor: nextCursor,
+      });
+      if (!result.ok) {
+        setLoadError(result.message);
+        onAnnouncement(result.message);
+        return;
+      }
 
-    if (!result.ok) {
-      setLoadError(result.message);
-      onAnnouncement(result.message);
-      return;
+      const seen = new Set(items.map((item) => item.id));
+      const appended = result.data.items.filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
+      setItems((current) => [...current, ...appended]);
+      setNextCursor(result.data.nextCursor);
+      onAnnouncement(
+        appended.length === 1
+          ? '1 more saved analysis loaded.'
+          : `${appended.length} more saved analyses loaded.`,
+      );
+    } catch {
+      setLoadError(rejectedLoadMoreMessage);
+      onAnnouncement(rejectedLoadMoreMessage);
+    } finally {
+      setLoadingMore(false);
     }
-
-    setItems((current) => {
-      const ids = new Set(current.map((item) => item.id));
-      return [
-        ...current,
-        ...result.data.items.filter((item) => !ids.has(item.id)),
-      ];
-    });
-    setNextCursor(result.data.nextCursor);
-    onAnnouncement(
-      result.data.items.length === 1
-        ? '1 more saved analysis loaded.'
-        : `${result.data.items.length} more saved analyses loaded.`,
-    );
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 && nextCursor === null) {
     return (
       <EmptyState
         query={query}
