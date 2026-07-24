@@ -26,6 +26,7 @@ const sortOptions = [
 
 export type HistoryToolbarProps = Readonly<{
   query: HistoryQuery;
+  initialSortOpen?: boolean;
   onSearch(value: string): void;
   onSortChange(sort: HistorySort): void;
   filterControl: ReactNode;
@@ -37,6 +38,7 @@ export function HistoryToolbar({ query, ...props }: HistoryToolbarProps) {
 
 function HistoryToolbarState({
   query,
+  initialSortOpen = false,
   onSearch,
   onSortChange,
   filterControl,
@@ -87,7 +89,7 @@ function HistoryToolbarState({
       <div className="history-toolbar__controls">
         {filterControl}
 
-        <DropdownMenu>
+        <DropdownMenu defaultOpen={initialSortOpen}>
           <DropdownMenuTrigger
             className="history-toolbar__sort"
             aria-label={`Sort history: ${currentSort}`}

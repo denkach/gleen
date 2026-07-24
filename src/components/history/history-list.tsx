@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import type { HistoryActionResult } from '@/lib/history/actions';
+import { cx } from '@/lib/cx';
 import { serializeHistoryQuery, type HistoryQuery } from '@/lib/history/query';
 import type { HistoryItem, HistoryPage } from '@/lib/history/repository';
 
@@ -28,6 +29,7 @@ export type HistoryListProps = Readonly<{
   initialPage: HistoryPage;
   query: HistoryQuery;
   actions: HistoryListActions;
+  initialItemDialog?: 'rename' | 'delete' | null;
   onClearSearch(): void;
   onClearFilters(): void;
   onAnnouncement(message: string): void;
@@ -61,6 +63,11 @@ function useMobileHistoryLayout(): boolean {
 function Media({ item }: Readonly<{ item: HistoryItem }>) {
   const [failed, setFailed] = useState(false);
   const showImage = item.thumbnailUrl !== null && !failed;
+  const fixtureThumbnailClass = /^history-fixture-thumbnail--0[1-6]$/u.test(
+    item.sourceId,
+  )
+    ? item.sourceId
+    : null;
 
   return (
     <div className="history-item-media">
@@ -77,7 +84,7 @@ function Media({ item }: Readonly<{ item: HistoryItem }>) {
         />
       ) : (
         <span
-          className="history-item-media__fallback"
+          className={cx('history-item-media__fallback', fixtureThumbnailClass)}
           data-testid={`history-thumbnail-fallback-${item.id}`}
           aria-label={`Thumbnail unavailable for ${item.title}`}
         />
@@ -116,6 +123,7 @@ type ItemViewProps = Readonly<{
   onChange(change: Partial<HistoryItem>): void;
   onDelete(): void;
   onAnnouncement(message: string): void;
+  initialDialog?: 'rename' | 'delete' | null;
 }>;
 
 function ItemActions(props: ItemViewProps) {
@@ -129,6 +137,7 @@ function ItemActions(props: ItemViewProps) {
       onChange={props.onChange}
       onDelete={props.onDelete}
       onAnnouncement={props.onAnnouncement}
+      initialDialog={props.initialDialog}
     />
   );
 }
@@ -175,6 +184,7 @@ export function HistoryList({
   initialPage,
   query,
   actions,
+  initialItemDialog = null,
   onClearSearch,
   onClearFilters,
   onAnnouncement,
@@ -248,7 +258,7 @@ export function HistoryList({
           className="history-list__mobile history-list__card-mode"
           data-testid="history-mobile-list"
         >
-          {items.map((item) => (
+          {items.map((item, index) => (
             <article key={item.id} className="history-card">
               <Media item={item} />
               <div className="history-card__body">
@@ -270,6 +280,7 @@ export function HistoryList({
                   onChange={(change) => changeItem(item.id, change)}
                   onDelete={() => deleteItem(item.id)}
                   onAnnouncement={onAnnouncement}
+                  initialDialog={index === 0 ? initialItemDialog : null}
                 />
               </div>
             </article>
@@ -290,7 +301,7 @@ export function HistoryList({
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {items.map((item, index) => (
                 <tr key={item.id} className="history-row">
                   <td className="history-row__video">
                     <Media item={item} />
@@ -323,6 +334,7 @@ export function HistoryList({
                       onChange={(change) => changeItem(item.id, change)}
                       onDelete={() => deleteItem(item.id)}
                       onAnnouncement={onAnnouncement}
+                      initialDialog={index === 0 ? initialItemDialog : null}
                     />
                   </td>
                 </tr>

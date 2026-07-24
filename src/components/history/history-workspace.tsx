@@ -42,6 +42,7 @@ export type HistoryWorkspaceProps = Readonly<{
   facets: HistoryFacets;
   verifiedDuplicate?: HistoryItem | null;
   loadError?: boolean;
+  initialOverlay?: 'filters' | 'sort' | 'rename' | 'delete' | null;
   actions: HistoryWorkspaceActions;
 }>;
 
@@ -98,6 +99,7 @@ export function HistoryWorkspace({
   facets,
   verifiedDuplicate = null,
   loadError = false,
+  initialOverlay = null,
   actions,
 }: HistoryWorkspaceProps) {
   return (
@@ -108,6 +110,7 @@ export function HistoryWorkspace({
       facets={facets}
       verifiedDuplicate={verifiedDuplicate}
       loadError={loadError}
+      initialOverlay={initialOverlay}
       actions={actions}
     />
   );
@@ -120,6 +123,7 @@ type HistoryWorkspaceStateProps = Pick<
   | 'facets'
   | 'verifiedDuplicate'
   | 'loadError'
+  | 'initialOverlay'
   | 'actions'
 >;
 
@@ -129,11 +133,12 @@ function HistoryWorkspaceState({
   facets,
   verifiedDuplicate,
   loadError,
+  initialOverlay,
   actions,
 }: HistoryWorkspaceStateProps) {
   const router = useRouter();
   const [draft, setDraft] = useState(() => filterDraftFromQuery(query));
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(initialOverlay === 'filters');
   const [reanalyzing, setReanalyzing] = useState(false);
   const reanalysisPendingRef = useRef(false);
   const [announcement, setAnnouncement] = useState(() =>
@@ -279,6 +284,7 @@ function HistoryWorkspaceState({
         <>
           <HistoryToolbar
             query={query}
+            initialSortOpen={initialOverlay === 'sort'}
             onSearch={search}
             onSortChange={changeSort}
             filterControl={
@@ -309,6 +315,11 @@ function HistoryWorkspaceState({
             initialPage={initialPage}
             query={query}
             actions={actions}
+            initialItemDialog={
+              initialOverlay === 'rename' || initialOverlay === 'delete'
+                ? initialOverlay
+                : null
+            }
             onClearSearch={clearSearch}
             onClearFilters={clearAllFilters}
             onAnnouncement={setAnnouncement}

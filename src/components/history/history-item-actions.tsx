@@ -25,6 +25,7 @@ export type HistoryItemActionsProps = Readonly<{
   onChange(change: Partial<HistoryItem>): void;
   onDelete(): void;
   onAnnouncement(message: string): void;
+  initialDialog?: 'rename' | 'delete' | null;
 }>;
 
 function failureMessage(
@@ -44,16 +45,17 @@ export function HistoryItemActions({
   onChange,
   onDelete,
   onAnnouncement,
+  initialDialog = null,
 }: HistoryItemActionsProps) {
   const [optimisticFavorite, setOptimisticFavorite] = useState<boolean | null>(
     null,
   );
   const [favoritePending, setFavoritePending] = useState(false);
-  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(initialDialog === 'rename');
   const [renameTitle, setRenameTitle] = useState(item.title);
   const [renameError, setRenameError] = useState('');
   const [renamePending, setRenamePending] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(initialDialog === 'delete');
   const [deleteError, setDeleteError] = useState('');
   const [deletePending, setDeletePending] = useState(false);
 

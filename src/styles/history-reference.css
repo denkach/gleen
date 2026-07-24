@@ -738,6 +738,69 @@
   height: 100%;
 }
 
+.history-fixture-thumbnail--01 {
+  background:
+    radial-gradient(
+      circle at 72% 22%,
+      color-mix(in srgb, var(--artifact-timestamps) 34%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      132deg,
+      color-mix(in srgb, var(--artifact-flashcards) 28%, var(--surface-raised)),
+      var(--surface-panel)
+    );
+}
+
+.history-fixture-thumbnail--02 {
+  background:
+    linear-gradient(
+      128deg,
+      transparent 42%,
+      color-mix(in srgb, var(--artifact-summary) 24%, transparent) 43% 58%,
+      transparent 59%
+    ),
+    var(--surface-raised);
+}
+
+.history-fixture-thumbnail--03 {
+  background:
+    radial-gradient(
+      circle at 80% 15%,
+      color-mix(in srgb, var(--artifact-flashcards) 35%, transparent),
+      transparent 42%
+    ),
+    var(--surface-panel);
+}
+
+.history-fixture-thumbnail--04 {
+  background:
+    radial-gradient(
+      ellipse at 65% 40%,
+      color-mix(in srgb, var(--artifact-timestamps) 28%, transparent),
+      transparent 48%
+    ),
+    var(--surface-raised);
+}
+
+.history-fixture-thumbnail--05 {
+  background: linear-gradient(
+    145deg,
+    var(--surface-raised),
+    color-mix(in srgb, var(--artifact-flashcards) 8%, var(--surface-panel))
+  );
+}
+
+.history-fixture-thumbnail--06 {
+  background:
+    radial-gradient(
+      circle at 75% 30%,
+      color-mix(in srgb, var(--artifact-summary) 27%, transparent),
+      transparent 45%
+    ),
+    var(--surface-raised);
+}
+
 .history-item-media__image {
   object-fit: cover;
 }
