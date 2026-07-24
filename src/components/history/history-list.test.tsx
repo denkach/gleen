@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -8,15 +8,34 @@ import type { HistoryItem } from '@/lib/history/repository';
 import { HistoryList } from './history-list';
 
 function stubHistoryViewport(mobile: boolean) {
+  const listeners = new Set<() => void>();
+  const addEventListener = vi.fn(
+    (_type: string, listener: () => void) => void listeners.add(listener),
+  );
+  const removeEventListener = vi.fn(
+    (_type: string, listener: () => void) => void listeners.delete(listener),
+  );
+
   vi.stubGlobal(
     'matchMedia',
     vi.fn((media: string) => ({
-      matches: media === '(max-width: 720px)' && mobile,
+      get matches() {
+        return media === '(max-width: 720px)' && mobile;
+      },
       media,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
+      addEventListener,
+      removeEventListener,
     })),
   );
+
+  return {
+    addEventListener,
+    removeEventListener,
+    setMobile(nextMobile: boolean) {
+      mobile = nextMobile;
+      act(() => listeners.forEach((listener) => listener()));
+    },
+  };
 }
 
 afterEach(() => vi.unstubAllGlobals());
@@ -90,10 +109,10 @@ function actions() {
   };
 }
 
-function renderList(
+function historyListProps(
   overrides: Partial<Parameters<typeof HistoryList>[0]> = {},
 ) {
-  const props: Parameters<typeof HistoryList>[0] = {
+  return {
     initialPage: { items, nextCursor: null },
     query,
     actions: actions(),
@@ -101,29 +120,30 @@ function renderList(
     onClearFilters: vi.fn(),
     onAnnouncement: vi.fn(),
     ...overrides,
-  };
+  } satisfies Parameters<typeof HistoryList>[0];
+}
+
+function renderList(
+  overrides: Partial<Parameters<typeof HistoryList>[0]> = {},
+) {
+  const props = historyListProps(overrides);
   render(<HistoryList {...props} />);
   return props;
 }
 
 describe('HistoryList', () => {
-  it('renders independent desktop rows and mobile cards from the same truthful model', () => {
+  it('renders only the desktop table from the truthful model on desktop', () => {
     stubHistoryViewport(false);
     renderList();
     const desktop = screen.getByTestId('history-desktop-list');
-    const mobile = screen.getByTestId('history-mobile-list');
 
     expect(desktop).toHaveClass(
       'history-list__desktop',
       'history-list__desktop-mode',
     );
     expect(within(desktop).getByRole('table')).toHaveClass('history-table');
-    expect(mobile).toHaveClass(
-      'history-list__mobile',
-      'history-list__card-mode',
-    );
     expect(within(desktop).getAllByRole('row')[1]).toHaveClass('history-row');
-    expect(mobile.querySelector('article')).toHaveClass('history-card');
+    expect(screen.queryByTestId('history-mobile-list')).not.toBeInTheDocument();
 
     for (const header of ['Video', 'Details', 'Status', 'Actions']) {
       expect(
@@ -132,7 +152,6 @@ describe('HistoryList', () => {
     }
     for (const status of ['Ready', 'Partial', 'Processing', 'Failed']) {
       expect(within(desktop).getByText(status)).toBeInTheDocument();
-      expect(within(mobile).getByText(status)).toBeInTheDocument();
     }
     for (const status of ['ready', 'partial', 'processing', 'failed']) {
       expect(
@@ -144,36 +163,58 @@ describe('HistoryList', () => {
       within(desktop).getByAltText('Thumbnail for Video ready'),
     ).toHaveAttribute('src', items[0].thumbnailUrl);
     expect(
-      within(mobile).getAllByLabelText('Play Video ready')[0],
+      within(desktop).getByRole('button', {
+        name: 'Remove Video ready from favorites',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('renders only mobile cards from the truthful model on mobile', () => {
+    stubHistoryViewport(true);
+    renderList();
+    const mobile = screen.getByTestId('history-mobile-list');
+
+    expect(
+      screen.queryByTestId('history-desktop-list'),
+    ).not.toBeInTheDocument();
+    expect(mobile).toHaveClass(
+      'history-list__mobile',
+      'history-list__card-mode',
+    );
+    expect(mobile.querySelector('article')).toHaveClass('history-card');
+    expect(
+      within(mobile).getByLabelText('Play Video ready'),
     ).toBeInTheDocument();
     expect(within(mobile).getAllByText('34:18')[0]).toBeInTheDocument();
     expect(
       within(mobile).getByTestId('history-thumbnail-fallback-failed'),
     ).toBeInTheDocument();
     expect(
-      within(desktop).getByRole('button', {
-        name: 'Remove Video ready from favorites',
-      }),
-    ).toHaveAttribute('aria-pressed', 'true');
-    expect(desktop).toHaveAttribute('aria-hidden', 'false');
-    expect(mobile).toHaveAttribute('aria-hidden', 'true');
-    expect(mobile).toHaveAttribute('inert');
-  });
-
-  it('exposes only the mobile card tree to assistive technology on mobile', () => {
-    stubHistoryViewport(true);
-    renderList();
-    const desktop = screen.getByTestId('history-desktop-list');
-    const mobile = screen.getByTestId('history-mobile-list');
-
-    expect(desktop).toHaveAttribute('aria-hidden', 'true');
-    expect(desktop).toHaveAttribute('inert');
-    expect(mobile).toHaveAttribute('aria-hidden', 'false');
-    expect(
       within(mobile).getByRole('button', {
         name: 'Remove Video ready from favorites',
       }),
     ).toBeInTheDocument();
+  });
+
+  it('switches the single active tree on viewport change and removes its listener', () => {
+    const viewport = stubHistoryViewport(false);
+    const view = render(<HistoryList {...historyListProps()} />);
+
+    expect(screen.getByTestId('history-desktop-list')).toBeInTheDocument();
+    expect(screen.queryByTestId('history-mobile-list')).not.toBeInTheDocument();
+
+    viewport.setMobile(true);
+    expect(
+      screen.queryByTestId('history-desktop-list'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('history-mobile-list')).toBeInTheDocument();
+
+    const listener = viewport.addEventListener.mock.calls[0]?.[1];
+    view.unmount();
+    expect(viewport.removeEventListener).toHaveBeenCalledWith(
+      'change',
+      listener,
+    );
   });
 
   it('appends and deduplicates Load more results without URL navigation', async () => {
@@ -196,7 +237,7 @@ describe('HistoryList', () => {
     expect(
       within(screen.getByTestId('history-desktop-list')).getAllByRole('row'),
     ).toHaveLength(3);
-    expect(screen.getAllByText('Video next')).toHaveLength(2);
+    expect(screen.getAllByText('Video next')).toHaveLength(1);
     expect(
       screen.queryByText('Duplicate should not replace'),
     ).not.toBeInTheDocument();
@@ -221,7 +262,7 @@ describe('HistoryList', () => {
 
     await user.click(screen.getByRole('button', { name: 'Load more' }));
 
-    expect(screen.getAllByText('Video next')).toHaveLength(2);
+    expect(screen.getAllByText('Video next')).toHaveLength(1);
     expect(screen.queryByText('Duplicate in page')).not.toBeInTheDocument();
     expect(props.onAnnouncement).toHaveBeenCalledWith(
       '1 more saved analysis loaded.',
@@ -243,7 +284,7 @@ describe('HistoryList', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Could not load more saved analyses.',
     );
-    expect(screen.getAllByText('Video ready')).toHaveLength(2);
+    expect(screen.getAllByText('Video ready')).toHaveLength(1);
     expect(
       screen.getByRole('button', { name: 'Try loading more again' }),
     ).toBeInTheDocument();

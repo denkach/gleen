@@ -78,6 +78,7 @@ function HistoryToolbarState({
           ref={searchRef}
           id="history-search"
           type="search"
+          placeholder="Search by title, channel, URL, or keyword"
           value={search}
           onChange={(event) => setSearch(event.currentTarget.value)}
         />
@@ -91,7 +92,9 @@ function HistoryToolbarState({
             className="history-toolbar__sort"
             aria-label={`Sort history: ${currentSort}`}
           >
-            Sort: {currentSort}
+            <span className="history-toolbar__sort-label">
+              Sort: {currentSort}
+            </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="history-toolbar__sort-menu"

@@ -278,7 +278,7 @@ describe('HistoryWorkspace URL state', () => {
     );
 
     expect(screen.getByTestId('history-desktop-list')).toBeInTheDocument();
-    expect(screen.getByTestId('history-mobile-list')).toBeInTheDocument();
+    expect(screen.queryByTestId('history-mobile-list')).not.toBeInTheDocument();
     await user.click(
       within(screen.getByTestId('history-desktop-list')).getByRole('button', {
         name: 'Add Integrated history item to favorites',

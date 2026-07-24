@@ -29,9 +29,11 @@ describe('HistoryToolbar', () => {
 
     expect(container.firstElementChild).toHaveClass('history-toolbar');
     expect(screen.getByRole('search')).toHaveClass('history-toolbar__search');
-    expect(screen.getByRole('button', { name: /sort history/i })).toHaveClass(
-      'history-toolbar__sort',
-    );
+    const sort = screen.getByRole('button', { name: /sort history/i });
+    expect(sort).toHaveClass('history-toolbar__sort');
+    expect(
+      sort.querySelector('.history-toolbar__sort-label'),
+    ).toHaveTextContent('Sort: Recently opened');
     expect(screen.getByRole('group', { name: 'History view' })).toHaveClass(
       'history-toolbar__view',
     );
@@ -59,6 +61,10 @@ describe('HistoryToolbar', () => {
     );
 
     const search = screen.getByRole('searchbox', { name: 'Search history' });
+    expect(search).toHaveAttribute(
+      'placeholder',
+      'Search by title, channel, URL, or keyword',
+    );
     await user.clear(search);
     await user.type(search, '  React Server Components  {Enter}');
     expect(onSearch).toHaveBeenCalledWith('React Server Components');

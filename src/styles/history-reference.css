@@ -315,7 +315,15 @@
 }
 
 .history-toolbar__sort {
+  min-width: 0;
   justify-content: space-between;
+}
+
+.history-toolbar__sort-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .history-toolbar__sort::after {
@@ -495,6 +503,11 @@
     var(--border-hover)
   );
   color: var(--text-primary);
+}
+
+.history-filters__status-option:has(input:focus-visible) {
+  outline: 2px solid var(--artifact-timestamps);
+  outline-offset: 2px;
 }
 
 .history-filters__status-option input {
@@ -734,6 +747,13 @@
   font-weight: 500;
   line-height: 1.4;
   text-decoration: none;
+}
+
+.history-row__title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .history-row__channel {
@@ -1309,6 +1329,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  body:has(.history-workspace) > .ui-dialog-overlay,
+  body:has(.history-workspace) > .ui-dialog-content,
+  body:has(.history-workspace) > .ui-dropdown-menu-content,
   .history-filter-panel,
   .history-filter-sheet,
   .history-row,

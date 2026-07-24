@@ -243,96 +243,94 @@ export function HistoryList({
 
   return (
     <div className="history-list">
-      <div
-        className="history-list__desktop history-list__desktop-mode"
-        data-testid="history-desktop-list"
-        aria-hidden={mobile}
-        inert={mobile ? true : undefined}
-      >
-        <table className="history-table">
-          <thead>
-            <tr>
-              <th scope="col">Video</th>
-              <th scope="col">Details</th>
-              <th scope="col">Status</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="history-row">
-                <td className="history-row__video">
-                  <Media item={item} />
-                  <div>
-                    <Link href={item.href} className="history-row__title">
-                      {item.title}
-                    </Link>
-                    {item.channel ? (
-                      <span className="history-row__channel">
-                        {item.channel}
-                      </span>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="history-row__details">
-                  {item.language ? <span>{item.language}</span> : null}
-                  {item.analyzedAtLabel ? (
-                    <time dateTime={item.analyzedAt}>
-                      {item.analyzedAtLabel}
-                    </time>
-                  ) : null}
-                </td>
-                <td className="history-row__status">
-                  <Status item={item} />
-                </td>
-                <td className="history-row__actions">
-                  <ItemActions
-                    item={item}
-                    actions={actions}
-                    onChange={(change) => changeItem(item.id, change)}
-                    onDelete={() => deleteItem(item.id)}
-                    onAnnouncement={onAnnouncement}
-                  />
-                </td>
+      {mobile ? (
+        <div
+          className="history-list__mobile history-list__card-mode"
+          data-testid="history-mobile-list"
+        >
+          {items.map((item) => (
+            <article key={item.id} className="history-card">
+              <Media item={item} />
+              <div className="history-card__body">
+                <Link href={item.href} className="history-card__title">
+                  {item.title}
+                </Link>
+                <p className="history-card__metadata">
+                  {[item.channel, item.language].filter(Boolean).join(' · ')}
+                </p>
+                {item.analyzedAtLabel ? (
+                  <time dateTime={item.analyzedAt}>{item.analyzedAtLabel}</time>
+                ) : null}
+                <Status item={item} />
+              </div>
+              <div className="history-card__actions">
+                <ItemActions
+                  item={item}
+                  actions={actions}
+                  onChange={(change) => changeItem(item.id, change)}
+                  onDelete={() => deleteItem(item.id)}
+                  onAnnouncement={onAnnouncement}
+                />
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div
+          className="history-list__desktop history-list__desktop-mode"
+          data-testid="history-desktop-list"
+        >
+          <table className="history-table">
+            <thead>
+              <tr>
+                <th scope="col">Video</th>
+                <th scope="col">Details</th>
+                <th scope="col">Status</th>
+                <th scope="col">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div
-        className="history-list__mobile history-list__card-mode"
-        data-testid="history-mobile-list"
-        aria-hidden={!mobile}
-        inert={!mobile ? true : undefined}
-      >
-        {items.map((item) => (
-          <article key={item.id} className="history-card">
-            <Media item={item} />
-            <div className="history-card__body">
-              <Link href={item.href} className="history-card__title">
-                {item.title}
-              </Link>
-              <p className="history-card__metadata">
-                {[item.channel, item.language].filter(Boolean).join(' · ')}
-              </p>
-              {item.analyzedAtLabel ? (
-                <time dateTime={item.analyzedAt}>{item.analyzedAtLabel}</time>
-              ) : null}
-              <Status item={item} />
-            </div>
-            <div className="history-card__actions">
-              <ItemActions
-                item={item}
-                actions={actions}
-                onChange={(change) => changeItem(item.id, change)}
-                onDelete={() => deleteItem(item.id)}
-                onAnnouncement={onAnnouncement}
-              />
-            </div>
-          </article>
-        ))}
-      </div>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} className="history-row">
+                  <td className="history-row__video">
+                    <Media item={item} />
+                    <div>
+                      <Link href={item.href} className="history-row__title">
+                        {item.title}
+                      </Link>
+                      {item.channel ? (
+                        <span className="history-row__channel">
+                          {item.channel}
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="history-row__details">
+                    {item.language ? <span>{item.language}</span> : null}
+                    {item.analyzedAtLabel ? (
+                      <time dateTime={item.analyzedAt}>
+                        {item.analyzedAtLabel}
+                      </time>
+                    ) : null}
+                  </td>
+                  <td className="history-row__status">
+                    <Status item={item} />
+                  </td>
+                  <td className="history-row__actions">
+                    <ItemActions
+                      item={item}
+                      actions={actions}
+                      onChange={(change) => changeItem(item.id, change)}
+                      onDelete={() => deleteItem(item.id)}
+                      onAnnouncement={onAnnouncement}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {loadError ? (
         <div className="history-list__load-error" role="alert">
