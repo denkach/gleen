@@ -256,6 +256,50 @@ test('DEN-25 fixture renders one current workspace and one local player mount', 
     });
 });
 
+test('durable player shows one centered custom overlay and keeps both play controls', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await gotoFixture(
+    page,
+    '/app-shell-fixture/app/video/result-den-25#overview',
+  );
+
+  const centerPlay = page.locator('.result-center-play');
+  const poster = page.locator('.result-player-poster');
+  await expect(centerPlay).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Play' })).toHaveCount(2);
+  await expect(centerPlay).toHaveCSS('width', '64px');
+  await expect(centerPlay).toHaveCSS('height', '64px');
+  await expect(poster).toBeVisible();
+
+  const desktopCenters = await page.evaluate(() => {
+    const stage = document
+      .querySelector('.result-player-stage')!
+      .getBoundingClientRect();
+    const button = document
+      .querySelector('.result-center-play')!
+      .getBoundingClientRect();
+    return {
+      buttonX: button.left + button.width / 2,
+      buttonY: button.top + button.height / 2,
+      stageX: stage.left + stage.width / 2,
+      stageY: stage.top + stage.height / 2,
+    };
+  });
+  expect(desktopCenters.buttonX).toBeCloseTo(desktopCenters.stageX, 0);
+  expect(desktopCenters.buttonY).toBeCloseTo(desktopCenters.stageY, 0);
+
+  await centerPlay.click();
+  await expect(poster).toHaveCount(0);
+  await page.getByRole('button', { name: 'Pause' }).last().click();
+  await expect(poster).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(centerPlay).toHaveCSS('width', '56px');
+  await expect(centerPlay).toHaveCSS('height', '56px');
+});
+
 test('keeps the 18-moment desktop chapter rail on one horizontal row', async ({
   page,
 }) => {

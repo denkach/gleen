@@ -60,6 +60,8 @@ function installFixturePlayer(
   );
   const previousApi = window.YT;
   const previousState = window.__fixturePlayer;
+  let publishPlayerState:
+    ((event: Readonly<{ data: number }>) => void) | undefined;
 
   const state: FixturePlayerState = {
     fixtureId,
@@ -70,10 +72,12 @@ function installFixturePlayer(
     pause() {
       state.playing = false;
       state.commands.push({ type: 'pause' });
+      publishPlayerState?.({ data: 2 });
     },
     play() {
       state.playing = true;
       state.commands.push({ type: 'play' });
+      publishPlayerState?.({ data: 1 });
     },
   };
 
@@ -82,8 +86,14 @@ function installFixturePlayer(
 
     constructor(
       element: HTMLElement,
-      options: { events: { onReady(): void } },
+      options: {
+        events: {
+          onReady(): void;
+          onStateChange?(event: Readonly<{ data: number }>): void;
+        };
+      },
     ) {
+      publishPlayerState = options.events.onStateChange;
       this.iframe.dataset.fixturePlayerMount = fixtureId;
       element.replaceChildren(this.iframe);
       queueMicrotask(() => options.events.onReady());
@@ -91,6 +101,7 @@ function installFixturePlayer(
 
     destroy() {
       state.commands.push({ type: 'destroy' });
+      publishPlayerState = undefined;
       this.iframe.remove();
     }
 

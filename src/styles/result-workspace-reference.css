@@ -297,6 +297,15 @@ body:has(.result-page-layout) {
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+.result-player-poster {
+  z-index: 2;
+  overflow: hidden;
+  background: var(--result-player-surface);
+}
+
+.result-player-poster-image {
   object-fit: cover;
 }
 
@@ -356,11 +365,11 @@ body:has(.result-page-layout) {
 
 .result-center-play {
   position: absolute;
-  top: 62%;
-  left: 45.5%;
+  top: 50%;
+  left: 50%;
   z-index: 4;
-  width: 78px;
-  height: 78px;
+  width: 64px;
+  height: 64px;
   border-color: var(--border-strong);
   border-radius: 50%;
   background: color-mix(in srgb, var(--background-deep) 90%, transparent);
@@ -379,8 +388,8 @@ body:has(.result-page-layout) {
 }
 
 .result-center-play svg {
-  width: 29px;
-  height: 29px;
+  width: 24px;
+  height: 24px;
 }
 
 .result-progress-wrap {
@@ -2701,8 +2710,13 @@ body:has(.result-page-layout) {
   }
 
   .result-center-play {
-    width: 64px;
-    height: 64px;
+    width: 56px;
+    height: 56px;
+  }
+
+  .result-center-play svg {
+    width: 22px;
+    height: 22px;
   }
 
   .result-progress-wrap {

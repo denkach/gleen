@@ -70,8 +70,9 @@ test('exposes the prototype player controls through native semantic inputs', () 
 
   const playButtons = screen.getAllByRole('button', { name: 'Play' });
   expect(playButtons).toHaveLength(2);
+  fireEvent.click(playButtons[0]);
   fireEvent.click(playButtons[1]);
-  expect(controller.play).toHaveBeenCalledOnce();
+  expect(controller.play).toHaveBeenCalledTimes(2);
 
   fireEvent.click(screen.getByRole('button', { name: 'Back 10 seconds' }));
   expect(controller.seekTo).toHaveBeenCalledWith(50_000);
@@ -139,6 +140,120 @@ test('reflects reactive play, mute, and time state without inventing rates', () 
   expect(screen.getByRole('combobox', { name: 'Playback speed' })).toHaveValue(
     '1',
   );
+});
+
+test('keeps the poster until first playback, through pause, and resets it for a new lifecycle', () => {
+  const view = render(
+    <PlayerProvider controller={controller}>
+      <SourcePanel
+        source={source}
+        copy={resultCopy.en}
+        chapters={[]}
+        playerLifecycleKey="analysis-one"
+      />
+    </PlayerProvider>,
+  );
+
+  expect(
+    screen.getByRole('img', { name: `Thumbnail for ${source.title}` }),
+  ).toBeVisible();
+
+  snapshot = { ...snapshot, playing: true };
+  act(() => listeners.forEach((listener) => listener()));
+
+  expect(
+    screen.queryByRole('img', { name: `Thumbnail for ${source.title}` }),
+  ).not.toBeInTheDocument();
+
+  snapshot = { ...snapshot, playing: false };
+  act(() => listeners.forEach((listener) => listener()));
+
+  expect(
+    screen.queryByRole('img', { name: `Thumbnail for ${source.title}` }),
+  ).not.toBeInTheDocument();
+
+  view.rerender(
+    <PlayerProvider controller={controller}>
+      <SourcePanel
+        source={source}
+        copy={resultCopy.en}
+        chapters={[]}
+        playerLifecycleKey="analysis-two"
+      />
+    </PlayerProvider>,
+  );
+
+  expect(
+    screen.getByRole('img', { name: `Thumbnail for ${source.title}` }),
+  ).toBeVisible();
+});
+
+test('does not treat a playing snapshot from the previous lifecycle as a start for the next one', () => {
+  const view = render(
+    <PlayerProvider controller={controller}>
+      <SourcePanel
+        source={source}
+        copy={resultCopy.en}
+        chapters={[]}
+        playerLifecycleKey="analysis-one"
+      />
+    </PlayerProvider>,
+  );
+
+  snapshot = { ...snapshot, playing: true };
+  act(() => listeners.forEach((listener) => listener()));
+  expect(
+    screen.queryByRole('img', { name: `Thumbnail for ${source.title}` }),
+  ).not.toBeInTheDocument();
+
+  view.rerender(
+    <PlayerProvider controller={controller}>
+      <SourcePanel
+        source={source}
+        copy={resultCopy.en}
+        chapters={[]}
+        playerLifecycleKey="analysis-two"
+      />
+    </PlayerProvider>,
+  );
+  expect(
+    screen.getByRole('img', { name: `Thumbnail for ${source.title}` }),
+  ).toBeVisible();
+
+  snapshot = { ...snapshot, playing: false };
+  act(() => listeners.forEach((listener) => listener()));
+  expect(
+    screen.getByRole('img', { name: `Thumbnail for ${source.title}` }),
+  ).toBeVisible();
+
+  snapshot = { ...snapshot, playing: true };
+  act(() => listeners.forEach((listener) => listener()));
+  expect(
+    screen.queryByRole('img', { name: `Thumbnail for ${source.title}` }),
+  ).not.toBeInTheDocument();
+});
+
+test('keeps the poster removed when playing and pause snapshots are batched before render', () => {
+  render(
+    <PlayerProvider controller={controller}>
+      <SourcePanel source={source} copy={resultCopy.en} chapters={[]} />
+    </PlayerProvider>,
+  );
+
+  act(() => {
+    snapshot = {
+      ...snapshot,
+      playing: true,
+      hasStarted: true,
+    } as VideoPlayerSnapshot;
+    listeners.forEach((listener) => listener());
+    snapshot = { ...snapshot, playing: false };
+    listeners.forEach((listener) => listener());
+  });
+
+  expect(
+    screen.queryByRole('img', { name: `Thumbnail for ${source.title}` }),
+  ).not.toBeInTheDocument();
 });
 
 test('unmutes before setting a positive volume', () => {

@@ -117,8 +117,14 @@ test('falls back to the thumbnail when the embedded player reports a runtime fai
   expect(screen.getByText('Player unavailable')).toBeVisible();
 });
 
-test('falls back to the thumbnail when the player is unavailable and hides a broken thumbnail', () => {
-  render(<SourcePanel source={source} playerAvailable={false} />);
+test('keeps an opaque fallback poster for a broken thumbnail and retries it for a new lifecycle', () => {
+  const view = render(
+    <SourcePanel
+      source={source}
+      playerAvailable={false}
+      playerLifecycleKey="analysis-one"
+    />,
+  );
   expect(screen.getByText('Player unavailable')).toBeVisible();
   const thumbnail = screen.getByRole('img', {
     name: `Thumbnail for ${source.title}`,
@@ -126,6 +132,19 @@ test('falls back to the thumbnail when the player is unavailable and hides a bro
   fireEvent.error(thumbnail);
   expect(thumbnail).not.toBeVisible();
   expect(screen.getByText('Video preview unavailable')).toBeVisible();
+  expect(document.querySelector('.result-player-poster')).toBeInTheDocument();
+
+  view.rerender(
+    <SourcePanel
+      source={source}
+      playerAvailable={false}
+      playerLifecycleKey="analysis-two"
+    />,
+  );
+
+  expect(
+    screen.getByRole('img', { name: `Thumbnail for ${source.title}` }),
+  ).toBeVisible();
 });
 
 test('uses localized source, chapter, unavailable, and metadata wording', () => {

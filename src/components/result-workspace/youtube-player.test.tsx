@@ -156,8 +156,14 @@ describe('YouTubePlayer', () => {
     });
 
     const events = Player.mock.calls[0]?.[1].events;
-    act(() => events.onStateChange?.({ data: 1 }));
-    expect(controller.getSnapshot().playing).toBe(true);
+    act(() => {
+      events.onStateChange?.({ data: 1 });
+      events.onStateChange?.({ data: 2 });
+    });
+    expect(controller.getSnapshot()).toMatchObject({
+      playing: false,
+      hasStarted: true,
+    });
 
     controller.seekTo(999_000);
     controller.setPlaybackRate(1.4);

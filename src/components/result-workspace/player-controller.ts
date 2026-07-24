@@ -3,6 +3,7 @@ export type VideoPlayerSnapshot = Readonly<{
   currentTimeMs: number;
   durationMs: number;
   playing: boolean;
+  hasStarted?: boolean;
   playbackRate: number;
   availableRates: readonly number[];
   volume: number;
@@ -15,6 +16,7 @@ export const loadingVideoPlayerSnapshot: VideoPlayerSnapshot = Object.freeze({
   currentTimeMs: 0,
   durationMs: 0,
   playing: false,
+  hasStarted: false,
   playbackRate: 1,
   availableRates: Object.freeze([]),
   volume: 100,

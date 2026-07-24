@@ -10,6 +10,21 @@ const css = readFileSync(
 );
 
 describe('DEN-25 result shell geometry', () => {
+  it('keeps the center play control compact and exactly centered', () => {
+    expect(css).toMatch(
+      /\.result-center-play\s*{[^}]*top:\s*50%;[^}]*left:\s*50%;[^}]*width:\s*64px;[^}]*height:\s*64px;/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 620px\)[\s\S]*?\.result-center-play\s*{[^}]*width:\s*56px;[^}]*height:\s*56px;/,
+    );
+  });
+
+  it('keeps the poster opaque when the source thumbnail cannot render', () => {
+    expect(css).toMatch(
+      /\.result-player-poster\s*{[^}]*z-index:\s*2;[^}]*background:\s*var\(--result-player-surface\);/,
+    );
+  });
+
   it('keeps the source in document flow and anchors progress above controls', () => {
     expect(css).toMatch(/\.result-source-column\s*{[^}]*position:\s*static;/);
     expect(css).toMatch(/\.result-progress-wrap\s*{[^}]*bottom:\s*64px;/);

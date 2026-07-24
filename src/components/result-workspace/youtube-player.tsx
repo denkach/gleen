@@ -199,6 +199,7 @@ export function YouTubePlayer({
         snapshot.currentTimeMs === next.currentTimeMs &&
         snapshot.durationMs === next.durationMs &&
         snapshot.playing === next.playing &&
+        snapshot.hasStarted === next.hasStarted &&
         snapshot.playbackRate === next.playbackRate &&
         sameRates(snapshot.availableRates, next.availableRates) &&
         snapshot.volume === next.volume &&
@@ -243,6 +244,7 @@ export function YouTubePlayer({
         currentTimeMs,
         durationMs,
         playing,
+        hasStarted: Boolean(snapshot.hasStarted) || playing,
         playbackRate:
           Number.isFinite(playbackRate) && playbackRate > 0 ? playbackRate : 1,
         availableRates,

@@ -28,6 +28,9 @@ export type SourcePanelSource = Readonly<{
 const selectPlayerStatus = (snapshot: { status: string }) => snapshot.status;
 const selectCurrentTime = (snapshot: { currentTimeMs: number }) =>
   snapshot.currentTimeMs;
+const selectPlaying = (snapshot: { playing: boolean }) => snapshot.playing;
+const selectHasStarted = (snapshot: { hasStarted?: boolean }) =>
+  Boolean(snapshot.hasStarted);
 
 function SourceIcon({ name }: Readonly<{ name: 'heart' | 'share' }>) {
   return (
@@ -77,14 +80,42 @@ export function SourcePanel({
   onTimeChange?: (offsetMs: number) => void;
   playerStageRef?: RefObject<HTMLDivElement | null>;
 }>) {
-  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const [failedThumbnailKey, setFailedThumbnailKey] = useState<string | null>(
+    null,
+  );
   const [failedPlayerKey, setFailedPlayerKey] = useState<string | null>(null);
   const [customControlsMounted, setCustomControlsMounted] = useState(false);
   const internalPlayerStageRef = useRef<HTMLDivElement>(null);
   const playerStageRef = suppliedPlayerStageRef ?? internalPlayerStageRef;
   const playerStatus = useVideoPlayerSnapshot(selectPlayerStatus);
   const currentTimeMs = useVideoPlayerSnapshot(selectCurrentTime);
+  const playing = useVideoPlayerSnapshot(selectPlaying);
+  const hasStarted = useVideoPlayerSnapshot(selectHasStarted);
+  const playerActive = playing || hasStarted;
   const playerKey = `${playerLifecycleKey}:${source.videoId}`;
+  const thumbnailFailed = failedThumbnailKey === playerKey;
+  const [posterPlayback, setPosterPlayback] = useState(() => ({
+    playerKey,
+    started: playerActive,
+    awaitingIdle: false,
+  }));
+  let playbackStarted = false;
+  if (posterPlayback.playerKey !== playerKey) {
+    setPosterPlayback({
+      playerKey,
+      started: false,
+      awaitingIdle: playerActive,
+    });
+  } else if (posterPlayback.awaitingIdle) {
+    if (!playerActive) {
+      setPosterPlayback({ ...posterPlayback, awaitingIdle: false });
+    }
+  } else {
+    playbackStarted = playerActive || posterPlayback.started;
+    if (playerActive && !posterPlayback.started) {
+      setPosterPlayback({ ...posterPlayback, started: true });
+    }
+  }
   const showPlayer = playerAvailable && failedPlayerKey !== playerKey;
   const currentChapter = chapters.reduce<
     TimestampsPresentation['chapters'][number] | undefined
@@ -136,19 +167,29 @@ export function SourcePanel({
           </div>
         </header>
         <div className="result-player-stage" ref={playerStageRef}>
-          {!thumbnailFailed ? (
-            <Image
-              className="result-player-poster"
-              src={source.thumbnailUrl}
-              alt={formatResultCopy(copy.sourceThumbnail, {
-                title: source.title,
-              })}
-              fill
-              sizes="(max-width: 1180px) 100vw, 50vw"
-              priority
-              unoptimized
-              onError={() => setThumbnailFailed(true)}
-            />
+          {!playbackStarted ? (
+            <div className="result-player-poster">
+              {!thumbnailFailed ? (
+                <Image
+                  className="result-player-poster-image"
+                  src={source.thumbnailUrl}
+                  alt={formatResultCopy(copy.sourceThumbnail, {
+                    title: source.title,
+                  })}
+                  fill
+                  sizes="(max-width: 1180px) 100vw, 50vw"
+                  priority
+                  unoptimized
+                  onError={() => setFailedThumbnailKey(playerKey)}
+                />
+              ) : (
+                showPlayer && (
+                  <span className="sr-only">
+                    {copy.playerPreviewUnavailable}
+                  </span>
+                )
+              )}
+            </div>
           ) : null}
           {showPlayer && customControlsMounted ? (
             <YouTubePlayer
