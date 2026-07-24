@@ -18,6 +18,19 @@ create index if not exists analysis_intakes_history_search_idx
 alter table public.analysis_result_states
   add column if not exists last_opened_at timestamptz;
 
+create index if not exists analysis_intakes_owner_analyzed_idx
+  on public.analysis_intakes (user_id, created_at desc, id desc);
+
+create index if not exists analysis_result_states_owner_recent_idx
+  on public.analysis_result_states (
+    user_id,
+    last_opened_at desc nulls last,
+    analysis_id desc
+  );
+
+create index if not exists analysis_intakes_owner_title_idx
+  on public.analysis_intakes (user_id, lower(title), id);
+
 create index if not exists analysis_jobs_owner_status_updated_idx
   on public.analysis_jobs (
     user_id,
