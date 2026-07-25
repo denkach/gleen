@@ -211,7 +211,7 @@ function fixtureQuery(
     return parseHistoryQuery({ status: ['ready'], favorite: 'true' });
   }
   if (visualCase === 'filters') {
-    return parseHistoryQuery({ status: ['ready', 'processing'] });
+    return parseHistoryQuery({ status: ['ready'] });
   }
   return parseHistoryQuery(queryInput);
 }
@@ -240,6 +240,9 @@ function itemsFor(
               }
             : item,
         );
+  if (visualCase === 'filters') {
+    return sourceItems;
+  }
   const normalizedSearch = query.q.toLocaleLowerCase('en');
   const filtered = sourceItems.filter((item) => {
     if (
@@ -326,6 +329,18 @@ export function FixtureHistory({
           ? visualCase
           : null
       }
+      initialFilterDraft={
+        visualCase === 'filters'
+          ? {
+              status: ['ready'],
+              language: null,
+              source: null,
+              date: 'all',
+              favorite: false,
+            }
+          : undefined
+      }
+      filterPresentationCountOverride={visualCase === 'filters' ? 2 : undefined}
       actions={fixtureActions(fixtureAction)}
       navigationPath={`/app-shell-fixture/history?${navigationParameters.toString()}`}
     />

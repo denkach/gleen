@@ -23,6 +23,26 @@ async function capture(
     'true',
     { timeout: 15_000 },
   );
+  let overlay: import('@playwright/test').Locator | null = null;
+  if (visualCase === 'filters') {
+    overlay =
+      width <= 720
+        ? page.getByRole('dialog', { name: 'Filters' })
+        : page.locator('.history-filter-panel');
+  } else if (visualCase === 'sort') {
+    overlay = page.getByRole('menu');
+  } else if (visualCase === 'rename' || visualCase === 'delete') {
+    overlay = page.getByRole('dialog');
+  }
+  if (overlay) {
+    await expect(overlay).toBeVisible();
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
+    );
+  }
   await page.locator('nextjs-portal').evaluateAll((portals) => {
     for (const portal of portals) {
       if (!portal.querySelector('[role="dialog"], [role="menu"]')) {
@@ -34,6 +54,15 @@ async function capture(
       }
     }
   });
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await expect(page).toHaveScreenshot(name, {
     animations: 'disabled',
     caret: 'initial',

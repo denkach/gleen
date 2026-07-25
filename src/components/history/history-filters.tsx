@@ -34,6 +34,7 @@ const dateOptions = [
 export type HistoryFiltersProps = Readonly<{
   draft: HistoryFilterDraft;
   appliedCount: number;
+  presentationCountOverride?: number;
   facets: HistoryFacets;
   open: boolean;
   onOpenChange(open: boolean): void;
@@ -112,12 +113,14 @@ function DesktopHistoryFilters({
   onReset,
   onClearAll,
   appliedCount,
+  presentationCountOverride,
   triggerRef,
 }: HistoryFiltersPresentationProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const titleId = useId();
-  const count = filterCount(draft);
+  const count = presentationCountOverride ?? filterCount(draft);
+  const presentedAppliedCount = presentationCountOverride ?? appliedCount;
 
   useEffect(() => {
     if (!open) return;
@@ -153,7 +156,7 @@ function DesktopHistoryFilters({
     >
       <FilterTrigger
         ref={triggerRef}
-        count={appliedCount}
+        count={presentedAppliedCount}
         mobile={false}
         open={open}
         controls={panelId}
@@ -209,9 +212,11 @@ function MobileHistoryFilters({
   onApply,
   onReset,
   appliedCount,
+  presentationCountOverride,
   triggerRef,
 }: HistoryFiltersPresentationProps) {
-  const count = filterCount(draft);
+  const count = presentationCountOverride ?? filterCount(draft);
+  const presentedAppliedCount = presentationCountOverride ?? appliedCount;
   const fieldId = useId();
 
   return (
@@ -221,7 +226,7 @@ function MobileHistoryFilters({
     >
       <FilterTrigger
         ref={triggerRef}
-        count={appliedCount}
+        count={presentedAppliedCount}
         mobile
         open={open}
         onClick={() => onOpenChange(!open)}
@@ -254,7 +259,7 @@ function MobileHistoryFilters({
           <div className="history-filters__mobile-actions">
             <ApplyButton count={count} onApply={onApply} />
             <p className="history-filters__applied-note">
-              {appliedNote(appliedCount)}
+              {appliedNote(presentedAppliedCount)}
             </p>
           </div>
         </DialogContent>

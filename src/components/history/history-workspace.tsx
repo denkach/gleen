@@ -43,6 +43,8 @@ export type HistoryWorkspaceProps = Readonly<{
   verifiedDuplicate?: HistoryItem | null;
   loadError?: boolean;
   initialOverlay?: 'filters' | 'sort' | 'rename' | 'delete' | null;
+  initialFilterDraft?: HistoryFilterDraft;
+  filterPresentationCountOverride?: number;
   navigationPath?: string;
   actions: HistoryWorkspaceActions;
 }>;
@@ -108,6 +110,8 @@ export function HistoryWorkspace({
   verifiedDuplicate = null,
   loadError = false,
   initialOverlay = null,
+  initialFilterDraft,
+  filterPresentationCountOverride,
   navigationPath = '/app/history',
   actions,
 }: HistoryWorkspaceProps) {
@@ -120,6 +124,8 @@ export function HistoryWorkspace({
       verifiedDuplicate={verifiedDuplicate}
       loadError={loadError}
       initialOverlay={initialOverlay}
+      initialFilterDraft={initialFilterDraft}
+      filterPresentationCountOverride={filterPresentationCountOverride}
       navigationPath={navigationPath}
       actions={actions}
     />
@@ -134,6 +140,8 @@ type HistoryWorkspaceStateProps = Pick<
   | 'verifiedDuplicate'
   | 'loadError'
   | 'initialOverlay'
+  | 'initialFilterDraft'
+  | 'filterPresentationCountOverride'
   | 'actions'
 > &
   Readonly<{ navigationPath: string }>;
@@ -145,11 +153,15 @@ function HistoryWorkspaceState({
   verifiedDuplicate,
   loadError,
   initialOverlay,
+  initialFilterDraft,
+  filterPresentationCountOverride,
   navigationPath,
   actions,
 }: HistoryWorkspaceStateProps) {
   const router = useRouter();
-  const [draft, setDraft] = useState(() => filterDraftFromQuery(query));
+  const [draft, setDraft] = useState(
+    () => initialFilterDraft ?? filterDraftFromQuery(query),
+  );
   const [filtersOpen, setFiltersOpen] = useState(initialOverlay === 'filters');
   const [reanalyzing, setReanalyzing] = useState(false);
   const reanalysisPendingRef = useRef(false);
@@ -315,6 +327,7 @@ function HistoryWorkspaceState({
               <HistoryFilters
                 draft={draft}
                 appliedCount={appliedFilterCount(query)}
+                presentationCountOverride={filterPresentationCountOverride}
                 facets={facets}
                 open={filtersOpen}
                 onOpenChange={setFiltersOpen}

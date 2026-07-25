@@ -182,12 +182,30 @@ describe('FixtureHistory', () => {
     render(<FixtureHistory visualCase="filters" fixtureDuplicate />);
 
     expect(
+      screen.getByTestId('history-desktop-list').querySelectorAll('tbody tr'),
+    ).toHaveLength(6);
+    expect(
       screen.getByRole('complementary', {
         name: 'Saved analysis available',
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('region', { name: 'Filter results' }),
+    ).toBeInTheDocument();
+    const filterPanel = screen.getByRole('region', {
+      name: 'Filter results',
+    });
+    expect(
+      within(filterPanel).getByRole('checkbox', { name: 'Ready' }),
+    ).toBeChecked();
+    expect(
+      within(filterPanel).getByRole('checkbox', { name: 'Processing' }),
+    ).not.toBeChecked();
+    expect(
+      within(filterPanel).getByRole('button', { name: 'Apply filters (2)' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Filters, 2 applied' }),
     ).toBeInTheDocument();
   });
 
