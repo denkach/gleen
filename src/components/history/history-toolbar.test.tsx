@@ -16,6 +16,18 @@ const query: HistoryQuery = {
   cursor: null,
 };
 
+function expectExactIconRoot(icon: Element | null) {
+  expect(icon).toBeInstanceOf(SVGElement);
+  expect(icon).toHaveAttribute('viewBox', '0 0 24 24');
+  expect(icon).toHaveAttribute('fill', 'none');
+  expect(icon).toHaveAttribute('stroke', 'currentColor');
+  expect(icon).toHaveAttribute('stroke-width', '1.5');
+  expect(icon).toHaveAttribute('stroke-linecap', 'round');
+  expect(icon).toHaveAttribute('stroke-linejoin', 'round');
+  expect(icon).toHaveAttribute('aria-hidden', 'true');
+  expect(icon).toHaveAttribute('focusable', 'false');
+}
+
 describe('HistoryToolbar', () => {
   it('exposes stable toolbar, search, sort, and view-mode hooks', () => {
     const { container } = render(
@@ -35,9 +47,11 @@ describe('HistoryToolbar', () => {
       sort.querySelector('.history-toolbar__sort-label'),
     ).toHaveTextContent('Sort: Recently opened');
     const sortIcon = sort.querySelector('.history-control-icon--sort');
-    expect(sortIcon).toHaveAttribute('aria-hidden', 'true');
-    expect(sortIcon).toHaveAttribute('focusable', 'false');
-    expect(sortIcon).toHaveAttribute('viewBox', '0 0 24 24');
+    expectExactIconRoot(sortIcon);
+    expect(sortIcon?.querySelector('path')).toHaveAttribute(
+      'd',
+      'm8 10 4 4 4-4',
+    );
     expect(screen.getByRole('group', { name: 'History view' })).toHaveClass(
       'history-toolbar__view',
     );
@@ -46,14 +60,30 @@ describe('HistoryToolbar', () => {
       'history-toolbar__view-button',
       'history-toolbar__view-button--active',
     );
-    expect(
-      list.querySelector('.history-control-icon--list'),
-    ).toBeInTheDocument();
+    const listIcon = list.querySelector('.history-control-icon--list');
+    expectExactIconRoot(listIcon);
+    expect(listIcon?.querySelector('path')).toHaveAttribute(
+      'd',
+      'M4 6h.01M4 12h.01M4 18h.01M8 6h12M8 12h12M8 18h12',
+    );
     const grid = screen.getByRole('button', { name: 'Grid view unavailable' });
     expect(grid).toHaveClass('history-toolbar__view-button');
+    const gridIcon = grid.querySelector('.history-control-icon--grid');
+    expectExactIconRoot(gridIcon);
     expect(
-      grid.querySelector('.history-control-icon--grid'),
-    ).toBeInTheDocument();
+      [...(gridIcon?.querySelectorAll('rect') ?? [])].map((rect) => ({
+        x: rect.getAttribute('x'),
+        y: rect.getAttribute('y'),
+        width: rect.getAttribute('width'),
+        height: rect.getAttribute('height'),
+        rx: rect.getAttribute('rx'),
+      })),
+    ).toEqual([
+      { x: '4', y: '4', width: '6', height: '6', rx: '1' },
+      { x: '14', y: '4', width: '6', height: '6', rx: '1' },
+      { x: '4', y: '14', width: '6', height: '6', rx: '1' },
+      { x: '14', y: '14', width: '6', height: '6', rx: '1' },
+    ]);
   });
 
   it('submits search on Enter and exposes every sort choice', async () => {

@@ -98,9 +98,19 @@ describe('HistoryFilters', () => {
     });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     const filterIcon = trigger.querySelector('.history-control-icon--filter');
+    expect(filterIcon).toBeInstanceOf(SVGElement);
+    expect(filterIcon).toHaveAttribute('viewBox', '0 0 24 24');
+    expect(filterIcon).toHaveAttribute('fill', 'none');
+    expect(filterIcon).toHaveAttribute('stroke', 'currentColor');
+    expect(filterIcon).toHaveAttribute('stroke-width', '1.5');
+    expect(filterIcon).toHaveAttribute('stroke-linecap', 'round');
+    expect(filterIcon).toHaveAttribute('stroke-linejoin', 'round');
     expect(filterIcon).toHaveAttribute('aria-hidden', 'true');
     expect(filterIcon).toHaveAttribute('focusable', 'false');
-    expect(filterIcon).toHaveAttribute('viewBox', '0 0 24 24');
+    expect(filterIcon?.querySelector('path')).toHaveAttribute(
+      'd',
+      'M3 5h18l-7 8v5l-4 2v-7L3 5Z',
+    );
 
     await user.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
