@@ -72,6 +72,18 @@ describe('history presentation', () => {
     ).toBe(false);
   });
 
+  test.each(['queued', 'running', 'failed'] as const)(
+    'does not expose Export for %s even when an artifact is already ready',
+    (status) => {
+      expect(
+        toHistoryItem(
+          row({ status, readyArtifacts: ['summary'] }),
+          formatOptions,
+        ).canExport,
+      ).toBe(false);
+    },
+  );
+
   test.each([
     [2058, '34:18'],
     [3723, '1:02:03'],

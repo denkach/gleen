@@ -188,7 +188,8 @@ function dateThreshold(
   } else if (date === '30d') {
     threshold.setUTCDate(threshold.getUTCDate() - 30);
   } else {
-    threshold.setUTCFullYear(threshold.getUTCFullYear() - 1);
+    threshold.setUTCMonth(0, 1);
+    threshold.setUTCHours(0, 0, 0, 0);
   }
   return threshold.toISOString();
 }

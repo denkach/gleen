@@ -260,7 +260,12 @@ export function createHistoryActions(dependencies: HistoryActionDependencies) {
       const context = await authenticate();
       if ('ok' in context) return context;
       try {
-        if (!(await ownedIntake(context, parsed.data.analysisId))) {
+        if (
+          !(await context.history.findOwnedReusableDuplicate(
+            context.userId,
+            parsed.data.analysisId,
+          ))
+        ) {
           return failures['not-found'];
         }
         await context.userState.markOpened({

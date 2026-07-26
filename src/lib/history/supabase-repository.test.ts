@@ -228,6 +228,26 @@ describe('Supabase History repository', () => {
     expect(ownerCallCount(recorded)).toBe(1);
   });
 
+  test('interprets This year as the current UTC calendar year', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-24T12:00:00.000Z'));
+    const { client, recorded } = createRecordingClient([
+      { data: [], error: null },
+    ]);
+
+    await createSupabaseHistoryRepository(client).listOwned(
+      'owner-1',
+      query({ date: 'year' }),
+      20,
+    );
+
+    expect(recorded).toContainEqual([
+      'gte',
+      'analyzed_at',
+      '2026-01-01T00:00:00.000Z',
+    ]);
+  });
+
   test.each([
     [
       'newest',

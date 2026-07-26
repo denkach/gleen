@@ -254,9 +254,11 @@ describe('History server actions', () => {
     expect(deps.reanalyze).not.toHaveBeenCalled();
   });
 
-  test('marks only owned analyses opened with a server timestamp', async () => {
+  test('marks only reusable owned analyses opened with a server timestamp', async () => {
     const deps = dependencies();
-    deps.intake.findOwned.mockResolvedValue({ id: analysisId });
+    deps.history.findOwnedReusableDuplicate.mockResolvedValue({
+      id: analysisId,
+    });
     const actions = createHistoryActions(deps);
 
     await expect(
@@ -268,6 +270,19 @@ describe('History server actions', () => {
       openedAt: expect.any(String),
     });
     expect(deps.revalidateHistory).toHaveBeenCalledOnce();
+  });
+
+  test('does not mark processing or failed analyses as recently opened', async () => {
+    const deps = dependencies();
+    deps.intake.findOwned.mockResolvedValue({ id: analysisId });
+    deps.history.findOwnedReusableDuplicate.mockResolvedValue(null);
+    const actions = createHistoryActions(deps);
+
+    await expect(
+      actions.markHistoryItemOpened({ analysisId }),
+    ).resolves.toMatchObject({ ok: false, code: 'not-found' });
+    expect(deps.userState.markOpened).not.toHaveBeenCalled();
+    expect(deps.revalidateHistory).not.toHaveBeenCalled();
   });
 
   test('never exposes persistence failure details', async () => {

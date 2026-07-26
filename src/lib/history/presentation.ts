@@ -87,7 +87,9 @@ export function toHistoryItem(
     favorite: row.favorite,
     selectedArtifacts: [...row.selectedArtifacts],
     readyArtifacts: [...row.readyArtifacts],
-    canExport: row.readyArtifacts.length > 0,
+    canExport:
+      (row.status === 'complete' || row.status === 'partial') &&
+      row.readyArtifacts.length > 0,
     titleRevision: row.titleRevision,
   };
 }

@@ -158,6 +158,7 @@ export function HistoryItemActions({
   }
 
   function markItemOpened() {
+    if (item.status.key !== 'ready' && item.status.key !== 'partial') return;
     void markOpened({ analysisId: item.id }).catch(() => undefined);
   }
 

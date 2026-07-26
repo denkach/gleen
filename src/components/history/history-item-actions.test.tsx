@@ -178,6 +178,36 @@ describe('HistoryItemActions', () => {
     },
   );
 
+  it.each([
+    ['processing', 'Processing'],
+    ['failed', 'Failed'],
+  ] as const)(
+    'does not mark %s as recently opened when continuing',
+    async (key, label) => {
+      const user = userEvent.setup();
+      const props = setup({
+        item: {
+          ...item,
+          id: key,
+          title: `${label} title`,
+          href: `/app?analysis=${key}`,
+          status: { key, label },
+          canExport: false,
+        },
+      });
+
+      await user.click(
+        screen.getByRole('button', { name: `Actions for ${label} title` }),
+      );
+      const preventNavigation = (event: MouseEvent) => event.preventDefault();
+      document.addEventListener('click', preventNavigation);
+      await user.click(screen.getByRole('menuitem', { name: 'Continue' }));
+      document.removeEventListener('click', preventNavigation);
+
+      expect(props.markOpened).not.toHaveBeenCalled();
+    },
+  );
+
   it('does not expose Export when no artifacts are ready', async () => {
     const user = userEvent.setup();
     setup({

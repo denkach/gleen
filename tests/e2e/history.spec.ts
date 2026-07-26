@@ -42,9 +42,15 @@ test.describe('DEN-19 History durable behavior', () => {
     await filters.getByText('Ready', { exact: true }).click();
     await expect(page).not.toHaveURL(/status=/);
     expect(await visibleTitles(page)).toEqual(allTitles);
-    await expect(
-      page.getByText('0 filters applied', { exact: true }),
-    ).toBeVisible();
+    if ((page.viewportSize()?.width ?? 0) <= 720) {
+      await expect(
+        page.getByText('0 filters applied', { exact: true }),
+      ).toBeVisible();
+    } else {
+      await expect(
+        page.getByRole('button', { name: /Filters?, none applied/ }),
+      ).toBeVisible();
+    }
 
     await page.getByRole('button', { name: 'Apply filters (1)' }).click();
     await expect(page).toHaveURL(/status=ready/);
