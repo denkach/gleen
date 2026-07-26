@@ -75,18 +75,13 @@ describe('DEN-19 History CSS contract', () => {
     );
   });
 
-  it('gives every toolbar pseudo-icon a fixed box for complete centered rendering', () => {
-    for (const selector of [
-      String.raw`\.history-filters__trigger::before`,
-      String.raw`\.history-toolbar__sort::after`,
-      String.raw`\.history-toolbar__view-button::before`,
-    ]) {
-      expect(css).toMatch(
-        new RegExp(
-          `${selector}\\s*{[^}]*display:\\s*block;[^}]*flex:\\s*0 0 auto;`,
-        ),
-      );
-    }
+  it('uses one fixed box for every exact toolbar SVG icon', () => {
+    expect(css).toMatch(
+      /\.history-control-icon\s*{[^}]*width:\s*18px;[^}]*height:\s*18px;[^}]*display:\s*block;[^}]*flex:\s*0 0 auto;/,
+    );
+    expect(css).not.toContain('.history-filters__trigger::before');
+    expect(css).not.toContain('.history-toolbar__sort::after');
+    expect(css).not.toContain('.history-toolbar__view-button::before');
   });
 
   it('fully removes History portal motion when reduced motion is requested', () => {

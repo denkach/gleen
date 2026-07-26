@@ -13,6 +13,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { HistoryQuery, HistoryStatusFilter } from '@/lib/history/query';
 import type { HistoryFacets } from '@/lib/history/repository';
 
+import { HistoryFilterIcon } from './history-toolbar-icons';
 import type { HistoryFilterDraft } from './history-workspace';
 
 const mobileHistoryQuery = '(max-width: 720px)';
@@ -293,6 +294,7 @@ const FilterTrigger = ({
     aria-haspopup={mobile ? 'dialog' : undefined}
     onClick={onClick}
   >
+    <HistoryFilterIcon />
     {mobile ? 'Filter' : 'Filters'}
     {count > 0 ? (
       <span className="history-filters__count" aria-hidden="true">

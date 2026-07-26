@@ -97,6 +97,10 @@ describe('HistoryFilters', () => {
       name: 'Filters, 3 applied',
     });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    const filterIcon = trigger.querySelector('.history-control-icon--filter');
+    expect(filterIcon).toHaveAttribute('aria-hidden', 'true');
+    expect(filterIcon).toHaveAttribute('focusable', 'false');
+    expect(filterIcon).toHaveAttribute('viewBox', '0 0 24 24');
 
     await user.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');

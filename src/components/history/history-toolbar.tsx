@@ -16,6 +16,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { HistoryQuery, HistorySort } from '@/lib/history/query';
 
+import {
+  HistoryGridIcon,
+  HistoryListIcon,
+  HistorySortIcon,
+} from './history-toolbar-icons';
+
 const sortOptions = [
   ['newest', 'Newest'],
   ['oldest', 'Oldest'],
@@ -97,6 +103,7 @@ function HistoryToolbarState({
             <span className="history-toolbar__sort-label">
               Sort: {currentSort}
             </span>
+            <HistorySortIcon />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="history-toolbar__sort-menu"
@@ -126,6 +133,7 @@ function HistoryToolbarState({
             aria-label="List view"
             aria-pressed="true"
           >
+            <HistoryListIcon />
             List
           </button>
           <button
@@ -135,6 +143,7 @@ function HistoryToolbarState({
             aria-disabled="true"
             disabled
           >
+            <HistoryGridIcon />
             Grid
           </button>
         </div>

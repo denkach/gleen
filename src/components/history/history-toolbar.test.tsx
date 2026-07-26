@@ -34,16 +34,26 @@ describe('HistoryToolbar', () => {
     expect(
       sort.querySelector('.history-toolbar__sort-label'),
     ).toHaveTextContent('Sort: Recently opened');
+    const sortIcon = sort.querySelector('.history-control-icon--sort');
+    expect(sortIcon).toHaveAttribute('aria-hidden', 'true');
+    expect(sortIcon).toHaveAttribute('focusable', 'false');
+    expect(sortIcon).toHaveAttribute('viewBox', '0 0 24 24');
     expect(screen.getByRole('group', { name: 'History view' })).toHaveClass(
       'history-toolbar__view',
     );
-    expect(screen.getByRole('button', { name: 'List view' })).toHaveClass(
+    const list = screen.getByRole('button', { name: 'List view' });
+    expect(list).toHaveClass(
       'history-toolbar__view-button',
       'history-toolbar__view-button--active',
     );
     expect(
-      screen.getByRole('button', { name: 'Grid view unavailable' }),
-    ).toHaveClass('history-toolbar__view-button');
+      list.querySelector('.history-control-icon--list'),
+    ).toBeInTheDocument();
+    const grid = screen.getByRole('button', { name: 'Grid view unavailable' });
+    expect(grid).toHaveClass('history-toolbar__view-button');
+    expect(
+      grid.querySelector('.history-control-icon--grid'),
+    ).toBeInTheDocument();
   });
 
   it('submits search on Enter and exposes every sort choice', async () => {
