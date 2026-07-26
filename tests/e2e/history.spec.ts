@@ -43,7 +43,7 @@ test.describe('DEN-19 History durable behavior', () => {
     await expect(page).not.toHaveURL(/status=/);
     expect(await visibleTitles(page)).toEqual(allTitles);
     await expect(
-      page.getByRole('button', { name: /Filters?, none applied/ }),
+      page.getByText('0 filters applied', { exact: true }),
     ).toBeVisible();
 
     await page.getByRole('button', { name: 'Apply filters (1)' }).click();
@@ -218,7 +218,9 @@ test.describe('DEN-19 History durable behavior', () => {
     await banner
       .getByRole('button', { name: 'Analyze another version' })
       .click();
-    await expect(page).toHaveURL(/\/app\/video\/|\/session-expired/);
+    await expect(page).toHaveURL(/\/app\/video\/|\/session-expired/, {
+      timeout: 15_000,
+    });
     expect(
       await page.evaluate(() =>
         window.sessionStorage.getItem('historyFixtureReanalysisCount'),

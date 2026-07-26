@@ -1,7 +1,12 @@
 'use client';
 
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+
 import { HistoryWorkspace } from '@/components/history/history-workspace';
 import type { HistoryWorkspaceProps } from '@/components/history/history-workspace';
+import { historyEntryPresentation } from '@/lib/analysis-pipeline/recovery';
+import { createSessionRecoveryRepositories } from '@/lib/analysis-pipeline/session-recovery-repository';
 import { parseHistoryQuery } from '@/lib/history/query';
 import type { HistoryItem } from '@/lib/history/repository';
 
@@ -12,6 +17,27 @@ import type {
 
 export { historyVisualCases } from './fixture-history-contract';
 export type { HistoryVisualCase } from './fixture-history-contract';
+
+function ActiveAnalysisRecoveryLink() {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void createSessionRecoveryRepositories(window.sessionStorage)
+      .analysisRepository.findMostRecentOwnedActive('fixture-user')
+      .then((active) => {
+        setActiveId(active?.intake.id ?? null);
+      });
+  }, []);
+
+  if (!activeId) return null;
+
+  const presentation = historyEntryPresentation(
+    { id: activeId, status: 'running' },
+    { app: '/app-shell-fixture', result: '/app-shell-fixture/app/video' },
+  );
+
+  return <Link href={presentation.href}>Resume active analysis</Link>;
+}
 
 const fixtureRows = [
   {
@@ -309,40 +335,46 @@ export function FixtureHistory({
   });
 
   return (
-    <HistoryWorkspace
-      initialPage={{
-        items: itemsFor(visualCase, query),
-        nextCursor: fixtureAction === 'load-more' ? 'fixture-next-page' : null,
-      }}
-      query={query}
-      facets={fixtureFacets}
-      verifiedDuplicate={
-        visualCase === 'duplicate' || fixtureDuplicate
-          ? duplicateFixtureItem
-          : null
-      }
-      initialOverlay={
-        visualCase === 'filters' ||
-        visualCase === 'sort' ||
-        visualCase === 'rename' ||
-        visualCase === 'delete'
-          ? visualCase
-          : null
-      }
-      initialFilterDraft={
-        visualCase === 'filters'
-          ? {
-              status: ['ready'],
-              language: null,
-              source: null,
-              date: 'all',
-              favorite: false,
-            }
-          : undefined
-      }
-      filterPresentationCountOverride={visualCase === 'filters' ? 2 : undefined}
-      actions={fixtureActions(fixtureAction)}
-      navigationPath={`/app-shell-fixture/history?${navigationParameters.toString()}`}
-    />
+    <>
+      <ActiveAnalysisRecoveryLink />
+      <HistoryWorkspace
+        initialPage={{
+          items: itemsFor(visualCase, query),
+          nextCursor:
+            fixtureAction === 'load-more' ? 'fixture-next-page' : null,
+        }}
+        query={query}
+        facets={fixtureFacets}
+        verifiedDuplicate={
+          visualCase === 'duplicate' || fixtureDuplicate
+            ? duplicateFixtureItem
+            : null
+        }
+        initialOverlay={
+          visualCase === 'filters' ||
+          visualCase === 'sort' ||
+          visualCase === 'rename' ||
+          visualCase === 'delete'
+            ? visualCase
+            : null
+        }
+        initialFilterDraft={
+          visualCase === 'filters'
+            ? {
+                status: ['ready'],
+                language: null,
+                source: null,
+                date: 'all',
+                favorite: false,
+              }
+            : undefined
+        }
+        filterPresentationCountOverride={
+          visualCase === 'filters' ? 2 : undefined
+        }
+        actions={fixtureActions(fixtureAction)}
+        navigationPath={`/app-shell-fixture/history?${navigationParameters.toString()}`}
+      />
+    </>
   );
 }
