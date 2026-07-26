@@ -339,6 +339,8 @@
 .history-filters__trigger::before {
   width: 13px;
   height: 13px;
+  display: block;
+  flex: 0 0 auto;
   border: 1px solid currentColor;
   clip-path: polygon(0 0, 100% 0, 66% 42%, 66% 100%, 36% 82%, 36% 42%);
   content: '';
@@ -370,6 +372,8 @@
 .history-toolbar__sort::after {
   width: 7px;
   height: 7px;
+  display: block;
+  flex: 0 0 auto;
   border-right: 1px solid currentColor;
   border-bottom: 1px solid currentColor;
   content: '';
@@ -409,6 +413,8 @@
 .history-toolbar__view-button::before {
   width: 16px;
   height: 14px;
+  display: block;
+  flex: 0 0 auto;
   content: '';
   opacity: 0.9;
 }

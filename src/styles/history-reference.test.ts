@@ -75,6 +75,20 @@ describe('DEN-19 History CSS contract', () => {
     );
   });
 
+  it('gives every toolbar pseudo-icon a fixed box for complete centered rendering', () => {
+    for (const selector of [
+      String.raw`\.history-filters__trigger::before`,
+      String.raw`\.history-toolbar__sort::after`,
+      String.raw`\.history-toolbar__view-button::before`,
+    ]) {
+      expect(css).toMatch(
+        new RegExp(
+          `${selector}\\s*{[^}]*display:\\s*block;[^}]*flex:\\s*0 0 auto;`,
+        ),
+      );
+    }
+  });
+
   it('fully removes History portal motion when reduced motion is requested', () => {
     const reducedMotion = css.match(
       /@media \(prefers-reduced-motion: reduce\)\s*{([\s\S]*)\}\s*$/,

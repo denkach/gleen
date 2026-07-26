@@ -21,12 +21,14 @@
 ### Task 1: Establish fixed and centered toolbar icon boxes
 
 **Files:**
+
 - Modify: `src/styles/history-reference.test.ts`
 - Modify: `src/styles/history-reference.css`
 - Test: `src/styles/history-reference.test.ts`
 - Test: `tests/e2e/history.visual.spec.ts`
 
 **Interfaces:**
+
 - Consumes: existing selectors `.history-filters__trigger::before`, `.history-toolbar__sort::after`, and `.history-toolbar__view-button::before`.
 - Produces: explicit pseudo-element boxes with `display: block` and `flex: 0 0 auto`; no public TypeScript interface changes.
 
