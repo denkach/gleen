@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -11,6 +12,16 @@ const migrationPath = join(
 );
 
 const sql = readFileSync(migrationPath, 'utf8');
+
+const runtimeFixMigrationName =
+  '20260730004621_den_20_reservation_conflict_runtime_fix.sql';
+const runtimeFixMigrationPath = join(
+  process.cwd(),
+  'supabase',
+  'migrations',
+  runtimeFixMigrationName,
+);
+const runtimeFixSql = readFileSync(runtimeFixMigrationPath, 'utf8');
 
 const readBetween = (start: string, end: string) => {
   const startIndex = sql.indexOf(start);
@@ -120,5 +131,37 @@ describe('DEN-20 billing and usage migration', () => {
     expect(retry.indexOf('usage_reservation_not_active')).toBeLessThan(
       retry.indexOf('update public.analysis_jobs'),
     );
+  });
+
+  it('keeps applied billing history immutable and orders the runtime fix later', () => {
+    expect(
+      createHash('sha256').update(sql).digest('hex'),
+      'the applied DEN-20 migration must remain byte-for-byte immutable',
+    ).toBe('5c97039a521468227f1480a40f3e41f443784e4de0bb1985260eeff4b286d40b');
+    expect(
+      runtimeFixMigrationName.localeCompare(
+        '20260729234541_den_20_billing_usage.sql',
+      ),
+    ).toBeGreaterThan(0);
+  });
+
+  it('targets the reservation analysis uniqueness constraint without ambiguity', () => {
+    expect(runtimeFixSql).toContain(
+      'add constraint analysis_usage_reservations_analysis_id_key',
+    );
+    expect(runtimeFixSql).toContain(
+      'unique using index usage_reservations_analysis_idx',
+    );
+    expect(runtimeFixSql).toContain(
+      'create or replace function private.reserve_analysis_usage(analysis_id uuid)',
+    );
+    expect(runtimeFixSql).toContain(
+      'on conflict on constraint analysis_usage_reservations_analysis_id_key do nothing',
+    );
+    expect(runtimeFixSql).toContain(
+      'analysis_intake.id = reserve_analysis_usage.analysis_id',
+    );
+    expect(runtimeFixSql).not.toContain('plpgsql.variable_conflict');
+    expect(runtimeFixSql).not.toContain('on conflict (analysis_id)');
   });
 });
