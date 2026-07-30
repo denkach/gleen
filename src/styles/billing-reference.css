@@ -644,8 +644,8 @@
   display: none;
 }
 
-.billing-mobile-navigation,
-.billing-mobile-sheet {
+.billing-experience .billing-mobile-navigation,
+.billing-experience .billing-mobile-sheet {
   display: none;
 }
 
@@ -909,6 +909,73 @@
   min-height: 260px;
   border-radius: 12px;
   background: #0d1119;
+}
+
+.billing-experience .billing-stripe-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.billing-experience .billing-stripe-preview-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.billing-experience .billing-stripe-preview-wide {
+  grid-column: 1 / -1;
+}
+
+.billing-experience .billing-stripe-preview-field span {
+  color: #bbc0ca;
+  font-size: 12px;
+}
+
+.billing-experience .billing-stripe-preview-field small {
+  color: #737b89;
+  font-weight: 400;
+}
+
+.billing-experience .billing-stripe-preview-field b {
+  min-height: 43px;
+  overflow: hidden;
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: #0d1119;
+  color: #747c8b;
+  font-size: 13px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.billing-experience .billing-stripe-preview-toggles {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: #bbc0ca;
+  font-size: 12px;
+}
+
+.billing-experience .billing-stripe-preview-toggles span::first-letter {
+  color: var(--violet);
+}
+
+.billing-experience .billing-promotion-preview {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin: 13px 0 5px;
+  color: #b797ff;
+  font-size: 12px;
 }
 
 .billing-experience .billing-order-card {
@@ -1409,11 +1476,11 @@
     transform: none;
   }
 
-  .app-shell:has(.billing-experience) > .bottom-nav {
+  body:has(.billing-experience) .app-shell > .bottom-nav {
     display: none;
   }
 
-  .billing-mobile-navigation {
+  .billing-experience .billing-mobile-navigation {
     position: fixed;
     z-index: 45;
     right: 0;
@@ -1427,26 +1494,37 @@
     backdrop-filter: blur(20px);
   }
 
-  .billing-mobile-navigation a,
-  .billing-mobile-navigation button {
+  .billing-experience .billing-mobile-navigation a,
+  .billing-experience .billing-mobile-navigation button {
     display: grid;
+    grid-template-rows: 22px auto;
     min-height: 52px;
     place-items: center;
     border: 0;
     border-radius: 10px;
     background: transparent;
     color: #a1a7b3;
-    font-size: 11px;
+    font-size: 10px;
     text-decoration: none;
   }
 
-  .billing-mobile-navigation a:focus-visible,
-  .billing-mobile-navigation button:focus-visible {
+  .billing-experience .billing-mobile-navigation svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .billing-experience .billing-mobile-navigation .active {
+    background: rgba(173, 131, 255, 0.08);
+    color: #c6a7ff;
+  }
+
+  .billing-experience .billing-mobile-navigation a:focus-visible,
+  .billing-experience .billing-mobile-navigation button:focus-visible {
     outline: 2px solid var(--violet);
     outline-offset: -2px;
   }
 
-  .billing-mobile-sheet {
+  .billing-experience .billing-mobile-sheet {
     position: fixed;
     z-index: 70;
     inset: 0;
@@ -1454,11 +1532,11 @@
     background: rgba(0, 0, 0, 0.62);
   }
 
-  .billing-mobile-sheet[data-open] {
+  .billing-experience .billing-mobile-sheet[data-open] {
     display: flex;
   }
 
-  .billing-mobile-sheet-panel {
+  .billing-experience .billing-mobile-sheet-panel {
     display: grid;
     width: 100%;
     max-height: 84vh;
@@ -1470,13 +1548,13 @@
     box-shadow: var(--billing-shadow);
   }
 
-  .billing-mobile-sheet-panel h2 {
+  .billing-experience .billing-mobile-sheet-panel h2 {
     margin: 0 0 10px;
     font-size: 20px;
   }
 
-  .billing-mobile-sheet-panel a,
-  .billing-mobile-sheet-panel button {
+  .billing-experience .billing-mobile-sheet-panel a,
+  .billing-experience .billing-mobile-sheet-panel button {
     min-height: 52px;
     padding: 0 6px;
     border: 0;
@@ -1487,11 +1565,11 @@
     text-decoration: none;
   }
 
-  .billing-mobile-sheet-panel > :last-child {
+  .billing-experience .billing-mobile-sheet-panel > :last-child {
     border-bottom: 0;
   }
 
-  .billing-mobile-sheet-handle {
+  .billing-experience .billing-mobile-sheet-handle {
     width: 42px;
     height: 4px;
     margin: 1px auto 16px;
@@ -1631,6 +1709,19 @@
 
   .billing-experience .billing-checkout-cycle {
     margin-top: 11px;
+  }
+
+  .billing-experience .billing-stripe-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-experience .billing-stripe-preview-wide,
+  .billing-experience .billing-stripe-preview-toggles {
+    grid-column: auto;
+  }
+
+  .billing-experience .billing-stripe-preview-toggles {
+    grid-template-columns: 1fr;
   }
 
   .billing-experience .billing-checkout-cycle a {

@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 import { expect, test } from './fixtures';
 
@@ -19,6 +20,18 @@ const protectedBillingRoutes = [
   '/app/subscription/invoices',
   '/app/subscription/limit-reached',
 ] as const;
+
+const billingAuthFixtureToken = process.env.PLAYWRIGHT_AUTH_FIXTURE_TOKEN;
+if (billingAuthFixtureToken === undefined) {
+  throw new Error('Playwright billing auth fixture token was not initialized');
+}
+
+const authenticatedOwner = {
+  cookie: 'gleen-billing-e2e-session',
+  token: billingAuthFixtureToken,
+  id: '22222222-2222-4222-8222-222222222222',
+  email: 'billing-owner@example.test',
+} as const;
 
 async function openFixture(
   page: Page,
@@ -87,6 +100,49 @@ test('keeps every deterministic fixture preview-only and owner-safe routes authe
   for (const route of protectedBillingRoutes) {
     await page.goto(route);
     await expect(page).toHaveURL(/\/session-expired$/);
+  }
+
+  await page.context().addCookies([
+    {
+      name: authenticatedOwner.cookie,
+      value: authenticatedOwner.token,
+      url: new URL(page.url()).origin,
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ]);
+
+  for (const [index, route] of protectedBillingRoutes.entries()) {
+    if (route.startsWith('/app/subscription/checkout')) {
+      const response = await request.get(route, {
+        headers: {
+          cookie: `${authenticatedOwner.cookie}=${encodeURIComponent(
+            authenticatedOwner.token,
+          )}`,
+        },
+      });
+      expect(response.status(), route).toBe(200);
+      const html = await response.text();
+      expect(html).toContain('Checkout');
+      expect(html).toContain(authenticatedOwner.email);
+      expect(html).not.toMatch(/temporarily unavailable/i);
+      expect(html).not.toContain('foreign-owner@example.test');
+      continue;
+    }
+    const response = await page.goto(route, { waitUntil: 'domcontentloaded' });
+    expect(response?.status(), route).toBe(200);
+    await expect(
+      page.getByRole('heading', {
+        level: 1,
+        name: billingFixtures[index]![2],
+      }),
+    ).toBeVisible();
+    await expect(page.getByText(authenticatedOwner.email)).toBeVisible();
+    await expect(
+      page.getByRole('banner').getByText('0 analyses left'),
+    ).toBeVisible();
+    await expect(page.getByText(/temporarily unavailable/i)).toHaveCount(0);
+    await expect(page.getByText('foreign-owner@example.test')).toHaveCount(0);
   }
 });
 
@@ -164,7 +220,12 @@ test('applies usage search, event, and date filters, preserves pagination, and e
     .getByTestId('billing-boundary-payload')
     .textContent();
   expect(payload).not.toMatch(/user|customer|stripe|price|card/i);
-  expect(await artifact.createReadStream()).not.toBeNull();
+  const path = await artifact.path();
+  expect(path).not.toBeNull();
+  const csv = await readFile(path!, 'utf8');
+  expect(csv.startsWith('\uFEFF')).toBe(true);
+  expect(csv).toContain('"\'=SUM(A1:A2)"');
+  expect(csv).not.toMatch(/(?:^|\r?\n)[=+@-]/);
 });
 
 test('submits only plan and interval at the checkout boundary and renders no fixture Stripe iframe', async ({
@@ -172,9 +233,27 @@ test('submits only plan and interval at the checkout boundary and renders no fix
 }) => {
   await openFixture(page, 'checkout', 'active', 'checkout-action');
   await expect(page.locator('iframe')).toHaveCount(0);
+  const paymentPreview = page.getByRole('group', {
+    name: 'Secure Stripe payment preview',
+  });
+  await expect(paymentPreview).toBeVisible();
+  await expect(paymentPreview.locator('input, select, iframe')).toHaveCount(0);
+  for (const copy of [
+    'you@example.com',
+    '1234 1234 1234 1234',
+    'MM / YY',
+    'CVC',
+    'United States',
+    'e.g. EU123456789',
+  ]) {
+    await expect(
+      paymentPreview.locator('b').filter({ hasText: copy }),
+    ).toBeVisible();
+  }
   await expect(
-    page.getByText('Secure payment form is disabled in this visual fixture.'),
+    page.getByText('Have a promo code?', { exact: false }),
   ).toBeVisible();
+  await expect(page.getByText('All transactions are secure')).toBeVisible();
   await page.getByRole('button', { name: 'Start Prism Pro' }).click();
   await expect(page.getByTestId('billing-boundary-payload')).toHaveText(
     JSON.stringify({ plan: 'prism-pro', interval: 'month' }),
@@ -262,6 +341,30 @@ test('keeps limit recovery links explicit and production guard redirects without
   await page.goto('/app/subscription/limit-reached');
   await expect(page).toHaveURL(/\/session-expired$/);
   await expect(page.getByText(/analyses used/)).toHaveCount(0);
+
+  await page.context().addCookies([
+    {
+      name: authenticatedOwner.cookie,
+      value: authenticatedOwner.token,
+      url: new URL(page.url()).origin,
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ]);
+  await page.goto('/app-shell-fixture?intake=usage-limit');
+  await page
+    .getByRole('textbox', { name: 'YouTube URL' })
+    .fill('https://youtu.be/dQw4w9WgXcQ');
+  await page.getByRole('button', { name: 'Analyze video' }).click();
+
+  await expect(page).toHaveURL(/\/app\/subscription\/limit-reached$/);
+  await expect(
+    page.getByRole('heading', { name: 'Analysis limit reached' }),
+  ).toBeVisible();
+  await expect(page.getByText(/10.*analyses used/i)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Buy extra credits' }),
+  ).toBeDisabled();
 });
 
 test('keeps a deterministic keyboard focus order through billing controls', async ({
@@ -290,6 +393,16 @@ test('durable mobile billing sheet traps focus, closes with Escape, and restores
   await page.setViewportSize({ width: 412, height: 839 });
   await openFixture(page, 'subscription', 'active');
   const trigger = page.getByRole('button', { name: 'More billing screens' });
+  await expect(
+    page.getByRole('link', { name: 'Plan', exact: true }),
+  ).toHaveAttribute('aria-current', 'page');
+  await expect(
+    page.getByRole('link', { name: 'Plan', exact: true }).locator('svg'),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Usage', exact: true }).locator('svg'),
+  ).toBeVisible();
+  await expect(trigger.locator('svg')).toBeVisible();
   await trigger.focus();
   await trigger.click();
   const sheet = page.getByRole('dialog', { name: 'More billing screens' });

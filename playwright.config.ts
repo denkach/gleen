@@ -1,9 +1,14 @@
+import { randomBytes } from 'node:crypto';
 import { defineConfig, devices } from '@playwright/test';
 
 const port = process.env.PLAYWRIGHT_PORT ?? '3000';
 const baseURL = `http://127.0.0.1:${port}`;
 const testSupabaseUrl = 'https://gleen-test.supabase.co';
 const testSupabaseKey = 'sb_publishable_test';
+const billingAuthFixtureToken =
+  process.env.PLAYWRIGHT_AUTH_FIXTURE_TOKEN ??
+  randomBytes(32).toString('base64url');
+process.env.PLAYWRIGHT_AUTH_FIXTURE_TOKEN = billingAuthFixtureToken;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -40,6 +45,12 @@ export default defineConfig({
       NEXT_PUBLIC_APP_URL: baseURL,
       NEXT_PUBLIC_SUPABASE_URL: testSupabaseUrl,
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: testSupabaseKey,
+      PLAYWRIGHT_AUTH_FIXTURE_MODE: '1',
+      PLAYWRIGHT_AUTH_FIXTURE_TOKEN: billingAuthFixtureToken,
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'pk_test_den20_fixture',
+      STRIPE_SECRET_KEY: 'sk_test_den20_fixture',
+      STRIPE_WEBHOOK_SECRET: 'whsec_den20_fixture',
+      SUPABASE_SECRET_KEY: 'sb_secret_den20_fixture',
     },
     reuseExistingServer: !process.env.CI,
     url: baseURL,

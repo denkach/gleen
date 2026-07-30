@@ -111,6 +111,7 @@ export function CheckoutScreen({
   onRetry,
   onSubmit,
   canSubmit = true,
+  promotionPreview,
 }: Readonly<{
   presentation: CheckoutPresentation;
   prices: readonly PricePresentation[];
@@ -120,6 +121,7 @@ export function CheckoutScreen({
   onRetry?: () => void;
   onSubmit?: () => void;
   canSubmit?: boolean;
+  promotionPreview?: ReactNode;
 }>) {
   const message = stateMessage(state);
   const disabled =
@@ -272,6 +274,7 @@ export function CheckoutScreen({
               </div>
             </div>
           </div>
+          {promotionPreview}
           <button
             className="billing-button billing-button-primary"
             type="button"

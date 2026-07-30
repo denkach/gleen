@@ -42,6 +42,7 @@ it('defines every deterministic intake fixture case', () => {
     'video-unavailable',
     'transcript-unavailable',
     'provider-outage',
+    'usage-limit',
     'reanalysis',
     'pipeline-queued',
     'pipeline-validating',

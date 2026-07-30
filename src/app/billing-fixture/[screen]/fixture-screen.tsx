@@ -129,12 +129,51 @@ export function BillingFixtureScreen({
             prices={fixture.prices}
             state={{ kind: 'ready' }}
             stripeCheckout={
-              <div className="billing-stripe-skeleton" role="status">
-                Secure payment form is disabled in this visual fixture.
+              <div
+                className="billing-stripe-preview"
+                role="group"
+                aria-label="Secure Stripe payment preview"
+              >
+                <div className="billing-stripe-preview-field billing-stripe-preview-wide">
+                  <span>Email</span>
+                  <b>you@example.com</b>
+                </div>
+                <div className="billing-stripe-preview-field billing-stripe-preview-wide">
+                  <span>Card number</span>
+                  <b>1234 1234 1234 1234</b>
+                </div>
+                <div className="billing-stripe-preview-field">
+                  <span>Expiry</span>
+                  <b>MM / YY</b>
+                </div>
+                <div className="billing-stripe-preview-field">
+                  <span>CVC</span>
+                  <b>CVC</b>
+                </div>
+                <div className="billing-stripe-preview-field">
+                  <span>Country</span>
+                  <b>United States</b>
+                </div>
+                <div className="billing-stripe-preview-field">
+                  <span>
+                    VAT ID <small>optional</small>
+                  </span>
+                  <b>e.g. EU123456789</b>
+                </div>
+                <div className="billing-stripe-preview-toggles">
+                  <span>● Save payment method</span>
+                  <span>● Email invoice receipt</span>
+                </div>
               </div>
             }
             totals={fixture.totals}
             canSubmit={testBoundary === 'checkout-action'}
+            promotionPreview={
+              <div className="billing-promotion-preview">
+                <span>◇ Have a promo code?</span>
+                <span aria-hidden="true">›</span>
+              </div>
+            }
             onSubmit={
               testBoundary === 'checkout-action'
                 ? () =>

@@ -222,3 +222,82 @@ changed by Task 11 pass Prettier.
 
 Remaining concern: global Prettier remains red only for the three untouched
 reference/spec files listed above.
+
+## Review Fix Round 1
+
+The first review round strengthens five acceptance boundaries:
+
+- Authenticated acceptance now targets all six real `/app/subscription`
+  production routes. A server-only Supabase-compatible boundary is enabled
+  only when UI preview mode is active, a non-public
+  `PLAYWRIGHT_AUTH_FIXTURE_TOKEN` exists, and an exact HttpOnly cookie matches.
+  Production Vercel, local production, missing-token, and mismatched-cookie
+  cases always retain the real client. Mixed owner and foreign rows exercise
+  the unchanged repository `.eq('user_id', ownerId)` filters; the browser
+  requires owner identity/usage and rejects the foreign marker.
+- The existing preview-only app-shell fixture now injects a deterministic
+  `usage_limit_reached` action into the real `NewAnalysisForm`. Acceptance
+  submits the form, observes its closed client redirect, and loads the real
+  production limit route through the authenticated owner-data boundary.
+- Mobile billing navigation now uses the approved plan, chart, and more
+  `BillingIcon` glyphs, prototype active styling, route-derived active state,
+  and `aria-current="page"`. The existing focus-contained More sheet remains
+  the interaction boundary and uses the approved numbered destinations.
+- Checkout visual fixtures now render a non-interactive, visual-only Stripe
+  Elements stand-in with approved email, card, expiry, CVC, country, VAT,
+  receipt/save, secure-copy, and promotion geometry. It contains no iframe,
+  raw card value, secret, customer identifier, or live Stripe dependency.
+- CSV acceptance reads the downloaded bytes and asserts the UTF-8 BOM,
+  RFC4180-quoted formula-neutralized cell, and absence of an unescaped
+  formula-leading record.
+
+Before browser reruns, the server boundary gate tests passed 4 of 4 and full
+TypeScript checking passed. A further repository integration assertion was
+added to prove that mixed-owner source rows return only owner rows. Playwright
+startup was then deferred to the controller after repeated local webServer
+orchestration stalls produced no reporter output; those attempts are not
+claimed as GREEN. The affected mobile and Checkout baselines must be
+regenerated and visually inspected during the final controller verification.
+
+## Controller Verification and Review Fix Round 2
+
+Controller verification completed the deferred browser work and fixed issues
+that the strengthened acceptance test exposed:
+
+- all six authenticated production routes now render owner-scoped content
+  without fallback states; Checkout is verified as a server-rendered HTTP
+  response so the auth assertion cannot hydrate Stripe.js or start a production
+  Checkout action;
+- the authenticated E2E boundary is unavailable on every Vercel environment,
+  local production, missing explicit fixture mode, missing token, or mismatched
+  cookie; Playwright creates a cryptographically random token at runtime and
+  shares it with the worker and local web server only;
+- the Invoices page now imports its pure route-query parser from a server-safe
+  billing module instead of calling a Client Component export from the server;
+- the mobile More trigger remains disabled until hydration through
+  `useSyncExternalStore`, eliminating a verified intermittent dead-click race;
+- all mobile navigation and sheet CSS is scoped under `.billing-experience`,
+  restoring the stylesheet isolation contract;
+- the Checkout visual fixture baseline was accepted only after inspection of
+  expected, actual, and diff images. The only changed PNG is desktop Checkout;
+  the other 11 exact baselines passed unchanged.
+
+Fresh verification:
+
+- focused boundary, invoice, stylesheet, and fixture tests: pass;
+- full ESLint: pass with no warnings;
+- full TypeScript check: pass;
+- full Vitest: 144 files, 1,220 tests passed;
+- Chromium behavior plus visual: 23 tests passed;
+- mobile-chrome behavior: 3 tests passed;
+- changed-file Prettier: pass;
+- `git diff --check`: pass.
+
+The first attempted parallel Chromium/mobile run was rejected before tests
+because Next.js permits only one development-server lock per worktree. It is
+not counted as test evidence. The mobile suite was rerun sequentially and
+passed 3 of 3.
+
+Repository-wide `npm run format:check` still reports only the same three
+pre-existing untouched prototype/spec/plan files documented above. They remain
+outside the Task 11 review-fix diff.

@@ -14,7 +14,9 @@ import type {
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
 
-import { InvoicesScreen, parseInvoiceRouteQuery } from './invoices-screen';
+import { parseInvoiceRouteQuery } from '@/lib/billing/invoice-query';
+
+import { InvoicesScreen } from './invoices-screen';
 
 const invoices: InvoicePresentation = {
   items: [

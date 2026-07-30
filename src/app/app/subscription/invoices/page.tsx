@@ -1,11 +1,9 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
-import {
-  InvoicesScreen,
-  parseInvoiceRouteQuery,
-} from '@/components/billing/invoices-screen';
+import { InvoicesScreen } from '@/components/billing/invoices-screen';
 import { exportInvoicesCsv } from '@/lib/billing/actions';
+import { parseInvoiceRouteQuery } from '@/lib/billing/invoice-query';
 import {
   toInvoicePresentation,
   toInvoiceSummaryPresentation,

@@ -1,15 +1,37 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+
+import { BillingIcon } from './billing-icons';
 
 const focusableSelector =
   'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const subscribeToHydration = () => () => {};
 
 export function BillingMobileNavigation() {
+  const pathname = usePathname() ?? '';
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
+  const planActive =
+    pathname === '/app/subscription' ||
+    pathname === '/billing-fixture/subscription';
+  const usageActive =
+    pathname === '/app/subscription/usage' ||
+    pathname === '/billing-fixture/usage';
+  const moreActive =
+    open ||
+    (!planActive &&
+      !usageActive &&
+      (pathname.startsWith('/app/subscription/') ||
+        pathname.startsWith('/billing-fixture/')));
 
   function close() {
     setOpen(false);
@@ -58,17 +80,35 @@ export function BillingMobileNavigation() {
         className="billing-mobile-navigation"
         aria-label="Mobile billing navigation"
       >
-        <Link href="/app/subscription">Plan</Link>
-        <Link href="/app/subscription/usage">Usage</Link>
+        <Link
+          className={planActive ? 'active' : undefined}
+          href="/app/subscription"
+          aria-current={planActive ? 'page' : undefined}
+        >
+          <BillingIcon name="plan" />
+          <span>Plan</span>
+        </Link>
+        <Link
+          className={usageActive ? 'active' : undefined}
+          href="/app/subscription/usage"
+          aria-current={usageActive ? 'page' : undefined}
+        >
+          <BillingIcon name="chart" />
+          <span>Usage</span>
+        </Link>
         <button
+          className={moreActive ? 'active' : undefined}
           ref={trigger}
           type="button"
           aria-label="More billing screens"
+          aria-current={moreActive ? 'page' : undefined}
           aria-expanded={open}
           aria-controls="billing-more-sheet"
+          disabled={!hydrated}
           onClick={() => setOpen(true)}
         >
-          More
+          <BillingIcon name="more" />
+          <span>More</span>
         </button>
       </nav>
       <div
@@ -89,10 +129,10 @@ export function BillingMobileNavigation() {
         >
           <div className="billing-mobile-sheet-handle" aria-hidden="true" />
           <h2>More billing screens</h2>
-          <Link href="/app/subscription/checkout">Checkout</Link>
-          <Link href="/app/subscription/portal">Billing portal</Link>
-          <Link href="/app/subscription/invoices">Invoices</Link>
-          <Link href="/app/subscription/limit-reached">Limit reached</Link>
+          <Link href="/app/subscription/checkout">03 · Stripe Checkout</Link>
+          <Link href="/app/subscription/portal">04 · Billing portal</Link>
+          <Link href="/app/subscription/invoices">05 · Invoices</Link>
+          <Link href="/app/subscription/limit-reached">06 · Limit reached</Link>
           <button type="button" onClick={close}>
             Close
           </button>
