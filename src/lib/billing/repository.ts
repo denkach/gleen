@@ -8,6 +8,7 @@ import {
   usageEventTypeSchema,
   type BillingSnapshot,
   type InvoicePage,
+  type InvoiceSummary,
   type UsageLedgerPage,
 } from './domain';
 
@@ -39,7 +40,7 @@ export type UsageQuery = z.infer<typeof usageQuerySchema>;
 
 export const invoiceQuerySchema = z
   .object({
-    cursor: z.string().min(1).nullable().default(null),
+    cursor: usageCursorSchema.nullable().default(null),
     limit: z.number().int().min(1).max(100).default(25),
     search: z.string().trim().max(200).default(''),
     status: invoiceStatusSchema.nullable().default(null),
@@ -59,6 +60,7 @@ export type BillingRepository = Readonly<{
   getOwnedSnapshot(userId: string): Promise<BillingSnapshot>;
   listOwnedUsage(userId: string, query: UsageQuery): Promise<UsageLedgerPage>;
   listOwnedInvoices(userId: string, query: InvoiceQuery): Promise<InvoicePage>;
+  getOwnedInvoiceSummary(userId: string, year: number): Promise<InvoiceSummary>;
   getOwnedCustomerId(userId: string): Promise<string | null>;
 }>;
 

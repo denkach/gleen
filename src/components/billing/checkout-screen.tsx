@@ -17,7 +17,16 @@ export type CheckoutScreenState =
   | Readonly<{ kind: 'authentication-required' }>
   | Readonly<{ kind: 'confirming' }>
   | Readonly<{ kind: 'canceled' }>
-  | Readonly<{ kind: 'error' }>;
+  | Readonly<{ kind: 'retryable-error' }>;
+
+export type CheckoutConfirmationState =
+  | 'pending'
+  | 'confirmed'
+  | 'authentication-required'
+  | 'canceled'
+  | 'invalid-request'
+  | 'retryable-error';
+export type CheckoutPollResult = CheckoutConfirmationState | 'aborted';
 
 export type CheckoutOrderTotals = Readonly<{
   subtotal: string;
@@ -28,19 +37,39 @@ export type CheckoutOrderTotals = Readonly<{
 }>;
 
 export async function pollForCheckoutConfirmation(
-  check: () => Promise<Readonly<{ confirmed: boolean }>>,
-  options: Readonly<{ attempts: number; intervalMs: number }>,
-): Promise<boolean> {
+  check: () => Promise<CheckoutConfirmationState>,
+  options: Readonly<{
+    attempts: number;
+    intervalMs: number;
+    signal: AbortSignal;
+  }>,
+): Promise<CheckoutPollResult> {
   for (let attempt = 0; attempt < options.attempts; attempt += 1) {
-    const result = await check();
-    if (result.confirmed) return true;
+    if (options.signal.aborted) return 'aborted';
+    let result: CheckoutConfirmationState;
+    try {
+      result = await check();
+    } catch {
+      return options.signal.aborted ? 'aborted' : 'retryable-error';
+    }
+    if (options.signal.aborted) return 'aborted';
+    if (result !== 'pending') return result;
     if (attempt + 1 < options.attempts) {
-      await new Promise<void>((resolve) => {
-        window.setTimeout(resolve, options.intervalMs);
+      const completed = await new Promise<boolean>((resolve) => {
+        const timeout = window.setTimeout(() => {
+          options.signal.removeEventListener('abort', abort);
+          resolve(true);
+        }, options.intervalMs);
+        const abort = () => {
+          window.clearTimeout(timeout);
+          resolve(false);
+        };
+        options.signal.addEventListener('abort', abort, { once: true });
       });
+      if (!completed) return 'aborted';
     }
   }
-  return false;
+  return 'pending';
 }
 
 function cycleHref(
@@ -66,7 +95,7 @@ function stateMessage(state: CheckoutScreenState) {
       return 'Confirming your subscription';
     case 'canceled':
       return 'Checkout was canceled.';
-    case 'error':
+    case 'retryable-error':
       return 'Checkout could not be loaded.';
     default:
       return null;
@@ -129,7 +158,7 @@ export function CheckoutScreen({
               Gleen.
             </small>
           )}
-          {state.kind === 'error' && onRetry !== undefined && (
+          {state.kind === 'retryable-error' && onRetry !== undefined && (
             <button className="billing-button" type="button" onClick={onRetry}>
               Try checkout again
             </button>

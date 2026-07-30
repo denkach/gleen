@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import type { BillingSnapshot, InvoicePage, UsageLedgerPage } from './domain';
+import type {
+  BillingSnapshot,
+  InvoicePage,
+  InvoiceSummary,
+  UsageLedgerPage,
+} from './domain';
 import { parseBillingCatalogRows } from './domain';
 import {
   billingPresentationDefaults,
@@ -8,6 +13,7 @@ import {
   toCheckoutPresentation,
   toEntitlementStatus,
   toInvoicePresentation,
+  toInvoiceSummaryPresentation,
   toSubscriptionPresentation,
   toUsagePresentation,
 } from './presentation';
@@ -379,5 +385,23 @@ describe('billing presentation', () => {
         planId: 'starter',
       }),
     ).toThrow('Catalog price does not belong to the selected plan');
+  });
+
+  it('presents owner-level invoice summary values deterministically', () => {
+    const summary: InvoiceSummary = {
+      totalCount: 87,
+      lastInvoiceAt: '2026-07-18T00:00:00.000Z',
+      selectedYear: 2026,
+      yearToDateAmounts: [{ currency: 'usd', amountMinor: 29400 }],
+      availableYears: [2026, 2024],
+    };
+
+    expect(toInvoiceSummaryPresentation(summary)).toEqual({
+      totalCount: 87,
+      lastInvoiceAt: '2026-07-18T00:00:00.000Z',
+      lastInvoiceAtLabel: 'Jul 18, 2026',
+      yearToDateSpendLabel: '$294.00',
+      availableYears: [2026, 2024],
+    });
   });
 });

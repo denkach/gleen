@@ -45,6 +45,7 @@ function createRepository(
     getOwnedSnapshot: vi.fn(),
     listOwnedUsage: vi.fn(),
     listOwnedInvoices: vi.fn(),
+    getOwnedInvoiceSummary: vi.fn(),
     getOwnedCustomerId: vi.fn(async () => 'cus_owned'),
     ...overrides,
   };
@@ -253,7 +254,7 @@ describe('billing checkout actions', () => {
         userId: 'u1',
         sessionId: 'cs_test_owned',
       }),
-    ).resolves.toEqual({ ok: true, confirmed: true });
+    ).resolves.toEqual({ state: 'confirmed' });
     expect(stripe.checkout.sessions.retrieve).toHaveBeenCalledWith(
       'cs_test_owned',
     );
@@ -276,15 +277,14 @@ describe('billing checkout actions', () => {
         userId: 'u1',
         sessionId: 'cs_test_attacker',
       }),
-    ).resolves.toEqual({ ok: false, code: 'invalid_request' });
+    ).resolves.toEqual({ state: 'invalid-request' });
     expect(repository.getOwnedSnapshot).not.toHaveBeenCalled();
   });
 
   it('authenticates checkout confirmation internally and rejects user substitution', async () => {
     getUser.mockResolvedValue({ data: { user: null } });
     await expect(getCheckoutConfirmation('cs_test_owned')).resolves.toEqual({
-      ok: false,
-      code: 'session_expired',
+      state: 'authentication-required',
     });
 
     getUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
@@ -293,7 +293,47 @@ describe('billing checkout actions', () => {
         sessionId: 'cs_test_owned',
         userId: 'attacker',
       } as never),
-    ).resolves.toEqual({ ok: false, code: 'invalid_request' });
+    ).resolves.toEqual({ state: 'invalid-request' });
+  });
+
+  it.each([
+    ['open', 'pending'],
+    ['expired', 'canceled'],
+  ] as const)(
+    'maps an owned %s session to %s without reading entitlement',
+    async (status, state) => {
+      const stripe = createStripe();
+      vi.mocked(stripe.checkout.sessions.retrieve).mockResolvedValue({
+        id: 'cs_test_owned',
+        client_reference_id: 'u1',
+        status,
+        metadata: { plan_slug: 'prism-pro', interval: 'year' },
+      } as never);
+      const repository = createRepository();
+      const { actions } = createActions({ stripe, repository });
+
+      await expect(
+        actions.getCheckoutConfirmationForUser({
+          userId: 'u1',
+          sessionId: 'cs_test_owned',
+        }),
+      ).resolves.toEqual({ state });
+      expect(repository.getOwnedSnapshot).not.toHaveBeenCalled();
+    },
+  );
+
+  it('maps a transient Stripe retrieval failure to retryable-error', async () => {
+    const stripe = createStripe();
+    vi.mocked(stripe.checkout.sessions.retrieve).mockRejectedValue(
+      new Error('network'),
+    );
+    const { actions } = createActions({ stripe });
+    await expect(
+      actions.getCheckoutConfirmationForUser({
+        userId: 'u1',
+        sessionId: 'cs_test_owned',
+      }),
+    ).resolves.toEqual({ state: 'retryable-error' });
   });
 });
 

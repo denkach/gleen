@@ -8,6 +8,7 @@ import {
   billingSnapshotSchema,
   billingSubscriptionStatusSchema,
   invoicePageSchema,
+  invoiceSummarySchema,
   usageLedgerPageSchema,
   type BillingPlan,
   type BillingPaymentMethod,
@@ -16,6 +17,7 @@ import {
   type BillingSnapshot,
   type BillingSubscriptionStatus,
   type InvoicePage,
+  type InvoiceSummary,
   type UsageLedgerPage,
 } from './domain';
 
@@ -422,6 +424,43 @@ export type InvoicePresentation = Readonly<{
   nextCursor: string | null;
   totalCount: number;
 }>;
+
+export type InvoiceSummaryPresentation = Readonly<{
+  totalCount: number;
+  lastInvoiceAt: string | null;
+  lastInvoiceAtLabel: string;
+  yearToDateSpendLabel: string;
+  availableYears: readonly number[];
+}>;
+
+export function toInvoiceSummaryPresentation(
+  summary: InvoiceSummary,
+  options: PresentationOptions = {},
+): InvoiceSummaryPresentation {
+  const parsed = invoiceSummarySchema.parse(summary);
+  const amounts = parsed.yearToDateAmounts;
+  return {
+    totalCount: parsed.totalCount,
+    lastInvoiceAt: parsed.lastInvoiceAt,
+    lastInvoiceAtLabel:
+      parsed.lastInvoiceAt === null
+        ? 'No invoices'
+        : createDateFormatter(options, false).format(
+            new Date(parsed.lastInvoiceAt),
+          ),
+    yearToDateSpendLabel:
+      amounts.length === 1
+        ? formatMoney({
+            amountMinor: amounts[0]!.amountMinor,
+            currency: amounts[0]!.currency,
+            locale: options.locale,
+          })
+        : amounts.length === 0
+          ? '—'
+          : 'Multiple currencies',
+    availableYears: parsed.availableYears,
+  };
+}
 
 export function toInvoicePresentation(
   page: InvoicePage,

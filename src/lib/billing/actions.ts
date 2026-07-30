@@ -117,8 +117,15 @@ type ActionErrorCode =
 type ActionError = Readonly<{ ok: false; code: ActionErrorCode }>;
 type CheckoutResult =
   Readonly<{ ok: true; clientSecret: string }> | ActionError;
-type CheckoutConfirmationResult =
-  Readonly<{ ok: true; confirmed: boolean }> | ActionError;
+type CheckoutConfirmationResult = Readonly<{
+  state:
+    | 'pending'
+    | 'confirmed'
+    | 'authentication-required'
+    | 'canceled'
+    | 'invalid-request'
+    | 'retryable-error';
+}>;
 type PortalResult = Readonly<{ ok: true; url: string }> | ActionError;
 export type PaymentMethodResult =
   Readonly<{ ok: true; paymentMethod: BillingPaymentMethod }> | ActionError;
@@ -328,20 +335,16 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
       input: unknown,
     ): Promise<CheckoutConfirmationResult> {
       const parsed = checkoutConfirmationInputSchema.safeParse(input);
-      if (!parsed.success) return actionFailure('invalid_request');
+      if (!parsed.success) return { state: 'invalid-request' };
 
       try {
         const session = await dependencies.stripe.checkout.sessions.retrieve(
           parsed.data.sessionId,
         );
-        if (
-          session.client_reference_id !== parsed.data.userId ||
-          session.status !== 'complete'
-        ) {
-          return session.client_reference_id === parsed.data.userId
-            ? { ok: true, confirmed: false }
-            : actionFailure('invalid_request');
-        }
+        if (session.client_reference_id !== parsed.data.userId)
+          return { state: 'invalid-request' };
+        if (session.status === 'expired') return { state: 'canceled' };
+        if (session.status !== 'complete') return { state: 'pending' };
         const plan = billingPlanSlugSchema.safeParse(
           session.metadata?.plan_slug,
         );
@@ -349,7 +352,7 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
           session.metadata?.interval,
         );
         if (!plan.success || !interval.success) {
-          return actionFailure('invalid_request');
+          return { state: 'invalid-request' };
         }
         const snapshot = await dependencies.repository.getOwnedSnapshot(
           parsed.data.userId,
@@ -359,9 +362,9 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
           snapshot.currentPrice?.interval === interval.data &&
           (snapshot.paymentSummary.subscriptionStatus === 'active' ||
             snapshot.paymentSummary.subscriptionStatus === 'trialing');
-        return { ok: true, confirmed: webhookProjectionMatches };
+        return { state: webhookProjectionMatches ? 'confirmed' : 'pending' };
       } catch {
-        return actionFailure('billing_unavailable');
+        return { state: 'retryable-error' };
       }
     },
 
@@ -669,11 +672,11 @@ export async function getCheckoutConfirmation(
 ): Promise<CheckoutConfirmationResult> {
   'use server';
   const context = await authenticatedContext();
-  if (context === null) return actionFailure('session_expired');
+  if (context === null) return { state: 'authentication-required' };
   const parsed = checkoutConfirmationActionInputSchema.safeParse(
     typeof input === 'string' ? { sessionId: input } : input,
   );
-  if (!parsed.success) return actionFailure('invalid_request');
+  if (!parsed.success) return { state: 'invalid-request' };
   return productionBillingActions(
     context.supabase,
   ).getCheckoutConfirmationForUser({

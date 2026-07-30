@@ -38,7 +38,11 @@ const subscription = {
     label: 'Visa •••• 4242',
     expiryLabel: 'Expires 08/2028',
   },
-  outstandingBalance: '$0.00',
+  outstandingBalance: {
+    amountMinor: 0,
+    currency: 'jpy',
+    formattedAmount: '¥0',
+  },
 } as const satisfies Pick<
   SubscriptionPresentation,
   | 'currentPlan'
@@ -47,7 +51,13 @@ const subscription = {
   | 'resetAt'
   | 'resetAtLabel'
   | 'paymentMethod'
-> & { outstandingBalance: string };
+> & {
+  outstandingBalance: {
+    amountMinor: number;
+    currency: string;
+    formattedAmount: string;
+  };
+};
 
 const activity = {
   items: [
@@ -101,7 +111,8 @@ describe('PortalScreen', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Visa •••• 4242')).toBeInTheDocument();
     expect(screen.getByText('Aug 1, 2026')).toBeInTheDocument();
-    expect(screen.getByText('$0.00')).toBeInTheDocument();
+    expect(screen.getByText('¥0')).toBeInTheDocument();
+    expect(screen.getByText('All caught up')).toBeInTheDocument();
     expect(screen.getByText('Invoice INV-2048')).toBeInTheDocument();
   });
 
@@ -149,6 +160,86 @@ describe('PortalScreen', () => {
       expect(button).toBeDisabled();
       expect(button).toHaveAttribute('aria-describedby', explanation.id);
     }
+  });
+
+  it('uses authoritative minor units for a nonzero outstanding balance', () => {
+    render(
+      <PortalScreen
+        subscription={{
+          ...subscription,
+          outstandingBalance: {
+            amountMinor: 1,
+            currency: 'jpy',
+            formattedAmount: '¥1',
+          },
+        }}
+        activity={activity}
+        portalAction={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('¥1')).toBeInTheDocument();
+    expect(screen.getByText('Review in Stripe')).toBeInTheDocument();
+  });
+
+  it('disables every Portal action while one fresh session is pending', async () => {
+    let resolvePortal!: (result: { ok: true; url: string }) => void;
+    const portalAction = vi.fn(
+      () =>
+        new Promise<{ ok: true; url: string }>((resolve) => {
+          resolvePortal = resolve;
+        }),
+    );
+    render(
+      <PortalScreen
+        subscription={subscription}
+        activity={activity}
+        portalAction={portalAction}
+        openPortal={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Manage plan' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Update payment method' }),
+    );
+    expect(portalAction).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole('region', { name: 'Billing portal' }),
+    ).toHaveAttribute('aria-busy', 'true');
+    for (const name of [
+      'Update payment method',
+      'Manage plan',
+      'Manage cancellation',
+      'Edit billing details',
+      'Open secure billing portal',
+    ]) {
+      expect(screen.getByRole('button', { name })).toBeDisabled();
+    }
+    resolvePortal({
+      ok: true,
+      url: 'https://billing.stripe.com/p/session_test',
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Manage plan' })).toBeEnabled(),
+    );
+  });
+
+  it('resets all Portal controls and announces a rejected action', async () => {
+    render(
+      <PortalScreen
+        subscription={subscription}
+        activity={activity}
+        portalAction={vi.fn().mockRejectedValue(new Error('network'))}
+        openPortal={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Manage plan' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Manage plan' })).toBeEnabled(),
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Stripe’s billing portal could not be opened.',
+    );
   });
 
   it('renders an explicit recoverable error without fabricated billing data', () => {

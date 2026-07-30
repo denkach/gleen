@@ -18,15 +18,16 @@ import {
   CheckoutScreen,
   pollForCheckoutConfirmation,
   type CheckoutOrderTotals,
+  type CheckoutConfirmationState,
   type CheckoutScreenState,
 } from './checkout-screen';
 
 type CheckoutActionResult =
   | Readonly<{ ok: true; clientSecret: string }>
   | Readonly<{ ok: false; code: string }>;
-type ConfirmationActionResult =
-  | Readonly<{ ok: true; confirmed: boolean }>
-  | Readonly<{ ok: false; code: string }>;
+type ConfirmationActionResult = Readonly<{
+  state: CheckoutConfirmationState | 'invalid-request';
+}>;
 
 const confirmationAttempts = 8;
 const confirmationIntervalMs = 1_500;
@@ -58,7 +59,7 @@ function CheckoutElements({
       <CheckoutScreen
         presentation={presentation}
         prices={prices}
-        state={{ kind: 'error' }}
+        state={{ kind: 'retryable-error' }}
         stripeCheckout={null}
         totals={null}
         onRetry={() => window.location.reload()}
@@ -79,10 +80,13 @@ function CheckoutElements({
     if (!checkout.canConfirm || submitting) return;
     setSubmitting(true);
     setConfirmationError(false);
-    const confirmation = await checkout.confirm();
-    if (confirmation.type === 'error') {
-      setSubmitting(false);
+    try {
+      const confirmation = await checkout.confirm();
+      if (confirmation.type === 'error') setConfirmationError(true);
+    } catch {
       setConfirmationError(true);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -92,7 +96,7 @@ function CheckoutElements({
       prices={prices}
       state={
         confirmationError
-          ? { kind: 'error' }
+          ? { kind: 'retryable-error' }
           : submitting
             ? { kind: 'submitting' }
             : { kind: 'ready' }
@@ -153,18 +157,22 @@ export function CheckoutExperience({
     void createCheckout({
       plan: presentation.plan.slug,
       interval: presentation.price.interval,
-    }).then((result) => {
-      if (!active) return;
-      if (!result.ok) {
-        setConfirmationState(
-          result.code === 'session_expired'
-            ? { kind: 'authentication-required' }
-            : { kind: 'error' },
-        );
-        return;
-      }
-      setClientSecret(result.clientSecret);
-    });
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.ok) {
+          setConfirmationState(
+            result.code === 'session_expired'
+              ? { kind: 'authentication-required' }
+              : { kind: 'retryable-error' },
+          );
+          return;
+        }
+        setClientSecret(result.clientSecret);
+      })
+      .catch(() => {
+        if (active) setConfirmationState({ kind: 'retryable-error' });
+      });
     return () => {
       active = false;
     };
@@ -177,26 +185,36 @@ export function CheckoutExperience({
 
   useEffect(() => {
     if (sessionId === null) return;
-    let active = true;
+    const controller = new AbortController();
     void pollForCheckoutConfirmation(
-      async () => {
-        const result = await getConfirmation(sessionId);
-        return { confirmed: result.ok && result.confirmed };
-      },
+      async () => (await getConfirmation(sessionId)).state,
       {
         attempts: confirmationAttempts,
         intervalMs: confirmationIntervalMs,
+        signal: controller.signal,
       },
-    ).then((confirmed) => {
-      if (!active) return;
-      if (confirmed) {
-        window.location.assign('/app/subscription');
-      } else {
-        setConfirmationState({ kind: 'error' });
-      }
-    });
+    )
+      .then((result) => {
+        if (result === 'aborted') return;
+        if (result === 'confirmed') {
+          window.location.assign('/app/subscription');
+        } else if (result === 'authentication-required') {
+          setConfirmationState({ kind: 'authentication-required' });
+        } else if (result === 'canceled') {
+          setConfirmationState({ kind: 'canceled' });
+        } else if (result !== 'pending') {
+          setConfirmationState({ kind: 'retryable-error' });
+        } else {
+          setConfirmationState({ kind: 'retryable-error' });
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setConfirmationState({ kind: 'retryable-error' });
+        }
+      });
     return () => {
-      active = false;
+      controller.abort();
     };
   }, [getConfirmation, sessionId]);
 
@@ -215,7 +233,7 @@ export function CheckoutExperience({
 
   if (
     confirmationState.kind === 'authentication-required' ||
-    confirmationState.kind === 'error'
+    confirmationState.kind === 'retryable-error'
   ) {
     return (
       <CheckoutScreen

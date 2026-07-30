@@ -210,6 +210,47 @@ export const invoicePageSchema = z
   .readonly();
 export type InvoicePage = z.infer<typeof invoicePageSchema>;
 
+const invoiceSummaryAmountSchema = z
+  .object({ currency: currencySchema, amountMinor: minorAmountSchema })
+  .strict()
+  .readonly();
+
+export const invoiceSummarySchema = z
+  .object({
+    totalCount: countSchema,
+    lastInvoiceAt: nullableTimestampSchema,
+    selectedYear: z.number().int().min(2000).max(9999),
+    yearToDateAmounts: z.array(invoiceSummaryAmountSchema).readonly(),
+    availableYears: z.array(z.number().int().min(2000).max(9999)).readonly(),
+  })
+  .strict()
+  .readonly();
+export type InvoiceSummary = z.infer<typeof invoiceSummarySchema>;
+
+export const billingInvoiceSummaryRowSchema = z
+  .object({
+    user_id: z.string().uuid(),
+    total_count: countSchema,
+    last_invoice_at: nullableTimestampSchema,
+    year_summaries: z
+      .array(
+        z
+          .object({
+            year: z.number().int().min(2000).max(9999),
+            currency: currencySchema,
+            net_paid_minor: minorAmountSchema,
+            invoice_count: countSchema,
+          })
+          .strict(),
+      )
+      .readonly(),
+  })
+  .strict()
+  .readonly();
+export type BillingInvoiceSummaryRow = z.infer<
+  typeof billingInvoiceSummaryRowSchema
+>;
+
 export const billingPeriodSchema = z
   .object({
     startsAt: timestampSchema,

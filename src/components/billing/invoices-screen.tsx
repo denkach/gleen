@@ -7,9 +7,9 @@ import { z } from 'zod';
 import type { InvoiceStatus } from '@/lib/billing/domain';
 import type {
   InvoicePresentation,
+  InvoiceSummaryPresentation,
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
-import { formatMoney } from '@/lib/billing/presentation';
 
 import { BillingIcon } from './billing-icons';
 import { BillingCard, BillingPage, BillingStatus } from './billing-page';
@@ -117,7 +117,9 @@ function InvoiceActions({
 export function InvoicesScreen({
   subscription,
   invoices,
+  summary,
   query,
+  pageSize,
   exportAction,
 }: Readonly<{
   subscription: Pick<
@@ -125,13 +127,15 @@ export function InvoicesScreen({
     'resetAt' | 'resetAtLabel' | 'entitlement'
   > | null;
   invoices: InvoicePresentation | null;
+  summary: InvoiceSummaryPresentation | null;
   query: InvoiceRouteQuery;
+  pageSize: number;
   exportAction: InvoiceExportAction;
 }>) {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(false);
 
-  if (subscription === null || invoices === null) {
+  if (subscription === null || invoices === null || summary === null) {
     return (
       <BillingPage
         eyebrow="Billing history"
@@ -154,48 +158,47 @@ export function InvoicesScreen({
     );
   }
 
-  const visiblePaid = invoices.items.filter(
-    (invoice) => invoice.status.key === 'paid',
-  );
-  const ytd = visiblePaid.reduce(
-    (total, invoice) => total + invoice.amountPaid.amountMinor,
-    0,
-  );
-  const paidCurrencies = new Set(
-    visiblePaid.map((invoice) => invoice.amountPaid.currency),
-  );
-  const moneySample = visiblePaid[0]?.amountPaid;
-  const ytdLabel =
-    moneySample === undefined || paidCurrencies.size !== 1
-      ? '—'
-      : formatMoney({
-          amountMinor: ytd,
-          currency: moneySample.currency,
-        });
-  const lastInvoice = invoices.items[0] ?? null;
   const filtered =
     query.search !== '' || query.status !== null || query.year !== null;
+  const offset = query.cursor === null ? 0 : Number(query.cursor);
+  const years = [...summary.availableYears];
+  if (query.year !== null && !years.includes(query.year))
+    years.push(query.year);
+  years.sort((left, right) => right - left);
+  const pageHref = (cursor: number) => {
+    const params = new URLSearchParams();
+    if (query.search !== '') params.set('search', query.search);
+    if (query.status !== null) params.set('status', query.status);
+    if (query.year !== null) params.set('year', String(query.year));
+    params.set('cursor', String(cursor));
+    return `/app/subscription/invoices?${params.toString()}`;
+  };
 
   async function exportCsv() {
     setExporting(true);
     setExportError(false);
-    const result = await exportAction({
-      search: query.search,
-      status: query.status,
-      year: query.year,
-    });
-    setExporting(false);
-    if (!result.ok) {
+    try {
+      const result = await exportAction({
+        search: query.search,
+        status: query.status,
+        year: query.year,
+      });
+      if (!result.ok) {
+        setExportError(true);
+        return;
+      }
+      const blob = new Blob([result.content], { type: result.contentType });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = result.filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
       setExportError(true);
-      return;
+    } finally {
+      setExporting(false);
     }
-    const blob = new Blob([result.content], { type: result.contentType });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = result.filename;
-    anchor.click();
-    URL.revokeObjectURL(url);
   }
 
   return (
@@ -209,7 +212,9 @@ export function InvoicesScreen({
           <div className="billing-metric-icon">$</div>
           <div>
             <div className="billing-metric-label">Year-to-date spend</div>
-            <div className="billing-metric-value">{ytdLabel}</div>
+            <div className="billing-metric-value">
+              {summary.yearToDateSpendLabel}
+            </div>
           </div>
         </div>
         <div>
@@ -219,7 +224,10 @@ export function InvoicesScreen({
           <div>
             <div className="billing-metric-label">Last invoice</div>
             <div className="billing-metric-value billing-reset-value">
-              {lastInvoice?.createdAtLabel ?? 'No invoices'}
+              {summary.lastInvoiceAtLabel}
+            </div>
+            <div className="billing-metric-note">
+              {summary.totalCount} invoices
             </div>
           </div>
         </div>
@@ -279,19 +287,11 @@ export function InvoicesScreen({
               defaultValue={query.year ?? 'all'}
             >
               <option value="all">Year · All</option>
-              {[
-                ...new Set(
-                  invoices.items.map((invoice) =>
-                    new Date(invoice.createdAt).getUTCFullYear(),
-                  ),
-                ),
-              ]
-                .sort((left, right) => right - left)
-                .map((year) => (
-                  <option value={year} key={year}>
-                    Year · {year}
-                  </option>
-                ))}
+              {years.map((year) => (
+                <option value={year} key={year}>
+                  Year · {year}
+                </option>
+              ))}
             </select>
             <button
               className="billing-button billing-button-small"
@@ -389,6 +389,32 @@ export function InvoicesScreen({
                   </li>
                 ))}
               </ul>
+              <nav className="billing-pagination" aria-label="Invoice pages">
+                <span>
+                  Showing {offset + 1}–{offset + invoices.items.length} of{' '}
+                  {invoices.totalCount}
+                </span>
+                <div>
+                  {offset > 0 && (
+                    <Link
+                      className="billing-button billing-button-small"
+                      href={pageHref(Math.max(0, offset - pageSize))}
+                      aria-label="Previous page"
+                    >
+                      Previous
+                    </Link>
+                  )}
+                  {invoices.nextCursor !== null && (
+                    <Link
+                      className="billing-button billing-button-small"
+                      href={pageHref(Number(invoices.nextCursor))}
+                      aria-label="Next page"
+                    >
+                      Next
+                    </Link>
+                  )}
+                </div>
+              </nav>
             </>
           )}
         </BillingCard>

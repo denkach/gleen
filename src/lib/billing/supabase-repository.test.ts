@@ -353,6 +353,66 @@ describe('Supabase billing repository', () => {
     expect(usage.range).not.toHaveBeenCalled();
   });
 
+  it('rejects an above-maximum invoice cursor before querying a page', async () => {
+    const invoices = queryReturning({ data: [], error: null, count: 0 });
+    const client = { from: vi.fn(() => invoices), rpc: vi.fn() };
+
+    await expect(
+      createSupabaseBillingRepository(
+        client as unknown as SupabaseBillingClient,
+      ).listOwnedInvoices(userId, {
+        cursor: '1000001',
+        limit: 25,
+        search: '',
+        status: null,
+        refundedOnly: false,
+        year: null,
+      }),
+    ).rejects.toBeInstanceOf(BillingRepositoryError);
+    expect(invoices.range).not.toHaveBeenCalled();
+  });
+
+  it('reads a bounded owner-level invoice summary independently of filters and pages', async () => {
+    const summary = queryReturning({
+      data: {
+        user_id: userId,
+        total_count: 87,
+        last_invoice_at: '2026-07-18T00:00:00.000Z',
+        year_summaries: [
+          {
+            year: 2026,
+            currency: 'usd',
+            net_paid_minor: 29400,
+            invoice_count: 6,
+          },
+          {
+            year: 2024,
+            currency: 'usd',
+            net_paid_minor: 1900,
+            invoice_count: 1,
+          },
+        ],
+      },
+      error: null,
+    });
+    const client = { from: vi.fn(() => summary), rpc: vi.fn() };
+
+    await expect(
+      createSupabaseBillingRepository(
+        client as unknown as SupabaseBillingClient,
+      ).getOwnedInvoiceSummary(userId, 2026),
+    ).resolves.toEqual({
+      totalCount: 87,
+      lastInvoiceAt: '2026-07-18T00:00:00.000Z',
+      selectedYear: 2026,
+      yearToDateAmounts: [{ currency: 'usd', amountMinor: 29400 }],
+      availableYears: [2026, 2024],
+    });
+    expect(client.from).toHaveBeenCalledWith('billing_invoice_summary');
+    expect(summary.eq).toHaveBeenCalledWith('user_id', userId);
+    expect(summary.maybeSingle).toHaveBeenCalledOnce();
+  });
+
   it('maps owner-scoped stored event source and analysis labels without exposing search text', async () => {
     const usage = queryReturning({
       data: [

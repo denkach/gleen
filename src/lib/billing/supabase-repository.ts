@@ -3,12 +3,14 @@ import { z } from 'zod';
 import {
   billingCustomerOverviewRowSchema,
   billingInvoiceHistoryRowSchema,
+  billingInvoiceSummaryRowSchema,
   billingPaymentSummaryRowSchema,
   billingSnapshotSchema,
   billingSubscriptionOverviewRowSchema,
   billingUsageActivityRowSchema,
   billingUsageSummaryRowSchema,
   invoicePageSchema,
+  invoiceSummarySchema,
   parseBillingCatalogRows,
   usageLedgerPageSchema,
   type AvailableBillingPlan,
@@ -365,6 +367,42 @@ export function createSupabaseBillingRepository(
         if (error instanceof BillingRepositoryError) throw error;
         throw new BillingRepositoryError();
       }
+    },
+
+    async getOwnedInvoiceSummary(userId, year) {
+      const selectedYear = z.number().int().min(2000).max(9999).parse(year);
+      const result = await client
+        .from('billing_invoice_summary')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (result.error !== null) throw new BillingRepositoryError();
+      if (result.data === null) {
+        return invoiceSummarySchema.parse({
+          totalCount: 0,
+          lastInvoiceAt: null,
+          selectedYear,
+          yearToDateAmounts: [],
+          availableYears: [],
+        });
+      }
+      const row = parseBoundary(billingInvoiceSummaryRowSchema, result);
+      if (row.user_id !== userId) throw new BillingRepositoryError();
+      const availableYears = [
+        ...new Set(row.year_summaries.map((summary) => summary.year)),
+      ].sort((left, right) => right - left);
+      return invoiceSummarySchema.parse({
+        totalCount: row.total_count,
+        lastInvoiceAt: row.last_invoice_at,
+        selectedYear,
+        yearToDateAmounts: row.year_summaries
+          .filter((summary) => summary.year === selectedYear)
+          .map((summary) => ({
+            currency: summary.currency,
+            amountMinor: summary.net_paid_minor,
+          })),
+        availableYears,
+      });
     },
 
     async getOwnedCustomerId(userId) {

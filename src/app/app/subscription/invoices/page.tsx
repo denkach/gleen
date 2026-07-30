@@ -8,8 +8,10 @@ import {
 import { exportInvoicesCsv } from '@/lib/billing/actions';
 import {
   toInvoicePresentation,
+  toInvoiceSummaryPresentation,
   toSubscriptionPresentation,
   type InvoicePresentation,
+  type InvoiceSummaryPresentation,
   type SubscriptionPresentation,
 } from '@/lib/billing/presentation';
 import {
@@ -44,8 +46,10 @@ export default async function InvoicesPage({
     'resetAt' | 'resetAtLabel' | 'entitlement'
   > | null = null;
   let invoices: InvoicePresentation | null = null;
+  let summary: InvoiceSummaryPresentation | null = null;
   try {
-    const [snapshot, page] = await Promise.all([
+    const currentYear = new Date().getUTCFullYear();
+    const [snapshot, page, ownerSummary] = await Promise.all([
       repository.getOwnedSnapshot(user.id),
       repository.listOwnedInvoices(user.id, {
         cursor: query.cursor,
@@ -55,6 +59,7 @@ export default async function InvoicesPage({
         refundedOnly: query.status === 'refunded',
         year: query.year,
       }),
+      repository.getOwnedInvoiceSummary(user.id, query.year ?? currentYear),
     ]);
     const presentedSubscription = toSubscriptionPresentation(snapshot);
     subscription = {
@@ -63,6 +68,7 @@ export default async function InvoicesPage({
       entitlement: presentedSubscription.entitlement,
     };
     invoices = toInvoicePresentation(page);
+    summary = toInvoiceSummaryPresentation(ownerSummary);
   } catch {
     // The screen preserves filters and renders the explicit error state.
   }
@@ -70,7 +76,9 @@ export default async function InvoicesPage({
     <InvoicesScreen
       subscription={subscription}
       invoices={invoices}
+      summary={summary}
       query={query}
+      pageSize={25}
       exportAction={exportInvoicesCsv}
     />
   );

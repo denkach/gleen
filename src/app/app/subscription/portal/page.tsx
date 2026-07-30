@@ -62,10 +62,14 @@ export default async function PortalPage() {
       resetAt: subscription.resetAt,
       resetAtLabel: subscription.resetAtLabel,
       paymentMethod: subscription.paymentMethod,
-      outstandingBalance: formatMoney({
+      outstandingBalance: {
         amountMinor: snapshot.paymentSummary.outstandingAmountMinor,
         currency: snapshot.paymentSummary.currency,
-      }),
+        formattedAmount: formatMoney({
+          amountMinor: snapshot.paymentSummary.outstandingAmountMinor,
+          currency: snapshot.paymentSummary.currency,
+        }),
+      },
     };
     activity = toInvoicePresentation(invoices);
   } catch {

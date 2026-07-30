@@ -6,17 +6,20 @@ export function BillingPage({
   eyebrow,
   title,
   description,
+  ariaBusy,
   children,
 }: Readonly<{
   eyebrow: string;
   title: string;
   description: string;
+  ariaBusy?: boolean;
   children: ReactNode;
 }>) {
   return (
     <section
       className="billing-experience"
       aria-labelledby="billing-page-title"
+      aria-busy={ariaBusy}
     >
       <header className="billing-page-head">
         <div>

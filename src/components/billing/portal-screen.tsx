@@ -28,7 +28,13 @@ export type PortalSubscription = Pick<
   | 'resetAtLabel'
   | 'paymentMethod'
 > &
-  Readonly<{ outstandingBalance: string }>;
+  Readonly<{
+    outstandingBalance: Readonly<{
+      amountMinor: number;
+      currency: string;
+      formattedAmount: string;
+    }>;
+  }>;
 
 function defaultOpenPortal(url: string) {
   window.location.assign(url);
@@ -37,9 +43,14 @@ function defaultOpenPortal(url: string) {
 function PortalActionButton({
   children,
   action,
-}: Readonly<{ children: React.ReactNode; action: () => void }>) {
+  disabled,
+}: Readonly<{
+  children: React.ReactNode;
+  action: () => void;
+  disabled: boolean;
+}>) {
   return (
-    <button type="button" onClick={action}>
+    <button type="button" onClick={action} disabled={disabled}>
       <b>{children}</b>
       <span className="billing-action-arrow" aria-hidden="true">
         ›
@@ -63,15 +74,21 @@ export function PortalScreen({
   const [actionError, setActionError] = useState(false);
 
   async function launchPortal() {
+    if (opening) return;
     setOpening(true);
     setActionError(false);
-    const result = await portalAction();
-    setOpening(false);
-    if (!result.ok) {
+    try {
+      const result = await portalAction();
+      if (!result.ok) {
+        setActionError(true);
+        return;
+      }
+      openPortal(result.url);
+    } catch {
       setActionError(true);
-      return;
+    } finally {
+      setOpening(false);
     }
-    openPortal(result.url);
   }
 
   if (subscription === null || activity === null) {
@@ -104,6 +121,7 @@ export function PortalScreen({
       eyebrow="Account billing"
       title="Billing portal"
       description="Manage payment methods, plan changes, seats, and billing information."
+      ariaBusy={opening}
     >
       {actionError && (
         <p className="billing-inline-error" role="alert">
@@ -146,10 +164,10 @@ export function PortalScreen({
         <div>
           <div className="billing-metric-label">Outstanding balance</div>
           <div className="billing-metric-value">
-            {subscription.outstandingBalance}
+            {subscription.outstandingBalance.formattedAmount}
           </div>
           <div className="billing-metric-note billing-positive">
-            {subscription.outstandingBalance === '$0.00'
+            {subscription.outstandingBalance.amountMinor === 0
               ? 'All caught up'
               : 'Review in Stripe'}
           </div>
@@ -168,7 +186,7 @@ export function PortalScreen({
             </div>
           </div>
           <div className="billing-action-list">
-            <PortalActionButton action={launchPortal}>
+            <PortalActionButton action={launchPortal} disabled={opening}>
               Update payment method
             </PortalActionButton>
             <div className="billing-owned-payment">
@@ -196,10 +214,10 @@ export function PortalScreen({
             </div>
           </div>
           <div className="billing-action-list">
-            <PortalActionButton action={launchPortal}>
+            <PortalActionButton action={launchPortal} disabled={opening}>
               Manage plan
             </PortalActionButton>
-            <PortalActionButton action={launchPortal}>
+            <PortalActionButton action={launchPortal} disabled={opening}>
               Manage cancellation
             </PortalActionButton>
           </div>
@@ -218,7 +236,7 @@ export function PortalScreen({
             </div>
           </div>
           <div className="billing-action-list">
-            <PortalActionButton action={launchPortal}>
+            <PortalActionButton action={launchPortal} disabled={opening}>
               Edit billing details
             </PortalActionButton>
           </div>
@@ -312,7 +330,7 @@ export function PortalScreen({
             onClick={launchPortal}
             disabled={opening}
           >
-            {opening ? 'Opening…' : 'Open secure billing portal'}
+            Open secure billing portal
           </button>
         </BillingCard>
       </div>

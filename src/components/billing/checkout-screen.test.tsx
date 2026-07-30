@@ -94,7 +94,7 @@ describe('CheckoutScreen', () => {
     ['authentication-required', 'Your session has expired.'],
     ['confirming', 'Confirming your subscription'],
     ['canceled', 'Checkout was canceled.'],
-    ['error', 'Checkout could not be loaded.'],
+    ['retryable-error', 'Checkout could not be loaded.'],
   ] as const)('renders the %s state', (kind, copy) => {
     render(
       <CheckoutScreen
@@ -140,7 +140,7 @@ describe('CheckoutScreen', () => {
       <CheckoutScreen
         presentation={presentation}
         prices={prices}
-        state={{ kind: 'error' }}
+        state={{ kind: 'retryable-error' }}
         stripeCheckout={null}
         totals={null}
         onRetry={retry}
@@ -154,13 +154,14 @@ describe('CheckoutScreen', () => {
 describe('pollForCheckoutConfirmation', () => {
   it('stops after a bounded number of server checks and never confirms locally', async () => {
     vi.useFakeTimers();
-    const check = vi.fn().mockResolvedValue({ confirmed: false });
+    const check = vi.fn().mockResolvedValue('pending');
     const pending = pollForCheckoutConfirmation(check, {
       attempts: 3,
       intervalMs: 100,
+      signal: new AbortController().signal,
     });
     await vi.advanceTimersByTimeAsync(500);
-    await expect(pending).resolves.toBe(false);
+    await expect(pending).resolves.toBe('pending');
     expect(check).toHaveBeenCalledTimes(3);
     vi.useRealTimers();
   });
@@ -168,11 +169,62 @@ describe('pollForCheckoutConfirmation', () => {
   it('returns only after the authenticated server snapshot confirms', async () => {
     const check = vi
       .fn()
-      .mockResolvedValueOnce({ confirmed: false })
-      .mockResolvedValueOnce({ confirmed: true });
+      .mockResolvedValueOnce('pending')
+      .mockResolvedValueOnce('confirmed');
     await expect(
-      pollForCheckoutConfirmation(check, { attempts: 3, intervalMs: 0 }),
-    ).resolves.toBe(true);
+      pollForCheckoutConfirmation(check, {
+        attempts: 3,
+        intervalMs: 0,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toBe('confirmed');
     await waitFor(() => expect(check).toHaveBeenCalledTimes(2));
+  });
+
+  it.each(['authentication-required', 'canceled', 'retryable-error'] as const)(
+    'stops immediately on %s confirmation',
+    async (terminal) => {
+      const check = vi.fn().mockResolvedValue(terminal);
+      await expect(
+        pollForCheckoutConfirmation(check, {
+          attempts: 8,
+          intervalMs: 100,
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toBe(terminal);
+      expect(check).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('clears the active timeout and makes no further calls after abort', async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const check = vi.fn().mockResolvedValue('pending');
+    const pending = pollForCheckoutConfirmation(check, {
+      attempts: 8,
+      intervalMs: 100,
+      signal: controller.signal,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(check).toHaveBeenCalledOnce();
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(1000);
+    await expect(pending).resolves.toBe('aborted');
+    expect(check).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it('maps a rejected server check to a retryable terminal state', async () => {
+    await expect(
+      pollForCheckoutConfirmation(
+        vi.fn().mockRejectedValue(new Error('network')),
+        {
+          attempts: 8,
+          intervalMs: 100,
+          signal: new AbortController().signal,
+        },
+      ),
+    ).resolves.toBe('retryable-error');
   });
 });

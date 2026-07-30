@@ -9,6 +9,8 @@ import {
   billingSnapshotSchema,
   billingSubscriptionStatusSchema,
   billingUsageActivityRowSchema,
+  billingInvoiceSummaryRowSchema,
+  invoiceSummarySchema,
   invoicePageSchema,
   parseBillingCatalogRows,
   usageLedgerEntrySchema,
@@ -392,6 +394,59 @@ describe('billing domain', () => {
         },
         recentActivity: [],
         availablePlans: [],
+      }),
+    ).toThrow();
+  });
+
+  it('parses bounded owner invoice summaries without privileged identifiers', () => {
+    expect(
+      invoiceSummarySchema.parse({
+        totalCount: 87,
+        lastInvoiceAt: '2026-07-18T00:00:00.000Z',
+        selectedYear: 2026,
+        yearToDateAmounts: [{ currency: 'usd', amountMinor: 29400 }],
+        availableYears: [2026, 2024],
+      }),
+    ).toEqual({
+      totalCount: 87,
+      lastInvoiceAt: '2026-07-18T00:00:00.000Z',
+      selectedYear: 2026,
+      yearToDateAmounts: [{ currency: 'usd', amountMinor: 29400 }],
+      availableYears: [2026, 2024],
+    });
+
+    expect(() =>
+      invoiceSummarySchema.parse({
+        totalCount: 1,
+        lastInvoiceAt: null,
+        selectedYear: 2026,
+        yearToDateAmounts: [],
+        availableYears: [],
+        stripeCustomerId: 'cus_private',
+      }),
+    ).toThrow();
+  });
+
+  it('strictly validates the bounded invoice summary database row', () => {
+    const row = {
+      user_id: '11111111-1111-4111-8111-111111111111',
+      total_count: 87,
+      last_invoice_at: '2026-07-18T00:00:00.000Z',
+      year_summaries: [
+        {
+          year: 2026,
+          currency: 'usd',
+          net_paid_minor: 29400,
+          invoice_count: 6,
+        },
+      ],
+    };
+
+    expect(billingInvoiceSummaryRowSchema.parse(row)).toEqual(row);
+    expect(() =>
+      billingInvoiceSummaryRowSchema.parse({
+        ...row,
+        stripe_customer_id: 'cus_private',
       }),
     ).toThrow();
   });
