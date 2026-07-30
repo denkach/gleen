@@ -70,7 +70,7 @@ export type AnalysisRepository = Readonly<{
   setJobState(jobId: string, state: JobStateUpdate): Promise<void>;
   saveArtifactReady(input: ReadyArtifactWrite): Promise<void>;
   saveArtifactFailed(input: FailedArtifactWrite): Promise<void>;
-  setReservationStatus(
+  transitionReservation(
     jobId: string,
     status: 'settled' | 'released',
   ): Promise<void>;

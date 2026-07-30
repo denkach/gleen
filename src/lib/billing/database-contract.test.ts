@@ -22,6 +22,16 @@ const runtimeFixMigrationPath = join(
   runtimeFixMigrationName,
 );
 const runtimeFixSql = readFileSync(runtimeFixMigrationPath, 'utf8');
+const repositoryBoundaryMigrationPath = join(
+  process.cwd(),
+  'supabase',
+  'migrations',
+  '20260730015211_den_20_billing_repository_boundaries.sql',
+);
+const repositoryBoundarySql = readFileSync(
+  repositoryBoundaryMigrationPath,
+  'utf8',
+);
 
 const readBetween = (start: string, end: string) => {
   const startIndex = sql.indexOf(start);
@@ -163,5 +173,31 @@ describe('DEN-20 billing and usage migration', () => {
     );
     expect(runtimeFixSql).not.toContain('plpgsql.variable_conflict');
     expect(runtimeFixSql).not.toContain('on conflict (analysis_id)');
+  });
+});
+
+describe('DEN-20 billing repository database boundaries', () => {
+  it('provides a complete owner-readable usage split', () => {
+    expect(repositoryBoundarySql).toContain(
+      'create view public.billing_usage_summary',
+    );
+    expect(repositoryBoundarySql).toContain('with (security_invoker = true)');
+    expect(repositoryBoundarySql).toContain("reservation.status = 'settled'");
+    expect(repositoryBoundarySql).toContain("reservation.status = 'reserved'");
+    expect(repositoryBoundarySql).toContain(
+      'grant select on public.billing_usage_summary',
+    );
+  });
+
+  it('provides atomic service-role projection RPCs', () => {
+    expect(repositoryBoundarySql).toContain('claim_billing_webhook_event');
+    expect(repositoryBoundarySql).toContain(
+      'apply_billing_subscription_projection',
+    );
+    expect(repositoryBoundarySql).toContain('apply_billing_invoice_projection');
+    expect(repositoryBoundarySql).toContain('mark_billing_webhook_processed');
+    expect(repositoryBoundarySql).toContain('mark_billing_webhook_failed');
+    expect(repositoryBoundarySql).toContain("is distinct from 'service_role'");
+    expect(repositoryBoundarySql).toContain('revoke all on function');
   });
 });

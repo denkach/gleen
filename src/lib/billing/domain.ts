@@ -504,6 +504,38 @@ export type BillingSubscriptionOverviewRow = z.infer<
   typeof billingSubscriptionOverviewRowSchema
 >;
 
+export const billingUsageSummaryRowSchema = z
+  .object({
+    user_id: identifierSchema,
+    settled_analyses: countSchema,
+    reserved_analyses: countSchema,
+  })
+  .strict()
+  .readonly();
+export type BillingUsageSummaryRow = z.infer<
+  typeof billingUsageSummaryRowSchema
+>;
+
+export const billingCustomerOverviewRowSchema = z
+  .object({
+    user_id: identifierSchema,
+    stripe_customer_id: nonEmptyStringSchema,
+  })
+  .strict()
+  .readonly();
+export type BillingCustomerOverviewRow = z.infer<
+  typeof billingCustomerOverviewRowSchema
+>;
+
+export const billingPaymentSummaryRowSchema = z
+  .object({
+    user_id: identifierSchema,
+    currency: currencySchema,
+    outstanding_amount_minor: minorAmountSchema,
+  })
+  .strict()
+  .readonly();
+
 export const billingUsageActivityRowSchema = z
   .object({
     id: identifierSchema,

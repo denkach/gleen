@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createSupabaseAnalysisRepository,
+  UsageLimitReachedError,
   type ResultArtifactRepository,
   type SupabaseAnalysisClient,
 } from './supabase-repository';
@@ -39,6 +40,84 @@ function chainReturning(result: unknown) {
 }
 
 describe('Supabase analysis repository', () => {
+  it('maps a usage-limit RPC error to its safe reset timestamp', async () => {
+    const client = {
+      from: vi.fn(),
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: 'P0001',
+          message: 'usage_limit_reached',
+          details: '2026-08-01 00:00:00+00',
+        },
+      }),
+    };
+
+    const error = await createSupabaseAnalysisRepository(
+      client as unknown as SupabaseAnalysisClient,
+    )
+      .createForAnalysis(
+        '11111111-1111-4111-8111-111111111111',
+        '22222222-2222-4222-8222-222222222222',
+      )
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(UsageLimitReachedError);
+    if (!(error instanceof UsageLimitReachedError)) {
+      throw new Error('Expected UsageLimitReachedError');
+    }
+    expect(error.code).toBe('usage_limit_reached');
+    expect(error.resetAt).toBe('2026-08-01T00:00:00.000Z');
+  });
+
+  it('does not trust malformed reset details from a usage-limit error', async () => {
+    const client = {
+      from: vi.fn(),
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: 'P0001',
+          message: 'usage_limit_reached',
+          details: 'not-a-timestamp',
+        },
+      }),
+    };
+
+    const error = await createSupabaseAnalysisRepository(
+      client as unknown as SupabaseAnalysisClient,
+    )
+      .createForAnalysis(
+        '11111111-1111-4111-8111-111111111111',
+        '22222222-2222-4222-8222-222222222222',
+      )
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(UsageLimitReachedError);
+    if (!(error instanceof UsageLimitReachedError)) {
+      throw new Error('Expected UsageLimitReachedError');
+    }
+    expect(error.resetAt).toBeNull();
+  });
+
+  it('transitions reservations through the idempotent database RPC', async () => {
+    const client = {
+      from: vi.fn(),
+      rpc: vi.fn().mockResolvedValue({
+        data: { id: 'reservation-id' },
+        error: null,
+      }),
+    };
+
+    await createSupabaseAnalysisRepository(
+      client as unknown as SupabaseAnalysisClient,
+    ).transitionReservation('job-1', 'settled');
+
+    expect(client.rpc).toHaveBeenCalledWith('transition_analysis_usage', {
+      target_job_id: 'job-1',
+      target_status: 'settled',
+    });
+  });
+
   it('selects the newest owned queued or running analysis', async () => {
     const active = chainReturning({ data: null, error: null });
     const client = { from: vi.fn().mockReturnValue(active), rpc: vi.fn() };

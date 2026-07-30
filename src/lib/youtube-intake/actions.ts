@@ -6,7 +6,8 @@ import {
   createSupabaseAnalysisRepository,
   type SupabaseAnalysisClient,
 } from '@/lib/analysis-pipeline/supabase-repository';
-import { createNoopUsageLedger } from '@/lib/analysis-pipeline/usage-ledger';
+import { createUsageLedger } from '@/lib/analysis-pipeline/usage-ledger';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 import type { IntakeActionState } from './action-state';
@@ -30,6 +31,9 @@ async function authenticatedService() {
   const analysisRepository = createSupabaseAnalysisRepository(
     supabase as unknown as SupabaseAnalysisClient,
   );
+  const usageRepository = createSupabaseAnalysisRepository(
+    createAdminSupabaseClient() as unknown as SupabaseAnalysisClient,
+  );
   const service = createIntakeService({
     metadata: createYouTubeProvider(environment.YOUTUBE_DATA_API_KEY),
     transcript: createSupadataProvider(environment.SUPADATA_API_KEY),
@@ -45,7 +49,7 @@ async function authenticatedService() {
         await startAnalysis(
           snapshot.job.id,
           analysisRepository,
-          createNoopUsageLedger(analysisRepository),
+          createUsageLedger(usageRepository),
         );
       },
     },

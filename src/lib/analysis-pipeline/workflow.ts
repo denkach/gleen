@@ -14,7 +14,7 @@ import {
   createSupabaseAnalysisRepository,
   type SupabaseAnalysisClient,
 } from './supabase-repository';
-import { createNoopUsageLedger, type UsageLedger } from './usage-ledger';
+import { createUsageLedger, type UsageLedger } from './usage-ledger';
 import { enrichTranscriptSegments } from './transcript-enrichment';
 
 type PipelineDependencies = Readonly<{
@@ -161,14 +161,23 @@ export async function executeAnalysisPipeline({
         ? 'partial'
         : 'failed';
 
-  if (status === 'complete') {
-    await recordStage(
-      repository,
-      jobId,
-      snapshot.job.userId,
-      snapshot.job.attempt,
-      'complete',
-    );
+  if (status === 'complete' || status === 'partial') {
+    if (status === 'complete') {
+      await recordStage(
+        repository,
+        jobId,
+        snapshot.job.userId,
+        snapshot.job.attempt,
+        'complete',
+      );
+    } else {
+      await repository.setJobState(jobId, {
+        status,
+        stage: 'artifacts',
+        errorCode: 'artifact_generation_failed',
+        completedAt: new Date().toISOString(),
+      });
+    }
     await ledger.settle(jobId);
   } else {
     await repository.setJobState(jobId, {
@@ -218,7 +227,7 @@ async function executeProductionPipeline(jobId: string) {
   await executeAnalysisPipeline({
     jobId,
     repository,
-    ledger: createNoopUsageLedger(repository),
+    ledger: createUsageLedger(repository),
     provider: createOpenRouterProvider({
       apiKey: environment.OPENROUTER_API_KEY,
       model: environment.OPENROUTER_MODEL,

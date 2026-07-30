@@ -17,7 +17,11 @@ import type {
   ReadyArtifactWrite,
 } from './repository';
 
-type SupabaseError = Readonly<{ code?: string; message?: string }>;
+type SupabaseError = Readonly<{
+  code?: string;
+  message?: string;
+  details?: string;
+}>;
 type SupabaseResult = Readonly<{
   data: unknown;
   error: SupabaseError | null;
@@ -48,8 +52,16 @@ type Query = Readonly<{
 export type SupabaseAnalysisClient = Readonly<{
   from(table: string): Query;
   rpc(
-    functionName: 'create_analysis_pipeline' | 'retry_analysis_pipeline',
-    arguments_: Readonly<{ analysis_id: string }>,
+    functionName:
+      | 'create_analysis_pipeline'
+      | 'retry_analysis_pipeline'
+      | 'transition_analysis_usage',
+    arguments_:
+      | Readonly<{ analysis_id: string }>
+      | Readonly<{
+          target_job_id: string;
+          target_status: 'settled' | 'released';
+        }>,
   ): PromiseLike<SupabaseResult>;
 }>;
 
@@ -75,6 +87,21 @@ export class AnalysisRepositoryError extends Error {
     super('Unable to persist analysis pipeline');
     this.name = 'AnalysisRepositoryError';
   }
+}
+
+export class UsageLimitReachedError extends Error {
+  readonly code = 'usage_limit_reached' as const;
+
+  constructor(readonly resetAt: string | null) {
+    super('Analysis usage limit reached');
+    this.name = 'UsageLimitReachedError';
+  }
+}
+
+function parseResetAt(details: string | undefined): string | null {
+  if (details === undefined) return null;
+  const timestamp = Date.parse(details);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
 }
 
 function ensureSuccess(result: SupabaseResult): unknown {
@@ -205,7 +232,14 @@ export function createSupabaseAnalysisRepository(
     userId: string,
     analysisId: string,
   ) {
-    ensureRequired(await client.rpc(functionName, { analysis_id: analysisId }));
+    const result = await client.rpc(functionName, { analysis_id: analysisId });
+    if (
+      result.error?.code === 'P0001' &&
+      result.error.message === 'usage_limit_reached'
+    ) {
+      throw new UsageLimitReachedError(parseResetAt(result.error.details));
+    }
+    ensureRequired(result);
     const snapshot = await findSnapshot('analysis_id', analysisId, userId);
     if (!snapshot) throw new AnalysisRepositoryError();
     return snapshot;
@@ -381,12 +415,12 @@ export function createSupabaseAnalysisRepository(
       );
     },
 
-    async setReservationStatus(jobId, status) {
-      await updateRequired(
-        client
-          .from('analysis_usage_reservations')
-          .update({ status })
-          .eq('job_id', jobId),
+    async transitionReservation(jobId, status) {
+      ensureRequired(
+        await client.rpc('transition_analysis_usage', {
+          target_job_id: jobId,
+          target_status: status,
+        }),
       );
     },
 

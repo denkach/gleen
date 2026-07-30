@@ -3,6 +3,7 @@
 import { z } from 'zod';
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 import type { AnalysisSnapshot } from './domain';
 import type { AnalysisRepository } from './repository';
@@ -11,7 +12,7 @@ import {
   createSupabaseAnalysisRepository,
   type SupabaseAnalysisClient,
 } from './supabase-repository';
-import { createNoopUsageLedger, type UsageLedger } from './usage-ledger';
+import { createUsageLedger, type UsageLedger } from './usage-ledger';
 
 export type RetryActionResult =
   | Readonly<{ ok: true; attempt: number }>
@@ -64,13 +65,16 @@ async function productionDependencies(): Promise<RetryDependencies> {
   const repository = createSupabaseAnalysisRepository(
     supabase as unknown as SupabaseAnalysisClient,
   );
+  const usageRepository = createSupabaseAnalysisRepository(
+    createAdminSupabaseClient() as unknown as SupabaseAnalysisClient,
+  );
   return {
     currentUserId: async () => {
       const { data } = await supabase.auth.getUser();
       return data.user?.id ?? null;
     },
     repository,
-    ledger: createNoopUsageLedger(repository),
+    ledger: createUsageLedger(usageRepository),
     start: startAnalysis,
   };
 }

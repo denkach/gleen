@@ -8,6 +8,7 @@ const {
   createSupadataProvider,
   createSupabaseIntakeRepository,
   createSupabaseAnalysisRepository,
+  createAdminSupabaseClient,
   createIntakeService,
   startAnalysis,
 } = vi.hoisted(() => {
@@ -22,8 +23,9 @@ const {
     createSupabaseIntakeRepository: vi.fn(() => ({})),
     createSupabaseAnalysisRepository: vi.fn(() => ({
       createForAnalysis: vi.fn(async () => ({ job: { id: 'job-id' } })),
-      setReservationStatus: vi.fn(),
+      transitionReservation: vi.fn(),
     })),
+    createAdminSupabaseClient: vi.fn(() => ({ admin: true })),
     startAnalysis: vi.fn(async () => ({ runId: 'run-id' })),
     createIntakeService: vi.fn(() => ({ submit, reanalyze })),
   };
@@ -32,6 +34,7 @@ const {
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(async () => ({ auth: { getUser } })),
 }));
+vi.mock('@/lib/supabase/admin', () => ({ createAdminSupabaseClient }));
 vi.mock('@/env', () => ({
   validateProviderEnv: vi.fn(() => ({
     YOUTUBE_DATA_API_KEY: 'youtube-key',
