@@ -47,6 +47,37 @@ Preferred stack:
 - duplicate detection must use canonical video identity plus analysis configuration.
 - integration tokens require encrypted storage and expiration handling.
 
+## Billing and usage
+
+ADR 0003 defines the DEN-20 responsibility boundary:
+
+- Stripe is the system of record for products, Prices, customers,
+  subscriptions, payments, invoices, and refunds.
+- Supabase is the application-facing source of truth for entitlements, usage
+  reservations, settled usage, and Stripe projections.
+- The server resolves active Stripe Price IDs from the database. Visual
+  components never hard-code plans, prices, currencies, limits, or Stripe
+  object IDs.
+- Only a raw-body, signature-verified, idempotently claimed webhook may project
+  paid access. Checkout redirects and Portal returns cannot grant entitlement.
+- Customer Portal owns payment-method updates and subscription management.
+- Analysis usage is reserved atomically, then settled for a usable result or
+  released for a zero-cost technical failure. Reuse does not consume another
+  credit.
+- Owner-facing billing views are protected by RLS and limited grants; webhook
+  ingestion and projection use server-only privileged access.
+
+The webhook projection handles
+`customer.subscription.created`, `customer.subscription.updated`,
+`customer.subscription.deleted`, `invoice.paid`,
+`invoice.payment_failed`, `invoice.updated`, and `charge.refunded`. Unknown
+events are recorded as unsupported without changing entitlement.
+
+Stripe configuration is validated lazily at billing boundaries. The only
+public Stripe value is `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`;
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `SUPABASE_SECRET_KEY` remain
+server-only.
+
 ## Decisions to make before feature implementation
 
 - authentication provider;
@@ -58,7 +89,5 @@ Preferred stack:
 - deployment platform;
 - monitoring and error reporting;
 - product analytics;
-- usage-ledger model;
-- Stripe product and webhook model.
 
 Record major decisions as ADR files under `docs/adr/` when implementation begins.
