@@ -18,6 +18,7 @@ import {
   createPortalSession,
   exportInvoicesCsv,
   exportUsageCsv,
+  resolveBillingAppUrl,
   type BillingActionAdminRepository,
   type BillingStripeClient,
 } from './actions';
@@ -37,6 +38,19 @@ const nativeCustomCheckoutPayload = {
   return_url:
     'https://gleen.example/app/subscription/checkout?session_id={CHECKOUT_SESSION_ID}',
 } satisfies Stripe.Checkout.SessionCreateParams;
+
+describe('billing request origin', () => {
+  it('keeps Stripe return URLs on the current Preview deployment', () => {
+    const requestHeaders = new Headers({
+      'x-forwarded-host': 'gleen-staging-preview-denisito-projects.vercel.app',
+      'x-forwarded-proto': 'https',
+    });
+
+    expect(
+      resolveBillingAppUrl(requestHeaders, 'https://gleen-staging.vercel.app'),
+    ).toBe('https://gleen-staging-preview-denisito-projects.vercel.app');
+  });
+});
 
 function createRepository(
   overrides: Partial<BillingRepository> = {},

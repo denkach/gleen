@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { headers } from 'next/headers';
 import type Stripe from 'stripe';
 import { z } from 'zod';
 
@@ -195,6 +196,22 @@ type BillingActionsDependencies = Readonly<{
 function fixedAppUrl(appUrl: string, pathname: string): string {
   const allowedOrigin = new URL(appUrl);
   return new URL(pathname, allowedOrigin.origin).toString();
+}
+
+export function resolveBillingAppUrl(
+  requestHeaders: Pick<Headers, 'get'>,
+  fallback: string,
+): string {
+  const host =
+    requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
+  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'https';
+  if (host === null) return new URL(fallback).origin;
+  try {
+    const origin = new URL(`${protocol}://${host}`).origin;
+    return origin;
+  } catch {
+    return new URL(fallback).origin;
+  }
 }
 
 function actionFailure(code: ActionErrorCode): ActionError {
@@ -640,6 +657,7 @@ async function authenticatedContext() {
 
 function productionBillingActions(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  appUrl = validatePublicEnv(process.env).NEXT_PUBLIC_APP_URL,
 ) {
   return createBillingActions({
     stripe: createStripeClient(),
@@ -649,8 +667,13 @@ function productionBillingActions(
     adminRepository: createSupabaseBillingActionAdminRepository(
       createAdminSupabaseClient(),
     ),
-    appUrl: validatePublicEnv(process.env).NEXT_PUBLIC_APP_URL,
+    appUrl,
   });
+}
+
+async function requestBillingAppUrl() {
+  const fallback = validatePublicEnv(process.env).NEXT_PUBLIC_APP_URL;
+  return resolveBillingAppUrl(await headers(), fallback);
 }
 
 export async function createCheckoutSession(
@@ -661,10 +684,10 @@ export async function createCheckoutSession(
   if (context === null) return actionFailure('session_expired');
   const parsed = checkoutActionInputSchema.safeParse(input);
   if (!parsed.success) return actionFailure('invalid_request');
-  return productionBillingActions(context.supabase).createCheckoutForUser({
-    userId: context.userId,
-    ...parsed.data,
-  });
+  return productionBillingActions(
+    context.supabase,
+    await requestBillingAppUrl(),
+  ).createCheckoutForUser({ userId: context.userId, ...parsed.data });
 }
 
 export async function getCheckoutConfirmation(
@@ -689,9 +712,10 @@ export async function createPortalSession(): Promise<PortalResult> {
   'use server';
   const context = await authenticatedContext();
   if (context === null) return actionFailure('session_expired');
-  return productionBillingActions(context.supabase).createPortalForUser({
-    userId: context.userId,
-  });
+  return productionBillingActions(
+    context.supabase,
+    await requestBillingAppUrl(),
+  ).createPortalForUser({ userId: context.userId });
 }
 
 export async function getPaymentMethodSummary(): Promise<PaymentMethodResult> {
