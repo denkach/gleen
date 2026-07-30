@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type {
-  BillingPlan,
-  BillingPrice,
-  BillingSnapshot,
-  InvoicePage,
-  UsageLedgerPage,
-} from './domain';
+import type { BillingSnapshot, InvoicePage, UsageLedgerPage } from './domain';
+import { parseBillingCatalogRows } from './domain';
 import {
+  billingPresentationDefaults,
   formatMoney,
   toCheckoutPresentation,
   toEntitlementStatus,
@@ -16,23 +12,47 @@ import {
   toUsagePresentation,
 } from './presentation';
 
-const prismPlan: BillingPlan = {
-  id: 'plan-prism-pro',
-  slug: 'prism-pro',
-  displayName: 'Prism Pro',
-  description: 'For professionals.',
-  analysisLimit: 25,
-  features: ['25 analyses per month'],
-  purchasable: true,
-};
-
-const prismPrice: BillingPrice = {
-  planId: prismPlan.id,
-  interval: 'month',
-  amountMinor: 4900,
-  currency: 'usd',
-  savingsPercent: null,
-};
+const catalogRows = [
+  {
+    slug: 'free',
+    display_name: 'Free',
+    description: 'For exploring Gleen.',
+    analysis_limit: 3,
+    features: ['3 analyses per month'],
+    display_order: 0,
+    is_default: true,
+    is_purchasable: false,
+    billing_interval: null,
+    currency: null,
+    unit_amount_minor: null,
+    monthly_equivalent_minor: null,
+    comparison_copy: null,
+    savings_copy: null,
+  },
+  {
+    slug: 'prism-pro',
+    display_name: 'Prism Pro',
+    description: 'For professionals.',
+    analysis_limit: 25,
+    features: ['25 analyses per month'],
+    display_order: 2,
+    is_default: false,
+    is_purchasable: true,
+    billing_interval: 'month',
+    currency: 'usd',
+    unit_amount_minor: 4900,
+    monthly_equivalent_minor: 4900,
+    comparison_copy: null,
+    savings_copy: null,
+  },
+] as const;
+const catalog = parseBillingCatalogRows(catalogRows);
+const prismCatalog = catalog.find((entry) => entry.plan.slug === 'prism-pro');
+if (prismCatalog === undefined) throw new Error('Missing Prism Pro fixture');
+const prismPlan = prismCatalog.plan;
+const prismPrice = prismCatalog.prices[0];
+if (prismPrice === undefined)
+  throw new Error('Missing Prism Pro price fixture');
 
 const snapshot: BillingSnapshot = {
   currentPlan: prismPlan,
@@ -61,6 +81,11 @@ describe('billing presentation', () => {
     expect(
       formatMoney({ amountMinor: 4900, currency: 'jpy', locale: 'en' }),
     ).toBe('¥4,900');
+    expect(formatMoney({ amountMinor: 4900, currency: 'usd' })).toBe('$49.00');
+    expect(billingPresentationDefaults).toEqual({
+      locale: 'en-US',
+      timeZone: 'UTC',
+    });
   });
 
   it('maps paid-through status deterministically', () => {
@@ -87,15 +112,11 @@ describe('billing presentation', () => {
     ).toBe('free');
   });
 
-  it('keeps catalog money identical across subscription, checkout, and invoice presentation', () => {
+  it('maps live catalog rows consistently while preserving historical invoice money', () => {
     const subscription = toSubscriptionPresentation(snapshot, {
-      locale: 'en',
       now: '2026-07-30T00:00:00.000Z',
-      timeZone: 'UTC',
     });
-    const checkout = toCheckoutPresentation(prismPlan, prismPrice, {
-      locale: 'en',
-    });
+    const checkout = toCheckoutPresentation(prismPlan, prismPrice);
     const invoices: InvoicePage = {
       items: [
         {
@@ -103,10 +124,10 @@ describe('billing presentation', () => {
           number: 'GLEEN-001',
           planSlug: 'prism-pro',
           planName: 'Prism Pro',
-          interval: prismPrice.interval,
-          amountDueMinor: prismPrice.amountMinor,
-          amountPaidMinor: prismPrice.amountMinor,
-          currency: prismPrice.currency,
+          interval: 'month',
+          amountDueMinor: 4800,
+          amountPaidMinor: 4800,
+          currency: 'usd',
           status: 'paid',
           createdAt: '2026-07-01T00:00:00.000Z',
           dueAt: null,
@@ -120,25 +141,23 @@ describe('billing presentation', () => {
       nextCursor: null,
       totalCount: 1,
     };
-    const invoice = toInvoicePresentation(invoices, {
-      locale: 'en',
-      timeZone: 'UTC',
-    }).items[0];
+    const invoice = toInvoicePresentation(invoices).items[0];
 
     expect(subscription.currentPrice).toMatchObject({
       amountMinor: 4900,
       currency: 'usd',
       formattedAmount: '$49.00',
     });
+    expect(subscription.resetAtLabel).toBe('Aug 1, 2026');
     expect(checkout.price).toEqual(subscription.currentPrice);
     expect(invoice?.amountDue).toMatchObject({
-      amountMinor: 4900,
+      amountMinor: 4800,
       currency: 'usd',
-      formattedAmount: '$49.00',
+      formattedAmount: '$48.00',
     });
   });
 
-  it('returns semantic variants and formatted dates for usage and invoices', () => {
+  it('returns normalized status and deterministic dates for every ledger status', () => {
     const usage: UsageLedgerPage = {
       items: [
         {
@@ -152,10 +171,70 @@ describe('billing presentation', () => {
           jobId: 'job-1',
           analysisId: 'analysis-1',
         },
+        {
+          id: 'usage-2',
+          planSlug: 'prism-pro',
+          eventType: 'settlement',
+          quantity: 0,
+          status: 'settled',
+          remainingBalance: 5,
+          occurredAt: '2026-07-30T12:30:00.000Z',
+          jobId: 'job-1',
+          analysisId: 'analysis-1',
+        },
+        {
+          id: 'usage-3',
+          planSlug: 'prism-pro',
+          eventType: 'release',
+          quantity: 1,
+          status: 'released',
+          remainingBalance: 6,
+          occurredAt: '2026-07-30T12:30:00.000Z',
+          jobId: 'job-2',
+          analysisId: 'analysis-2',
+        },
+        {
+          id: 'usage-4',
+          planSlug: 'prism-pro',
+          eventType: 'refund',
+          quantity: 1,
+          status: 'applied',
+          remainingBalance: 7,
+          occurredAt: '2026-07-30T12:30:00.000Z',
+          jobId: null,
+          analysisId: null,
+        },
+        {
+          id: 'usage-5',
+          planSlug: 'prism-pro',
+          eventType: 'technical_retry',
+          quantity: 0,
+          status: 'informational',
+          remainingBalance: 7,
+          occurredAt: '2026-07-30T12:30:00.000Z',
+          jobId: 'job-3',
+          analysisId: 'analysis-3',
+        },
       ],
       nextCursor: 'next',
-      totalCount: 1,
+      totalCount: 5,
     };
+    const presented = toUsagePresentation(usage);
+
+    expect(presented.items.map(({ status }) => status)).toEqual([
+      { key: 'reserved', label: 'Reserved', variant: 'warning' },
+      { key: 'settled', label: 'Settled', variant: 'neutral' },
+      { key: 'released', label: 'Released', variant: 'positive' },
+      { key: 'applied', label: 'Applied', variant: 'positive' },
+      { key: 'informational', label: 'Informational', variant: 'neutral' },
+    ]);
+    expect(presented.items[0]).toMatchObject({
+      event: { label: 'Reserved', variant: 'warning' },
+      occurredAtLabel: 'Jul 30, 2026, 12:30 PM',
+    });
+  });
+
+  it('returns semantic invoice variants with deterministic default dates', () => {
     const invoicePage: InvoicePage = {
       items: [
         {
@@ -181,25 +260,14 @@ describe('billing presentation', () => {
       totalCount: 1,
     };
 
-    expect(
-      toUsagePresentation(usage, { locale: 'en', timeZone: 'UTC' }).items[0],
-    ).toMatchObject({
-      event: { label: 'Reserved', variant: 'warning' },
-      occurredAtLabel: 'Jul 30, 2026, 12:30 PM',
-    });
-    expect(
-      toInvoicePresentation(invoicePage, {
-        locale: 'en',
-        timeZone: 'UTC',
-      }).items[0],
-    ).toMatchObject({
+    expect(toInvoicePresentation(invoicePage).items[0]).toMatchObject({
       status: { label: 'Failed', variant: 'negative' },
       createdAtLabel: 'Jul 30, 2026',
     });
   });
 
   it('keeps Team availability data-driven', () => {
-    const team = { ...prismPlan, id: 'plan-team', slug: 'team' as const };
+    const team = { ...prismPlan, id: 'team' as const, slug: 'team' as const };
     const unavailable = toCheckoutPresentation(
       { ...team, purchasable: false },
       { ...prismPrice, planId: team.id },

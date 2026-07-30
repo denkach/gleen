@@ -36,7 +36,7 @@ export type BillingPlanSlug = z.infer<typeof billingPlanSlugSchema>;
 
 export const billingPlanSchema = z
   .object({
-    id: identifierSchema,
+    id: billingPlanSlugSchema,
     slug: billingPlanSlugSchema,
     displayName: nonEmptyStringSchema,
     description: nonEmptyStringSchema,
@@ -45,12 +45,21 @@ export const billingPlanSchema = z
     purchasable: z.boolean(),
   })
   .strict()
+  .superRefine((plan, context) => {
+    if (plan.id !== plan.slug) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Public plan ID must equal its stable slug',
+        path: ['id'],
+      });
+    }
+  })
   .readonly();
 export type BillingPlan = z.infer<typeof billingPlanSchema>;
 
 export const billingPriceSchema = z
   .object({
-    planId: identifierSchema,
+    planId: billingPlanSlugSchema,
     interval: billingIntervalSchema,
     amountMinor: minorAmountSchema,
     currency: currencySchema,
@@ -80,6 +89,16 @@ export const usageLedgerStatusSchema = z.enum([
 ]);
 export type UsageLedgerStatus = z.infer<typeof usageLedgerStatusSchema>;
 
+const validUsageStatusByEvent = {
+  reservation: 'reserved',
+  settlement: 'settled',
+  release: 'released',
+  period_renewal: 'applied',
+  manual_adjustment: 'applied',
+  refund: 'applied',
+  technical_retry: 'informational',
+} as const satisfies Record<UsageEventType, UsageLedgerStatus>;
+
 export const usageLedgerEntrySchema = z
   .object({
     id: identifierSchema,
@@ -93,6 +112,15 @@ export const usageLedgerEntrySchema = z
     analysisId: identifierSchema.nullable(),
   })
   .strict()
+  .superRefine((entry, context) => {
+    if (entry.status !== validUsageStatusByEvent[entry.eventType]) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Usage event does not match its normalized status',
+        path: ['status'],
+      });
+    }
+  })
   .readonly();
 export type UsageLedgerEntry = z.infer<typeof usageLedgerEntrySchema>;
 
@@ -174,6 +202,12 @@ export const billingPeriodSchema = z
   .readonly();
 export type BillingPeriod = z.infer<typeof billingPeriodSchema>;
 
+/**
+ * The Task 2 overview combines reserved and settled usage. Repositories must
+ * populate this split from a complete owner-scoped aggregation (or a later
+ * view extension), never from a paginated/filterable activity page and never
+ * by assuming reserved usage is zero.
+ */
 export const billingUsageSummarySchema = z
   .object({
     used: countSchema,
@@ -470,6 +504,15 @@ export const billingUsageActivityRowSchema = z
     analysis_id: identifierSchema.nullable(),
   })
   .strict()
+  .superRefine((row, context) => {
+    if (row.status !== validUsageStatusByEvent[row.event_type]) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Usage event does not match its normalized status',
+        path: ['status'],
+      });
+    }
+  })
   .readonly();
 export type BillingUsageActivityRow = z.infer<
   typeof billingUsageActivityRowSchema

@@ -37,6 +37,11 @@ export const invoiceQuerySchema = z
 export type InvoiceQuery = z.infer<typeof invoiceQuerySchema>;
 
 export type BillingRepository = Readonly<{
+  /**
+   * The implementation must source the used/reserved split from a complete
+   * owner aggregation. The Task 2 overview's combined used_analyses value and
+   * paginated/filterable activity pages are not sufficient on their own.
+   */
   getOwnedSnapshot(userId: string): Promise<BillingSnapshot>;
   listOwnedUsage(userId: string, query: UsageQuery): Promise<UsageLedgerPage>;
   listOwnedInvoices(userId: string, query: InvoiceQuery): Promise<InvoicePage>;

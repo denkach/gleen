@@ -23,6 +23,11 @@ export type PresentationOptions = Readonly<{
   timeZone?: string;
 }>;
 
+export const billingPresentationDefaults = Object.freeze({
+  locale: 'en-US',
+  timeZone: 'UTC',
+} as const);
+
 export type MoneyPresentation = Readonly<{
   amountMinor: number;
   currency: string;
@@ -79,11 +84,14 @@ export function formatMoney(input: {
   locale?: string;
 }): string {
   const parsed = moneyInputSchema.parse(input);
-  const formatter = new Intl.NumberFormat(parsed.locale, {
-    style: 'currency',
-    currency: parsed.currency.toUpperCase(),
-    currencyDisplay: 'narrowSymbol',
-  });
+  const formatter = new Intl.NumberFormat(
+    parsed.locale ?? billingPresentationDefaults.locale,
+    {
+      style: 'currency',
+      currency: parsed.currency.toUpperCase(),
+      currencyDisplay: 'narrowSymbol',
+    },
+  );
   const minorUnitScale =
     10 ** (formatter.resolvedOptions().maximumFractionDigits ?? 2);
 
@@ -114,11 +122,14 @@ function createDateFormatter(
   options: PresentationOptions,
   includeTime: boolean,
 ): Intl.DateTimeFormat {
-  return new Intl.DateTimeFormat(options.locale, {
-    dateStyle: 'medium',
-    ...(includeTime ? { timeStyle: 'short' as const } : {}),
-    timeZone: options.timeZone,
-  });
+  return new Intl.DateTimeFormat(
+    options.locale ?? billingPresentationDefaults.locale,
+    {
+      dateStyle: 'medium',
+      ...(includeTime ? { timeStyle: 'short' as const } : {}),
+      timeZone: options.timeZone ?? billingPresentationDefaults.timeZone,
+    },
+  );
 }
 
 const entitlementCopy = {
@@ -238,6 +249,17 @@ const usageEventCopy = {
   Readonly<{ label: string; variant: SemanticVariant }>
 >;
 
+const usageStatusCopy = {
+  reserved: { label: 'Reserved', variant: 'warning' },
+  settled: { label: 'Settled', variant: 'neutral' },
+  released: { label: 'Released', variant: 'positive' },
+  applied: { label: 'Applied', variant: 'positive' },
+  informational: { label: 'Informational', variant: 'neutral' },
+} as const satisfies Record<
+  UsageLedgerPage['items'][number]['status'],
+  Readonly<{ label: string; variant: SemanticVariant }>
+>;
+
 export type UsagePresentation = Readonly<{
   items: readonly Readonly<{
     id: string;
@@ -248,6 +270,11 @@ export type UsagePresentation = Readonly<{
     occurredAtLabel: string;
     event: Readonly<{
       key: UsageLedgerPage['items'][number]['eventType'];
+      label: string;
+      variant: SemanticVariant;
+    }>;
+    status: Readonly<{
+      key: UsageLedgerPage['items'][number]['status'];
       label: string;
       variant: SemanticVariant;
     }>;
@@ -276,6 +303,10 @@ export function toUsagePresentation(
       event: {
         key: entry.eventType,
         ...usageEventCopy[entry.eventType],
+      },
+      status: {
+        key: entry.status,
+        ...usageStatusCopy[entry.status],
       },
       jobId: entry.jobId,
       analysisId: entry.analysisId,
