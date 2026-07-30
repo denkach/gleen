@@ -1181,6 +1181,164 @@
   white-space: nowrap;
 }
 
+/* Limit reached */
+.billing-experience .billing-locked-input {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  margin: 16px 0 9px;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(15, 19, 28, 0.72);
+  color: #565e6c;
+}
+
+.billing-experience .billing-locked-input svg {
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+}
+
+.billing-experience .billing-locked-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 28px;
+  color: #777f8d;
+  font-size: 12px;
+}
+
+.billing-experience .billing-locked-note svg {
+  width: 15px;
+  height: 15px;
+}
+
+.billing-experience .billing-limit-hero {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 28px;
+  align-items: center;
+  padding: 28px;
+}
+
+.billing-experience .billing-limit-visual {
+  height: 230px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: radial-gradient(
+    circle,
+    rgba(127, 84, 201, 0.22),
+    transparent 58%
+  );
+}
+
+.billing-experience .billing-limit-visual .billing-prism {
+  width: 145px;
+  height: 170px;
+}
+
+.billing-experience .billing-limit-usage {
+  display: flex;
+  justify-content: space-between;
+}
+
+.billing-experience .billing-limit-progress {
+  height: 5px;
+  overflow: hidden;
+  margin: 15px 0;
+  border-radius: 99px;
+  background: #252a35;
+}
+
+.billing-experience .billing-limit-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #9e70f0, #d488d1, #ff9b9b);
+}
+
+.billing-experience .billing-limit-reset {
+  margin-top: 18px;
+}
+
+.billing-experience .billing-limit-description {
+  max-width: 620px;
+}
+
+.billing-experience .billing-limit-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.billing-experience .billing-limit-ledger-link {
+  color: #a994ff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.billing-experience .billing-limit-disabled-explanation {
+  margin: 9px 0 0;
+  color: #777f8d;
+  font-size: 11px;
+}
+
+.billing-experience .billing-limit-lower {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.billing-experience .billing-plan-mini,
+.billing-experience .billing-upgrade-mini {
+  padding: 20px;
+}
+
+.billing-experience .billing-plan-mini-inner {
+  display: grid;
+  grid-template-columns: 70px 1fr 1fr;
+  gap: 15px;
+  align-items: center;
+}
+
+.billing-experience .billing-plan-mini .billing-prism {
+  width: 58px;
+  height: 68px;
+}
+
+.billing-experience .billing-limit-plan-name {
+  font-size: 21px;
+}
+
+.billing-experience .billing-limit-price {
+  margin: 8px 0 0;
+  font-size: 25px;
+}
+
+.billing-experience .billing-compare-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px 24px;
+  margin-top: 15px;
+  color: #aab0bc;
+  font-size: 12px;
+}
+
+.billing-experience .billing-compare-list div::before {
+  margin-right: 8px;
+  color: #798290;
+  content: '✓';
+}
+
+.billing-experience .billing-compare-list .billing-spark::before {
+  color: var(--amber);
+  content: '✦';
+}
+
 @keyframes billing-page-in {
   from {
     transform: translateY(4px);
@@ -1366,6 +1524,44 @@
 
   .billing-experience .billing-invoice-toolbar {
     overflow-x: auto;
+  }
+
+  .billing-experience .billing-limit-hero {
+    grid-template-columns: 1fr;
+    padding: 19px;
+  }
+
+  .billing-experience .billing-limit-visual {
+    height: 170px;
+  }
+
+  .billing-experience .billing-limit-visual .billing-prism {
+    width: 105px;
+    height: 125px;
+  }
+
+  .billing-experience .billing-limit-actions {
+    display: grid;
+  }
+
+  .billing-experience .billing-limit-actions .billing-button {
+    width: 100%;
+  }
+
+  .billing-experience .billing-limit-lower {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-experience .billing-plan-mini-inner {
+    grid-template-columns: 58px 1fr;
+  }
+
+  .billing-experience .billing-plan-mini-inner > div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .billing-experience .billing-compare-list {
+    grid-template-columns: 1fr;
   }
 }
 
