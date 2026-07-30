@@ -103,12 +103,24 @@ export const invoiceProjectionSchema = z
     pdfUrl: z.url().nullable(),
     refundStatus: z.enum(['none', 'partial', 'full']),
     refundedAmountMinor: z.number().int().safe().nonnegative(),
+    advancePaidThrough: z.boolean(),
   })
   .strict()
   .readonly();
 export type InvoiceProjection = z.infer<typeof invoiceProjectionSchema>;
 
+export const webhookPriceMappingSchema = z
+  .object({
+    planSlug: billingPlanSlugSchema,
+    interval: billingIntervalSchema,
+  })
+  .strict()
+  .readonly();
+export type WebhookPriceMapping = z.infer<typeof webhookPriceMappingSchema>;
+
 export type BillingProjectionRepository = Readonly<{
+  resolveWebhookUserId(customerId: string): Promise<string | null>;
+  resolveWebhookPrice(priceId: string): Promise<WebhookPriceMapping | null>;
   claimWebhookEvent(
     event: BillingWebhookEvent,
   ): Promise<'claimed' | 'duplicate'>;

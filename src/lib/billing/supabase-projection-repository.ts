@@ -6,6 +6,7 @@ import {
   billingWebhookEventSchema,
   invoiceProjectionSchema,
   subscriptionProjectionSchema,
+  webhookPriceMappingSchema,
   type BillingProjectionRepository,
 } from './repository';
 import { BillingRepositoryError } from './supabase-repository';
@@ -18,11 +19,19 @@ type SupabaseResult = Readonly<{
 declare const supabaseBillingAdminClientBrand: unique symbol;
 
 export type SupabaseBillingAdminClient = Readonly<{
+  from(table: string): {
+    select(columns: string): unknown;
+  };
   rpc(
     functionName: string,
     arguments_: Readonly<Record<string, unknown>>,
   ): PromiseLike<SupabaseResult>;
   readonly [supabaseBillingAdminClientBrand]: true;
+}>;
+
+type SupabaseLookupQuery = Readonly<{
+  eq(column: string, value: unknown): SupabaseLookupQuery;
+  maybeSingle(): PromiseLike<SupabaseResult>;
 }>;
 
 function parseValue<T>(schema: z.ZodType<T>, value: unknown): T {
@@ -42,6 +51,56 @@ export function createSupabaseBillingProjectionRepository(
   adminClient: SupabaseBillingAdminClient,
 ): BillingProjectionRepository {
   return {
+    async resolveWebhookUserId(customerId) {
+      const validatedCustomerId = z
+        .string()
+        .regex(/^cus_[A-Za-z0-9]+$/)
+        .parse(customerId);
+      const query = adminClient
+        .from('billing_customers')
+        .select('user_id') as SupabaseLookupQuery;
+      const result = await query
+        .eq('stripe_customer_id', validatedCustomerId)
+        .maybeSingle();
+      if (result.error !== null) throw new BillingRepositoryError();
+      if (result.data === null) return null;
+      return parseValue(
+        z.object({ user_id: z.string().uuid() }).strict(),
+        result.data,
+      ).user_id;
+    },
+
+    async resolveWebhookPrice(priceId) {
+      const validatedPriceId = z
+        .string()
+        .regex(/^price_[A-Za-z0-9]+$/)
+        .parse(priceId);
+      const query = adminClient
+        .from('billing_prices')
+        .select(
+          'billing_interval,billing_plans!inner(slug)',
+        ) as SupabaseLookupQuery;
+      const result = await query
+        .eq('stripe_price_id', validatedPriceId)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (result.error !== null) throw new BillingRepositoryError();
+      if (result.data === null) return null;
+      const row = parseValue(
+        z
+          .object({
+            billing_interval: z.enum(['month', 'year']),
+            billing_plans: z.object({ slug: z.string() }).strict(),
+          })
+          .strict(),
+        result.data,
+      );
+      return webhookPriceMappingSchema.parse({
+        planSlug: row.billing_plans.slug,
+        interval: row.billing_interval,
+      });
+    },
+
     async claimWebhookEvent(input) {
       const event = parseValue(billingWebhookEventSchema, input);
       const data = rpcSuccess(
@@ -101,6 +160,7 @@ export function createSupabaseBillingProjectionRepository(
           target_pdf_url: projection.pdfUrl,
           target_refund_status: projection.refundStatus,
           target_refunded_amount_minor: projection.refundedAmountMinor,
+          target_advance_paid_through: projection.advancePaidThrough,
         }),
       );
     },
