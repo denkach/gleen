@@ -42,8 +42,9 @@ const viewPrivilegeMigrationPath = join(
 );
 const viewPrivilegeSql = readFileSync(viewPrivilegeMigrationPath, 'utf8');
 const migrationsDirectory = join(process.cwd(), 'supabase', 'migrations');
-const exactWebhookPriceMigrationName = readdirSync(migrationsDirectory).find(
-  (name) => name.endsWith('_den_20_exact_webhook_price_projection.sql'),
+const migrationNames = readdirSync(migrationsDirectory);
+const exactWebhookPriceMigrationName = migrationNames.find((name) =>
+  name.endsWith('_den_20_exact_webhook_price_projection.sql'),
 );
 const exactWebhookPriceSql =
   exactWebhookPriceMigrationName === undefined
@@ -52,6 +53,27 @@ const exactWebhookPriceSql =
         join(migrationsDirectory, exactWebhookPriceMigrationName),
         'utf8',
       );
+const invoicePaidMigrationName =
+  '20260730031822_den_20_invoice_paid_projection.sql';
+const invoicePaidSql = readFileSync(
+  join(migrationsDirectory, invoicePaidMigrationName),
+  'utf8',
+);
+const invoicePaidGreatestFixMigrationName = migrationNames.find((name) =>
+  name.endsWith('_den_20_fix_invoice_paid_greatest.sql'),
+);
+const invoicePaidGreatestFixSql =
+  invoicePaidGreatestFixMigrationName === undefined
+    ? ''
+    : readFileSync(
+        join(migrationsDirectory, invoicePaidGreatestFixMigrationName),
+        'utf8',
+      );
+const invoicePaidForwardChainSql = migrationNames
+  .filter((name) => name > invoicePaidMigrationName)
+  .sort()
+  .map((name) => readFileSync(join(migrationsDirectory, name), 'utf8'))
+  .join('\n');
 
 const readBetween = (start: string, end: string) => {
   const startIndex = sql.indexOf(start);
@@ -268,6 +290,37 @@ describe('DEN-20 exact historical webhook Price projection', () => {
     expect(exactWebhookPriceSql).toContain('price.plan_id = plan.id');
     expect(exactWebhookPriceSql).not.toContain('price.is_active');
     expect(exactWebhookPriceSql).not.toContain('billing_plan.is_active');
+  });
+});
+
+describe('DEN-20 invoice paid projection SQL correction', () => {
+  it('replaces the boolean overload without schema-qualifying GREATEST', () => {
+    expect(
+      createHash('sha256').update(invoicePaidSql).digest('hex'),
+      'the applied invoice-paid migration must remain byte-for-byte immutable',
+    ).toBe('8e9e5d6ce85dfc074fe94a0ed3a840e58d5ead8e174d732bbb6ce7bde9c2f617');
+    expect(invoicePaidSql).toContain('pg_catalog.greatest');
+    expect(invoicePaidGreatestFixMigrationName).toBeDefined();
+    expect(invoicePaidForwardChainSql).not.toContain('pg_catalog.greatest');
+    expect(invoicePaidGreatestFixSql).toContain(
+      'create or replace function public.apply_billing_invoice_projection(',
+    );
+    expect(invoicePaidGreatestFixSql).toContain('greatest(');
+    expect(invoicePaidGreatestFixSql).toContain('security invoker');
+    expect(invoicePaidGreatestFixSql).toContain("set search_path = ''");
+    expect(invoicePaidGreatestFixSql).toContain(
+      'if target_advance_paid_through',
+    );
+    expect(invoicePaidGreatestFixSql).toMatch(
+      /latest_stripe_event_created_at\s*<= target_event_created_at/,
+    );
+    expect(invoicePaidGreatestFixSql).toContain(
+      'revoke all on function public.apply_billing_invoice_projection(',
+    );
+    expect(invoicePaidGreatestFixSql).toContain(
+      'grant execute on function public.apply_billing_invoice_projection(',
+    );
+    expect(invoicePaidGreatestFixSql).toContain(') to service_role;');
   });
 });
 
