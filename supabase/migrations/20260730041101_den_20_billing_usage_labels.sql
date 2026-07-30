@@ -36,7 +36,7 @@ reservation_summary as (
 credit_summary as (
   select
     entitlement.user_id,
-    pg_catalog.coalesce(
+    coalesce(
       pg_catalog.sum(ledger.quantity) filter (
         where ledger.event_type in ('manual_adjustment', 'refund')
           and ledger.quantity > 0

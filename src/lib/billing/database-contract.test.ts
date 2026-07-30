@@ -83,6 +83,19 @@ const invoicePaidForwardChainSql = migrationNames
   .sort()
   .map((name) => readFileSync(join(migrationsDirectory, name), 'utf8'))
   .join('\n');
+const den20QualifiedSpecialFormViolations = migrationNames
+  .filter(
+    (name) =>
+      name.includes('_den_20_') &&
+      name.endsWith('.sql') &&
+      name !== invoicePaidMigrationName,
+  )
+  .flatMap((name) => {
+    const migrationSql = readFileSync(join(migrationsDirectory, name), 'utf8');
+    return [
+      ...migrationSql.matchAll(/\bpg_catalog\.(coalesce|greatest)\s*\(/gi),
+    ].map((match) => `${name}:${match[0]}`);
+  });
 
 const readBetween = (start: string, end: string) => {
   const startIndex = sql.indexOf(start);
@@ -345,6 +358,10 @@ describe('DEN-20 invoice paid projection SQL correction', () => {
       'grant execute on function public.apply_billing_invoice_projection(',
     );
     expect(invoicePaidGreatestFixSql).toContain(') to service_role;');
+  });
+
+  it('does not schema-qualify parser-level COALESCE or GREATEST in DEN-20 forward migrations', () => {
+    expect(den20QualifiedSpecialFormViolations).toEqual([]);
   });
 });
 
