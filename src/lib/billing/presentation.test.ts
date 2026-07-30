@@ -14,6 +14,7 @@ import {
   toEntitlementStatus,
   toInvoicePresentation,
   toInvoiceSummaryPresentation,
+  toLimitReachedPresentation,
   toSubscriptionPresentation,
   toUsagePresentation,
 } from './presentation';
@@ -102,6 +103,55 @@ const snapshot: BillingSnapshot = {
 };
 
 describe('billing presentation', () => {
+  it('pairs current catalog features with the next purchasable upgrade in stable order', () => {
+    const starter = {
+      id: 'starter',
+      slug: 'starter',
+      displayName: 'Starter',
+      description: 'Starter',
+      analysisLimit: 10,
+      features: ['Current A', 'Current B', 'Current C'],
+      purchasable: true,
+    } as const;
+    const upgrade = {
+      id: 'prism-pro',
+      slug: 'prism-pro',
+      displayName: 'Prism Pro',
+      description: 'Upgrade',
+      analysisLimit: 25,
+      features: ['Upgrade A', 'Upgrade B'],
+      purchasable: true,
+    } as const;
+    const result = toLimitReachedPresentation({
+      ...snapshot,
+      currentPlan: starter,
+      currentPrice: null,
+      usage: {
+        used: 10,
+        reserved: 0,
+        remaining: 0,
+        limit: 10,
+        extraCredits: 0,
+      },
+      availablePlans: [
+        { plan: starter, prices: [] },
+        { plan: upgrade, prices: [] },
+      ],
+    });
+
+    expect(result.limitUpgrade).toEqual({
+      plan: upgrade,
+      rows: [
+        { baseline: 'Current A', benefit: 'Upgrade A' },
+        { baseline: 'Current B', benefit: 'Upgrade B' },
+        {
+          baseline: 'Current C',
+          benefit: 'No additional catalog benefit listed',
+        },
+      ],
+    });
+  });
+
   it('formats minor monetary units with Intl.NumberFormat', () => {
     expect(
       formatMoney({ amountMinor: 4900, currency: 'usd', locale: 'en' }),

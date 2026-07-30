@@ -1321,22 +1321,31 @@
 
 .billing-experience .billing-compare-list {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px 24px;
+  gap: 9px;
   margin-top: 15px;
   color: #aab0bc;
   font-size: 12px;
 }
 
-.billing-experience .billing-compare-list div::before {
+.billing-experience .billing-compare-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.billing-experience .billing-compare-row > div::before {
   margin-right: 8px;
   color: #798290;
   content: '✓';
 }
 
-.billing-experience .billing-compare-list .billing-spark::before {
+.billing-experience .billing-compare-row .billing-spark::before {
   color: var(--amber);
   content: '✦';
+}
+
+.billing-experience .billing-compare-current-only {
+  grid-column: 1 / -1;
 }
 
 @keyframes billing-page-in {
@@ -1561,6 +1570,10 @@
   }
 
   .billing-experience .billing-compare-list {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-experience .billing-compare-row {
     grid-template-columns: 1fr;
   }
 }

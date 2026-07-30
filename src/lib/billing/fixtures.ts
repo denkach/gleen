@@ -1,18 +1,20 @@
 import { z } from 'zod';
 
 import type {
-  BillingPlan,
-  BillingPrice,
+  BillingPlanCatalogRow,
+  BillingPlanSlug,
   BillingSnapshot,
   InvoicePage,
   InvoiceSummary,
   UsageLedgerPage,
 } from './domain';
+import { parseBillingCatalogRows } from './domain';
 import {
   formatMoney,
   toCheckoutPresentation,
   toInvoicePresentation,
   toInvoiceSummaryPresentation,
+  toLimitReachedPresentation,
   toSubscriptionPresentation,
   toUsagePresentation,
 } from './presentation';
@@ -47,101 +49,164 @@ const presentationOptions = {
   now,
 } as const;
 
-const freePlan = {
-  id: 'free',
-  slug: 'free',
-  displayName: 'Free',
-  description: 'Explore Gleen with a small monthly allowance.',
-  analysisLimit: 3,
-  features: ['3 analyses per month', 'Saved results', 'Basic exports'],
-  purchasable: false,
-} as const satisfies BillingPlan;
-const starterPlan = {
-  id: 'starter',
-  slug: 'starter',
-  displayName: 'Starter',
-  description: 'For focused learners building a regular study habit.',
-  analysisLimit: 25,
-  features: [
-    '25 analyses per month',
-    'Advanced insights & takeaways',
-    'Export & download',
-    'Priority support',
-  ],
-  purchasable: true,
-} as const satisfies BillingPlan;
-const prismProPlan = {
-  id: 'prism-pro',
-  slug: 'prism-pro',
-  displayName: 'Prism Pro',
-  description: 'For deep research and high-volume knowledge work.',
-  analysisLimit: 500,
-  features: [
-    '500 analyses per month',
-    'More analyses, no waiting',
-    'Advanced insights & takeaways',
-    'Deeper insights with AI',
-    'Export, share & automate',
-    'Priority response',
-  ],
-  purchasable: true,
-} as const satisfies BillingPlan;
-const teamPlan = {
-  id: 'team',
-  slug: 'team',
-  displayName: 'Team',
-  description: 'Shared billing and seats for collaborative teams.',
-  analysisLimit: 1000,
-  features: ['Shared workspace', 'Centralized billing', 'Team controls'],
-  purchasable: false,
-} as const satisfies BillingPlan;
+function paidCatalogRows(plan: {
+  slug: Exclude<BillingPlanSlug, 'free'>;
+  displayName: string;
+  description: string;
+  analysisLimit: number;
+  features: readonly string[];
+  displayOrder: number;
+  purchasable: boolean;
+  monthlyAmount: number;
+  yearlyAmount: number;
+  yearlyMonthlyEquivalent: number;
+  comparisonCopy: string;
+}): readonly BillingPlanCatalogRow[] {
+  const base = {
+    slug: plan.slug,
+    display_name: plan.displayName,
+    description: plan.description,
+    analysis_limit: plan.analysisLimit,
+    features: plan.features,
+    display_order: plan.displayOrder,
+    is_default: false,
+    is_purchasable: plan.purchasable,
+  };
+  return [
+    {
+      ...base,
+      billing_interval: 'month',
+      currency: 'usd',
+      unit_amount_minor: plan.monthlyAmount,
+      monthly_equivalent_minor: plan.monthlyAmount,
+      comparison_copy: null,
+      savings_copy: null,
+    },
+    {
+      ...base,
+      billing_interval: 'year',
+      currency: 'usd',
+      unit_amount_minor: plan.yearlyAmount,
+      monthly_equivalent_minor: plan.yearlyMonthlyEquivalent,
+      comparison_copy: plan.comparisonCopy,
+      savings_copy: 'Save 20%',
+    },
+  ];
+}
 
-const starterMonthly = {
-  planId: 'starter',
-  interval: 'month',
-  amountMinor: 1900,
-  monthlyEquivalentMinor: 1900,
-  currency: 'eur',
-  savingsPercent: null,
-} as const satisfies BillingPrice;
-const starterYearly = {
-  planId: 'starter',
-  interval: 'year',
-  amountMinor: 19000,
-  monthlyEquivalentMinor: 1583,
-  currency: 'eur',
-  savingsPercent: 17,
-} as const satisfies BillingPrice;
-const prismMonthly = {
-  planId: 'prism-pro',
-  interval: 'month',
-  amountMinor: 4900,
-  monthlyEquivalentMinor: 4900,
-  currency: 'eur',
-  savingsPercent: null,
-} as const satisfies BillingPrice;
-const prismYearly = {
-  planId: 'prism-pro',
-  interval: 'year',
-  amountMinor: 49000,
-  monthlyEquivalentMinor: 4083,
-  currency: 'eur',
-  savingsPercent: 17,
-} as const satisfies BillingPrice;
+export const billingFixtureCatalogRows = [
+  {
+    slug: 'free',
+    display_name: 'Free',
+    description: 'For exploring Gleen.',
+    analysis_limit: 3,
+    features: ['3 analyses per month', 'Saved history'],
+    display_order: 0,
+    is_default: true,
+    is_purchasable: false,
+    billing_interval: null,
+    currency: null,
+    unit_amount_minor: null,
+    monthly_equivalent_minor: null,
+    comparison_copy: null,
+    savings_copy: null,
+  },
+  ...paidCatalogRows({
+    slug: 'starter',
+    displayName: 'Starter',
+    description: 'For individuals getting started with AI analysis.',
+    analysisLimit: 10,
+    features: [
+      '10 analyses per month',
+      'Basic insights & summaries',
+      'Standard templates',
+      'Export results',
+      'Email support',
+    ],
+    displayOrder: 1,
+    purchasable: true,
+    monthlyAmount: 1900,
+    yearlyAmount: 18000,
+    yearlyMonthlyEquivalent: 1500,
+    comparisonCopy: '$19 monthly',
+  }),
+  ...paidCatalogRows({
+    slug: 'prism-pro',
+    displayName: 'Prism Pro',
+    description:
+      'For professionals who need deeper insights and more capacity.',
+    analysisLimit: 25,
+    features: [
+      '25 analyses per month',
+      'Advanced insights & takeaways',
+      'All premium templates',
+      'Export & download',
+      'Priority support',
+    ],
+    displayOrder: 2,
+    purchasable: true,
+    monthlyAmount: 4900,
+    yearlyAmount: 46800,
+    yearlyMonthlyEquivalent: 3900,
+    comparisonCopy: '$49 monthly',
+  }),
+  ...paidCatalogRows({
+    slug: 'team',
+    displayName: 'Team',
+    description: 'For teams collaborating and scaling their impact.',
+    analysisLimit: 100,
+    features: [
+      '100 analyses per month',
+      'Team workspace',
+      'Collaboration & sharing',
+      'Admin controls & roles',
+      'Priority onboarding',
+    ],
+    displayOrder: 3,
+    purchasable: false,
+    monthlyAmount: 12900,
+    yearlyAmount: 123600,
+    yearlyMonthlyEquivalent: 10300,
+    comparisonCopy: '$129 monthly',
+  }),
+] satisfies readonly BillingPlanCatalogRow[];
 
-const availablePlans = [
-  { plan: freePlan, prices: [] },
-  { plan: starterPlan, prices: [starterMonthly, starterYearly] },
-  { plan: prismProPlan, prices: [prismMonthly, prismYearly] },
-  { plan: teamPlan, prices: [] },
-] as const;
+export const billingFixtureCatalog = parseBillingCatalogRows(
+  billingFixtureCatalogRows,
+);
+
+function catalogPlan(slug: BillingPlanSlug) {
+  const entry = billingFixtureCatalog.find((row) => row.plan.slug === slug);
+  if (entry === undefined) {
+    throw new Error(`Missing canonical fixture plan: ${slug}`);
+  }
+  return entry;
+}
+
+function catalogPrice(slug: BillingPlanSlug, interval: 'month' | 'year') {
+  const price = catalogPlan(slug).prices.find(
+    (candidate) => candidate.interval === interval,
+  );
+  if (price === undefined) {
+    throw new Error(`Missing canonical fixture price: ${slug}/${interval}`);
+  }
+  return price;
+}
+
+const freePlan = catalogPlan('free').plan;
+const starterPlan = catalogPlan('starter').plan;
+const prismProPlan = catalogPlan('prism-pro').plan;
+const starterMonthly = catalogPrice('starter', 'month');
+const prismMonthly = catalogPrice('prism-pro', 'month');
+const prismYearly = catalogPrice('prism-pro', 'year');
+const availablePlans = billingFixtureCatalog;
 
 function snapshotFor(state: BillingFixtureState): BillingSnapshot {
   const isFree = state === 'free';
   const isLimit = state === 'limit-reached';
   const currentPlan = isFree ? freePlan : starterPlan;
-  const used = isLimit ? 24 : isFree ? 1 : 17;
-  const reserved = isLimit ? 1 : 1;
+  const used = isLimit ? 9 : isFree ? 1 : 2;
+  const reserved = isFree ? 0 : 1;
   const remaining = currentPlan.analysisLimit - used - reserved;
 
   return {
@@ -174,7 +239,7 @@ function snapshotFor(state: BillingFixtureState): BillingSnapshot {
           : 'active',
       paidThrough: isFree ? null : '2025-08-01T00:00:00.000Z',
       outstandingAmountMinor: state === 'past-due' ? 1900 : 0,
-      currency: 'eur',
+      currency: 'usd',
     },
     recentActivity: [],
     availablePlans,
@@ -224,7 +289,7 @@ const paidInvoice = {
   interval: 'month',
   amountDueMinor: 1900,
   amountPaidMinor: 1900,
-  currency: 'eur',
+  currency: 'usd',
   status: 'paid',
   createdAt: '2025-07-01T00:00:00.000Z',
   dueAt: null,
@@ -255,7 +320,7 @@ const invoiceSummary = {
   totalCount: 1,
   lastInvoiceAt: '2025-07-01T00:00:00.000Z',
   selectedYear: 2025,
-  yearToDateAmounts: [{ currency: 'eur', amountMinor: 1900 }],
+  yearToDateAmounts: [{ currency: 'usd', amountMinor: 1900 }],
   availableYears: [2025],
 } as const satisfies InvoiceSummary;
 
@@ -286,12 +351,34 @@ export function isBillingFixtureSelection(
   );
 }
 
+function shellFor(snapshot: BillingSnapshot) {
+  const used = snapshot.usage.used + snapshot.usage.reserved;
+  const remaining = snapshot.usage.remaining;
+  return {
+    identity: {
+      displayName: 'Billing Preview',
+      email: 'preview@example.invalid',
+      initials: 'BP',
+    },
+    usage: {
+      status: 'available',
+      label: `${remaining} ${remaining === 1 ? 'analysis' : 'analyses'} left`,
+      planName: snapshot.currentPlan.displayName,
+      used,
+      limit: snapshot.usage.limit,
+      resetAt: snapshot.period.endsAt,
+    },
+  } as const;
+}
+
 function subscriptionFixture(state: BillingFixtureState) {
+  const snapshot = snapshotFor(state);
   return {
     screen: 'subscription',
     state,
     now,
-    presentation: toSubscriptionPresentation(snapshotFor(state), {
+    shell: shellFor(snapshot),
+    presentation: toSubscriptionPresentation(snapshot, {
       ...presentationOptions,
       paymentMethod: {
         status: 'available',
@@ -305,8 +392,9 @@ function subscriptionFixture(state: BillingFixtureState) {
 }
 
 function usageFixture(state: BillingFixtureState) {
+  const snapshot = snapshotFor('active');
   const subscription = toSubscriptionPresentation(
-    snapshotFor('active'),
+    snapshot,
     presentationOptions,
   );
   const page =
@@ -321,6 +409,7 @@ function usageFixture(state: BillingFixtureState) {
     screen: 'usage',
     state,
     now,
+    shell: shellFor(snapshot),
     subscription: {
       usage: subscription.usage,
       resetAt: subscription.resetAt,
@@ -331,6 +420,7 @@ function usageFixture(state: BillingFixtureState) {
 }
 
 function checkoutFixture(state: BillingFixtureState) {
+  const snapshot = snapshotFor('active');
   const presentation = toCheckoutPresentation(
     prismProPlan,
     prismMonthly,
@@ -340,17 +430,18 @@ function checkoutFixture(state: BillingFixtureState) {
     screen: 'checkout',
     state,
     now,
+    shell: shellFor(snapshot),
     presentation,
     prices: [prismMonthly, prismYearly].map(
       (price) =>
         toCheckoutPresentation(prismProPlan, price, presentationOptions).price,
     ),
     totals: {
-      subtotal: '€49.00',
+      subtotal: '$49.00',
       discount: '—',
       tax: 'Calculated after billing address',
-      total: '€49.00',
-      currency: 'EUR',
+      total: '$49.00',
+      currency: 'USD',
     },
   } as const;
 }
@@ -371,6 +462,7 @@ function portalFixture(state: BillingFixtureState) {
     screen: 'portal',
     state,
     now,
+    shell: shellFor(snapshot),
     subscription: {
       currentPlan: subscription.currentPlan,
       currentPrice: subscription.currentPrice,
@@ -393,14 +485,18 @@ function portalFixture(state: BillingFixtureState) {
 }
 
 function invoicesFixture(state: BillingFixtureState) {
+  const snapshot = snapshotFor(
+    state === 'failed-invoice' ? 'past-due' : 'active',
+  );
   const subscription = toSubscriptionPresentation(
-    snapshotFor(state === 'failed-invoice' ? 'past-due' : 'active'),
+    snapshot,
     presentationOptions,
   );
   return {
     screen: 'invoices',
     state,
     now,
+    shell: shellFor(snapshot),
     subscription: {
       resetAt: subscription.resetAt,
       resetAtLabel: subscription.resetAtLabel,
@@ -417,14 +513,13 @@ function invoicesFixture(state: BillingFixtureState) {
 }
 
 function limitFixture(state: BillingFixtureState) {
+  const snapshot = snapshotFor('limit-reached');
   return {
     screen: 'limit-reached',
     state,
     now,
-    presentation: toSubscriptionPresentation(
-      snapshotFor('limit-reached'),
-      presentationOptions,
-    ),
+    shell: shellFor(snapshot),
+    presentation: toLimitReachedPresentation(snapshot, presentationOptions),
   } as const;
 }
 

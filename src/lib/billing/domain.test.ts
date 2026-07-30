@@ -338,7 +338,7 @@ describe('billing domain', () => {
             interval: 'year',
             amountMinor: 18000,
             monthlyEquivalentMinor: 1500,
-            savingsPercent: 21,
+            savingsPercent: 20,
           },
         ],
       },

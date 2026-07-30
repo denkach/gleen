@@ -513,13 +513,18 @@ export function parseBillingCatalogRows(
         )
         .map((row) => {
           const monthlyAmount = monthlyByCurrency.get(row.currency);
+          const declaredSavings = row.savings_copy?.match(
+            /^Save ([1-9]\d?|100)%$/,
+          );
           const savingsPercent =
             row.billing_interval === 'year' &&
             monthlyAmount !== undefined &&
             monthlyAmount > 0
-              ? Math.round(
-                  (1 - row.monthly_equivalent_minor / monthlyAmount) * 100,
-                )
+              ? declaredSavings === null || declaredSavings === undefined
+                ? Math.round(
+                    (1 - row.monthly_equivalent_minor / monthlyAmount) * 100,
+                  )
+                : Number(declaredSavings[1])
               : null;
 
           return billingPriceSchema.parse({

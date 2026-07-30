@@ -283,6 +283,53 @@ export function toSubscriptionPresentation(
   };
 }
 
+export type LimitReachedPresentation = SubscriptionPresentation &
+  Readonly<{
+    limitUpgrade: Readonly<{
+      plan: BillingPlan;
+      rows: readonly Readonly<{
+        baseline: string;
+        benefit: string;
+      }>[];
+    }> | null;
+  }>;
+
+export function toLimitReachedPresentation(
+  snapshot: BillingSnapshot,
+  options: PresentationOptions & {
+    now?: string;
+    paymentMethod?: BillingPaymentMethod;
+  } = {},
+): LimitReachedPresentation {
+  const presentation = toSubscriptionPresentation(snapshot, options);
+  const upgrade =
+    presentation.availablePlans.find(
+      ({ plan, action }) =>
+        plan.slug !== presentation.currentPlan.slug &&
+        plan.analysisLimit > presentation.currentPlan.analysisLimit &&
+        action.enabled,
+    ) ?? null;
+
+  if (upgrade === null) return { ...presentation, limitUpgrade: null };
+
+  const rowCount = Math.max(
+    presentation.currentPlan.features.length,
+    upgrade.plan.features.length,
+  );
+  const rows = Array.from({ length: rowCount }, (_, index) => ({
+    baseline:
+      presentation.currentPlan.features[index] ??
+      'Not included in the current plan',
+    benefit:
+      upgrade.plan.features[index] ?? 'No additional catalog benefit listed',
+  }));
+
+  return {
+    ...presentation,
+    limitUpgrade: { plan: upgrade.plan, rows },
+  };
+}
+
 const usageEventCopy = {
   reservation: { label: 'Reserved', variant: 'warning' },
   settlement: { label: 'Used', variant: 'neutral' },

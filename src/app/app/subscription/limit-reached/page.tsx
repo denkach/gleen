@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { LimitReachedScreen } from '@/components/billing/limit-reached-screen';
-import { toSubscriptionPresentation } from '@/lib/billing/presentation';
+import { toLimitReachedPresentation } from '@/lib/billing/presentation';
 import {
   createSupabaseBillingRepository,
   type SupabaseBillingClient,
@@ -24,11 +24,14 @@ export default async function LimitReachedPage() {
     supabase as unknown as SupabaseBillingClient,
   ).getOwnedSnapshot(user.id);
   const now = new Date().toISOString();
+  const presentation = toLimitReachedPresentation(snapshot, { now });
+  const consumed = presentation.usage.used + presentation.usage.reserved;
+  if (
+    presentation.usage.remaining !== 0 ||
+    consumed < presentation.usage.limit
+  ) {
+    redirect('/app/subscription');
+  }
 
-  return (
-    <LimitReachedScreen
-      presentation={toSubscriptionPresentation(snapshot, { now })}
-      now={now}
-    />
-  );
+  return <LimitReachedScreen presentation={presentation} now={now} />;
 }

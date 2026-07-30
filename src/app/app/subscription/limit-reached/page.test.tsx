@@ -20,9 +20,11 @@ vi.mock('@/lib/billing/supabase-repository', () => ({
   createSupabaseBillingRepository: () => ({ getOwnedSnapshot }),
 }));
 vi.mock('@/lib/billing/presentation', () => ({
-  toSubscriptionPresentation: (snapshot: unknown) => ({
+  toLimitReachedPresentation: (snapshot: {
+    usage: { used: number; reserved: number; remaining: number; limit: number };
+  }) => ({
     snapshot,
-    usage: { used: 25, reserved: 0, remaining: 0, limit: 25 },
+    usage: snapshot.usage,
   }),
 }));
 vi.mock('@/components/billing/limit-reached-screen', () => ({
@@ -38,7 +40,10 @@ describe('LimitReachedPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } } });
-    getOwnedSnapshot.mockResolvedValue({ ownerScoped: true });
+    getOwnedSnapshot.mockResolvedValue({
+      ownerScoped: true,
+      usage: { used: 9, reserved: 1, remaining: 0, limit: 10 },
+    });
   });
 
   it('redirects unauthenticated requests before reading billing', async () => {
@@ -57,10 +62,29 @@ describe('LimitReachedPage', () => {
     expect(renderLimitScreen).toHaveBeenCalledWith(
       expect.objectContaining({
         presentation: expect.objectContaining({
-          snapshot: { ownerScoped: true },
+          snapshot: {
+            ownerScoped: true,
+            usage: { used: 9, reserved: 1, remaining: 0, limit: 10 },
+          },
         }),
       }),
     );
     expect(screen.getByRole('heading', { name: 'Analysis limit reached' }));
   });
+
+  it.each([
+    { used: 2, reserved: 1, remaining: 7, limit: 10 },
+    { used: 0, reserved: 0, remaining: 10, limit: 10 },
+  ])(
+    'redirects a non-exhausted owner snapshot to subscription',
+    async (usage) => {
+      getOwnedSnapshot.mockResolvedValue({ ownerScoped: true, usage });
+
+      await expect(LimitReachedPage()).rejects.toThrow(
+        'NEXT_REDIRECT:/app/subscription',
+      );
+      expect(redirect).toHaveBeenCalledWith('/app/subscription');
+      expect(renderLimitScreen).not.toHaveBeenCalled();
+    },
+  );
 });

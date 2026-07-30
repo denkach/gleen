@@ -1,9 +1,12 @@
 import Link from 'next/link';
 
-import type { SubscriptionPresentation } from '@/lib/billing/presentation';
+import type {
+  LimitReachedPresentation,
+  SubscriptionPresentation,
+} from '@/lib/billing/presentation';
 
 import { BillingIcon } from './billing-icons';
-import { BillingCard, BillingPage, BillingPrism } from './billing-page';
+import { BillingCard, BillingPage } from './billing-page';
 
 const dayInMilliseconds = 24 * 60 * 60 * 1000;
 
@@ -33,11 +36,54 @@ function currentPriceLabel(price: SubscriptionPresentation['currentPrice']) {
   );
 }
 
+function LimitHeroPrism() {
+  return (
+    <div
+      className="billing-prism billing-limit-prism"
+      data-limit-prism="hero"
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 100 120">
+        <path
+          d="M50 5 91 105H10L50 5Z"
+          fill="rgba(124,89,202,.15)"
+          stroke="#a792ec"
+          strokeWidth="1.7"
+        />
+        <path
+          d="M50 5v100M10 105l57-62 24 62M10 105l40-38 41 38"
+          fill="none"
+          stroke="rgba(255,255,255,.37)"
+        />
+      </svg>
+    </div>
+  );
+}
+
+function LimitMiniPrism() {
+  return (
+    <div
+      className="billing-prism billing-limit-prism"
+      data-limit-prism="mini"
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 100 120">
+        <path
+          d="M50 5 91 105H10L50 5Z"
+          fill="rgba(124,89,202,.14)"
+          stroke="#9d82e3"
+          strokeWidth="2"
+        />
+      </svg>
+    </div>
+  );
+}
+
 export function LimitReachedScreen({
   presentation,
   now,
 }: Readonly<{
-  presentation: SubscriptionPresentation;
+  presentation: LimitReachedPresentation;
   now: string;
 }>) {
   const consumed = presentation.usage.used + presentation.usage.reserved;
@@ -45,13 +91,7 @@ export function LimitReachedScreen({
     presentation.usage.limit === 0
       ? 0
       : Math.min(100, Math.round((consumed / presentation.usage.limit) * 100));
-  const upgrade =
-    presentation.availablePlans.find(
-      ({ plan, action }) =>
-        plan.slug !== presentation.currentPlan.slug &&
-        plan.analysisLimit > presentation.currentPlan.analysisLimit &&
-        action.enabled,
-    ) ?? null;
+  const upgrade = presentation.limitUpgrade;
   const extraCreditsExplanationId = 'billing-extra-credits-unavailable';
 
   return (
@@ -71,7 +111,7 @@ export function LimitReachedScreen({
 
       <BillingCard className="billing-limit-hero">
         <div className="billing-limit-visual">
-          <BillingPrism />
+          <LimitHeroPrism />
         </div>
         <div className="billing-limit-copy">
           <div className="billing-limit-usage">
@@ -136,7 +176,7 @@ export function LimitReachedScreen({
         <BillingCard className="billing-plan-mini">
           <h2 className="billing-section-title">Your plan</h2>
           <div className="billing-plan-mini-inner">
-            <BillingPrism />
+            <LimitMiniPrism />
             <div>
               <div className="billing-plan-name billing-limit-plan-name">
                 {presentation.currentPlan.displayName}{' '}
@@ -176,16 +216,22 @@ export function LimitReachedScreen({
               : `What changes with ${upgrade.plan.displayName}`}
           </h2>
           <div className="billing-compare-list">
-            {(upgrade?.plan.features ?? presentation.currentPlan.features).map(
-              (feature, index) => (
-                <div
-                  className={index % 2 === 1 ? 'billing-spark' : ''}
-                  key={feature}
-                >
-                  {feature}
-                </div>
-              ),
-            )}
+            {upgrade === null
+              ? presentation.currentPlan.features.map((feature) => (
+                  <div className="billing-compare-row" key={feature}>
+                    <div className="billing-compare-baseline billing-compare-current-only">
+                      {feature}
+                    </div>
+                  </div>
+                ))
+              : upgrade.rows.map((row) => (
+                  <div className="billing-compare-row" key={row.baseline}>
+                    <div className="billing-compare-baseline">
+                      {row.baseline}
+                    </div>
+                    <div className="billing-spark">{row.benefit}</div>
+                  </div>
+                ))}
           </div>
         </BillingCard>
       </div>

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 
+import { AppShell } from '@/components/app-shell/app-shell';
 import {
   getBillingFixture,
   isBillingFixtureSelection,
@@ -53,5 +54,14 @@ export default async function BillingFixturePage({
 
   if (!isBillingFixtureSelection(screen, state)) notFound();
 
-  return <BillingFixtureScreen fixture={getBillingFixture(screen, state)} />;
+  const fixture = getBillingFixture(screen, state);
+  return (
+    <AppShell
+      identity={fixture.shell.identity}
+      usage={fixture.shell.usage}
+      pathnameOverride="/app/subscription"
+    >
+      <BillingFixtureScreen fixture={fixture} />
+    </AppShell>
+  );
 }
