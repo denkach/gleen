@@ -217,15 +217,18 @@ export function LimitReachedScreen({
           </h2>
           <div className="billing-compare-list">
             {upgrade === null
-              ? presentation.currentPlan.features.map((feature) => (
-                  <div className="billing-compare-row" key={feature}>
+              ? presentation.currentPlan.features.map((feature, index) => (
+                  <div
+                    className="billing-compare-row"
+                    key={`${index}:${feature}`}
+                  >
                     <div className="billing-compare-baseline billing-compare-current-only">
                       {feature}
                     </div>
                   </div>
                 ))
               : upgrade.rows.map((row) => (
-                  <div className="billing-compare-row" key={row.baseline}>
+                  <div className="billing-compare-row" key={row.id}>
                     <div className="billing-compare-baseline">
                       {row.baseline}
                     </div>

@@ -1,7 +1,12 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import type { LimitReachedPresentation } from '@/lib/billing/presentation';
+import type { BillingSnapshot } from '@/lib/billing/domain';
+import {
+  toLimitReachedPresentation,
+  type LimitReachedPresentation,
+} from '@/lib/billing/presentation';
+import { billingFixtureCatalog } from '@/lib/billing/fixtures';
 
 import { LimitReachedScreen } from './limit-reached-screen';
 
@@ -111,19 +116,30 @@ const presentation = {
     },
     rows: [
       {
+        id: 'starter-to-prism-pro-0',
         baseline: '10 analyses per month',
         benefit: '25 analyses per month',
       },
       {
+        id: 'starter-to-prism-pro-1',
         baseline: 'Basic insights & summaries',
         benefit: 'Advanced insights & takeaways',
       },
       {
+        id: 'starter-to-prism-pro-2',
         baseline: 'Standard templates',
         benefit: 'All premium templates',
       },
-      { baseline: 'Export results', benefit: 'Export & download' },
-      { baseline: 'Email support', benefit: 'Priority support' },
+      {
+        id: 'starter-to-prism-pro-3',
+        baseline: 'Export results',
+        benefit: 'Export & download',
+      },
+      {
+        id: 'starter-to-prism-pro-4',
+        baseline: 'Email support',
+        benefit: 'Priority support',
+      },
     ],
   },
 } as const satisfies LimitReachedPresentation;
@@ -225,5 +241,72 @@ describe('LimitReachedScreen', () => {
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('aria-describedby', explanation.id);
     expect(explanation).toBeVisible();
+  });
+
+  it('renders canonical Free to Starter rows in order without duplicate key warnings', () => {
+    const free = billingFixtureCatalog.find(({ plan }) => plan.slug === 'free');
+    const starter = billingFixtureCatalog.find(
+      ({ plan }) => plan.slug === 'starter',
+    );
+    if (free === undefined || starter === undefined) {
+      throw new Error('Canonical Free and Starter plans are required');
+    }
+    const freeLimitSnapshot: BillingSnapshot = {
+      currentPlan: free.plan,
+      currentPrice: null,
+      period: {
+        startsAt: '2025-07-01T00:00:00.000Z',
+        endsAt: '2025-08-01T00:00:00.000Z',
+      },
+      usage: {
+        used: 3,
+        reserved: 0,
+        remaining: 0,
+        limit: 3,
+        extraCredits: 0,
+      },
+      scheduledChange: null,
+      paymentSummary: {
+        subscriptionStatus: null,
+        paidThrough: null,
+        outstandingAmountMinor: 0,
+        currency: 'usd',
+      },
+      recentActivity: [],
+      availablePlans: billingFixtureCatalog,
+    };
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      const { container } = render(
+        <LimitReachedScreen
+          presentation={toLimitReachedPresentation(freeLimitSnapshot, {
+            now: '2025-07-29T00:00:00.000Z',
+            locale: 'en-US',
+            timeZone: 'UTC',
+          })}
+          now="2025-07-29T00:00:00.000Z"
+        />,
+      );
+
+      expect(
+        Array.from(container.querySelectorAll('.billing-compare-row')).map(
+          (row) =>
+            Array.from(row.children).map((cell) => cell.textContent?.trim()),
+        ),
+      ).toEqual([
+        ['3 analyses per month', '10 analyses per month'],
+        ['Saved history', 'Basic insights & summaries'],
+        ['Not included in the current plan', 'Standard templates'],
+        ['Not included in the current plan', 'Export results'],
+        ['Not included in the current plan', 'Email support'],
+      ]);
+      expect(error).not.toHaveBeenCalled();
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      error.mockRestore();
+      warn.mockRestore();
+    }
   });
 });

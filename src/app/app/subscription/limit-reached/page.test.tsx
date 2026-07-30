@@ -75,6 +75,7 @@ describe('LimitReachedPage', () => {
   it.each([
     { used: 2, reserved: 1, remaining: 7, limit: 10 },
     { used: 0, reserved: 0, remaining: 10, limit: 10 },
+    { used: 0, reserved: 0, remaining: 0, limit: 0 },
   ])(
     'redirects a non-exhausted owner snapshot to subscription',
     async (usage) => {

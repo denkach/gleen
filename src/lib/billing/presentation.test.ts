@@ -142,14 +142,45 @@ describe('billing presentation', () => {
     expect(result.limitUpgrade).toEqual({
       plan: upgrade,
       rows: [
-        { baseline: 'Current A', benefit: 'Upgrade A' },
-        { baseline: 'Current B', benefit: 'Upgrade B' },
         {
+          id: 'starter-to-prism-pro-0',
+          baseline: 'Current A',
+          benefit: 'Upgrade A',
+        },
+        {
+          id: 'starter-to-prism-pro-1',
+          baseline: 'Current B',
+          benefit: 'Upgrade B',
+        },
+        {
+          id: 'starter-to-prism-pro-2',
           baseline: 'Current C',
           benefit: 'No additional catalog benefit listed',
         },
       ],
     });
+    expect(
+      toLimitReachedPresentation({
+        ...snapshot,
+        currentPlan: starter,
+        currentPrice: null,
+        usage: {
+          used: 10,
+          reserved: 0,
+          remaining: 0,
+          limit: 10,
+          extraCredits: 0,
+        },
+        availablePlans: [
+          { plan: starter, prices: [] },
+          { plan: upgrade, prices: [] },
+        ],
+      }).limitUpgrade?.rows.map((row) => row.id),
+    ).toEqual([
+      'starter-to-prism-pro-0',
+      'starter-to-prism-pro-1',
+      'starter-to-prism-pro-2',
+    ]);
   });
 
   it('formats minor monetary units with Intl.NumberFormat', () => {

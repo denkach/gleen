@@ -27,6 +27,7 @@ export default async function LimitReachedPage() {
   const presentation = toLimitReachedPresentation(snapshot, { now });
   const consumed = presentation.usage.used + presentation.usage.reserved;
   if (
+    presentation.usage.limit <= 0 ||
     presentation.usage.remaining !== 0 ||
     consumed < presentation.usage.limit
   ) {

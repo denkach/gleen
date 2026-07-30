@@ -288,6 +288,7 @@ export type LimitReachedPresentation = SubscriptionPresentation &
     limitUpgrade: Readonly<{
       plan: BillingPlan;
       rows: readonly Readonly<{
+        id: string;
         baseline: string;
         benefit: string;
       }>[];
@@ -317,6 +318,7 @@ export function toLimitReachedPresentation(
     upgrade.plan.features.length,
   );
   const rows = Array.from({ length: rowCount }, (_, index) => ({
+    id: `${presentation.currentPlan.slug}-to-${upgrade.plan.slug}-${index}`,
     baseline:
       presentation.currentPlan.features[index] ??
       'Not included in the current plan',
