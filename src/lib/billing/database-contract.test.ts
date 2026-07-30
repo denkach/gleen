@@ -52,6 +52,43 @@ const usageLabelsSql = readFileSync(
 );
 const migrationsDirectory = join(process.cwd(), 'supabase', 'migrations');
 const migrationNames = readdirSync(migrationsDirectory);
+const usageViewAclCorrectionMigrationName = migrationNames.find((name) =>
+  name.endsWith('_den_20_fix_billing_usage_view_privileges.sql'),
+);
+const usageViewAclCorrectionSql =
+  usageViewAclCorrectionMigrationName === undefined
+    ? ''
+    : readFileSync(
+        join(migrationsDirectory, usageViewAclCorrectionMigrationName),
+        'utf8',
+      );
+const protectedUsageViews = [
+  'billing_usage_summary',
+  'billing_usage_activity',
+] as const;
+const replacementAclViolations = migrationNames.flatMap((name) => {
+  const migrationSql = readFileSync(join(migrationsDirectory, name), 'utf8');
+
+  return protectedUsageViews.flatMap((view) => {
+    const replacement = `create or replace view public.${view}`;
+
+    if (!migrationSql.includes(replacement)) {
+      return [];
+    }
+
+    const revoke =
+      `revoke all on public.${view} ` +
+      'from public, anon, authenticated, service_role;';
+    const grant = `grant select on public.${view} to authenticated, service_role;`;
+    const replacementIndex = migrationSql.lastIndexOf(replacement);
+    const revokeIndex = migrationSql.indexOf(revoke, replacementIndex);
+    const grantIndex = migrationSql.indexOf(grant, replacementIndex);
+
+    return revokeIndex > replacementIndex && grantIndex > revokeIndex
+      ? []
+      : [`${name}:${view}`];
+  });
+});
 const exactWebhookPriceMigrationName = migrationNames.find((name) =>
   name.endsWith('_den_20_exact_webhook_price_projection.sql'),
 );
@@ -391,5 +428,37 @@ describe('DEN-20 billing view privilege hardening', () => {
   it('contains no non-select grant', () => {
     expect(viewPrivilegeSql.match(/\bgrant\s+(?!select\b)/g)).toBeNull();
     expect(viewPrivilegeSql.match(/\bgrant\s+select\b/g)).toHaveLength(3);
+  });
+
+  it('records only the applied usage-label replacement as awaiting forward ACL correction', () => {
+    expect(
+      createHash('sha256').update(usageLabelsSql).digest('hex'),
+      'the applied usage-label migration must remain byte-for-byte immutable',
+    ).toBe('6b19284c6f028d67b83ffc13ad97a08a6ef38c9a4344d8f1c867319c4cb07a01');
+    expect(replacementAclViolations).toEqual([
+      '20260730041101_den_20_billing_usage_labels.sql:billing_usage_summary',
+      '20260730041101_den_20_billing_usage_labels.sql:billing_usage_activity',
+    ]);
+  });
+
+  it('repairs both replaced usage views with exact read-only privileges', () => {
+    expect(usageViewAclCorrectionMigrationName).toBeDefined();
+    expect(
+      usageViewAclCorrectionMigrationName?.localeCompare(
+        '20260730041101_den_20_billing_usage_labels.sql',
+      ),
+    ).toBeGreaterThan(0);
+
+    expect(
+      usageViewAclCorrectionSql
+        .split(';')
+        .map((statement) => statement.trim().replace(/\s+/g, ' '))
+        .filter(Boolean),
+    ).toEqual([
+      'revoke all on public.billing_usage_activity from public, anon, authenticated, service_role',
+      'grant select on public.billing_usage_activity to authenticated, service_role',
+      'revoke all on public.billing_usage_summary from public, anon, authenticated, service_role',
+      'grant select on public.billing_usage_summary to authenticated, service_role',
+    ]);
   });
 });
