@@ -1,3 +1,4 @@
+import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { BillingRepository } from './repository';
@@ -19,6 +20,22 @@ import {
   type BillingActionAdminRepository,
   type BillingStripeClient,
 } from './actions';
+
+const nativeCustomCheckoutPayload = {
+  mode: 'subscription',
+  ui_mode: 'custom',
+  customer: 'cus_owned',
+  line_items: [{ price: 'price_server_owned', quantity: 1 }],
+  client_reference_id: 'u1',
+  metadata: {
+    gleen_user_id: 'u1',
+    plan_slug: 'prism-pro',
+    interval: 'year',
+  },
+  subscription_data: { metadata: { gleen_user_id: 'u1' } },
+  return_url:
+    'https://gleen.example/app/subscription/checkout?session_id={CHECKOUT_SESSION_ID}',
+} satisfies Stripe.Checkout.SessionCreateParams;
 
 function createRepository(
   overrides: Partial<BillingRepository> = {},
@@ -124,21 +141,9 @@ describe('billing checkout actions', () => {
       ok: true,
       clientSecret: 'cs_test_client_secret',
     });
-    expect(stripe.checkout.sessions.create).toHaveBeenCalledWith({
-      mode: 'subscription',
-      ui_mode: 'custom',
-      customer: 'cus_owned',
-      line_items: [{ price: 'price_server_owned', quantity: 1 }],
-      client_reference_id: 'u1',
-      metadata: {
-        gleen_user_id: 'u1',
-        plan_slug: 'prism-pro',
-        interval: 'year',
-      },
-      subscription_data: { metadata: { gleen_user_id: 'u1' } },
-      return_url:
-        'https://gleen.example/app/subscription/checkout?session_id={CHECKOUT_SESSION_ID}',
-    });
+    expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
+      nativeCustomCheckoutPayload,
+    );
   });
 
   it('creates and persists a server-owned customer before checkout when no mapping exists', async () => {

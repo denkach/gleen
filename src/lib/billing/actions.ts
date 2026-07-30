@@ -1,5 +1,6 @@
 import 'server-only';
 
+import type Stripe from 'stripe';
 import { z } from 'zod';
 
 import { validatePublicEnv } from '@/env';
@@ -111,16 +112,9 @@ type CsvResult =
 export type BillingStripeClient = Readonly<{
   checkout: Readonly<{
     sessions: Readonly<{
-      create(input: {
-        mode: 'subscription';
-        ui_mode: 'custom';
-        customer: string;
-        line_items: [{ price: string; quantity: 1 }];
-        client_reference_id: string;
-        metadata: Record<string, string>;
-        subscription_data: { metadata: Record<string, string> };
-        return_url: string;
-      }): PromiseLike<Readonly<{ client_secret: string | null }>>;
+      create(
+        input: Stripe.Checkout.SessionCreateParams,
+      ): PromiseLike<Pick<Stripe.Checkout.Session, 'client_secret'>>;
     }>;
   }>;
   billingPortal: Readonly<{
@@ -128,16 +122,14 @@ export type BillingStripeClient = Readonly<{
       create(input: {
         customer: string;
         return_url: string;
-      }): PromiseLike<Readonly<{ url: string }>>;
+      }): PromiseLike<Pick<Stripe.BillingPortal.Session, 'url'>>;
     }>;
   }>;
   customers: Readonly<{
     create(
-      input: {
-        metadata: Record<string, string>;
-      },
-      options: { idempotencyKey: string },
-    ): PromiseLike<Readonly<{ id: string }>>;
+      input: Stripe.CustomerCreateParams,
+      options: Stripe.RequestOptions,
+    ): PromiseLike<Pick<Stripe.Customer, 'id'>>;
   }>;
 }>;
 
@@ -502,7 +494,7 @@ function productionBillingActions(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
 ) {
   return createBillingActions({
-    stripe: createStripeClient() as unknown as BillingStripeClient,
+    stripe: createStripeClient(),
     repository: createSupabaseBillingRepository(
       supabase as unknown as SupabaseBillingClient,
     ),

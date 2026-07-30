@@ -6,7 +6,7 @@
 
 **Architecture:** Supabase Postgres owns plan presentation, entitlement periods, atomic analysis reservations, usage history, and verified billing projections. Stripe Checkout Sessions custom UI, Customer Portal, invoices, and signed idempotent webhooks own payment operations; authenticated Next.js Server Components and server actions expose closed view models to the approved responsive UI.
 
-**Tech Stack:** Next.js 16 App Router, React 19, strict TypeScript, Zod 4, Supabase/Postgres with RLS, Stripe Node 22.3.2, Stripe.js 9.12.1, React Stripe.js 6.8.0, CSS variables, Vitest/Testing Library, Playwright.
+**Tech Stack:** Next.js 16 App Router, React 19, strict TypeScript, Zod 4, Supabase/Postgres with RLS, Stripe Node 20.4.1 (Clover-compatible Custom Checkout), Stripe.js 9.12.1, React Stripe.js 6.8.0, CSS variables, Vitest/Testing Library, Playwright.
 
 ## Global Constraints
 
@@ -127,7 +127,7 @@ Expected: FAIL because the Stripe validators do not exist.
 Run:
 
 ```bash
-npm install --save-exact stripe@22.3.2 @stripe/stripe-js@9.12.1 @stripe/react-stripe-js@6.8.0
+npm install --save-exact stripe@20.4.1 @stripe/stripe-js@9.12.1 @stripe/react-stripe-js@6.8.0
 ```
 
 Implement:

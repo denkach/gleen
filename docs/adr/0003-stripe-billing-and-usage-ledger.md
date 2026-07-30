@@ -23,6 +23,13 @@ subscription objects.
 Checkout Sessions use `ui_mode: 'custom'` with Stripe Elements. Customer Portal
 handles payment method and subscription management.
 
+The server pins `stripe@20.4.1`, whose Clover API declarations natively support
+the approved Custom Checkout mode. This is an intentional compatibility choice:
+the user selected the Clover-compatible SDK instead of changing the approved
+`ui_mode: 'custom'` behavior to Dahlia's renamed `elements` mode. Stripe's API
+version remains the SDK default; application code does not manually pin a
+different API version.
+
 Verified idempotent webhooks are the only paid-entitlement writer. Client
 callbacks, checkout redirects, and portal returns never grant paid access.
 
@@ -44,6 +51,8 @@ continues to apply free-plan limits where no paid entitlement exists.
 - Billing routes must validate Stripe configuration when invoked rather than at
   application startup.
 - Customer-facing subscription management delegates to Stripe Customer Portal.
+- Server Stripe SDK upgrades must preserve native `ui_mode: 'custom'` support
+  or be accompanied by an explicitly approved Checkout behavior migration.
 
 ## Alternatives considered
 
