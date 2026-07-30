@@ -14,6 +14,7 @@ vi.mock('@/lib/supabase/server', () => ({
 import {
   createBillingActions,
   createCheckoutSession,
+  getCheckoutConfirmation,
   createPortalSession,
   exportInvoicesCsv,
   exportUsageCsv,
@@ -66,6 +67,12 @@ function createStripe(): BillingStripeClient {
         create: vi.fn(async () => ({
           client_secret: 'cs_test_client_secret',
         })),
+        retrieve: vi.fn(async () => ({
+          id: 'cs_test_owned',
+          client_reference_id: 'u1',
+          status: 'complete',
+          metadata: { plan_slug: 'prism-pro', interval: 'year' },
+        })) as unknown as BillingStripeClient['checkout']['sessions']['retrieve'],
       },
     },
     billingPortal: {
@@ -226,6 +233,67 @@ describe('billing checkout actions', () => {
       } as never),
     ).resolves.toEqual({ ok: false, code: 'invalid_request' });
     expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+  });
+
+  it('confirms only a completed owned session after the webhook-backed snapshot matches', async () => {
+    const repository = createRepository({
+      getOwnedSnapshot: vi.fn(
+        async () =>
+          ({
+            currentPlan: { slug: 'prism-pro' },
+            currentPrice: { interval: 'year' },
+            paymentSummary: { subscriptionStatus: 'active' },
+          }) as never,
+      ),
+    });
+    const { actions, stripe } = createActions({ repository });
+
+    await expect(
+      actions.getCheckoutConfirmationForUser({
+        userId: 'u1',
+        sessionId: 'cs_test_owned',
+      }),
+    ).resolves.toEqual({ ok: true, confirmed: true });
+    expect(stripe.checkout.sessions.retrieve).toHaveBeenCalledWith(
+      'cs_test_owned',
+    );
+    expect(repository.getOwnedSnapshot).toHaveBeenCalledWith('u1');
+  });
+
+  it('never accepts checkout confirmation identity substitution', async () => {
+    const stripe = createStripe();
+    vi.mocked(stripe.checkout.sessions.retrieve).mockResolvedValue({
+      id: 'cs_test_attacker',
+      client_reference_id: 'attacker',
+      status: 'complete',
+      metadata: { plan_slug: 'prism-pro', interval: 'year' },
+    } as never);
+    const repository = createRepository();
+    const { actions } = createActions({ stripe, repository });
+
+    await expect(
+      actions.getCheckoutConfirmationForUser({
+        userId: 'u1',
+        sessionId: 'cs_test_attacker',
+      }),
+    ).resolves.toEqual({ ok: false, code: 'invalid_request' });
+    expect(repository.getOwnedSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('authenticates checkout confirmation internally and rejects user substitution', async () => {
+    getUser.mockResolvedValue({ data: { user: null } });
+    await expect(getCheckoutConfirmation('cs_test_owned')).resolves.toEqual({
+      ok: false,
+      code: 'session_expired',
+    });
+
+    getUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    await expect(
+      getCheckoutConfirmation({
+        sessionId: 'cs_test_owned',
+        userId: 'attacker',
+      } as never),
+    ).resolves.toEqual({ ok: false, code: 'invalid_request' });
   });
 });
 

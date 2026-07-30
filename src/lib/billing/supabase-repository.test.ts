@@ -56,6 +56,7 @@ function queryReturning(result: {
   const query = {
     select: vi.fn(),
     eq: vi.fn(),
+    neq: vi.fn(),
     gte: vi.fn(),
     lt: vi.fn(),
     lte: vi.fn(),
@@ -71,6 +72,7 @@ function queryReturning(result: {
   for (const method of [
     'select',
     'eq',
+    'neq',
     'gte',
     'lt',
     'lte',
@@ -313,6 +315,7 @@ describe('Supabase billing repository', () => {
       limit: 25,
       search: '',
       status: null,
+      refundedOnly: false,
       year: null,
     });
     await expect(repository.getOwnedCustomerId(userId)).resolves.toBeNull();
@@ -473,6 +476,7 @@ describe('Supabase billing repository', () => {
         limit: 25,
         search: '',
         status: null,
+        refundedOnly: false,
         year: null,
       }),
     ).rejects.toBeInstanceOf(BillingRepositoryError);
@@ -525,6 +529,7 @@ describe('Supabase billing repository', () => {
         limit: 1,
         search: '',
         status: null,
+        refundedOnly: false,
         year: null,
       }),
     ).rejects.toBeInstanceOf(BillingRepositoryError);

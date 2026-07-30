@@ -756,6 +756,422 @@
   color: var(--billing-muted);
 }
 
+.billing-experience .billing-checkout-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px 18px;
+}
+
+.billing-experience .billing-checkout-state small {
+  color: var(--billing-muted);
+}
+
+.billing-experience .billing-checkout-state .billing-button {
+  margin-left: auto;
+}
+
+.billing-experience .billing-checkout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.8fr);
+  gap: 16px;
+}
+
+.billing-experience .billing-checkout-left {
+  display: grid;
+  gap: 13px;
+}
+
+.billing-experience .billing-product-card {
+  display: grid;
+  grid-template-columns: 82px 1fr 310px;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+.billing-experience .billing-product-card .billing-prism {
+  width: 72px;
+  height: 84px;
+}
+
+.billing-experience .billing-product-name,
+.billing-experience .billing-payment-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.billing-experience .billing-product-name {
+  justify-content: flex-start;
+}
+
+.billing-experience .billing-product-features {
+  display: grid;
+  gap: 10px;
+  color: #bbc0ca;
+  font-size: 12px;
+}
+
+.billing-experience .billing-product-features > div {
+  display: flex;
+  gap: 8px;
+}
+
+.billing-experience .billing-product-features > div::before {
+  color: #9e8cff;
+  content: '✓';
+}
+
+.billing-experience .billing-checkout-cycle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+}
+
+.billing-experience .billing-checkout-cycle a {
+  position: relative;
+  min-height: 64px;
+  padding: 12px 20px 8px 47px;
+  border-radius: 11px;
+  color: #a0a6b3;
+  text-decoration: none;
+}
+
+.billing-experience .billing-checkout-cycle a::before {
+  position: absolute;
+  top: 23px;
+  left: 18px;
+  width: 17px;
+  height: 17px;
+  border: 1px solid #566071;
+  border-radius: 50%;
+  content: '';
+}
+
+.billing-experience .billing-checkout-cycle a span,
+.billing-experience .billing-checkout-cycle a small {
+  display: block;
+}
+
+.billing-experience .billing-checkout-cycle a small {
+  color: #6f7786;
+}
+
+.billing-experience .billing-checkout-cycle a b {
+  margin-left: 5px;
+  color: var(--green);
+  font-size: 10px;
+}
+
+.billing-experience .billing-checkout-cycle a.active {
+  background: linear-gradient(
+    120deg,
+    rgba(173, 131, 255, 0.15),
+    rgba(100, 220, 234, 0.06)
+  );
+  box-shadow: inset 0 0 0 1px rgba(173, 131, 255, 0.42);
+  color: #fff;
+}
+
+.billing-experience .billing-checkout-cycle a.active::before {
+  border: 5px solid #e5d9ff;
+  background: #6f4db5;
+}
+
+.billing-experience .billing-included-card,
+.billing-experience .billing-payment-card {
+  padding: 18px;
+}
+
+.billing-experience .billing-included-card .billing-product-features {
+  grid-template-columns: repeat(5, 1fr);
+  margin-top: 15px;
+}
+
+.billing-experience .billing-payment-head {
+  margin-bottom: 14px;
+}
+
+.billing-experience .billing-stripe-elements {
+  display: grid;
+  gap: 16px;
+}
+
+.billing-experience .billing-stripe-skeleton {
+  min-height: 260px;
+  border-radius: 12px;
+  background: #0d1119;
+}
+
+.billing-experience .billing-order-card {
+  position: sticky;
+  top: 88px;
+  align-self: start;
+  display: grid;
+  padding: 22px;
+}
+
+.billing-experience .billing-order-card > .billing-section-title {
+  font-size: 17px;
+}
+
+.billing-experience .billing-order-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 10px 0;
+  color: #a7adb9;
+}
+
+.billing-experience .billing-order-line b {
+  color: #e9eaf0;
+  text-align: right;
+}
+
+.billing-experience .billing-order-discount,
+.billing-experience .billing-order-discount b {
+  color: var(--green);
+}
+
+.billing-experience .billing-order-card hr {
+  width: 100%;
+  margin: 7px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.billing-experience .billing-order-total {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  margin-top: 7px;
+}
+
+.billing-experience .billing-order-total > div {
+  text-align: right;
+}
+
+.billing-experience .billing-order-total strong {
+  font-size: 26px;
+}
+
+.billing-experience .billing-order-card > .billing-button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.billing-experience .billing-secure {
+  margin: 12px 0 4px;
+  color: #737b89;
+  font-size: 11px;
+  text-align: center;
+}
+
+.billing-experience .billing-portal-summary {
+  display: grid;
+  grid-template-columns: 1.25fr repeat(3, 0.8fr);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.billing-experience .billing-portal-summary > div {
+  padding: 20px;
+  border-right: 1px solid var(--line);
+}
+
+.billing-experience .billing-portal-summary > div:last-child {
+  border-right: 0;
+}
+
+.billing-experience .billing-portal-plan {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.billing-experience .billing-portal-plan .billing-prism {
+  width: 58px;
+  height: 66px;
+}
+
+.billing-experience .billing-portal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 13px;
+}
+
+.billing-experience .billing-portal-card {
+  min-height: 230px;
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+}
+
+.billing-experience .billing-portal-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 13px;
+}
+
+.billing-experience .billing-portal-card-head .billing-metric-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+
+.billing-experience .billing-action-list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+}
+
+.billing-experience .billing-action-list > button,
+.billing-experience .billing-action-list > div {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 9px 13px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: #d9dce3;
+  text-align: left;
+}
+
+.billing-experience .billing-action-list > :last-child {
+  border-bottom: 0;
+}
+
+.billing-experience .billing-action-list > button:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.billing-experience .billing-action-arrow {
+  margin-left: auto;
+  color: #8b93a2;
+}
+
+.billing-experience .billing-owned-payment,
+.billing-experience .billing-activity-item > span {
+  display: grid;
+}
+
+.billing-experience .billing-owned-payment small,
+.billing-experience .billing-activity-item small {
+  color: #7e8695;
+}
+
+.billing-experience .billing-foot-note,
+.billing-experience .billing-team-explanation {
+  margin-top: auto;
+  padding-top: 12px;
+  color: #707887;
+  font-size: 11px;
+}
+
+.billing-experience .billing-team-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.billing-experience .billing-activity-item {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.billing-experience .billing-portal-full-button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.billing-experience .billing-help-icon {
+  color: var(--blue);
+}
+
+.billing-experience .billing-positive {
+  color: var(--green);
+}
+
+.billing-experience .billing-invoice-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.billing-experience .billing-invoice-summary > div {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 20px;
+  border-right: 1px solid var(--line);
+}
+
+.billing-experience .billing-invoice-summary > div:last-child {
+  border-right: 0;
+}
+
+.billing-experience .billing-invoice-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 14px;
+}
+
+.billing-experience .billing-invoice-main {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.billing-experience .billing-invoice-toolbar {
+  display: flex;
+  gap: 9px;
+  padding: 13px;
+  border-bottom: 1px solid var(--line);
+}
+
+.billing-experience .billing-invoice-toolbar .billing-search {
+  flex: 1;
+}
+
+.billing-experience .billing-invoice-toolbar select {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0c1119;
+}
+
+.billing-experience .billing-invoice-side {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.billing-experience .billing-invoice-side > .billing-card {
+  padding: 18px;
+}
+
+.billing-experience .billing-invoice-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.billing-experience .billing-invoice-actions a {
+  color: #b7bdc8;
+  font-size: 11px;
+  text-decoration: none;
+}
+
 .billing-experience .billing-visually-hidden {
   position: absolute;
   width: 1px;
@@ -778,11 +1194,14 @@
 
 @media (max-width: 1120px) {
   .billing-experience .billing-subscription-layout,
-  .billing-experience .billing-usage-layout {
+  .billing-experience .billing-usage-layout,
+  .billing-experience .billing-invoice-layout,
+  .billing-experience .billing-checkout-grid {
     grid-template-columns: 1fr;
   }
 
-  .billing-experience .billing-summary {
+  .billing-experience .billing-summary,
+  .billing-experience .billing-order-card {
     position: static;
   }
 
@@ -792,6 +1211,19 @@
 
   .billing-experience .billing-usage-side {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .billing-experience .billing-portal-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .billing-experience .billing-product-card {
+    grid-template-columns: 72px 1fr;
+  }
+
+  .billing-experience .billing-product-card .billing-product-features {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -805,12 +1237,16 @@
   }
 
   .billing-experience .billing-plan-overview,
-  .billing-experience .billing-usage-metrics {
+  .billing-experience .billing-usage-metrics,
+  .billing-experience .billing-portal-summary,
+  .billing-experience .billing-invoice-summary {
     grid-template-columns: 1fr 1fr;
   }
 
   .billing-experience .billing-plan-overview > div,
-  .billing-experience .billing-usage-metrics > div {
+  .billing-experience .billing-usage-metrics > div,
+  .billing-experience .billing-portal-summary > div,
+  .billing-experience .billing-invoice-summary > div {
     padding: 15px;
     border-right: 0;
     border-bottom: 1px solid var(--line);
@@ -878,6 +1314,58 @@
   .billing-experience .billing-usage-side {
     grid-template-columns: 1fr;
     margin-top: 12px;
+  }
+
+  .billing-experience .billing-product-card {
+    grid-template-columns: 60px 1fr;
+    padding: 16px;
+  }
+
+  .billing-experience .billing-product-card .billing-prism {
+    width: 56px;
+    height: 65px;
+  }
+
+  .billing-experience .billing-product-card .billing-product-features {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .billing-experience .billing-checkout-cycle {
+    margin-top: 11px;
+  }
+
+  .billing-experience .billing-checkout-cycle a {
+    padding-right: 12px;
+  }
+
+  .billing-experience .billing-included-card .billing-product-features {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .billing-experience .billing-order-card,
+  .billing-experience .billing-invoice-side {
+    margin-top: 12px;
+  }
+
+  .billing-experience .billing-portal-plan {
+    display: block;
+  }
+
+  .billing-experience .billing-portal-plan .billing-prism {
+    float: left;
+    margin-right: 13px;
+  }
+
+  .billing-experience .billing-portal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-experience .billing-portal-card {
+    min-height: auto;
+  }
+
+  .billing-experience .billing-invoice-toolbar {
+    overflow-x: auto;
   }
 }
 

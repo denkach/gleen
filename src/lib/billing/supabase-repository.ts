@@ -31,6 +31,7 @@ type SupabaseResult = Readonly<{
 type Query = Readonly<{
   select(columns?: string, options?: Readonly<{ count: 'exact' }>): Query;
   eq(column: string, value: unknown): Query;
+  neq(column: string, value: unknown): Query;
   gte(column: string, value: unknown): Query;
   lt(column: string, value: unknown): Query;
   lte(column: string, value: unknown): Query;
@@ -316,6 +317,9 @@ export function createSupabaseBillingRepository(
         query = query.ilike('invoice_number', `%${parsed.search}%`);
       }
       if (parsed.status !== null) query = query.eq('status', parsed.status);
+      if (parsed.refundedOnly) {
+        query = query.neq('refund_status', 'none');
+      }
       if (parsed.year !== null) {
         query = query
           .gte('invoice_created_at', `${parsed.year}-01-01T00:00:00.000Z`)

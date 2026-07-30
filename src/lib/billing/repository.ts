@@ -43,6 +43,7 @@ export const invoiceQuerySchema = z
     limit: z.number().int().min(1).max(100).default(25),
     search: z.string().trim().max(200).default(''),
     status: invoiceStatusSchema.nullable().default(null),
+    refundedOnly: z.boolean().default(false),
     year: z.number().int().min(2000).max(9999).nullable().default(null),
   })
   .strict()

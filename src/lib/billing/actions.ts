@@ -36,6 +36,17 @@ const checkoutInputSchema = z
   })
   .strict();
 const checkoutActionInputSchema = checkoutInputSchema.omit({ userId: true });
+const checkoutConfirmationInputSchema = z
+  .object({
+    userId: z.string().trim().min(1),
+    sessionId: z
+      .string()
+      .trim()
+      .regex(/^cs_[A-Za-z0-9_]+$/),
+  })
+  .strict();
+const checkoutConfirmationActionInputSchema =
+  checkoutConfirmationInputSchema.omit({ userId: true });
 
 const portalInputSchema = z
   .object({ userId: z.string().trim().min(1) })
@@ -54,7 +65,10 @@ const usageExportFilterSchema = z
 const invoiceExportFilterSchema = z
   .object({
     search: z.string().trim().max(200).default(''),
-    status: invoiceStatusSchema.nullable().default(null),
+    status: z
+      .union([invoiceStatusSchema, z.literal('refunded')])
+      .nullable()
+      .default(null),
     year: z.number().int().min(2000).max(9999).nullable().default(null),
   })
   .strict();
@@ -103,6 +117,8 @@ type ActionErrorCode =
 type ActionError = Readonly<{ ok: false; code: ActionErrorCode }>;
 type CheckoutResult =
   Readonly<{ ok: true; clientSecret: string }> | ActionError;
+type CheckoutConfirmationResult =
+  Readonly<{ ok: true; confirmed: boolean }> | ActionError;
 type PortalResult = Readonly<{ ok: true; url: string }> | ActionError;
 export type PaymentMethodResult =
   Readonly<{ ok: true; paymentMethod: BillingPaymentMethod }> | ActionError;
@@ -121,6 +137,14 @@ export type BillingStripeClient = Readonly<{
       create(
         input: Stripe.Checkout.SessionCreateParams,
       ): PromiseLike<Pick<Stripe.Checkout.Session, 'client_secret'>>;
+      retrieve(
+        sessionId: string,
+      ): PromiseLike<
+        Pick<
+          Stripe.Checkout.Session,
+          'id' | 'client_reference_id' | 'status' | 'metadata'
+        >
+      >;
     }>;
   }>;
   billingPortal: Readonly<{
@@ -295,6 +319,47 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
           ok: true,
           clientSecret: stripeClientSecretSchema.parse(session.client_secret),
         };
+      } catch {
+        return actionFailure('billing_unavailable');
+      }
+    },
+
+    async getCheckoutConfirmationForUser(
+      input: unknown,
+    ): Promise<CheckoutConfirmationResult> {
+      const parsed = checkoutConfirmationInputSchema.safeParse(input);
+      if (!parsed.success) return actionFailure('invalid_request');
+
+      try {
+        const session = await dependencies.stripe.checkout.sessions.retrieve(
+          parsed.data.sessionId,
+        );
+        if (
+          session.client_reference_id !== parsed.data.userId ||
+          session.status !== 'complete'
+        ) {
+          return session.client_reference_id === parsed.data.userId
+            ? { ok: true, confirmed: false }
+            : actionFailure('invalid_request');
+        }
+        const plan = billingPlanSlugSchema.safeParse(
+          session.metadata?.plan_slug,
+        );
+        const interval = billingIntervalSchema.safeParse(
+          session.metadata?.interval,
+        );
+        if (!plan.success || !interval.success) {
+          return actionFailure('invalid_request');
+        }
+        const snapshot = await dependencies.repository.getOwnedSnapshot(
+          parsed.data.userId,
+        );
+        const webhookProjectionMatches =
+          snapshot.currentPlan.slug === plan.data &&
+          snapshot.currentPrice?.interval === interval.data &&
+          (snapshot.paymentSummary.subscriptionStatus === 'active' ||
+            snapshot.paymentSummary.subscriptionStatus === 'trialing');
+        return { ok: true, confirmed: webhookProjectionMatches };
       } catch {
         return actionFailure('billing_unavailable');
       }
@@ -516,11 +581,15 @@ async function exportInvoicesWithRepository(
   const parsed = invoiceExportInputSchema.safeParse(input);
   if (!parsed.success) return actionFailure('invalid_request');
   try {
-    const rows = await allInvoiceRows(
-      repository,
-      parsed.data.userId,
-      parsed.data.filters,
-    );
+    const rows = await allInvoiceRows(repository, parsed.data.userId, {
+      search: parsed.data.filters.search,
+      status:
+        parsed.data.filters.status === 'refunded'
+          ? null
+          : parsed.data.filters.status,
+      refundedOnly: parsed.data.filters.status === 'refunded',
+      year: parsed.data.filters.year,
+    });
     return {
       ok: true,
       filename: 'gleen-invoices.csv',
@@ -592,6 +661,24 @@ export async function createCheckoutSession(
   return productionBillingActions(context.supabase).createCheckoutForUser({
     userId: context.userId,
     ...parsed.data,
+  });
+}
+
+export async function getCheckoutConfirmation(
+  input: unknown,
+): Promise<CheckoutConfirmationResult> {
+  'use server';
+  const context = await authenticatedContext();
+  if (context === null) return actionFailure('session_expired');
+  const parsed = checkoutConfirmationActionInputSchema.safeParse(
+    typeof input === 'string' ? { sessionId: input } : input,
+  );
+  if (!parsed.success) return actionFailure('invalid_request');
+  return productionBillingActions(
+    context.supabase,
+  ).getCheckoutConfirmationForUser({
+    userId: context.userId,
+    sessionId: parsed.data.sessionId,
   });
 }
 
