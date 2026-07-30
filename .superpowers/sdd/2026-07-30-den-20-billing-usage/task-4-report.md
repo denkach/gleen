@@ -226,3 +226,90 @@ advisors, migration list, and live SQL/RLS/RPC query checks require the
 controller's staged Supabase validation before merge. Static migration
 contracts pass, and the SQL received a manual security/idempotency review, but
 this report does not claim live database execution.
+
+## Fix round 1
+
+Status: DONE_WITH_CONCERNS
+
+Commit: `fix(den-20): harden billing usage boundaries`
+
+### Findings addressed
+
+1. Workflow start and run attachment now have separate error boundaries.
+   `workflow.start()` failure still persists `workflow_start_failed` and
+   releases the reservation. Once a durable run exists, attachment failure
+   returns that run ID without marking the job failed or releasing usage. The
+   workflow can continue from its durable `jobId` input and later settle the
+   preserved reservation.
+2. Webhook claims now use a bounded five-minute processing lease. A fresh
+   `processing` row is a duplicate. A `failed` row is retryable immediately.
+   A `processing` row is reclaimable only when `updated_at` is at least five
+   minutes old. The single conditional update increments attempts and refreshes
+   `updated_at`, so concurrent stale reclaimers serialize and only one retains
+   the lease predicate.
+3. Every owner-specific parsed boundary validates its returned `user_id`
+   against the requested owner before mapping: overview, complete usage
+   summary, recent activity, payment summaries, customer, usage pages, and
+   invoice pages.
+4. Privileged webhook projection construction moved to
+   `supabase-projection-repository.ts`. That module starts with
+   `import 'server-only'` and accepts the distinct branded
+   `SupabaseBillingAdminClient`. The generally importable owner repository no
+   longer exports a projection factory and its client type no longer exposes
+   `rpc()`.
+5. Exact-count pagination fails closed unless Supabase returns a non-negative
+   safe integer consistent with the current offset and visible rows. Usage and
+   invoice pages never substitute fetched/lookahead row length for a missing
+   exact count.
+
+### RED evidence
+
+The first focused run failed exactly at the reviewed boundaries:
+
+- attach-after-start rejected with `AnalysisWorkflowStartError` and entered the
+  release path instead of returning the existing run;
+- the migration lease contract found the unconditional
+  `processing_status in ('failed', 'processing')` claim;
+- a later usage page with `count: null` resolved with an inflated fallback
+  total instead of rejecting;
+- the owner module still exported
+  `createSupabaseBillingProjectionRepository`;
+- the new server-only projection module did not yet exist.
+
+After replacing an initially incomplete cross-owner fixture with a fully valid
+snapshot fixture, two additional intended RED failures proved that cross-owner
+recent activity and payment rows were accepted into an otherwise valid
+snapshot.
+
+### GREEN evidence
+
+- Focused start, workflow, owner repository, projection repository, and
+  migration suites: 5 files, 33 tests passed.
+- Full unit/integration suite: 123 files, 1043 tests passed.
+- Strict TypeScript: passed.
+- ESLint: passed.
+- Focused Prettier check: passed.
+- `git diff --check`: passed.
+- Production build with non-secret placeholder public environment: compiled,
+  typechecked, and generated 24/24 pages.
+
+### Fix-round self-review
+
+- Confirmed no path after a returned workflow run calls `ledger.release()`.
+- Confirmed start failure behavior and complete/partial settlement behavior
+  remain unchanged.
+- Confirmed fresh processing claims cannot satisfy the reclaim update, failed
+  claims can, and stale processing claims require an explicit bounded timeout.
+- Confirmed the lease update increments attempts and the existing
+  `updated_at` trigger renews the lease atomically.
+- Confirmed owner validation happens before every mapping operation.
+- Confirmed owner code cannot construct privileged projection repositories and
+  the admin brand is not part of the owner client contract.
+- Confirmed both usage and invoice pagination reject absent exact counts.
+- Did not address the two recorded Minor findings, as directed.
+
+### Remaining concern
+
+The existing Docker limitation remains: the controller must stage-run the
+amended, not-yet-applied migration and database advisors. No additional
+migration was created.

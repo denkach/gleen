@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   BillingRepositoryError,
-  createSupabaseBillingProjectionRepository,
   createSupabaseBillingRepository,
   type SupabaseBillingClient,
 } from './supabase-repository';
@@ -10,6 +9,40 @@ import {
 const userId = '11111111-1111-4111-8111-111111111111';
 const now = '2026-07-30T00:00:00.000Z';
 const reset = '2026-08-01T00:00:00.000Z';
+const otherUserId = '99999999-9999-4999-8999-999999999999';
+
+const activityRow = {
+  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  user_id: userId,
+  plan_slug: 'free',
+  event_type: 'reservation',
+  quantity: -1,
+  status: 'reserved',
+  remaining_balance: 2,
+  occurred_at: now,
+  job_id: null,
+  analysis_id: null,
+} as const;
+
+const invoiceRow = {
+  id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  user_id: userId,
+  invoice_number: 'INV-1',
+  plan_slug: 'starter',
+  plan_name: 'Starter',
+  billing_interval: 'month',
+  amount_due_minor: 1900,
+  amount_paid_minor: 0,
+  currency: 'usd',
+  status: 'open',
+  invoice_created_at: now,
+  due_at: null,
+  paid_at: null,
+  hosted_invoice_url: null,
+  invoice_pdf_url: null,
+  refund_status: 'none',
+  refunded_amount_minor: 0,
+} as const;
 
 function queryReturning(result: {
   data: unknown;
@@ -43,6 +76,92 @@ function queryReturning(result: {
     query[method].mockReturnValue(query);
   }
   return query;
+}
+
+function snapshotClient(
+  activityData: unknown[] = [],
+  paymentData: unknown[] = [],
+) {
+  const results = {
+    billing_plan_catalog: queryReturning({
+      data: [
+        {
+          slug: 'free',
+          display_name: 'Free',
+          description: 'For exploring Gleen.',
+          analysis_limit: 3,
+          features: ['3 analyses per month'],
+          display_order: 0,
+          is_default: true,
+          is_purchasable: false,
+          billing_interval: null,
+          currency: null,
+          unit_amount_minor: null,
+          monthly_equivalent_minor: null,
+          comparison_copy: null,
+          savings_copy: null,
+        },
+        {
+          slug: 'starter',
+          display_name: 'Starter',
+          description: 'For individuals.',
+          analysis_limit: 10,
+          features: ['10 analyses per month'],
+          display_order: 1,
+          is_default: false,
+          is_purchasable: true,
+          billing_interval: 'month',
+          currency: 'usd',
+          unit_amount_minor: 1900,
+          monthly_equivalent_minor: 1900,
+          comparison_copy: null,
+          savings_copy: null,
+        },
+      ],
+      error: null,
+    }),
+    billing_subscription_overview: queryReturning({
+      data: {
+        user_id: userId,
+        plan_slug: 'free',
+        plan_name: 'Free',
+        plan_description: 'For exploring Gleen.',
+        analysis_limit: 3,
+        used_analyses: 2,
+        remaining_analyses: 1,
+        period_start: now,
+        resets_at: reset,
+        subscription_status: null,
+        billing_interval: null,
+        cancel_at_period_end: null,
+        cancellation_effective_at: null,
+        scheduled_plan_slug: null,
+        scheduled_change_at: null,
+        paid_through: null,
+      },
+      error: null,
+    }),
+    billing_usage_summary: queryReturning({
+      data: {
+        user_id: userId,
+        settled_analyses: 1,
+        reserved_analyses: 1,
+      },
+      error: null,
+    }),
+    billing_usage_activity: queryReturning({
+      data: activityData,
+      error: null,
+    }),
+    billing_payment_summary: queryReturning({
+      data: paymentData,
+      error: null,
+    }),
+  };
+  return {
+    from: vi.fn((view: string) => results[view as keyof typeof results]),
+    rpc: vi.fn(),
+  };
 }
 
 describe('Supabase billing repository', () => {
@@ -193,44 +312,145 @@ describe('Supabase billing repository', () => {
     expect(invoices.eq).toHaveBeenCalledWith('user_id', userId);
     expect(customer.eq).toHaveBeenCalledWith('user_id', userId);
   });
-});
 
-describe('Supabase billing projection repository', () => {
-  it('uses only privileged atomic RPCs for webhook state changes', async () => {
-    const admin = {
-      from: vi.fn(),
-      rpc: vi
-        .fn()
-        .mockResolvedValueOnce({ data: true, error: null })
-        .mockResolvedValue({ data: null, error: null }),
-    };
-    const repository = createSupabaseBillingProjectionRepository(
-      admin as unknown as SupabaseBillingClient,
+  it('rejects cross-owner activity in an otherwise valid snapshot', async () => {
+    const baseClient = snapshotClient([
+      { ...activityRow, user_id: otherUserId },
+    ]);
+
+    await expect(
+      createSupabaseBillingRepository(
+        baseClient as unknown as SupabaseBillingClient,
+      ).getOwnedSnapshot(userId),
+    ).rejects.toBeInstanceOf(BillingRepositoryError);
+  });
+
+  it('rejects cross-owner payments in an otherwise valid snapshot', async () => {
+    const baseClient = snapshotClient(
+      [],
+      [
+        {
+          user_id: otherUserId,
+          currency: 'usd',
+          outstanding_amount_minor: 1900,
+        },
+      ],
     );
 
     await expect(
-      repository.claimWebhookEvent({
-        eventId: 'evt_1',
-        type: 'invoice.paid',
-        createdAt: now,
-      }),
-    ).resolves.toBe('claimed');
-    await repository.markWebhookProcessed('evt_1');
+      createSupabaseBillingRepository(
+        baseClient as unknown as SupabaseBillingClient,
+      ).getOwnedSnapshot(userId),
+    ).rejects.toBeInstanceOf(BillingRepositoryError);
+  });
 
-    expect(admin.from).not.toHaveBeenCalled();
-    expect(admin.rpc).toHaveBeenNthCalledWith(
-      1,
-      'claim_billing_webhook_event',
-      {
-        target_event_id: 'evt_1',
-        target_event_type: 'invoice.paid',
-        target_created_at: now,
+  it('rejects cross-owner usage, invoice, and customer rows', async () => {
+    const usage = queryReturning({
+      data: [{ ...activityRow, user_id: otherUserId }],
+      error: null,
+      count: 1,
+    });
+    const invoices = queryReturning({
+      data: [{ ...invoiceRow, user_id: otherUserId }],
+      error: null,
+      count: 1,
+    });
+    const customer = queryReturning({
+      data: {
+        user_id: otherUserId,
+        stripe_customer_id: 'cus_other',
       },
+      error: null,
+    });
+    const client = {
+      from: vi.fn((view: string) => {
+        if (view === 'billing_usage_activity') return usage;
+        if (view === 'billing_invoice_history') return invoices;
+        return customer;
+      }),
+      rpc: vi.fn(),
+    };
+    const repository = createSupabaseBillingRepository(
+      client as unknown as SupabaseBillingClient,
     );
-    expect(admin.rpc).toHaveBeenNthCalledWith(
-      2,
-      'mark_billing_webhook_processed',
-      { target_event_id: 'evt_1' },
+
+    await expect(
+      repository.listOwnedUsage(userId, {
+        cursor: null,
+        limit: 25,
+        search: '',
+        eventType: null,
+        periodStart: null,
+        periodEnd: null,
+      }),
+    ).rejects.toBeInstanceOf(BillingRepositoryError);
+    await expect(
+      repository.listOwnedInvoices(userId, {
+        cursor: null,
+        limit: 25,
+        search: '',
+        status: null,
+        year: null,
+      }),
+    ).rejects.toBeInstanceOf(BillingRepositoryError);
+    await expect(repository.getOwnedCustomerId(userId)).rejects.toBeInstanceOf(
+      BillingRepositoryError,
+    );
+  });
+
+  it('fails closed when an exact later-page count is absent', async () => {
+    const usage = queryReturning({
+      data: [activityRow],
+      error: null,
+      count: null,
+    });
+    const client = {
+      from: vi.fn().mockReturnValue(usage),
+      rpc: vi.fn(),
+    };
+
+    await expect(
+      createSupabaseBillingRepository(
+        client as unknown as SupabaseBillingClient,
+      ).listOwnedUsage(userId, {
+        cursor: '25',
+        limit: 1,
+        search: '',
+        eventType: null,
+        periodStart: null,
+        periodEnd: null,
+      }),
+    ).rejects.toBeInstanceOf(BillingRepositoryError);
+  });
+
+  it('fails closed when an exact invoice count is absent', async () => {
+    const invoices = queryReturning({
+      data: [invoiceRow],
+      error: null,
+      count: null,
+    });
+    const client = {
+      from: vi.fn().mockReturnValue(invoices),
+      rpc: vi.fn(),
+    };
+
+    await expect(
+      createSupabaseBillingRepository(
+        client as unknown as SupabaseBillingClient,
+      ).listOwnedInvoices(userId, {
+        cursor: null,
+        limit: 1,
+        search: '',
+        status: null,
+        year: null,
+      }),
+    ).rejects.toBeInstanceOf(BillingRepositoryError);
+  });
+
+  it('does not export privileged projection construction', async () => {
+    const ownerModule = await import('./supabase-repository');
+    expect(ownerModule).not.toHaveProperty(
+      'createSupabaseBillingProjectionRepository',
     );
   });
 });

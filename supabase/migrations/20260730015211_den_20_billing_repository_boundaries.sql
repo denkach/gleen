@@ -108,7 +108,13 @@ begin
   where webhook.stripe_event_id = target_event_id
     and webhook.event_type = target_event_type
     and webhook.stripe_created_at = target_created_at
-    and webhook.processing_status in ('failed', 'processing')
+    and (
+      webhook.processing_status = 'failed'
+      or (
+        webhook.processing_status = 'processing'
+        and webhook.updated_at <= pg_catalog.now() - interval '5 minutes'
+      )
+    )
   returning true into claimed;
 
   return coalesce(claimed, false);

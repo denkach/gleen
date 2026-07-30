@@ -200,4 +200,25 @@ describe('DEN-20 billing repository database boundaries', () => {
     expect(repositoryBoundarySql).toContain("is distinct from 'service_role'");
     expect(repositoryBoundarySql).toContain('revoke all on function');
   });
+
+  it('leases webhook claims without admitting concurrent fresh processing', () => {
+    const claimStart = repositoryBoundarySql.indexOf(
+      'create function public.claim_billing_webhook_event',
+    );
+    const claimEnd = repositoryBoundarySql.indexOf(
+      'create function public.apply_billing_subscription_projection',
+    );
+    const claim = repositoryBoundarySql.slice(claimStart, claimEnd);
+
+    expect(claim).toContain("webhook.processing_status = 'failed'");
+    expect(claim).toContain("webhook.processing_status = 'processing'");
+    expect(claim).toContain("interval '5 minutes'");
+    expect(claim).toContain('webhook.updated_at <=');
+    expect(claim).toContain(
+      'processing_attempts = webhook.processing_attempts + 1',
+    );
+    expect(claim).not.toContain(
+      "webhook.processing_status in ('failed', 'processing')",
+    );
+  });
 });

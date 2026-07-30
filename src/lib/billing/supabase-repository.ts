@@ -16,12 +16,8 @@ import {
   type BillingUsageActivityRow,
 } from './domain';
 import {
-  billingWebhookEventSchema,
-  invoiceProjectionSchema,
   invoiceQuerySchema,
-  subscriptionProjectionSchema,
   usageQuerySchema,
-  type BillingProjectionRepository,
   type BillingRepository,
 } from './repository';
 
@@ -52,10 +48,6 @@ type Query = Readonly<{
 
 export type SupabaseBillingClient = Readonly<{
   from(view: string): Query;
-  rpc(
-    functionName: string,
-    arguments_: Readonly<Record<string, unknown>>,
-  ): PromiseLike<SupabaseResult>;
 }>;
 
 export class BillingRepositoryError extends Error {
@@ -94,6 +86,23 @@ function parseOffset(cursor: string | null): number {
   const offset = Number(cursor);
   if (!Number.isSafeInteger(offset)) throw new BillingRepositoryError();
   return offset;
+}
+
+function exactCountOrThrow(
+  result: SupabaseResult,
+  offset: number,
+  visibleRows: number,
+): number {
+  const count = result.count;
+  if (
+    typeof count !== 'number' ||
+    !Number.isSafeInteger(count) ||
+    count < 0 ||
+    count < offset + visibleRows
+  ) {
+    throw new BillingRepositoryError();
+  }
+  return count;
 }
 
 function mapActivity(row: BillingUsageActivityRow) {
@@ -176,6 +185,8 @@ export function createSupabaseBillingRepository(
         if (
           overview.user_id !== userId ||
           usage.user_id !== userId ||
+          activity.some((row) => row.user_id !== userId) ||
+          payments.some((row) => row.user_id !== userId) ||
           overview.used_analyses !==
             usage.settled_analyses + usage.reserved_analyses
         ) {
@@ -277,10 +288,11 @@ export function createSupabaseBillingRepository(
           throw new BillingRepositoryError();
         }
         const hasNext = rows.length > parsed.limit;
+        const items = rows.slice(0, parsed.limit);
         return usageLedgerPageSchema.parse({
-          items: rows.slice(0, parsed.limit).map(mapActivity),
+          items: items.map(mapActivity),
           nextCursor: hasNext ? String(offset + parsed.limit) : null,
-          totalCount: result.count ?? rows.length,
+          totalCount: exactCountOrThrow(result, offset, items.length),
         });
       } catch (error) {
         if (error instanceof BillingRepositoryError) throw error;
@@ -317,8 +329,9 @@ export function createSupabaseBillingRepository(
           throw new BillingRepositoryError();
         }
         const hasNext = rows.length > parsed.limit;
+        const items = rows.slice(0, parsed.limit);
         return invoicePageSchema.parse({
-          items: rows.slice(0, parsed.limit).map((row) => ({
+          items: items.map((row) => ({
             id: row.id,
             number: row.invoice_number,
             planSlug: row.plan_slug,
@@ -337,7 +350,7 @@ export function createSupabaseBillingRepository(
             refundedAmountMinor: row.refunded_amount_minor,
           })),
           nextCursor: hasNext ? String(offset + parsed.limit) : null,
-          totalCount: result.count ?? rows.length,
+          totalCount: exactCountOrThrow(result, offset, items.length),
         });
       } catch (error) {
         if (error instanceof BillingRepositoryError) throw error;
@@ -356,97 +369,6 @@ export function createSupabaseBillingRepository(
       const row = parseBoundary(billingCustomerOverviewRowSchema, result);
       if (row.user_id !== userId) throw new BillingRepositoryError();
       return row.stripe_customer_id;
-    },
-  };
-}
-
-function rpcSuccess(result: SupabaseResult): unknown {
-  if (result.error !== null) throw new BillingRepositoryError();
-  return result.data;
-}
-
-export function createSupabaseBillingProjectionRepository(
-  adminClient: SupabaseBillingClient,
-): BillingProjectionRepository {
-  return {
-    async claimWebhookEvent(input) {
-      const event = parseValue(billingWebhookEventSchema, input);
-      const data = rpcSuccess(
-        await adminClient.rpc('claim_billing_webhook_event', {
-          target_event_id: event.eventId,
-          target_event_type: event.type,
-          target_created_at: event.createdAt,
-        }),
-      );
-      if (typeof data !== 'boolean') throw new BillingRepositoryError();
-      return data ? 'claimed' : 'duplicate';
-    },
-
-    async applySubscription(input) {
-      const projection = parseValue(subscriptionProjectionSchema, input);
-      rpcSuccess(
-        await adminClient.rpc('apply_billing_subscription_projection', {
-          target_event_id: projection.eventId,
-          target_event_created_at: projection.eventCreatedAt,
-          target_user_id: projection.userId,
-          target_external_subscription_id: projection.externalSubscriptionId,
-          target_plan_slug: projection.planSlug,
-          target_interval: projection.interval,
-          target_status: projection.status,
-          target_period_start: projection.currentPeriodStart,
-          target_period_end: projection.currentPeriodEnd,
-          target_trial_ends_at: projection.trialEndsAt,
-          target_cancel_at_period_end: projection.cancelAtPeriodEnd,
-          target_cancellation_effective_at: projection.cancellationEffectiveAt,
-          target_scheduled_plan_slug: projection.scheduledPlanSlug,
-          target_scheduled_change_at: projection.scheduledChangeAt,
-          target_paid_through: projection.paidThrough,
-        }),
-      );
-    },
-
-    async applyInvoice(input) {
-      const projection = parseValue(invoiceProjectionSchema, input);
-      rpcSuccess(
-        await adminClient.rpc('apply_billing_invoice_projection', {
-          target_event_id: projection.eventId,
-          target_event_created_at: projection.eventCreatedAt,
-          target_user_id: projection.userId,
-          target_external_invoice_id: projection.externalInvoiceId,
-          target_external_subscription_id: projection.externalSubscriptionId,
-          target_number: projection.number,
-          target_plan_slug: projection.planSlug,
-          target_interval: projection.interval,
-          target_amount_due_minor: projection.amountDueMinor,
-          target_amount_paid_minor: projection.amountPaidMinor,
-          target_currency: projection.currency,
-          target_status: projection.status,
-          target_created_at: projection.createdAt,
-          target_due_at: projection.dueAt,
-          target_paid_at: projection.paidAt,
-          target_hosted_url: projection.hostedUrl,
-          target_pdf_url: projection.pdfUrl,
-          target_refund_status: projection.refundStatus,
-          target_refunded_amount_minor: projection.refundedAmountMinor,
-        }),
-      );
-    },
-
-    async markWebhookProcessed(eventId) {
-      rpcSuccess(
-        await adminClient.rpc('mark_billing_webhook_processed', {
-          target_event_id: eventId,
-        }),
-      );
-    },
-
-    async markWebhookFailed(eventId, code) {
-      rpcSuccess(
-        await adminClient.rpc('mark_billing_webhook_failed', {
-          target_event_id: eventId,
-          target_error_code: code,
-        }),
-      );
     },
   };
 }
