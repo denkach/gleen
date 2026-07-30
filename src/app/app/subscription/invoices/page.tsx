@@ -59,7 +59,7 @@ export default async function InvoicesPage({
         refundedOnly: query.status === 'refunded',
         year: query.year,
       }),
-      repository.getOwnedInvoiceSummary(user.id, query.year ?? currentYear),
+      repository.getOwnedInvoiceSummary(user.id, currentYear),
     ]);
     const presentedSubscription = toSubscriptionPresentation(snapshot);
     subscription = {

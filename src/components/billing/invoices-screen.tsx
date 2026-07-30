@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
 import type { InvoiceStatus } from '@/lib/billing/domain';
@@ -134,6 +134,14 @@ export function InvoicesScreen({
 }>) {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   if (subscription === null || invoices === null || summary === null) {
     return (
@@ -183,6 +191,7 @@ export function InvoicesScreen({
         status: query.status,
         year: query.year,
       });
+      if (!mounted.current) return;
       if (!result.ok) {
         setExportError(true);
         return;
@@ -195,9 +204,9 @@ export function InvoicesScreen({
       anchor.click();
       URL.revokeObjectURL(url);
     } catch {
-      setExportError(true);
+      if (mounted.current) setExportError(true);
     } finally {
-      setExporting(false);
+      if (mounted.current) setExporting(false);
     }
   }
 

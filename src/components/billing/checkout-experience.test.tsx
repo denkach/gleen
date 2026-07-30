@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -144,5 +150,43 @@ describe('CheckoutExperience rejection and cleanup', () => {
       ).toBeInTheDocument(),
     );
     expect(screen.getByRole('button', { name: 'Start Starter' })).toBeEnabled();
+  });
+
+  it('suppresses Stripe confirmation side effects after unmount', async () => {
+    let rejectConfirm!: (reason: Error) => void;
+    const confirm = vi.fn(
+      () =>
+        new Promise<never>((_resolve, reject) => {
+          rejectConfirm = reject;
+        }),
+    );
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    useCheckoutElements.mockReturnValue(readyCheckout(confirm));
+    const view = render(
+      <CheckoutExperience
+        presentation={presentation}
+        prices={[presentation.price]}
+        publishableKey="pk_test_checkout"
+        sessionId={null}
+        createCheckout={vi.fn().mockResolvedValue({
+          ok: true,
+          clientSecret: 'cs_test_secret',
+        })}
+        getConfirmation={vi.fn()}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Start Starter' }),
+    );
+    view.unmount();
+    await act(async () => {
+      rejectConfirm(new Error('late Stripe failure'));
+      await Promise.resolve();
+    });
+
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });

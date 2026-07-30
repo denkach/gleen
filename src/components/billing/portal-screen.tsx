@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type {
   InvoicePresentation,
@@ -72,6 +72,14 @@ export function PortalScreen({
 }>) {
   const [opening, setOpening] = useState(false);
   const [actionError, setActionError] = useState(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   async function launchPortal() {
     if (opening) return;
@@ -79,15 +87,16 @@ export function PortalScreen({
     setActionError(false);
     try {
       const result = await portalAction();
+      if (!mounted.current) return;
       if (!result.ok) {
         setActionError(true);
         return;
       }
       openPortal(result.url);
     } catch {
-      setActionError(true);
+      if (mounted.current) setActionError(true);
     } finally {
-      setOpening(false);
+      if (mounted.current) setOpening(false);
     }
   }
 

@@ -7,7 +7,7 @@ import {
   useCheckoutElements,
 } from '@stripe/react-stripe-js/checkout';
 import { loadStripe } from '@stripe/stripe-js/pure';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   CheckoutPresentation,
@@ -42,6 +42,14 @@ function CheckoutElements({
   const result = useCheckoutElements();
   const [submitting, setSubmitting] = useState(false);
   const [confirmationError, setConfirmationError] = useState(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   if (result.type === 'loading') {
     return (
@@ -82,11 +90,13 @@ function CheckoutElements({
     setConfirmationError(false);
     try {
       const confirmation = await checkout.confirm();
-      if (confirmation.type === 'error') setConfirmationError(true);
+      if (mounted.current && confirmation.type === 'error') {
+        setConfirmationError(true);
+      }
     } catch {
-      setConfirmationError(true);
+      if (mounted.current) setConfirmationError(true);
     } finally {
-      setSubmitting(false);
+      if (mounted.current) setSubmitting(false);
     }
   }
 

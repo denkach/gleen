@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -240,6 +246,41 @@ describe('PortalScreen', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Stripe’s billing portal could not be opened.',
     );
+  });
+
+  it('suppresses every Portal side effect when the action settles after unmount', async () => {
+    let resolvePortal!: (result: { ok: true; url: string }) => void;
+    const portalAction = vi.fn(
+      () =>
+        new Promise<{ ok: true; url: string }>((resolve) => {
+          resolvePortal = resolve;
+        }),
+    );
+    const openPortal = vi.fn();
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const view = render(
+      <PortalScreen
+        subscription={subscription}
+        activity={activity}
+        portalAction={portalAction}
+        openPortal={openPortal}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Manage plan' }));
+    view.unmount();
+    await act(async () => {
+      resolvePortal({
+        ok: true,
+        url: 'https://billing.stripe.com/p/session_late',
+      });
+      await Promise.resolve();
+    });
+
+    expect(openPortal).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it('renders an explicit recoverable error without fabricated billing data', () => {

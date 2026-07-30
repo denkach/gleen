@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -418,6 +419,65 @@ describe('InvoicesScreen', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'The invoice export could not be prepared.',
     );
+  });
+
+  it('suppresses CSV download and state side effects after unmount', async () => {
+    let resolveExport!: (result: {
+      ok: true;
+      filename: string;
+      contentType: 'text/csv;charset=utf-8';
+      content: string;
+    }) => void;
+    const exportAction = vi.fn(
+      () =>
+        new Promise<{
+          ok: true;
+          filename: string;
+          contentType: 'text/csv;charset=utf-8';
+          content: string;
+        }>((resolve) => {
+          resolveExport = resolve;
+        }),
+    );
+    const createObjectURL = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:late');
+    const revokeObjectURL = vi
+      .spyOn(URL, 'revokeObjectURL')
+      .mockImplementation(() => undefined);
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const view = render(
+      <InvoicesScreen
+        subscription={subscription}
+        invoices={invoices}
+        summary={summary}
+        query={{ search: '', status: null, year: null, cursor: null }}
+        pageSize={25}
+        exportAction={exportAction}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+    view.unmount();
+    await act(async () => {
+      resolveExport({
+        ok: true,
+        filename: 'gleen-invoices.csv',
+        contentType: 'text/csv;charset=utf-8',
+        content: 'Date,Invoice',
+      });
+      await Promise.resolve();
+    });
+
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(click).not.toHaveBeenCalled();
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
   });
 });
 
