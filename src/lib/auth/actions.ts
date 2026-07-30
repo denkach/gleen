@@ -1,5 +1,7 @@
 'use server';
 
+import { headers } from 'next/headers';
+
 import { validatePublicEnv } from '@/env';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -23,9 +25,14 @@ type SupabaseAuthError = Readonly<{
   message: string;
 }>;
 
-function callbackUrl(next: string, recovery = false): string {
+async function callbackUrl(next: string, recovery = false): Promise<string> {
   const env = validatePublicEnv(process.env);
-  const callback = new URL('/auth/callback', env.NEXT_PUBLIC_APP_URL);
+  const requestHeaders = await headers();
+  const host =
+    requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
+  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'https';
+  const origin = host ? `${protocol}://${host}` : env.NEXT_PUBLIC_APP_URL;
+  const callback = new URL('/auth/callback', origin);
   callback.searchParams.set('next', next);
   if (recovery) callback.searchParams.set('type', 'recovery');
   return callback.toString();
@@ -66,7 +73,7 @@ export async function signInWithGoogle(
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: callbackUrl(next) },
+    options: { redirectTo: await callbackUrl(next) },
   });
 
   if (error) return errorState(error);
@@ -90,7 +97,7 @@ export async function sendMagicLink(
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: callbackUrl(next),
+      emailRedirectTo: await callbackUrl(next),
       shouldCreateUser,
     },
   });
@@ -127,7 +134,7 @@ export async function signUpWithPassword(
   const { error } = await supabase.auth.signUp({
     email: parsedEmail.data,
     password: parsedPassword.data,
-    options: { emailRedirectTo: callbackUrl(next) },
+    options: { emailRedirectTo: await callbackUrl(next) },
   });
 
   if (error) return errorState(error, email);
@@ -184,7 +191,7 @@ export async function sendPasswordReset(
   const email = parsedEmail.data;
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: callbackUrl('/reset-password', true),
+    redirectTo: await callbackUrl('/reset-password', true),
   });
 
   if (error) return errorState(error, email);

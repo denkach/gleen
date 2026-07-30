@@ -13,8 +13,14 @@ const auth = {
   signOut: vi.fn(),
 };
 
+const requestHeaders = new Headers();
+
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(async () => ({ auth })),
+}));
+
+vi.mock('next/headers', () => ({
+  headers: vi.fn(async () => requestHeaders),
 }));
 
 describe('auth validation and redirects', () => {
@@ -38,9 +44,35 @@ describe('auth validation and redirects', () => {
 describe('auth actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    requestHeaders.delete('host');
+    requestHeaders.delete('x-forwarded-host');
+    requestHeaders.delete('x-forwarded-proto');
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://gleen.example');
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://gleen.supabase.co');
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test');
+  });
+
+  it('keeps the OAuth callback on the current preview deployment', async () => {
+    requestHeaders.set(
+      'x-forwarded-host',
+      'gleen-staging-preview-team.vercel.app',
+    );
+    requestHeaders.set('x-forwarded-proto', 'https');
+    auth.signInWithOAuth.mockResolvedValue({
+      data: { url: 'https://accounts.google.test' },
+      error: null,
+    });
+    const { signInWithGoogle } = await import('./actions');
+
+    await signInWithGoogle({ status: 'idle' }, new FormData());
+
+    expect(auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: {
+        redirectTo:
+          'https://gleen-staging-preview-team.vercel.app/auth/callback?next=%2Fonboarding',
+      },
+    });
   });
 
   it('preserves email but never returns a submitted password on error', async () => {
