@@ -41,6 +41,15 @@ const viewPrivilegeMigrationPath = join(
   viewPrivilegeMigrationName,
 );
 const viewPrivilegeSql = readFileSync(viewPrivilegeMigrationPath, 'utf8');
+const usageLabelsSql = readFileSync(
+  join(
+    process.cwd(),
+    'supabase',
+    'migrations',
+    '20260730041101_den_20_billing_usage_labels.sql',
+  ),
+  'utf8',
+);
 const migrationsDirectory = join(process.cwd(), 'supabase', 'migrations');
 const migrationNames = readdirSync(migrationsDirectory);
 const exactWebhookPriceMigrationName = migrationNames.find((name) =>
@@ -240,6 +249,21 @@ describe('DEN-20 billing repository database boundaries', () => {
     expect(repositoryBoundarySql).toContain("reservation.status = 'reserved'");
     expect(repositoryBoundarySql).toContain(
       'grant select on public.billing_usage_summary',
+    );
+  });
+
+  it('aggregates only positive owner-scoped adjustment and refund credits', () => {
+    expect(usageLabelsSql).toContain(
+      "ledger.event_type in ('manual_adjustment', 'refund')",
+    );
+    expect(usageLabelsSql).toContain('ledger.quantity > 0');
+    expect(usageLabelsSql).toContain('ledger.user_id = entitlement.user_id');
+    expect(usageLabelsSql).toContain('as extra_credits');
+    expect(usageLabelsSql).not.toMatch(
+      /event_type in \([^)]*technical_retry[^)]*\)/,
+    );
+    expect(usageLabelsSql).not.toMatch(
+      /event_type in \([^)]*period_renewal[^)]*\)/,
     );
   });
 

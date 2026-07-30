@@ -41,6 +41,7 @@ export type PricePresentation = Readonly<
   MoneyPresentation & {
     interval: BillingPrice['interval'];
     savingsPercent: number | null;
+    monthlyEquivalent: MoneyPresentation;
   }
 >;
 
@@ -118,6 +119,11 @@ function toPrice(price: BillingPrice, locale?: string): PricePresentation {
     ...toMoney(price.amountMinor, price.currency, locale),
     interval: price.interval,
     savingsPercent: price.savingsPercent,
+    monthlyEquivalent: toMoney(
+      price.monthlyEquivalentMinor,
+      price.currency,
+      locale,
+    ),
   };
 }
 

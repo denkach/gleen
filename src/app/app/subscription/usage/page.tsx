@@ -1,13 +1,8 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { z } from 'zod';
 
-import {
-  UsageScreen,
-  type UsageScreenQuery,
-} from '@/components/billing/usage-screen';
+import { UsageScreen } from '@/components/billing/usage-screen';
 import { exportUsageCsv } from '@/lib/billing/actions';
-import { usageEventTypeSchema } from '@/lib/billing/domain';
 import {
   toSubscriptionPresentation,
   toUsagePresentation,
@@ -18,46 +13,20 @@ import {
   createSupabaseBillingRepository,
   type SupabaseBillingClient,
 } from '@/lib/billing/supabase-repository';
+import {
+  parseUsageRouteQuery,
+  usagePeriodBounds,
+  type UsagePeriodBounds,
+} from '@/lib/billing/usage-query';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Usage ledger — Gleen',
 };
 
-const usageRouteQuerySchema = z
-  .object({
-    search: z.string().trim().max(200).default(''),
-    eventType: usageEventTypeSchema.nullable().default(null),
-    cursor: z
-      .string()
-      .regex(/^(0|[1-9]\d*)$/)
-      .nullable()
-      .default(null),
-  })
-  .strict();
-
 type UsagePageProps = Readonly<{
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }>;
-
-function scalar(value: string | string[] | undefined): string | undefined {
-  return typeof value === 'string' ? value : undefined;
-}
-
-function parseUsageQuery(
-  raw: Record<string, string | string[] | undefined>,
-): UsageScreenQuery {
-  const eventType = scalar(raw.eventType);
-  const result = usageRouteQuerySchema.safeParse({
-    search: scalar(raw.search),
-    eventType:
-      eventType === undefined || eventType === 'all' ? null : eventType,
-    cursor: scalar(raw.cursor) ?? null,
-  });
-  return result.success
-    ? result.data
-    : { search: '', eventType: null, cursor: null };
-}
 
 export default async function UsagePage({ searchParams }: UsagePageProps) {
   const supabase = await createServerSupabaseClient();
@@ -66,7 +35,7 @@ export default async function UsagePage({ searchParams }: UsagePageProps) {
   } = await supabase.auth.getUser();
   if (!user) redirect('/session-expired');
 
-  const query = parseUsageQuery(await searchParams);
+  const query = parseUsageRouteQuery(await searchParams);
   const repository = createSupabaseBillingRepository(
     supabase as unknown as SupabaseBillingClient,
   );
@@ -76,16 +45,24 @@ export default async function UsagePage({ searchParams }: UsagePageProps) {
     'usage' | 'resetAt' | 'resetAtLabel'
   > | null = null;
   let usage: UsagePresentation | null = null;
+  let periodBounds: UsagePeriodBounds = {
+    periodStart: null,
+    periodEnd: null,
+  };
   try {
-    const [snapshot, ledger] = await Promise.all([
-      repository.getOwnedSnapshot(user.id),
-      repository.listOwnedUsage(user.id, {
-        ...query,
-        limit: 25,
-        periodStart: null,
-        periodEnd: null,
-      }),
-    ]);
+    const snapshot = await repository.getOwnedSnapshot(user.id);
+    periodBounds = usagePeriodBounds(
+      query.range,
+      snapshot.period,
+      new Date().toISOString(),
+    );
+    const ledger = await repository.listOwnedUsage(user.id, {
+      cursor: query.cursor,
+      search: query.search,
+      eventType: query.eventType,
+      limit: 25,
+      ...periodBounds,
+    });
     const presentedSubscription = toSubscriptionPresentation(snapshot);
     subscription = {
       usage: presentedSubscription.usage,
@@ -102,6 +79,8 @@ export default async function UsagePage({ searchParams }: UsagePageProps) {
       subscription={subscription}
       usage={usage}
       query={query}
+      periodBounds={periodBounds}
+      pageSize={25}
       exportAction={exportUsageCsv}
     />
   );

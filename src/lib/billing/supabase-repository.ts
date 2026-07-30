@@ -242,6 +242,7 @@ export function createSupabaseBillingRepository(
             reserved: usage.reserved_analyses,
             remaining: overview.remaining_analyses,
             limit: overview.analysis_limit,
+            extraCredits: usage.extra_credits,
           },
           scheduledChange,
           paymentSummary: {

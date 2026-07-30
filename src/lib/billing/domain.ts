@@ -62,6 +62,7 @@ export const billingPriceSchema = z
     planId: billingPlanSlugSchema,
     interval: billingIntervalSchema,
     amountMinor: minorAmountSchema,
+    monthlyEquivalentMinor: minorAmountSchema,
     currency: currencySchema,
     savingsPercent: z.number().min(0).max(100).nullable(),
   })
@@ -234,6 +235,7 @@ export const billingUsageSummarySchema = z
     reserved: countSchema,
     remaining: countSchema,
     limit: countSchema,
+    extraCredits: countSchema,
   })
   .strict()
   .superRefine((usage, context) => {
@@ -483,6 +485,7 @@ export function parseBillingCatalogRows(
             planId: first.slug,
             interval: row.billing_interval,
             amountMinor: row.unit_amount_minor,
+            monthlyEquivalentMinor: row.monthly_equivalent_minor,
             currency: row.currency,
             savingsPercent,
           });
@@ -540,6 +543,7 @@ export const billingUsageSummaryRowSchema = z
     user_id: identifierSchema,
     settled_analyses: countSchema,
     reserved_analyses: countSchema,
+    extra_credits: countSchema,
   })
   .strict()
   .readonly();

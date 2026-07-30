@@ -25,6 +25,11 @@ const presentation: SubscriptionPresentation = {
     amountMinor: 4900,
     currency: 'usd',
     formattedAmount: '$49.00',
+    monthlyEquivalent: {
+      amountMinor: 4900,
+      currency: 'usd',
+      formattedAmount: '$49.00',
+    },
     interval: 'month',
     savingsPercent: null,
   },
@@ -38,6 +43,7 @@ const presentation: SubscriptionPresentation = {
     reserved: 1,
     remaining: 7,
     limit: 25,
+    extraCredits: 4,
   },
   resetAt: '2026-08-01T00:00:00.000Z',
   resetAtLabel: 'Aug 1, 2026',
@@ -97,13 +103,23 @@ const presentation: SubscriptionPresentation = {
           amountMinor: 1900,
           currency: 'usd',
           formattedAmount: '$19.00',
+          monthlyEquivalent: {
+            amountMinor: 1900,
+            currency: 'usd',
+            formattedAmount: '$19.00',
+          },
           interval: 'month',
           savingsPercent: null,
         },
         {
-          amountMinor: 1500,
+          amountMinor: 18000,
           currency: 'usd',
-          formattedAmount: '$15.00',
+          formattedAmount: '$180.00',
+          monthlyEquivalent: {
+            amountMinor: 1500,
+            currency: 'usd',
+            formattedAmount: '$15.00',
+          },
           interval: 'year',
           savingsPercent: 20,
         },
@@ -132,13 +148,23 @@ const presentation: SubscriptionPresentation = {
           amountMinor: 4900,
           currency: 'usd',
           formattedAmount: '$49.00',
+          monthlyEquivalent: {
+            amountMinor: 4900,
+            currency: 'usd',
+            formattedAmount: '$49.00',
+          },
           interval: 'month',
           savingsPercent: null,
         },
         {
-          amountMinor: 3900,
+          amountMinor: 46800,
           currency: 'usd',
-          formattedAmount: '$39.00',
+          formattedAmount: '$468.00',
+          monthlyEquivalent: {
+            amountMinor: 3900,
+            currency: 'usd',
+            formattedAmount: '$39.00',
+          },
           interval: 'year',
           savingsPercent: 20,
         },
@@ -166,13 +192,23 @@ const presentation: SubscriptionPresentation = {
           amountMinor: 12900,
           currency: 'usd',
           formattedAmount: '$129.00',
+          monthlyEquivalent: {
+            amountMinor: 12900,
+            currency: 'usd',
+            formattedAmount: '$129.00',
+          },
           interval: 'month',
           savingsPercent: null,
         },
         {
-          amountMinor: 10300,
+          amountMinor: 123600,
           currency: 'usd',
-          formattedAmount: '$103.00',
+          formattedAmount: '$1,236.00',
+          monthlyEquivalent: {
+            amountMinor: 10300,
+            currency: 'usd',
+            formattedAmount: '$103.00',
+          },
           interval: 'year',
           savingsPercent: 20,
         },
@@ -235,6 +271,7 @@ describe('SubscriptionScreen', () => {
     expect(screen.getByText('$19.00')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Yearly billing' }));
     expect(screen.getByText('$15.00')).toBeInTheDocument();
+    expect(screen.getByText('$468.00 / year')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Yearly billing' }),
     ).toHaveAttribute('aria-pressed', 'true');

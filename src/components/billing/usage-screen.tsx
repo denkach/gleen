@@ -8,15 +8,15 @@ import type {
   SubscriptionPresentation,
   UsagePresentation,
 } from '@/lib/billing/presentation';
+import type {
+  UsagePeriodBounds,
+  UsageRouteQuery,
+} from '@/lib/billing/usage-query';
 
 import { BillingIcon } from './billing-icons';
 import { BillingCard, BillingPage, BillingStatus } from './billing-page';
 
-export type UsageScreenQuery = Readonly<{
-  search: string;
-  eventType: UsageEventType | null;
-  cursor: string | null;
-}>;
+export type UsageScreenQuery = UsageRouteQuery;
 
 type CsvActionResult =
   | Readonly<{
@@ -31,8 +31,8 @@ export type UsageScreenExportAction = (
   filters: Readonly<{
     search: string;
     eventType: UsageEventType | null;
-    periodStart: null;
-    periodEnd: null;
+    periodStart: string | null;
+    periodEnd: string | null;
   }>,
 ) => Promise<CsvActionResult>;
 
@@ -58,6 +58,7 @@ function usageHref(query: UsageScreenQuery, cursor: string) {
   const parameters = new URLSearchParams();
   if (query.search !== '') parameters.set('search', query.search);
   if (query.eventType !== null) parameters.set('eventType', query.eventType);
+  parameters.set('range', query.range);
   parameters.set('cursor', cursor);
   return `/app/subscription/usage?${parameters.toString()}`;
 }
@@ -66,6 +67,8 @@ export function UsageScreen({
   subscription,
   usage,
   query,
+  periodBounds,
+  pageSize,
   exportAction,
 }: Readonly<{
   subscription: Pick<
@@ -74,6 +77,8 @@ export function UsageScreen({
   > | null;
   usage: UsagePresentation | null;
   query: UsageScreenQuery;
+  periodBounds: UsagePeriodBounds;
+  pageSize: number;
   exportAction: UsageScreenExportAction;
 }>) {
   const [exportError, setExportError] = useState(false);
@@ -107,10 +112,7 @@ export function UsageScreen({
     subscription.usage.limit === 0
       ? 0
       : Math.min(100, Math.round((consumed / subscription.usage.limit) * 100));
-  const extraCredits = Math.max(
-    0,
-    subscription.usage.remaining + consumed - subscription.usage.limit,
-  );
+  const currentOffset = Number(query.cursor ?? 0);
   const retries = usage.items.filter(
     (item) => item.event.key === 'technical_retry',
   ).length;
@@ -131,8 +133,7 @@ export function UsageScreen({
     const result = await exportAction({
       search: query.search,
       eventType: query.eventType,
-      periodStart: null,
-      periodEnd: null,
+      ...periodBounds,
     });
     setExporting(false);
 
@@ -184,7 +185,9 @@ export function UsageScreen({
           <div className="billing-metric-icon billing-metric-positive">＋</div>
           <div>
             <div className="billing-metric-label">Extra credits</div>
-            <div className="billing-metric-value">{extraCredits}</div>
+            <div className="billing-metric-value">
+              {subscription.usage.extraCredits}
+            </div>
           </div>
         </div>
         <div>
@@ -215,8 +218,14 @@ export function UsageScreen({
                 aria-label="Search usage events"
               />
             </label>
-            <select aria-label="Date range" defaultValue="current" disabled>
+            <select
+              aria-label="Date range"
+              name="range"
+              defaultValue={query.range}
+            >
               <option value="current">Current billing period</option>
+              <option value="last90">Last 90 days</option>
+              <option value="all">All time</option>
             </select>
             <select
               aria-label="Event type"
@@ -322,6 +331,7 @@ export function UsageScreen({
                   <BillingCard
                     as="article"
                     className="billing-mobile-row"
+                    role="listitem"
                     key={item.id}
                   >
                     <div className="billing-mobile-row-head">
@@ -346,17 +356,38 @@ export function UsageScreen({
             </>
           )}
 
-          {usage.nextCursor !== null && (
+          {(currentOffset > 0 || usage.nextCursor !== null) && (
             <div className="billing-pagination">
               <span>
-                Showing {usage.items.length} of {usage.totalCount}
+                Showing{' '}
+                {usage.items.length === 0
+                  ? '0'
+                  : `${currentOffset + 1}–${
+                      currentOffset + usage.items.length
+                    }`}{' '}
+                of {usage.totalCount}
               </span>
-              <Link
-                className="billing-button billing-button-small"
-                href={usageHref(query, usage.nextCursor)}
-              >
-                Next page
-              </Link>
+              <div>
+                {currentOffset > 0 && (
+                  <Link
+                    className="billing-button billing-button-small"
+                    href={usageHref(
+                      query,
+                      String(Math.max(0, currentOffset - pageSize)),
+                    )}
+                  >
+                    Previous page
+                  </Link>
+                )}
+                {usage.nextCursor !== null && (
+                  <Link
+                    className="billing-button billing-button-small"
+                    href={usageHref(query, usage.nextCursor)}
+                  >
+                    Next page
+                  </Link>
+                )}
+              </div>
             </div>
           )}
         </BillingCard>

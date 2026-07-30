@@ -35,14 +35,18 @@ export function BillingPage({
 export function BillingCard({
   as: Element = 'div',
   className,
+  role,
   children,
 }: Readonly<{
   as?: 'div' | 'article' | 'aside' | 'section';
   className?: string;
+  role?: string;
   children: ReactNode;
 }>) {
   return (
-    <Element className={cx('billing-card', className)}>{children}</Element>
+    <Element className={cx('billing-card', className)} role={role}>
+      {children}
+    </Element>
   );
 }
 

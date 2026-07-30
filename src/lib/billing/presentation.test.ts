@@ -45,6 +45,22 @@ const catalogRows = [
     comparison_copy: null,
     savings_copy: null,
   },
+  {
+    slug: 'prism-pro',
+    display_name: 'Prism Pro',
+    description: 'For professionals.',
+    analysis_limit: 25,
+    features: ['25 analyses per month'],
+    display_order: 2,
+    is_default: false,
+    is_purchasable: true,
+    billing_interval: 'year',
+    currency: 'usd',
+    unit_amount_minor: 18000,
+    monthly_equivalent_minor: 1500,
+    comparison_copy: null,
+    savings_copy: null,
+  },
 ] as const;
 const catalog = parseBillingCatalogRows(catalogRows);
 const prismCatalog = catalog.find((entry) => entry.plan.slug === 'prism-pro');
@@ -61,7 +77,13 @@ const snapshot: BillingSnapshot = {
     startsAt: '2026-07-01T00:00:00.000Z',
     endsAt: '2026-08-01T00:00:00.000Z',
   },
-  usage: { used: 19, reserved: 1, remaining: 5, limit: 25 },
+  usage: {
+    used: 19,
+    reserved: 1,
+    remaining: 5,
+    limit: 25,
+    extraCredits: 4,
+  },
   scheduledChange: null,
   paymentSummary: {
     subscriptionStatus: 'active',
@@ -70,7 +92,7 @@ const snapshot: BillingSnapshot = {
     currency: 'usd',
   },
   recentActivity: [],
-  availablePlans: [{ plan: prismPlan, prices: [prismPrice] }],
+  availablePlans: [{ plan: prismPlan, prices: prismCatalog.prices }],
 };
 
 describe('billing presentation', () => {
@@ -154,6 +176,21 @@ describe('billing presentation', () => {
       amountMinor: 4900,
       currency: 'usd',
       formattedAmount: '$49.00',
+      monthlyEquivalent: {
+        amountMinor: 4900,
+        currency: 'usd',
+        formattedAmount: '$49.00',
+      },
+    });
+    expect(subscription.availablePlans[0]?.prices).toHaveLength(2);
+    expect(subscription.availablePlans[0]?.prices[1]).toMatchObject({
+      amountMinor: 18000,
+      formattedAmount: '$180.00',
+      monthlyEquivalent: {
+        amountMinor: 1500,
+        formattedAmount: '$15.00',
+      },
+      savingsPercent: 69,
     });
     expect(subscription.resetAtLabel).toBe('Aug 1, 2026');
     expect(subscription.paymentMethod).toEqual({

@@ -150,6 +150,7 @@ function snapshotClient(
         user_id: userId,
         settled_analyses: 1,
         reserved_analyses: 1,
+        extra_credits: 0,
       },
       error: null,
     }),
@@ -233,6 +234,7 @@ describe('Supabase billing repository', () => {
         user_id: userId,
         settled_analyses: 1,
         reserved_analyses: 1,
+        extra_credits: 4,
       },
       error: null,
     });
@@ -258,6 +260,7 @@ describe('Supabase billing repository', () => {
       reserved: 1,
       remaining: 1,
       limit: 3,
+      extraCredits: 4,
     });
     expect(overview.eq).toHaveBeenCalledWith('user_id', userId);
     expect(aggregation.eq).toHaveBeenCalledWith('user_id', userId);
@@ -300,8 +303,8 @@ describe('Supabase billing repository', () => {
       limit: 25,
       search: '',
       eventType: null,
-      periodStart: null,
-      periodEnd: null,
+      periodStart: '2026-05-01T00:00:00.000Z',
+      periodEnd: '2026-07-30T00:00:00.000Z',
     });
     await repository.listOwnedInvoices(userId, {
       cursor: null,
@@ -313,6 +316,14 @@ describe('Supabase billing repository', () => {
     await expect(repository.getOwnedCustomerId(userId)).resolves.toBeNull();
 
     expect(usage.eq).toHaveBeenCalledWith('user_id', userId);
+    expect(usage.gte).toHaveBeenCalledWith(
+      'occurred_at',
+      '2026-05-01T00:00:00.000Z',
+    );
+    expect(usage.lte).toHaveBeenCalledWith(
+      'occurred_at',
+      '2026-07-30T00:00:00.000Z',
+    );
     expect(invoices.eq).toHaveBeenCalledWith('user_id', userId);
     expect(customer.eq).toHaveBeenCalledWith('user_id', userId);
   });

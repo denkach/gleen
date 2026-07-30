@@ -23,6 +23,7 @@ const subscription: Pick<
     reserved: 1,
     remaining: 7,
     limit: 25,
+    extraCredits: 4,
   },
   resetAt: '2026-08-01T00:00:00.000Z',
   resetAtLabel: 'Aug 1, 2026',
@@ -93,7 +94,17 @@ describe('UsageScreen', () => {
       <UsageScreen
         subscription={subscription}
         usage={usage}
-        query={{ search: 'prism', eventType: null, cursor: null }}
+        query={{
+          search: 'prism',
+          eventType: null,
+          cursor: null,
+          range: 'current',
+        }}
+        periodBounds={{
+          periodStart: '2026-07-01T00:00:00.000Z',
+          periodEnd: '2026-08-01T00:00:00.000Z',
+        }}
+        pageSize={25}
         exportAction={vi.fn()}
       />,
     );
@@ -103,6 +114,7 @@ describe('UsageScreen', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('18 of 25')).toBeInTheDocument();
     expect(screen.getByText('7 analyses')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
     expect(screen.getByText('Aug 1, 2026')).toBeInTheDocument();
     expect(
       screen.getByRole('searchbox', { name: 'Search usage events' }),
@@ -116,6 +128,14 @@ describe('UsageScreen', () => {
     expect(
       screen.getByRole('list', { name: 'Usage activity on mobile' }),
     ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole('list', { name: 'Usage activity on mobile' }),
+      ).getAllByRole('listitem'),
+    ).toHaveLength(2);
+    expect(screen.getByRole('combobox', { name: 'Date range' })).toHaveValue(
+      'current',
+    );
     expect(
       screen.getByRole('img', { name: /usage breakdown:/i }),
     ).toBeInTheDocument();
@@ -134,7 +154,17 @@ describe('UsageScreen', () => {
       <UsageScreen
         subscription={subscription}
         usage={usage}
-        query={{ search: 'retry', eventType: 'technical_retry', cursor: null }}
+        query={{
+          search: 'retry',
+          eventType: 'technical_retry',
+          cursor: null,
+          range: 'last90',
+        }}
+        periodBounds={{
+          periodStart: '2026-05-01T12:00:00.000Z',
+          periodEnd: '2026-07-30T12:00:00.000Z',
+        }}
+        pageSize={25}
         exportAction={exportAction}
       />,
     );
@@ -144,8 +174,8 @@ describe('UsageScreen', () => {
       expect(exportAction).toHaveBeenCalledWith({
         search: 'retry',
         eventType: 'technical_retry',
-        periodStart: null,
-        periodEnd: null,
+        periodStart: '2026-05-01T12:00:00.000Z',
+        periodEnd: '2026-07-30T12:00:00.000Z',
       }),
     );
     expect(screen.getByRole('alert')).toHaveTextContent(
@@ -158,7 +188,12 @@ describe('UsageScreen', () => {
       <UsageScreen
         subscription={subscription}
         usage={{ items: [], nextCursor: null, totalCount: 0 }}
-        query={{ search: '', eventType: null, cursor: null }}
+        query={{ search: '', eventType: null, cursor: null, range: 'current' }}
+        periodBounds={{
+          periodStart: '2026-07-01T00:00:00.000Z',
+          periodEnd: '2026-08-01T00:00:00.000Z',
+        }}
+        pageSize={25}
         exportAction={vi.fn()}
       />,
     );
@@ -171,12 +206,58 @@ describe('UsageScreen', () => {
       <UsageScreen
         subscription={null}
         usage={null}
-        query={{ search: '', eventType: null, cursor: null }}
+        query={{ search: '', eventType: null, cursor: null, range: 'current' }}
+        periodBounds={{
+          periodStart: '2026-07-01T00:00:00.000Z',
+          periodEnd: '2026-08-01T00:00:00.000Z',
+        }}
+        pageSize={25}
         exportAction={vi.fn()}
       />,
     );
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Usage details are temporarily unavailable.',
     );
+  });
+
+  it('renders offset-aware previous and next links without losing filters', () => {
+    render(
+      <UsageScreen
+        subscription={subscription}
+        usage={{ ...usage, nextCursor: '50', totalCount: 80 }}
+        query={{
+          search: 'retry',
+          eventType: 'technical_retry',
+          cursor: '25',
+          range: 'last90',
+        }}
+        periodBounds={{
+          periodStart: '2026-05-01T00:00:00.000Z',
+          periodEnd: '2026-07-30T00:00:00.000Z',
+        }}
+        pageSize={25}
+        exportAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Showing 26–27 of 80')).toBeInTheDocument();
+    const previous = screen.getByRole('link', { name: 'Previous page' });
+    const next = screen.getByRole('link', { name: 'Next page' });
+    for (const link of [previous, next]) {
+      expect(link).toHaveAttribute('href', expect.stringContaining('retry'));
+      expect(link).toHaveAttribute(
+        'href',
+        expect.stringContaining('eventType=technical_retry'),
+      );
+      expect(link).toHaveAttribute(
+        'href',
+        expect.stringContaining('range=last90'),
+      );
+    }
+    expect(previous).toHaveAttribute(
+      'href',
+      expect.stringContaining('cursor=0'),
+    );
+    expect(next).toHaveAttribute('href', expect.stringContaining('cursor=50'));
   });
 });

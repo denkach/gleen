@@ -183,7 +183,7 @@ export function SubscriptionScreen({
                   <h2>{row.plan.displayName}</h2>
                   <p className="billing-section-copy">{row.plan.description}</p>
                   <div className="billing-price">
-                    {price?.formattedAmount ?? 'Unavailable'}{' '}
+                    {price?.monthlyEquivalent.formattedAmount ?? 'Unavailable'}{' '}
                     {price !== null && <small>/ month</small>}
                   </div>
                   <div className="billing-feature-list">
@@ -257,6 +257,8 @@ export function SubscriptionScreen({
               {comparisonPrice?.formattedAmount ??
                 presentation.currentPrice?.formattedAmount ??
                 'No paid renewal'}
+              {comparisonPrice !== null &&
+                ` / ${comparisonPrice.interval === 'year' ? 'year' : 'month'}`}
             </b>
           </div>
           <div className="billing-summary-row">
