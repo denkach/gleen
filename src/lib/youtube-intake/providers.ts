@@ -9,6 +9,7 @@ export type IntakeErrorCode =
   | 'provider_configuration'
   | 'provider_unavailable'
   | 'session_expired'
+  | 'usage_limit_reached'
   | 'persistence_failure';
 
 export type VideoMetadata = Readonly<{

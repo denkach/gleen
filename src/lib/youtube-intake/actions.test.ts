@@ -44,9 +44,16 @@ vi.mock('@/env', () => ({
 vi.mock('./youtube-provider', () => ({ createYouTubeProvider }));
 vi.mock('./supadata-provider', () => ({ createSupadataProvider }));
 vi.mock('./supabase-repository', () => ({ createSupabaseIntakeRepository }));
-vi.mock('@/lib/analysis-pipeline/supabase-repository', () => ({
-  createSupabaseAnalysisRepository,
-}));
+vi.mock(
+  '@/lib/analysis-pipeline/supabase-repository',
+  async (importOriginal) => {
+    const original =
+      await importOriginal<
+        typeof import('@/lib/analysis-pipeline/supabase-repository')
+      >();
+    return { ...original, createSupabaseAnalysisRepository };
+  },
+);
 vi.mock('@/lib/analysis-pipeline/start', () => ({ startAnalysis }));
 vi.mock('./service', async (importOriginal) => {
   const original = await importOriginal<typeof import('./service')>();

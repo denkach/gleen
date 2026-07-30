@@ -4,10 +4,19 @@ export type AppIdentity = Readonly<{
   initials: string;
 }>;
 
-export type AppUsage = Readonly<{
-  status: 'unavailable';
-  label: string;
-}>;
+export type AppUsage =
+  | Readonly<{
+      status: 'unavailable';
+      label: string;
+    }>
+  | Readonly<{
+      status: 'available';
+      label: string;
+      planName: string;
+      used: number;
+      limit: number;
+      resetAt: string;
+    }>;
 
 export type AppNavigationItem = Readonly<{
   label: 'New analysis' | 'History' | 'Subscription' | 'Settings';
