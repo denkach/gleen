@@ -32,6 +32,15 @@ const repositoryBoundarySql = readFileSync(
   repositoryBoundaryMigrationPath,
   'utf8',
 );
+const viewPrivilegeMigrationName =
+  '20260730022802_den_20_billing_view_privilege_hardening.sql';
+const viewPrivilegeMigrationPath = join(
+  process.cwd(),
+  'supabase',
+  'migrations',
+  viewPrivilegeMigrationName,
+);
+const viewPrivilegeSql = readFileSync(viewPrivilegeMigrationPath, 'utf8');
 
 const readBetween = (start: string, end: string) => {
   const startIndex = sql.indexOf(start);
@@ -177,6 +186,18 @@ describe('DEN-20 billing and usage migration', () => {
 });
 
 describe('DEN-20 billing repository database boundaries', () => {
+  it('keeps the applied repository boundary migration immutable and orders the ACL fix later', () => {
+    expect(
+      createHash('sha256').update(repositoryBoundarySql).digest('hex'),
+      'the staged Task 4 migration must remain byte-for-byte immutable',
+    ).toBe('40522551b0158c68c0a8166f1e58b6a9cc27bb8922d73c250702c48653c8a1c2');
+    expect(
+      viewPrivilegeMigrationName.localeCompare(
+        '20260730015211_den_20_billing_repository_boundaries.sql',
+      ),
+    ).toBeGreaterThan(0);
+  });
+
   it('provides a complete owner-readable usage split', () => {
     expect(repositoryBoundarySql).toContain(
       'create view public.billing_usage_summary',
@@ -220,5 +241,34 @@ describe('DEN-20 billing repository database boundaries', () => {
     expect(claim).not.toContain(
       "webhook.processing_status in ('failed', 'processing')",
     );
+  });
+});
+
+describe('DEN-20 billing view privilege hardening', () => {
+  const views = [
+    'billing_usage_summary',
+    'billing_customer_overview',
+    'billing_payment_summary',
+  ] as const;
+
+  it.each(views)(
+    'revokes defaults before granting exact read access on %s',
+    (view) => {
+      const revoke =
+        `revoke all on public.${view} ` +
+        'from public, anon, authenticated, service_role;';
+      const grant = `grant select on public.${view} to authenticated, service_role;`;
+
+      expect(viewPrivilegeSql).toContain(revoke);
+      expect(viewPrivilegeSql).toContain(grant);
+      expect(viewPrivilegeSql.indexOf(revoke)).toBeLessThan(
+        viewPrivilegeSql.indexOf(grant),
+      );
+    },
+  );
+
+  it('contains no non-select grant', () => {
+    expect(viewPrivilegeSql.match(/\bgrant\s+(?!select\b)/g)).toBeNull();
+    expect(viewPrivilegeSql.match(/\bgrant\s+select\b/g)).toHaveLength(3);
   });
 });
