@@ -85,7 +85,7 @@ function CheckoutElements({
   };
 
   async function confirm() {
-    if (!checkout.canConfirm || submitting) return;
+    if (submitting) return;
     setSubmitting(true);
     setConfirmationError(false);
     try {
@@ -118,7 +118,6 @@ function CheckoutElements({
         </div>
       }
       totals={totals}
-      canSubmit={checkout.canConfirm}
       onSubmit={confirm}
       onRetry={() => {
         setConfirmationError(false);
