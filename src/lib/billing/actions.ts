@@ -9,10 +9,12 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 import {
   billingIntervalSchema,
+  billingPaymentMethodSchema,
   billingPlanSlugSchema,
   invoiceStatusSchema,
   usageEventTypeSchema,
   type Invoice,
+  type BillingPaymentMethod,
   type UsageLedgerEntry,
 } from './domain';
 import {
@@ -38,6 +40,8 @@ const checkoutActionInputSchema = checkoutInputSchema.omit({ userId: true });
 const portalInputSchema = z
   .object({ userId: z.string().trim().min(1) })
   .strict();
+
+const paymentMethodInputSchema = portalInputSchema;
 
 const usageExportFilterSchema = z
   .object({
@@ -100,6 +104,8 @@ type ActionError = Readonly<{ ok: false; code: ActionErrorCode }>;
 type CheckoutResult =
   Readonly<{ ok: true; clientSecret: string }> | ActionError;
 type PortalResult = Readonly<{ ok: true; url: string }> | ActionError;
+export type PaymentMethodResult =
+  Readonly<{ ok: true; paymentMethod: BillingPaymentMethod }> | ActionError;
 type CsvResult =
   | Readonly<{
       ok: true;
@@ -130,6 +136,13 @@ export type BillingStripeClient = Readonly<{
       input: Stripe.CustomerCreateParams,
       options: Stripe.RequestOptions,
     ): PromiseLike<Pick<Stripe.Customer, 'id'>>;
+    retrieve(
+      customerId: string,
+      params: Stripe.CustomerRetrieveParams,
+    ): PromiseLike<Stripe.Customer | Stripe.DeletedCustomer>;
+  }>;
+  paymentMethods: Readonly<{
+    retrieve(paymentMethodId: string): PromiseLike<Stripe.PaymentMethod>;
   }>;
 }>;
 
@@ -168,6 +181,69 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
   );
 
   return {
+    async getPaymentMethodForUser(
+      input: unknown,
+    ): Promise<PaymentMethodResult> {
+      const parsed = paymentMethodInputSchema.safeParse(input);
+      if (!parsed.success) return actionFailure('invalid_request');
+
+      try {
+        const customerId = await dependencies.repository.getOwnedCustomerId(
+          parsed.data.userId,
+        );
+        if (customerId === null) {
+          return {
+            ok: true,
+            paymentMethod: { status: 'unavailable' },
+          };
+        }
+        const ownedCustomerId = stripeCustomerIdSchema.parse(customerId);
+        const customer = await dependencies.stripe.customers.retrieve(
+          ownedCustomerId,
+          { expand: ['invoice_settings.default_payment_method'] },
+        );
+        if (customer.deleted) {
+          return {
+            ok: true,
+            paymentMethod: { status: 'unavailable' },
+          };
+        }
+        const defaultPaymentMethod =
+          customer.invoice_settings.default_payment_method;
+        if (defaultPaymentMethod === null) {
+          return {
+            ok: true,
+            paymentMethod: { status: 'unavailable' },
+          };
+        }
+        const paymentMethod =
+          typeof defaultPaymentMethod === 'string'
+            ? await dependencies.stripe.paymentMethods.retrieve(
+                defaultPaymentMethod,
+              )
+            : defaultPaymentMethod;
+        if (paymentMethod.type !== 'card' || paymentMethod.card == null) {
+          return {
+            ok: true,
+            paymentMethod: { status: 'unavailable' },
+          };
+        }
+
+        return {
+          ok: true,
+          paymentMethod: billingPaymentMethodSchema.parse({
+            status: 'available',
+            brand: paymentMethod.card.brand,
+            last4: paymentMethod.card.last4,
+            expMonth: paymentMethod.card.exp_month,
+            expYear: paymentMethod.card.exp_year,
+          }),
+        };
+      } catch {
+        return actionFailure('billing_unavailable');
+      }
+    },
+
     async createCheckoutForUser(input: unknown): Promise<CheckoutResult> {
       const parsed = checkoutInputSchema.safeParse(input);
       if (!parsed.success) return actionFailure('invalid_request');
@@ -524,6 +600,15 @@ export async function createPortalSession(): Promise<PortalResult> {
   const context = await authenticatedContext();
   if (context === null) return actionFailure('session_expired');
   return productionBillingActions(context.supabase).createPortalForUser({
+    userId: context.userId,
+  });
+}
+
+export async function getPaymentMethodSummary(): Promise<PaymentMethodResult> {
+  'use server';
+  const context = await authenticatedContext();
+  if (context === null) return actionFailure('session_expired');
+  return productionBillingActions(context.supabase).getPaymentMethodForUser({
     userId: context.userId,
   });
 }

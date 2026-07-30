@@ -89,6 +89,14 @@ export const usageEventTypeSchema = z.enum([
 ]);
 export type UsageEventType = z.infer<typeof usageEventTypeSchema>;
 
+export const usageSourceSchema = z.enum([
+  'analysis_pipeline',
+  'stripe_webhook',
+  'system',
+  'manual',
+]);
+export type UsageSource = z.infer<typeof usageSourceSchema>;
+
 export const usageLedgerStatusSchema = z.enum([
   'reserved',
   'settled',
@@ -119,6 +127,9 @@ export const usageLedgerEntrySchema = z
     occurredAt: timestampSchema,
     jobId: identifierSchema.nullable(),
     analysisId: identifierSchema.nullable(),
+    source: usageSourceSchema,
+    analysisTitle: nonEmptyStringSchema.nullable(),
+    channelTitle: nonEmptyStringSchema.nullable(),
   })
   .strict()
   .superRefine((entry, context) => {
@@ -270,6 +281,26 @@ export const billingPaymentSummarySchema = z
   .strict()
   .readonly();
 export type BillingPaymentSummary = z.infer<typeof billingPaymentSummarySchema>;
+
+export const billingPaymentMethodSchema = z.discriminatedUnion('status', [
+  z
+    .object({
+      status: z.literal('available'),
+      brand: nonEmptyStringSchema,
+      last4: z.string().regex(/^\d{4}$/),
+      expMonth: z.number().int().min(1).max(12),
+      expYear: z.number().int().min(2000).max(9999),
+    })
+    .strict()
+    .readonly(),
+  z
+    .object({
+      status: z.literal('unavailable'),
+    })
+    .strict()
+    .readonly(),
+]);
+export type BillingPaymentMethod = z.infer<typeof billingPaymentMethodSchema>;
 
 export const availableBillingPlanSchema = z
   .object({
@@ -548,6 +579,10 @@ export const billingUsageActivityRowSchema = z
     occurred_at: timestampSchema,
     job_id: identifierSchema.nullable(),
     analysis_id: identifierSchema.nullable(),
+    source: usageSourceSchema,
+    analysis_title: nonEmptyStringSchema.nullable(),
+    channel_title: nonEmptyStringSchema.nullable(),
+    search_text: nonEmptyStringSchema,
   })
   .strict()
   .superRefine((row, context) => {

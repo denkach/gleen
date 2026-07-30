@@ -116,6 +116,9 @@ function mapActivity(row: BillingUsageActivityRow) {
     occurredAt: row.occurred_at,
     jobId: row.job_id,
     analysisId: row.analysis_id,
+    source: row.source,
+    analysisTitle: row.analysis_title,
+    channelTitle: row.channel_title,
   };
 }
 
@@ -264,7 +267,7 @@ export function createSupabaseBillingRepository(
         .select('*', { count: 'exact' })
         .eq('user_id', userId);
       if (parsed.search !== '') {
-        query = query.ilike('plan_slug', `%${parsed.search}%`);
+        query = query.ilike('search_text', `%${parsed.search}%`);
       }
       if (parsed.eventType !== null) {
         query = query.eq('event_type', parsed.eventType);

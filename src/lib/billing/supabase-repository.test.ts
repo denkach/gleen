@@ -22,6 +22,10 @@ const activityRow = {
   occurred_at: now,
   job_id: null,
   analysis_id: null,
+  source: 'system',
+  analysis_title: null,
+  channel_title: null,
+  search_text: 'reservation system',
 } as const;
 
 const invoiceRow = {
@@ -311,6 +315,52 @@ describe('Supabase billing repository', () => {
     expect(usage.eq).toHaveBeenCalledWith('user_id', userId);
     expect(invoices.eq).toHaveBeenCalledWith('user_id', userId);
     expect(customer.eq).toHaveBeenCalledWith('user_id', userId);
+  });
+
+  it('maps owner-scoped stored event source and analysis labels without exposing search text', async () => {
+    const usage = queryReturning({
+      data: [
+        {
+          ...activityRow,
+          source: 'analysis_pipeline',
+          analysis_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+          analysis_title: 'Systems thinking',
+          channel_title: 'Knowledge Channel',
+          search_text:
+            'settlement analysis_pipeline Systems thinking Knowledge Channel',
+          event_type: 'settlement',
+          status: 'settled',
+        },
+      ],
+      error: null,
+      count: 1,
+    });
+    const client = {
+      from: vi.fn().mockReturnValue(usage),
+      rpc: vi.fn(),
+    };
+
+    await expect(
+      createSupabaseBillingRepository(
+        client as unknown as SupabaseBillingClient,
+      ).listOwnedUsage(userId, {
+        cursor: null,
+        limit: 25,
+        search: 'systems',
+        eventType: null,
+        periodStart: null,
+        periodEnd: null,
+      }),
+    ).resolves.toMatchObject({
+      items: [
+        {
+          source: 'analysis_pipeline',
+          analysisTitle: 'Systems thinking',
+          channelTitle: 'Knowledge Channel',
+        },
+      ],
+    });
+    expect(usage.ilike).toHaveBeenCalledWith('search_text', '%systems%');
   });
 
   it('rejects cross-owner activity in an otherwise valid snapshot', async () => {

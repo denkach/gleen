@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   billingPlanSchema,
+  billingPaymentMethodSchema,
   billingPriceForPlanSchema,
   billingPriceSchema,
   billingSnapshotSchema,
@@ -9,6 +10,7 @@ import {
   invoicePageSchema,
   usageLedgerPageSchema,
   type BillingPlan,
+  type BillingPaymentMethod,
   type BillingPrice,
   type BillingPlanSlug,
   type BillingSnapshot,
@@ -197,6 +199,17 @@ export type SubscriptionPresentation = Readonly<{
   resetAt: string;
   resetAtLabel: string;
   scheduledChange: BillingSnapshot['scheduledChange'];
+  paymentMethod:
+    | Readonly<{
+        status: 'available';
+        label: string;
+        expiryLabel: string;
+      }>
+    | Readonly<{
+        status: 'unavailable';
+        label: string;
+        expiryLabel: null;
+      }>;
   availablePlans: readonly Readonly<{
     plan: BillingPlan;
     prices: readonly PricePresentation[];
@@ -206,7 +219,10 @@ export type SubscriptionPresentation = Readonly<{
 
 export function toSubscriptionPresentation(
   snapshot: BillingSnapshot,
-  options: PresentationOptions & { now?: string } = {},
+  options: PresentationOptions & {
+    now?: string;
+    paymentMethod?: BillingPaymentMethod;
+  } = {},
 ): SubscriptionPresentation {
   const parsed = billingSnapshotSchema.parse(snapshot);
   const now = options.now ?? new Date().toISOString();
@@ -216,6 +232,9 @@ export function toSubscriptionPresentation(
     now,
   });
   const dateFormatter = createDateFormatter(options, false);
+  const paymentMethod = billingPaymentMethodSchema.parse(
+    options.paymentMethod ?? { status: 'unavailable' },
+  );
 
   return {
     currentPlan: parsed.currentPlan,
@@ -231,6 +250,23 @@ export function toSubscriptionPresentation(
     resetAt: parsed.period.endsAt,
     resetAtLabel: dateFormatter.format(new Date(parsed.period.endsAt)),
     scheduledChange: parsed.scheduledChange,
+    paymentMethod:
+      paymentMethod.status === 'available'
+        ? {
+            status: 'available',
+            label: `${paymentMethod.brand.replace(/(^|\s)\S/g, (character) =>
+              character.toUpperCase(),
+            )} •••• ${paymentMethod.last4}`,
+            expiryLabel: `Expires ${String(paymentMethod.expMonth).padStart(
+              2,
+              '0',
+            )}/${paymentMethod.expYear}`,
+          }
+        : {
+            status: 'unavailable',
+            label: 'Managed in billing portal',
+            expiryLabel: null,
+          },
     availablePlans: parsed.availablePlans.map(({ plan, prices }) => ({
       plan,
       prices: prices.map((price) => toPrice(price, options.locale)),
@@ -263,6 +299,13 @@ const usageStatusCopy = {
   Readonly<{ label: string; variant: SemanticVariant }>
 >;
 
+const usageSourceCopy = {
+  analysis_pipeline: 'Analysis pipeline',
+  stripe_webhook: 'Stripe',
+  system: 'System',
+  manual: 'Manual adjustment',
+} as const satisfies Record<UsageLedgerPage['items'][number]['source'], string>;
+
 export type UsagePresentation = Readonly<{
   items: readonly Readonly<{
     id: string;
@@ -274,7 +317,13 @@ export type UsagePresentation = Readonly<{
     event: Readonly<{
       key: UsageLedgerPage['items'][number]['eventType'];
       label: string;
+      title: string;
       variant: SemanticVariant;
+    }>;
+    source: Readonly<{
+      key: UsageLedgerPage['items'][number]['source'];
+      label: string;
+      detail: string | null;
     }>;
     status: Readonly<{
       key: UsageLedgerPage['items'][number]['status'];
@@ -306,6 +355,15 @@ export function toUsagePresentation(
       event: {
         key: entry.eventType,
         ...usageEventCopy[entry.eventType],
+        title:
+          entry.analysisTitle === null
+            ? usageEventCopy[entry.eventType].label
+            : `${usageEventCopy[entry.eventType].label} — ${entry.analysisTitle}`,
+      },
+      source: {
+        key: entry.source,
+        label: usageSourceCopy[entry.source],
+        detail: entry.channelTitle,
       },
       status: {
         key: entry.status,

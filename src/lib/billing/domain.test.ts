@@ -182,6 +182,9 @@ describe('billing domain', () => {
       occurredAt: '2026-07-30T12:30:00.000Z',
       jobId: null,
       analysisId: null,
+      source: 'system',
+      analysisTitle: null,
+      channelTitle: null,
     } as const;
     const validPairs = [
       ['reservation', 'reserved'],
@@ -224,6 +227,10 @@ describe('billing domain', () => {
         occurred_at: '2026-07-30T12:30:00.000Z',
         job_id: null,
         analysis_id: null,
+        source: 'system',
+        analysis_title: null,
+        channel_title: null,
+        search_text: 'release system',
       }),
     ).toThrow();
   });

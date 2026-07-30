@@ -77,6 +77,13 @@ function createStripe(): BillingStripeClient {
     },
     customers: {
       create: vi.fn(async () => ({ id: 'cus_created' })),
+      retrieve: vi.fn(async () => ({
+        deleted: false,
+        invoice_settings: { default_payment_method: null },
+      })) as unknown as BillingStripeClient['customers']['retrieve'],
+    },
+    paymentMethods: {
+      retrieve: vi.fn(),
     },
   };
 }
@@ -223,6 +230,77 @@ describe('billing checkout actions', () => {
 });
 
 describe('billing portal and CSV actions', () => {
+  it('maps only the owned Stripe customer default card into a closed payment summary', async () => {
+    const stripe = createStripe();
+    vi.mocked(stripe.customers.retrieve).mockResolvedValue({
+      deleted: false,
+      invoice_settings: { default_payment_method: 'pm_owned' },
+    } as never);
+    vi.mocked(stripe.paymentMethods.retrieve).mockResolvedValue({
+      type: 'card',
+      card: {
+        brand: 'visa',
+        last4: '4242',
+        exp_month: 8,
+        exp_year: 2028,
+      },
+    } as never);
+    const { actions, repository } = createActions({ stripe });
+
+    await expect(
+      actions.getPaymentMethodForUser({ userId: 'u1' }),
+    ).resolves.toEqual({
+      ok: true,
+      paymentMethod: {
+        status: 'available',
+        brand: 'visa',
+        last4: '4242',
+        expMonth: 8,
+        expYear: 2028,
+      },
+    });
+    expect(repository.getOwnedCustomerId).toHaveBeenCalledWith('u1');
+    expect(stripe.customers.retrieve).toHaveBeenCalledWith('cus_owned', {
+      expand: ['invoice_settings.default_payment_method'],
+    });
+    expect(stripe.paymentMethods.retrieve).toHaveBeenCalledWith('pm_owned');
+  });
+
+  it('returns an explicit unavailable payment state without a customer or default card', async () => {
+    const noCustomer = createActions({
+      repository: createRepository({
+        getOwnedCustomerId: vi.fn(async () => null),
+      }),
+    });
+    await expect(
+      noCustomer.actions.getPaymentMethodForUser({ userId: 'u1' }),
+    ).resolves.toEqual({
+      ok: true,
+      paymentMethod: { status: 'unavailable' },
+    });
+    expect(noCustomer.stripe.customers.retrieve).not.toHaveBeenCalled();
+
+    const noCard = createActions();
+    await expect(
+      noCard.actions.getPaymentMethodForUser({ userId: 'u1' }),
+    ).resolves.toEqual({
+      ok: true,
+      paymentMethod: { status: 'unavailable' },
+    });
+  });
+
+  it('rejects payment-summary identity substitution before reading Stripe', async () => {
+    const { actions, stripe } = createActions();
+
+    await expect(
+      actions.getPaymentMethodForUser({
+        userId: 'u1',
+        customerId: 'cus_attacker',
+      } as never),
+    ).resolves.toEqual({ ok: false, code: 'invalid_request' });
+    expect(stripe.customers.retrieve).not.toHaveBeenCalled();
+  });
+
   it('creates a fresh portal session only for the owned customer', async () => {
     const { actions, stripe } = createActions();
 
@@ -264,6 +342,9 @@ describe('billing portal and CSV actions', () => {
           occurredAt: '2026-07-30T10:00:00.000Z',
           jobId: 'job-sensitive',
           analysisId: 'analysis-sensitive',
+          source: 'manual',
+          analysisTitle: null,
+          channelTitle: null,
         },
       ],
       nextCursor: null,

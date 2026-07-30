@@ -115,6 +115,13 @@ describe('billing presentation', () => {
   it('maps live catalog rows consistently while preserving historical invoice money', () => {
     const subscription = toSubscriptionPresentation(snapshot, {
       now: '2026-07-30T00:00:00.000Z',
+      paymentMethod: {
+        status: 'available',
+        brand: 'visa',
+        last4: '4242',
+        expMonth: 8,
+        expYear: 2028,
+      },
     });
     const checkout = toCheckoutPresentation(prismPlan, prismPrice);
     const invoices: InvoicePage = {
@@ -149,6 +156,11 @@ describe('billing presentation', () => {
       formattedAmount: '$49.00',
     });
     expect(subscription.resetAtLabel).toBe('Aug 1, 2026');
+    expect(subscription.paymentMethod).toEqual({
+      status: 'available',
+      label: 'Visa •••• 4242',
+      expiryLabel: 'Expires 08/2028',
+    });
     expect(checkout.price).toEqual(subscription.currentPrice);
     expect(invoice?.amountDue).toMatchObject({
       amountMinor: 4800,
@@ -170,6 +182,9 @@ describe('billing presentation', () => {
           occurredAt: '2026-07-30T12:30:00.000Z',
           jobId: 'job-1',
           analysisId: 'analysis-1',
+          source: 'analysis_pipeline',
+          analysisTitle: 'Systems thinking',
+          channelTitle: 'Knowledge Channel',
         },
         {
           id: 'usage-2',
@@ -181,6 +196,9 @@ describe('billing presentation', () => {
           occurredAt: '2026-07-30T12:30:00.000Z',
           jobId: 'job-1',
           analysisId: 'analysis-1',
+          source: 'analysis_pipeline',
+          analysisTitle: 'Systems thinking',
+          channelTitle: 'Knowledge Channel',
         },
         {
           id: 'usage-3',
@@ -192,6 +210,9 @@ describe('billing presentation', () => {
           occurredAt: '2026-07-30T12:30:00.000Z',
           jobId: 'job-2',
           analysisId: 'analysis-2',
+          source: 'analysis_pipeline',
+          analysisTitle: 'Product demo',
+          channelTitle: 'Gleen',
         },
         {
           id: 'usage-4',
@@ -203,6 +224,9 @@ describe('billing presentation', () => {
           occurredAt: '2026-07-30T12:30:00.000Z',
           jobId: null,
           analysisId: null,
+          source: 'stripe_webhook',
+          analysisTitle: null,
+          channelTitle: null,
         },
         {
           id: 'usage-5',
@@ -214,6 +238,9 @@ describe('billing presentation', () => {
           occurredAt: '2026-07-30T12:30:00.000Z',
           jobId: 'job-3',
           analysisId: 'analysis-3',
+          source: 'analysis_pipeline',
+          analysisTitle: 'Systems thinking',
+          channelTitle: 'Knowledge Channel',
         },
       ],
       nextCursor: 'next',
@@ -229,8 +256,30 @@ describe('billing presentation', () => {
       { key: 'informational', label: 'Informational', variant: 'neutral' },
     ]);
     expect(presented.items[0]).toMatchObject({
-      event: { label: 'Reserved', variant: 'warning' },
+      event: {
+        label: 'Reserved',
+        title: 'Reserved — Systems thinking',
+        variant: 'warning',
+      },
+      source: {
+        key: 'analysis_pipeline',
+        label: 'Analysis pipeline',
+        detail: 'Knowledge Channel',
+      },
       occurredAtLabel: 'Jul 30, 2026, 12:30 PM',
+    });
+  });
+
+  it('presents an explicit unavailable payment method without fixture details', () => {
+    expect(
+      toSubscriptionPresentation(snapshot, {
+        now: '2026-07-30T00:00:00.000Z',
+        paymentMethod: { status: 'unavailable' },
+      }).paymentMethod,
+    ).toEqual({
+      status: 'unavailable',
+      label: 'Managed in billing portal',
+      expiryLabel: null,
     });
   });
 
