@@ -66,29 +66,61 @@ const protectedUsageViews = [
   'billing_usage_summary',
   'billing_usage_activity',
 ] as const;
-const replacementAclViolations = migrationNames.flatMap((name) => {
-  const migrationSql = readFileSync(join(migrationsDirectory, name), 'utf8');
+const normalizeSqlForAclContract = (sql: string) =>
+  sql
+    .replace(/--[^\r\n]*(?:\r?\n|$)/g, ' ')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  return protectedUsageViews.flatMap((view) => {
-    const replacement = `create or replace view public.${view}`;
+const findReplacementAclViolations = (
+  migrations: ReadonlyArray<{ name: string; sql: string }>,
+) =>
+  migrations.flatMap(({ name, sql: migrationSql }) => {
+    const normalizedSql = normalizeSqlForAclContract(migrationSql);
 
-    if (!migrationSql.includes(replacement)) {
-      return [];
-    }
+    return protectedUsageViews.flatMap((view) => {
+      const qualifiedView = `public\\s*\\.\\s*${view}`;
+      const replacementPattern = new RegExp(
+        `\\bcreate\\s+or\\s+replace\\s+view\\s+${qualifiedView}\\b`,
+        'g',
+      );
+      const replacementMatches = [
+        ...normalizedSql.matchAll(replacementPattern),
+      ];
 
-    const revoke =
-      `revoke all on public.${view} ` +
-      'from public, anon, authenticated, service_role;';
-    const grant = `grant select on public.${view} to authenticated, service_role;`;
-    const replacementIndex = migrationSql.lastIndexOf(replacement);
-    const revokeIndex = migrationSql.indexOf(revoke, replacementIndex);
-    const grantIndex = migrationSql.indexOf(grant, replacementIndex);
+      if (replacementMatches.length === 0) {
+        return [];
+      }
 
-    return revokeIndex > replacementIndex && grantIndex > revokeIndex
-      ? []
-      : [`${name}:${view}`];
+      const replacementIndex =
+        replacementMatches.at(-1)?.index ?? normalizedSql.length;
+      const replacementAndFollowingSql = normalizedSql.slice(replacementIndex);
+      const revokeIndex = replacementAndFollowingSql.search(
+        new RegExp(
+          `\\brevoke\\s+all\\s+on\\s+${qualifiedView}\\s+from\\s+` +
+            'public\\s*,\\s*anon\\s*,\\s*authenticated\\s*,\\s*service_role\\s*;',
+        ),
+      );
+      const grantIndex = replacementAndFollowingSql.search(
+        new RegExp(
+          `\\bgrant\\s+select\\s+on\\s+${qualifiedView}\\s+to\\s+` +
+            'authenticated\\s*,\\s*service_role\\s*;',
+        ),
+      );
+
+      return revokeIndex > 0 && grantIndex > revokeIndex
+        ? []
+        : [`${name}:${view}`];
+    });
   });
-});
+const replacementAclViolations = findReplacementAclViolations(
+  migrationNames.map((name) => ({
+    name,
+    sql: readFileSync(join(migrationsDirectory, name), 'utf8'),
+  })),
+);
 const exactWebhookPriceMigrationName = migrationNames.find((name) =>
   name.endsWith('_den_20_exact_webhook_price_projection.sql'),
 );
@@ -428,6 +460,58 @@ describe('DEN-20 billing view privilege hardening', () => {
   it('contains no non-select grant', () => {
     expect(viewPrivilegeSql.match(/\bgrant\s+(?!select\b)/g)).toBeNull();
     expect(viewPrivilegeSql.match(/\bgrant\s+select\b/g)).toHaveLength(3);
+  });
+
+  it('detects an uppercase protected view replacement without local ACL hardening', () => {
+    expect(
+      findReplacementAclViolations([
+        {
+          name: 'uppercase.sql',
+          sql: `
+            CREATE OR REPLACE VIEW public.billing_usage_activity AS
+            SELECT 1;
+          `,
+        },
+      ]),
+    ).toEqual(['uppercase.sql:billing_usage_activity']);
+  });
+
+  it('detects a multiline commented protected view replacement without local ACL hardening', () => {
+    expect(
+      findReplacementAclViolations([
+        {
+          name: 'multiline.sql',
+          sql: `
+            create /* preserve owner scope */
+              or
+              replace
+              view
+              public.billing_usage_summary
+            as select 1;
+          `,
+        },
+      ]),
+    ).toEqual(['multiline.sql:billing_usage_summary']);
+  });
+
+  it('accepts a whitespace-variant replacement with local revoke-then-grant hardening', () => {
+    expect(
+      findReplacementAclViolations([
+        {
+          name: 'compliant.sql',
+          sql: `
+            CREATE
+              OR REPLACE VIEW public.billing_usage_activity
+            AS SELECT 1;
+
+            REVOKE ALL ON public.billing_usage_activity
+              FROM PUBLIC, anon, authenticated, service_role;
+            GRANT SELECT ON public.billing_usage_activity
+              TO authenticated, service_role;
+          `,
+        },
+      ]),
+    ).toEqual([]);
   });
 
   it('records only the applied usage-label replacement as awaiting forward ACL correction', () => {
