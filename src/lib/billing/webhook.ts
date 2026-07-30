@@ -109,16 +109,27 @@ function booleanValue(value: unknown): boolean {
   return value;
 }
 
-function stripeId(value: unknown, prefix: string): string {
-  if (typeof value === 'string') {
-    if (new RegExp(`^${prefix}[A-Za-z0-9_]+$`).test(value)) return value;
-    throw new ControlledWebhookFailure('malformed_event');
+function stringStripeId(value: unknown, prefix: string): string {
+  if (
+    typeof value === 'string' &&
+    new RegExp(`^${prefix}[A-Za-z0-9]+$`).test(value)
+  ) {
+    return value;
   }
+  throw new ControlledWebhookFailure('malformed_event');
+}
+
+function stripeId(
+  value: unknown,
+  prefix: string,
+  expectedObject: string,
+): string {
+  if (typeof value === 'string') return stringStripeId(value, prefix);
   const expanded = objectValue(value);
-  if (expanded.deleted === true) {
+  if (expanded.deleted === true || expanded.object !== expectedObject) {
     throw new ControlledWebhookFailure('malformed_event');
   }
-  return stripeId(expanded.id, prefix);
+  return stringStripeId(expanded.id, prefix);
 }
 
 function timestamp(value: unknown): string {
@@ -132,9 +143,12 @@ function nullableTimestamp(value: unknown): string | null {
 
 function eventEnvelope(value: unknown): StripeWebhookEvent {
   const event = objectValue(value);
+  if (event.object !== 'event') {
+    throw new ControlledWebhookFailure('malformed_event');
+  }
   const data = objectValue(event.data);
   return {
-    id: stripeId(event.id, 'evt_'),
+    id: stringStripeId(event.id, 'evt_'),
     type: stringValue(event.type),
     created: integerValue(event.created),
     data: { object: data.object },
@@ -150,7 +164,7 @@ async function resolveOwnership(
   priceId: string,
   repository: BillingProjectionRepository,
 ) {
-  const customerId = stripeId(object.customer, 'cus_');
+  const customerId = stripeId(object.customer, 'cus_', 'customer');
   const [userId, price] = await Promise.all([
     repository.resolveWebhookUserId(customerId),
     repository.resolveWebhookPrice(priceId),
@@ -177,7 +191,7 @@ async function subscriptionProjection(
     throw new ControlledWebhookFailure('malformed_event');
   }
   const item = objectValue(items[0]);
-  const priceId = stripeId(objectValue(item.price).id, 'price_');
+  const priceId = stripeId(item.price, 'price_', 'price');
   const ownership = await resolveOwnership(subscription, priceId, repository);
   const status = billingSubscriptionStatusSchema.safeParse(subscription.status);
   if (!status.success) {
@@ -201,7 +215,8 @@ async function subscriptionProjection(
     eventId: event.id,
     eventCreatedAt: eventTime(event),
     userId: ownership.userId,
-    externalSubscriptionId: stripeId(subscription.id, 'sub_'),
+    externalSubscriptionId: stringStripeId(subscription.id, 'sub_'),
+    externalPriceId: ownership.stripePriceId,
     planSlug: ownership.planSlug,
     interval: ownership.interval,
     status: status.data,
@@ -228,7 +243,7 @@ function invoicePriceId(invoice: Readonly<Record<string, unknown>>): string {
     const pricing = objectValue(pricingValue);
     if (pricing.type !== 'price_details') continue;
     const details = objectValue(pricing.price_details);
-    priceIds.add(stripeId(details.price, 'price_'));
+    priceIds.add(stripeId(details.price, 'price_', 'price'));
   }
   if (priceIds.size !== 1) {
     throw new ControlledWebhookFailure('malformed_event');
@@ -243,7 +258,7 @@ function invoiceSubscriptionId(
   const parent = objectValue(invoice.parent);
   if (parent.type !== 'subscription_details') return null;
   const details = objectValue(parent.subscription_details);
-  return stripeId(details.subscription, 'sub_');
+  return stripeId(details.subscription, 'sub_', 'subscription');
 }
 
 function invoiceStatus(type: string, value: unknown): InvoiceStatus {
@@ -283,7 +298,7 @@ async function invoiceProjection(
     eventId: event.id,
     eventCreatedAt: eventTime(event),
     userId: ownership.userId,
-    externalInvoiceId: stripeId(invoice.id, 'in_'),
+    externalInvoiceId: stringStripeId(invoice.id, 'in_'),
     externalSubscriptionId: invoiceSubscriptionId(invoice),
     number: nullableString(invoice.number),
     planSlug: ownership.planSlug,
@@ -311,7 +326,11 @@ async function refundedInvoiceProjection(
   if (charge.object !== 'charge') {
     throw new ControlledWebhookFailure('malformed_event');
   }
-  const paymentIntentId = stripeId(charge.payment_intent, 'pi_');
+  const paymentIntentId = stripeId(
+    charge.payment_intent,
+    'pi_',
+    'payment_intent',
+  );
   let invoicePayments: Readonly<{ data: readonly unknown[] }>;
   try {
     invoicePayments = await dependencies.stripe.invoicePayments.list({
@@ -327,6 +346,7 @@ async function refundedInvoiceProjection(
   const invoiceId = stripeId(
     objectValue(invoicePayments.data[0]).invoice,
     'in_',
+    'invoice',
   );
   let invoice: unknown;
   try {
@@ -369,17 +389,21 @@ export async function processStripeWebhook(
     return { ok: false, code: 'invalid_signature', retryable: false };
   }
 
-  let event: StripeWebhookEvent;
+  let verifiedEvent: unknown;
   try {
-    event = eventEnvelope(
-      dependencies.stripe.webhooks.constructEvent(
-        rawBody,
-        signature,
-        dependencies.webhookSecret,
-      ),
+    verifiedEvent = dependencies.stripe.webhooks.constructEvent(
+      rawBody,
+      signature,
+      dependencies.webhookSecret,
     );
   } catch {
     return { ok: false, code: 'invalid_signature', retryable: false };
+  }
+  let event: StripeWebhookEvent;
+  try {
+    event = eventEnvelope(verifiedEvent);
+  } catch {
+    return { ok: false, code: 'malformed_event', retryable: false };
   }
 
   try {

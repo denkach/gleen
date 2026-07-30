@@ -72,6 +72,7 @@ describe('Supabase billing projection repository', () => {
       eq: vi.fn(),
       maybeSingle: vi.fn().mockResolvedValue({
         data: {
+          stripe_price_id: 'price_1',
           billing_interval: 'month',
           billing_plans: { slug: 'starter' },
         },
@@ -95,6 +96,7 @@ describe('Supabase billing projection repository', () => {
       '5c5583a7-131b-4c05-b76a-7a4835dba8df',
     );
     await expect(repository.resolveWebhookPrice('price_1')).resolves.toEqual({
+      stripePriceId: 'price_1',
       planSlug: 'starter',
       interval: 'month',
     });
@@ -107,14 +109,48 @@ describe('Supabase billing projection repository', () => {
     );
     expect(admin.from).toHaveBeenNthCalledWith(2, 'billing_prices');
     expect(priceQuery.select).toHaveBeenCalledWith(
-      'billing_interval,billing_plans!inner(slug)',
+      'stripe_price_id,billing_interval,billing_plans!inner(slug)',
     );
     expect(priceQuery.eq).toHaveBeenNthCalledWith(
       1,
       'stripe_price_id',
       'price_1',
     );
-    expect(priceQuery.eq).toHaveBeenNthCalledWith(2, 'is_active', true);
+    expect(priceQuery.eq).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes the verified external Price ID to the atomic subscription RPC', async () => {
+    const admin = {
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn(),
+    };
+    const repository = createSupabaseBillingProjectionRepository(
+      admin as unknown as SupabaseBillingAdminClient,
+    );
+
+    await repository.applySubscription({
+      eventId: 'evt_subscription',
+      eventCreatedAt: '2026-07-30T00:00:00.000Z',
+      userId: '5c5583a7-131b-4c05-b76a-7a4835dba8df',
+      externalSubscriptionId: 'sub_1',
+      externalPriceId: 'price_retired',
+      planSlug: 'starter',
+      interval: 'month',
+      status: 'canceled',
+      currentPeriodStart: '2026-07-01T00:00:00.000Z',
+      currentPeriodEnd: '2026-08-01T00:00:00.000Z',
+      trialEndsAt: null,
+      cancelAtPeriodEnd: false,
+      cancellationEffectiveAt: '2026-07-30T00:00:00.000Z',
+      scheduledPlanSlug: null,
+      scheduledChangeAt: null,
+      paidThrough: null,
+    });
+
+    expect(admin.rpc).toHaveBeenCalledWith(
+      'apply_billing_subscription_projection',
+      expect.objectContaining({ target_external_price_id: 'price_retired' }),
+    );
   });
 
   it('passes an explicit paid-through advance flag to the atomic invoice RPC', async () => {

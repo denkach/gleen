@@ -78,17 +78,17 @@ export function createSupabaseBillingProjectionRepository(
       const query = adminClient
         .from('billing_prices')
         .select(
-          'billing_interval,billing_plans!inner(slug)',
+          'stripe_price_id,billing_interval,billing_plans!inner(slug)',
         ) as SupabaseLookupQuery;
       const result = await query
         .eq('stripe_price_id', validatedPriceId)
-        .eq('is_active', true)
         .maybeSingle();
       if (result.error !== null) throw new BillingRepositoryError();
       if (result.data === null) return null;
       const row = parseValue(
         z
           .object({
+            stripe_price_id: z.string().regex(/^price_[A-Za-z0-9]+$/),
             billing_interval: z.enum(['month', 'year']),
             billing_plans: z.object({ slug: z.string() }).strict(),
           })
@@ -96,6 +96,7 @@ export function createSupabaseBillingProjectionRepository(
         result.data,
       );
       return webhookPriceMappingSchema.parse({
+        stripePriceId: row.stripe_price_id,
         planSlug: row.billing_plans.slug,
         interval: row.billing_interval,
       });
@@ -122,6 +123,7 @@ export function createSupabaseBillingProjectionRepository(
           target_event_created_at: projection.eventCreatedAt,
           target_user_id: projection.userId,
           target_external_subscription_id: projection.externalSubscriptionId,
+          target_external_price_id: projection.externalPriceId,
           target_plan_slug: projection.planSlug,
           target_interval: projection.interval,
           target_status: projection.status,

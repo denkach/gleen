@@ -104,7 +104,7 @@ describe('Stripe webhook route', () => {
           items: {
             data: [
               {
-                price: { id: 'price_unknown' },
+                price: { id: 'price_unknown', object: 'price' },
                 current_period_start: 1_785_369_600,
                 current_period_end: 1_788_048_000,
               },

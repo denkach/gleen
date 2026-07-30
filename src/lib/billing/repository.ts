@@ -64,6 +64,7 @@ export const subscriptionProjectionSchema = z
     eventCreatedAt: z.iso.datetime({ offset: true }),
     userId: z.string().trim().min(1),
     externalSubscriptionId: z.string().trim().min(1),
+    externalPriceId: z.string().regex(/^price_[A-Za-z0-9]+$/),
     planSlug: billingPlanSlugSchema,
     interval: billingIntervalSchema,
     status: billingSubscriptionStatusSchema,
@@ -111,6 +112,7 @@ export type InvoiceProjection = z.infer<typeof invoiceProjectionSchema>;
 
 export const webhookPriceMappingSchema = z
   .object({
+    stripePriceId: z.string().regex(/^price_[A-Za-z0-9]+$/),
     planSlug: billingPlanSlugSchema,
     interval: billingIntervalSchema,
   })

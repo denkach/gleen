@@ -29,7 +29,7 @@ function subscription(overrides = {}) {
     items: {
       data: [
         {
-          price: { id: 'price_starter_month' },
+          price: { id: 'price_startermonth', object: 'price' },
           current_period_start: eventCreated,
           current_period_end: eventCreated + 2_678_400,
         },
@@ -56,7 +56,7 @@ function invoice(overrides = {}) {
         {
           pricing: {
             type: 'price_details',
-            price_details: { price: 'price_starter_month' },
+            price_details: { price: 'price_startermonth' },
           },
         },
       ],
@@ -107,6 +107,7 @@ function dependencies(verifiedEvent: unknown): StripeWebhookDependencies & {
       markWebhookFailed: vi.fn().mockResolvedValue(undefined),
       resolveWebhookUserId: vi.fn().mockResolvedValue(userId),
       resolveWebhookPrice: vi.fn().mockResolvedValue({
+        stripePriceId: 'price_startermonth',
         planSlug: 'starter',
         interval: 'month',
       }),
@@ -207,6 +208,41 @@ describe('processStripeWebhook', () => {
     );
   });
 
+  it('carries the exact verified Stripe Price ID into subscription projection', async () => {
+    const deps = dependencies(
+      event('customer.subscription.updated', subscription()),
+    );
+
+    await expect(processStripeWebhook('{}', 'sig_1', deps)).resolves.toEqual({
+      ok: true,
+      status: 'processed',
+    });
+    expect(deps.repository.applySubscription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        externalPriceId: 'price_startermonth',
+        planSlug: 'starter',
+        interval: 'month',
+      }),
+    );
+  });
+
+  it('classifies a verified malformed envelope separately from signature failure', async () => {
+    const deps = dependencies({
+      id: 'evt_1',
+      object: 'event',
+      created: 'not-a-timestamp',
+      type: 'invoice.updated',
+      data: { object: invoice() },
+    });
+
+    await expect(processStripeWebhook('{}', 'sig_1', deps)).resolves.toEqual({
+      ok: false,
+      code: 'malformed_event',
+      retryable: false,
+    });
+    expect(deps.repository.claimWebhookEvent).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['invoice.paid', 'paid', eventCreated + 60],
     ['invoice.payment_failed', 'failed', null],
@@ -276,7 +312,7 @@ describe('processStripeWebhook', () => {
               {
                 pricing: {
                   type: 'price_details',
-                  price_details: { price: 'price_starter_month' },
+                  price_details: { price: 'price_startermonth' },
                 },
               },
             ],
@@ -340,7 +376,7 @@ describe('processStripeWebhook', () => {
           items: {
             data: [
               {
-                price: { id: 'price_unknown' },
+                price: { id: 'price_unknown', object: 'price' },
                 current_period_start: eventCreated,
                 current_period_end: eventCreated + 2_678_400,
               },
@@ -354,6 +390,42 @@ describe('processStripeWebhook', () => {
       event(
         'customer.subscription.updated',
         subscription({ customer: { deleted: true, id: 'cus_deleted' } }),
+      ),
+    ],
+    [
+      'malformed_event',
+      event(
+        'customer.subscription.updated',
+        subscription({ customer: 'cus_bad_id' }),
+      ),
+    ],
+    [
+      'malformed_event',
+      event(
+        'customer.subscription.updated',
+        subscription({
+          customer: { id: 'cus_1', object: 'price' },
+        }),
+      ),
+    ],
+    [
+      'malformed_event',
+      event(
+        'customer.subscription.updated',
+        subscription({
+          items: {
+            data: [
+              {
+                price: {
+                  id: 'price_startermonth',
+                  object: 'customer',
+                },
+                current_period_start: eventCreated,
+                current_period_end: eventCreated + 2_678_400,
+              },
+            ],
+          },
+        }),
       ),
     ],
     [

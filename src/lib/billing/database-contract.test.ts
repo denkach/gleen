@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -41,6 +41,17 @@ const viewPrivilegeMigrationPath = join(
   viewPrivilegeMigrationName,
 );
 const viewPrivilegeSql = readFileSync(viewPrivilegeMigrationPath, 'utf8');
+const migrationsDirectory = join(process.cwd(), 'supabase', 'migrations');
+const exactWebhookPriceMigrationName = readdirSync(migrationsDirectory).find(
+  (name) => name.endsWith('_den_20_exact_webhook_price_projection.sql'),
+);
+const exactWebhookPriceSql =
+  exactWebhookPriceMigrationName === undefined
+    ? ''
+    : readFileSync(
+        join(migrationsDirectory, exactWebhookPriceMigrationName),
+        'utf8',
+      );
 
 const readBetween = (start: string, end: string) => {
   const startIndex = sql.indexOf(start);
@@ -241,6 +252,22 @@ describe('DEN-20 billing repository database boundaries', () => {
     expect(claim).not.toContain(
       "webhook.processing_status in ('failed', 'processing')",
     );
+  });
+});
+
+describe('DEN-20 exact historical webhook Price projection', () => {
+  it('adds a forward-only RPC that verifies the exact known Price without requiring it to remain active', () => {
+    expect(exactWebhookPriceMigrationName).toBeDefined();
+    expect(exactWebhookPriceSql).toContain('target_external_price_id text');
+    expect(exactWebhookPriceSql).toContain(
+      'price.stripe_price_id = target_external_price_id',
+    );
+    expect(exactWebhookPriceSql).toContain(
+      'price.billing_interval = target_interval',
+    );
+    expect(exactWebhookPriceSql).toContain('price.plan_id = plan.id');
+    expect(exactWebhookPriceSql).not.toContain('price.is_active');
+    expect(exactWebhookPriceSql).not.toContain('billing_plan.is_active');
   });
 });
 
