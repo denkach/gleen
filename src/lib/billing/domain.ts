@@ -69,6 +69,15 @@ export const billingPriceSchema = z
   .readonly();
 export type BillingPrice = z.infer<typeof billingPriceSchema>;
 
+export function billingPriceForPlanSchema(planSlug: BillingPlanSlug) {
+  const ownerSlug = billingPlanSlugSchema.parse(planSlug);
+
+  return billingPriceSchema.refine(
+    (price) => price.planId === ownerSlug,
+    'Catalog price does not belong to its plan',
+  );
+}
+
 export const usageEventTypeSchema = z.enum([
   'reservation',
   'settlement',
@@ -269,7 +278,10 @@ export const availableBillingPlanSchema = z
   })
   .strict()
   .superRefine((entry, context) => {
-    if (entry.prices.some((price) => price.planId !== entry.plan.id)) {
+    const ownedPriceSchema = billingPriceForPlanSchema(entry.plan.slug);
+    if (
+      entry.prices.some((price) => !ownedPriceSchema.safeParse(price).success)
+    ) {
       context.addIssue({
         code: 'custom',
         message: 'Catalog price does not belong to its plan',
@@ -295,7 +307,9 @@ export const billingSnapshotSchema = z
   .superRefine((snapshot, context) => {
     if (
       snapshot.currentPrice !== null &&
-      snapshot.currentPrice.planId !== snapshot.currentPlan.id
+      !billingPriceForPlanSchema(snapshot.currentPlan.slug).safeParse(
+        snapshot.currentPrice,
+      ).success
     ) {
       context.addIssue({
         code: 'custom',

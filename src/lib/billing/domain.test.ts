@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  availableBillingPlanSchema,
   billingIntervalSchema,
   billingPlanSchema,
+  billingPriceForPlanSchema,
+  billingPriceSchema,
   billingSnapshotSchema,
   billingSubscriptionStatusSchema,
   billingUsageActivityRowSchema,
@@ -320,5 +323,56 @@ describe('billing domain', () => {
       },
     ]);
     expect(JSON.stringify(catalog)).not.toMatch(/price_|stripe|plan_id/i);
+  });
+
+  it('rejects a valid price slug that does not own the price', () => {
+    const prismPlan = {
+      id: 'prism-pro',
+      slug: 'prism-pro',
+      displayName: 'Prism Pro',
+      description: 'For professionals.',
+      analysisLimit: 25,
+      features: ['25 analyses per month'],
+      purchasable: true,
+    } as const;
+    const starterPrice = {
+      planId: 'starter',
+      interval: 'month',
+      amountMinor: 4900,
+      currency: 'usd',
+      savingsPercent: null,
+    } as const;
+
+    expect(billingPriceSchema.parse(starterPrice)).toEqual(starterPrice);
+    expect(billingPriceForPlanSchema).toBeTypeOf('function');
+    expect(() =>
+      billingPriceForPlanSchema('prism-pro').parse(starterPrice),
+    ).toThrow();
+    expect(() =>
+      availableBillingPlanSchema.parse({
+        plan: prismPlan,
+        prices: [starterPrice],
+      }),
+    ).toThrow();
+    expect(() =>
+      billingSnapshotSchema.parse({
+        currentPlan: prismPlan,
+        currentPrice: starterPrice,
+        period: {
+          startsAt: '2026-07-01T00:00:00.000Z',
+          endsAt: '2026-08-01T00:00:00.000Z',
+        },
+        usage: { used: 19, reserved: 1, remaining: 5, limit: 25 },
+        scheduledChange: null,
+        paymentSummary: {
+          subscriptionStatus: 'active',
+          paidThrough: '2026-08-01T00:00:00.000Z',
+          outstandingAmountMinor: 0,
+          currency: 'usd',
+        },
+        recentActivity: [],
+        availablePlans: [],
+      }),
+    ).toThrow();
   });
 });

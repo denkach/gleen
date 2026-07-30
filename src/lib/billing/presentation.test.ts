@@ -285,4 +285,13 @@ describe('billing presentation', () => {
     });
     expect(available.action).toEqual({ enabled: true, reason: null });
   });
+
+  it('rejects a valid price slug owned by a different checkout plan', () => {
+    expect(() =>
+      toCheckoutPresentation(prismPlan, {
+        ...prismPrice,
+        planId: 'starter',
+      }),
+    ).toThrow('Catalog price does not belong to the selected plan');
+  });
 });

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   billingPlanSchema,
+  billingPriceForPlanSchema,
   billingPriceSchema,
   billingSnapshotSchema,
   billingSubscriptionStatusSchema,
@@ -171,7 +172,9 @@ export function toCheckoutPresentation(
   const parsedPlan = billingPlanSchema.parse(plan);
   const parsedPrice = billingPriceSchema.parse(price);
 
-  if (parsedPrice.planId !== parsedPlan.id) {
+  if (
+    !billingPriceForPlanSchema(parsedPlan.slug).safeParse(parsedPrice).success
+  ) {
     throw new Error('Catalog price does not belong to the selected plan');
   }
 
