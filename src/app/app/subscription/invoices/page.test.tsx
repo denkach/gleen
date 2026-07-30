@@ -66,7 +66,7 @@ describe('InvoicesPage year ownership', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-07-30T23:30:00.000Z'));
+    vi.setSystemTime(new Date('2026-12-31T23:30:00.000Z'));
     getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } } });
     getOwnedSnapshot.mockResolvedValue({});
     getOwnedInvoiceSummary.mockImplementation(
@@ -82,6 +82,13 @@ describe('InvoicesPage year ownership', () => {
   });
 
   it('keeps current UTC YTD independent of the selected invoice year filter', async () => {
+    const getUtcYear = vi
+      .spyOn(Date.prototype, 'getUTCFullYear')
+      .mockReturnValue(2026);
+    const getLocalYear = vi
+      .spyOn(Date.prototype, 'getFullYear')
+      .mockReturnValue(2027);
+
     render(
       await InvoicesPage({
         searchParams: Promise.resolve({ year: '2024' }),
@@ -89,12 +96,16 @@ describe('InvoicesPage year ownership', () => {
     );
 
     expect(getOwnedInvoiceSummary).toHaveBeenCalledWith('owner-1', 2026);
+    expect(getUtcYear).toHaveBeenCalled();
+    expect(getLocalYear).not.toHaveBeenCalled();
     expect(listOwnedInvoices).toHaveBeenCalledWith(
       'owner-1',
       expect.objectContaining({ year: 2024 }),
     );
     expect(screen.getByText('YTD 2026')).toBeInTheDocument();
     expect(screen.getByText('1 filtered rows')).toBeInTheDocument();
+    getUtcYear.mockRestore();
+    getLocalYear.mockRestore();
     vi.useRealTimers();
   });
 });
