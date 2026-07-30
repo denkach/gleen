@@ -52,6 +52,10 @@ type Query = Readonly<{
 
 export type SupabaseBillingClient = Readonly<{
   from(view: string): Query;
+  rpc(
+    functionName: string,
+    parameters: Readonly<Record<string, unknown>>,
+  ): PromiseLike<SupabaseResult>;
 }>;
 
 export class BillingRepositoryError extends Error {
@@ -140,6 +144,12 @@ export function createSupabaseBillingRepository(
 ): BillingRepository {
   return {
     async getOwnedSnapshot(userId) {
+      dataOrThrow(
+        await client.rpc('get_or_create_free_entitlement', {
+          target_user_id: userId,
+        }),
+      );
+
       const activityQuery = client
         .from('billing_usage_activity')
         .select('*')

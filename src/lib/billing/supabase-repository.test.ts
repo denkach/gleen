@@ -169,11 +169,23 @@ function snapshotClient(
   };
   return {
     from: vi.fn((view: string) => results[view as keyof typeof results]),
-    rpc: vi.fn(),
+    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
   };
 }
 
 describe('Supabase billing repository', () => {
+  it('ensures the current free entitlement before reading an owner snapshot', async () => {
+    const client = snapshotClient();
+
+    await createSupabaseBillingRepository(
+      client as unknown as SupabaseBillingClient,
+    ).getOwnedSnapshot(userId);
+
+    expect(client.rpc).toHaveBeenCalledWith('get_or_create_free_entitlement', {
+      target_user_id: userId,
+    });
+  });
+
   it('builds a snapshot from complete owner-scoped settled and reserved usage', async () => {
     const catalog = queryReturning({
       data: [
@@ -252,7 +264,7 @@ describe('Supabase billing repository', () => {
         if (view === 'billing_payment_summary') return payment;
         return activity;
       }),
-      rpc: vi.fn(),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
     };
 
     const snapshot = await createSupabaseBillingRepository(
@@ -277,7 +289,10 @@ describe('Supabase billing repository', () => {
       data: [{ slug: 'free', stripe_price_id: 'price_secret' }],
       error: null,
     });
-    const client = { from: vi.fn().mockReturnValue(malformed), rpc: vi.fn() };
+    const client = {
+      from: vi.fn().mockReturnValue(malformed),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
 
     await expect(
       createSupabaseBillingRepository(

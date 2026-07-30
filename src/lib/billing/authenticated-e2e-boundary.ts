@@ -272,5 +272,14 @@ export function createAuthenticatedBillingE2eClient() {
       }
       return new BoundaryQuery(table as Table);
     },
+    async rpc(functionName: string, parameters: Record<string, unknown>) {
+      if (
+        functionName !== 'get_or_create_free_entitlement' ||
+        parameters.target_user_id !== billingE2eOwnerId
+      ) {
+        throw new Error('Authenticated billing fixture rejected unknown RPC');
+      }
+      return { data: null, error: null };
+    },
   };
 }
