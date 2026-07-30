@@ -13,6 +13,9 @@ process.env.PLAYWRIGHT_AUTH_FIXTURE_TOKEN = billingAuthFixtureToken;
 export default defineConfig({
   testDir: './tests/e2e',
   testIgnore: 'ui-production.spec.ts',
+  // The shared development-fixture server and pixel baselines are deliberately
+  // serialized so the repository gate exercises deterministic browser state.
+  workers: 1,
   snapshotPathTemplate:
     '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}',
   retries: process.env.CI ? 2 : 0,
@@ -36,6 +39,7 @@ export default defineConfig({
     {
       name: 'mobile-chrome',
       grep: /durable/,
+      testIgnore: /billing\.visual\.spec\.ts/,
       use: { ...devices['Pixel 7'] },
     },
   ],

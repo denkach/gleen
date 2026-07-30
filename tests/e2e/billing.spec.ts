@@ -47,6 +47,7 @@ async function openFixture(
   );
   expect(response?.status()).toBe(200);
   await expect(page.locator('.billing-experience')).toBeVisible();
+  await expect(page.getByTestId('billing-fixture-hydrated')).toHaveText('true');
 }
 
 async function focusOrder(page: Page, count: number) {

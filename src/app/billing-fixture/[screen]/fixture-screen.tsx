@@ -8,12 +8,13 @@ import { SubscriptionScreen } from '@/components/billing/subscription-screen';
 import { UsageScreen } from '@/components/billing/usage-screen';
 import type { BillingFixture } from '@/lib/billing/fixtures';
 import type { UsageEventType } from '@/lib/billing/domain';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 
 const disabledExport = async () =>
   ({ ok: false, code: 'fixture-disabled' }) as const;
 const disabledPortal = async () =>
   ({ ok: false, code: 'fixture-disabled' }) as const;
+const subscribeHydration = () => () => undefined;
 
 export function BillingFixtureScreen({
   fixture,
@@ -37,17 +38,32 @@ export function BillingFixtureScreen({
     cursor: string | null;
   }>;
 }>) {
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    () => true,
+    () => false,
+  );
   const [payload, setPayload] = useState('');
   const [portalCount, setPortalCount] = useState(0);
   const [openedPortal, setOpenedPortal] = useState('');
-  const boundaryEvidence =
-    testBoundary === null ? null : (
-      <span className="app-visually-hidden" aria-hidden="true">
-        <output data-testid="billing-boundary-payload">{payload}</output>
-        <output data-testid="billing-boundary-count">{portalCount}</output>
-        <output data-testid="billing-boundary-opened">{openedPortal}</output>
-      </span>
-    );
+
+  const boundaryEvidence = (
+    <>
+      <output
+        className="app-visually-hidden"
+        data-testid="billing-fixture-hydrated"
+      >
+        {hydrated ? 'true' : 'false'}
+      </output>
+      {testBoundary !== null && (
+        <span className="app-visually-hidden" aria-hidden="true">
+          <output data-testid="billing-boundary-payload">{payload}</output>
+          <output data-testid="billing-boundary-count">{portalCount}</output>
+          <output data-testid="billing-boundary-opened">{openedPortal}</output>
+        </span>
+      )}
+    </>
+  );
 
   switch (fixture.screen) {
     case 'subscription':

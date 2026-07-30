@@ -28,6 +28,7 @@ async function capture(
   await expect(
     page.getByRole('heading', { level: 1, name: heading }),
   ).toBeVisible();
+  await expect(page.getByTestId('billing-fixture-hydrated')).toHaveText('true');
   const experience = page.locator('.billing-experience');
   await expect(experience).toBeVisible();
   await expect
