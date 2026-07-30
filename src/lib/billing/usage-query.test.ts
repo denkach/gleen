@@ -24,6 +24,47 @@ describe('usage query', () => {
     });
   });
 
+  it.each([
+    '9007199254740992',
+    '999999999999999999999999999999999999999999999999999999999999',
+    '-1',
+    '1.5',
+    '1000001',
+  ])(
+    'falls back an invalid or overflowing cursor %s without losing filters',
+    (cursor) => {
+      expect(
+        parseUsageRouteQuery({
+          search: ' retry ',
+          eventType: 'technical_retry',
+          range: 'last90',
+          cursor,
+        }),
+      ).toEqual({
+        search: 'retry',
+        eventType: 'technical_retry',
+        range: 'last90',
+        cursor: null,
+      });
+    },
+  );
+
+  it('accepts and canonicalizes the maximum safe application cursor', () => {
+    expect(
+      parseUsageRouteQuery({
+        search: 'retry',
+        eventType: 'technical_retry',
+        range: 'last90',
+        cursor: '1000000',
+      }),
+    ).toEqual({
+      search: 'retry',
+      eventType: 'technical_retry',
+      range: 'last90',
+      cursor: '1000000',
+    });
+  });
+
   it('derives deterministic UTC boundaries for every date range', () => {
     expect(
       usagePeriodBounds('current', period, '2026-07-30T12:00:00.000Z'),

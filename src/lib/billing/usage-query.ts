@@ -5,6 +5,7 @@ import {
   usageEventTypeSchema,
   type BillingPeriod,
 } from './domain';
+import { usageCursorSchema } from './repository';
 
 export const usageDateRangeSchema = z.enum(['current', 'last90', 'all']);
 export type UsageDateRange = z.infer<typeof usageDateRangeSchema>;
@@ -35,9 +36,7 @@ export function parseUsageRouteQuery(
       eventValue === undefined || eventValue === 'all'
         ? null
         : usageEventTypeSchema.nullable().catch(null).parse(eventValue),
-    cursor: z
-      .string()
-      .regex(/^(0|[1-9]\d*)$/)
+    cursor: usageCursorSchema
       .nullable()
       .catch(null)
       .parse(scalar(raw.cursor) ?? null),

@@ -57,6 +57,7 @@ function queryReturning(result: {
     select: vi.fn(),
     eq: vi.fn(),
     gte: vi.fn(),
+    lt: vi.fn(),
     lte: vi.fn(),
     ilike: vi.fn(),
     order: vi.fn(),
@@ -71,6 +72,7 @@ function queryReturning(result: {
     'select',
     'eq',
     'gte',
+    'lt',
     'lte',
     'ilike',
     'order',
@@ -320,12 +322,32 @@ describe('Supabase billing repository', () => {
       'occurred_at',
       '2026-05-01T00:00:00.000Z',
     );
-    expect(usage.lte).toHaveBeenCalledWith(
+    expect(usage.lt).toHaveBeenCalledWith(
       'occurred_at',
       '2026-07-30T00:00:00.000Z',
     );
+    expect(usage.lte).not.toHaveBeenCalled();
     expect(invoices.eq).toHaveBeenCalledWith('user_id', userId);
     expect(customer.eq).toHaveBeenCalledWith('user_id', userId);
+  });
+
+  it('rejects an above-maximum usage cursor before navigation math reaches the query', async () => {
+    const usage = queryReturning({ data: [], error: null, count: 0 });
+    const client = { from: vi.fn(() => usage), rpc: vi.fn() };
+
+    await expect(
+      createSupabaseBillingRepository(
+        client as unknown as SupabaseBillingClient,
+      ).listOwnedUsage(userId, {
+        cursor: '1000001',
+        limit: 25,
+        search: 'retry',
+        eventType: 'technical_retry',
+        periodStart: null,
+        periodEnd: null,
+      }),
+    ).rejects.toBeInstanceOf(BillingRepositoryError);
+    expect(usage.range).not.toHaveBeenCalled();
   });
 
   it('maps owner-scoped stored event source and analysis labels without exposing search text', async () => {

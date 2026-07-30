@@ -32,6 +32,7 @@ type Query = Readonly<{
   select(columns?: string, options?: Readonly<{ count: 'exact' }>): Query;
   eq(column: string, value: unknown): Query;
   gte(column: string, value: unknown): Query;
+  lt(column: string, value: unknown): Query;
   lte(column: string, value: unknown): Query;
   ilike(column: string, pattern: string): Query;
   order(column: string, options: Readonly<{ ascending: boolean }>): Query;
@@ -277,7 +278,7 @@ export function createSupabaseBillingRepository(
         query = query.gte('occurred_at', parsed.periodStart);
       }
       if (parsed.periodEnd !== null) {
-        query = query.lte('occurred_at', parsed.periodEnd);
+        query = query.lt('occurred_at', parsed.periodEnd);
       }
       const result = await query
         .order('occurred_at', { ascending: false })

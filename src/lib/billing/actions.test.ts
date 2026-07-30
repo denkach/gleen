@@ -383,6 +383,60 @@ describe('billing portal and CSV actions', () => {
     }
   });
 
+  it('keeps an event exactly at the exclusive period reset out of CSV', async () => {
+    const resetAt = '2026-08-01T00:00:00.000Z';
+    const resetEvent = {
+      id: 'ledger-at-reset',
+      planSlug: 'starter',
+      eventType: 'period_renewal',
+      quantity: 10,
+      status: 'applied',
+      remainingBalance: 10,
+      occurredAt: resetAt,
+      jobId: null,
+      analysisId: null,
+      source: 'system',
+      analysisTitle: null,
+      channelTitle: null,
+    } as const;
+    const listOwnedUsage = vi.fn(
+      async (
+        _userId: string,
+        query: Parameters<BillingRepository['listOwnedUsage']>[1],
+      ) => ({
+        items:
+          query.periodEnd !== null && resetEvent.occurredAt >= query.periodEnd
+            ? []
+            : [resetEvent],
+        nextCursor: null,
+        totalCount: 0,
+      }),
+    );
+    const { actions } = createActions({
+      repository: createRepository({ listOwnedUsage }),
+    });
+
+    const result = await actions.exportUsageForUser({
+      userId: 'u1',
+      filters: {
+        search: '',
+        eventType: null,
+        periodStart: '2026-07-01T00:00:00.000Z',
+        periodEnd: resetAt,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.content).not.toContain(resetAt);
+    expect(listOwnedUsage).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({
+        periodStart: '2026-07-01T00:00:00.000Z',
+        periodEnd: resetAt,
+      }),
+    );
+  });
+
   it('exports all owner-scoped invoice pages without raw IDs or URLs', async () => {
     const listOwnedInvoices = vi
       .fn()

@@ -11,10 +11,23 @@ import {
   type UsageLedgerPage,
 } from './domain';
 
+const billingPageLimitMaximum = 100;
+const maximumUsagePageCount = 10_000;
+export const usageCursorMaximumOffset =
+  billingPageLimitMaximum * maximumUsagePageCount;
+
+export const usageCursorSchema = z
+  .string()
+  .regex(/^(0|[1-9]\d*)$/)
+  .transform(Number)
+  .refine(Number.isSafeInteger)
+  .refine((offset) => offset <= usageCursorMaximumOffset)
+  .transform(String);
+
 export const usageQuerySchema = z
   .object({
-    cursor: z.string().min(1).nullable().default(null),
-    limit: z.number().int().min(1).max(100).default(25),
+    cursor: usageCursorSchema.nullable().default(null),
+    limit: z.number().int().min(1).max(billingPageLimitMaximum).default(25),
     search: z.string().trim().max(200).default(''),
     eventType: usageEventTypeSchema.nullable().default(null),
     periodStart: z.iso.datetime({ offset: true }).nullable().default(null),
