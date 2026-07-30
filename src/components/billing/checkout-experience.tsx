@@ -113,8 +113,8 @@ function CheckoutElements({
       }
       stripeCheckout={
         <div className="billing-stripe-elements">
-          <PaymentElement />
           <BillingAddressElement />
+          <PaymentElement />
         </div>
       }
       totals={totals}

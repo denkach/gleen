@@ -152,6 +152,33 @@ describe('CheckoutExperience rejection and cleanup', () => {
     expect(screen.getByRole('button', { name: 'Start Starter' })).toBeEnabled();
   });
 
+  it('mounts the billing address before payment so Stripe does not collect it twice', async () => {
+    useCheckoutElements.mockReturnValue(
+      readyCheckout(vi.fn().mockResolvedValue({ type: 'success' })),
+    );
+    render(
+      <CheckoutExperience
+        presentation={presentation}
+        prices={[presentation.price]}
+        publishableKey="pk_test_checkout"
+        sessionId={null}
+        createCheckout={vi.fn().mockResolvedValue({
+          ok: true,
+          clientSecret: 'cs_test_secret',
+        })}
+        getConfirmation={vi.fn()}
+      />,
+    );
+
+    const address = await screen.findByTestId('address-element');
+    const payment = screen.getByTestId('payment-element');
+
+    expect(
+      address.compareDocumentPosition(payment) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('suppresses Stripe confirmation side effects after unmount', async () => {
     let rejectConfirm!: (reason: Error) => void;
     const confirm = vi.fn(
