@@ -108,12 +108,12 @@ create table public.billing_entitlement_periods (
   period_end timestamptz not null,
   analysis_limit integer not null check (analysis_limit >= 0),
   is_paid_through boolean not null default false,
-  source text not null check (source in ('free', 'stripe')),
+  source text not null check (source in ('free', 'stripe', 'migration')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (period_end > period_start),
   check (
-    (source = 'free' and subscription_id is null)
+    (source in ('free', 'migration') and subscription_id is null)
     or (source = 'stripe' and subscription_id is not null)
   ),
   unique (user_id, plan_id, period_start, period_end)
@@ -193,7 +193,7 @@ create index billing_webhook_status_created_idx
 alter table public.analysis_usage_reservations
   alter column job_id drop not null,
   add column analysis_id uuid references public.analysis_intakes(id) on delete cascade,
-  add column entitlement_period_id uuid references public.billing_entitlement_periods(id) on delete restrict,
+  add column entitlement_period_id uuid references public.billing_entitlement_periods(id) on delete cascade,
   add column quantity integer not null default 1 check (quantity = 1),
   add column reserved_at timestamptz not null default now(),
   add column settled_at timestamptz,
@@ -216,7 +216,7 @@ create table public.usage_ledger (
   id uuid primary key default gen_random_uuid(),
   idempotency_key text not null,
   user_id uuid not null references auth.users(id) on delete cascade,
-  entitlement_period_id uuid not null references public.billing_entitlement_periods(id) on delete restrict,
+  entitlement_period_id uuid not null references public.billing_entitlement_periods(id) on delete cascade,
   reservation_id uuid references public.analysis_usage_reservations(id) on delete set null,
   job_id uuid references public.analysis_jobs(id) on delete set null,
   event_type text not null check (
@@ -351,12 +351,40 @@ select distinct
     pg_catalog.date_trunc('month', pg_catalog.now() at time zone 'UTC')
       at time zone 'UTC'
   ) + interval '1 month',
-  3,
+  plan.analysis_limit,
   true,
   'free'
 from public.analysis_usage_reservations as reservation
 cross join public.billing_plans as plan
 where plan.slug = 'free'
+  and reservation.status = 'reserved'
+on conflict do nothing;
+
+insert into public.billing_entitlement_periods (
+  user_id,
+  plan_id,
+  period_start,
+  period_end,
+  analysis_limit,
+  is_paid_through,
+  source
+)
+select distinct
+  reservation.user_id,
+  plan.id,
+  (
+    pg_catalog.date_trunc('month', pg_catalog.now() at time zone 'UTC')
+      at time zone 'UTC'
+  ) - interval '1 month',
+  pg_catalog.date_trunc('month', pg_catalog.now() at time zone 'UTC')
+    at time zone 'UTC',
+  plan.analysis_limit,
+  false,
+  'migration'
+from public.analysis_usage_reservations as reservation
+cross join public.billing_plans as plan
+where plan.slug = 'free'
+  and reservation.status in ('settled', 'released')
 on conflict do nothing;
 
 update public.analysis_usage_reservations as reservation
@@ -364,10 +392,21 @@ set entitlement_period_id = entitlement.id
 from public.billing_entitlement_periods as entitlement
 where reservation.entitlement_period_id is null
   and entitlement.user_id = reservation.user_id
-  and entitlement.source = 'free'
+  and entitlement.source = case
+    when reservation.status = 'reserved' then 'free'
+    else 'migration'
+  end
   and entitlement.period_start =
-    pg_catalog.date_trunc('month', pg_catalog.now() at time zone 'UTC')
-      at time zone 'UTC';
+    case
+      when reservation.status = 'reserved' then
+        pg_catalog.date_trunc('month', pg_catalog.now() at time zone 'UTC')
+          at time zone 'UTC'
+      else
+        (
+          pg_catalog.date_trunc('month', pg_catalog.now() at time zone 'UTC')
+            at time zone 'UTC'
+        ) - interval '1 month'
+    end;
 
 alter table public.analysis_usage_reservations
   alter column entitlement_period_id set not null;
@@ -501,6 +540,10 @@ left join public.billing_plans as scheduled_plan
   on scheduled_plan.id = subscription.scheduled_plan_id
 where entitlement.period_start <= pg_catalog.now()
   and entitlement.period_end > pg_catalog.now()
+  and (
+    (entitlement.source = 'stripe' and entitlement.is_paid_through)
+    or entitlement.source = 'free'
+  )
 order by
   entitlement.user_id,
   case when entitlement.source = 'stripe' then 0 else 1 end,
@@ -566,7 +609,10 @@ declare
   period public.billing_entitlement_periods%rowtype;
 begin
   if target_user_id is null
-    or (caller_id is distinct from target_user_id and caller_role <> 'service_role')
+    or (
+      caller_id is distinct from target_user_id
+      and caller_role is distinct from 'service_role'
+    )
   then
     raise exception 'billing_entitlement_forbidden' using errcode = '42501';
   end if;
@@ -585,7 +631,7 @@ begin
     plan.id,
     period_start_at,
     period_start_at + interval '1 month',
-    3,
+    plan.analysis_limit,
     true,
     'free'
   from public.billing_plans as plan
@@ -810,6 +856,16 @@ begin
   where entitlement.id = reservation.entitlement_period_id
   for update;
 
+  select current_reservation.*
+  into strict reservation
+  from public.analysis_usage_reservations as current_reservation
+  where current_reservation.id = reservation.id
+  for update;
+
+  if reservation.status is distinct from 'reserved' then
+    raise exception 'usage_reservation_not_active' using errcode = 'P0001';
+  end if;
+
   select count(*)::integer
   into consumed
   from public.analysis_usage_reservations as current_reservation
@@ -860,7 +916,10 @@ declare
   event_type text;
   event_quantity integer;
 begin
-  if pg_catalog.current_setting('request.jwt.claim.role', true) <> 'service_role' then
+  if pg_catalog.current_setting(
+    'request.jwt.claim.role',
+    true
+  ) is distinct from 'service_role' then
     raise exception 'billing_projection_forbidden' using errcode = '42501';
   end if;
 
@@ -1037,7 +1096,7 @@ begin
   select *
   into job
   from public.analysis_jobs as analysis_job
-  where analysis_job.analysis_id = intake.id
+  where analysis_job.analysis_id = intake.id;
 
   if not found then
     raise exception 'analysis job not found' using errcode = 'P0002';
@@ -1054,6 +1113,18 @@ begin
   from public.billing_entitlement_periods as entitlement
   where entitlement.id = reservation.entitlement_period_id
   for update;
+
+  select current_reservation.*
+  into strict reservation
+  from public.analysis_usage_reservations as current_reservation
+  where current_reservation.id = reservation.id
+  for update;
+
+  if reservation.status is distinct from 'reserved' then
+    raise exception 'usage_reservation_not_active'
+      using errcode = 'P0001',
+      detail = 'Released usage requires a new capacity reservation';
+  end if;
 
   select *
   into strict job
