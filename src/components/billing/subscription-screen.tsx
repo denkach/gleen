@@ -204,7 +204,7 @@ export function SubscriptionScreen({
                     className="billing-button"
                     href={`/app/subscription/checkout?plan=${encodeURIComponent(
                       row.plan.slug,
-                    )}&period=${interval}`}
+                    )}&interval=${interval}`}
                   >
                     {actionLabel}
                   </Link>

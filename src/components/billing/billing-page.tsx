@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 
 import { cx } from '@/lib/cx';
 
+import { BillingMobileNavigation } from './billing-mobile-navigation';
+
 export function BillingPage({
   eyebrow,
   title,
@@ -31,6 +33,7 @@ export function BillingPage({
         </div>
       </header>
       {children}
+      <BillingMobileNavigation />
     </section>
   );
 }

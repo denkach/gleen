@@ -20,6 +20,15 @@ const defaultState = {
   'limit-reached': 'limit-reached',
 } as const satisfies Record<BillingFixtureScreenName, BillingFixtureState>;
 
+const fixtureBoundaries = [
+  'usage-actions',
+  'checkout-action',
+  'portal-actions',
+  'portal-error',
+  'invoice-actions',
+] as const;
+type FixtureBoundary = (typeof fixtureBoundaries)[number];
+
 type BillingFixturePageProps = Readonly<{
   params: Promise<{ screen: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -41,6 +50,11 @@ export default async function BillingFixturePage({
   const { screen } = await params;
   const query = await searchParams;
   const requestedState = query.state;
+  const testBoundary =
+    typeof query.testBoundary === 'string' &&
+    fixtureBoundaries.includes(query.testBoundary as FixtureBoundary)
+      ? (query.testBoundary as FixtureBoundary)
+      : null;
   const fallbackState =
     screen in defaultState
       ? defaultState[screen as BillingFixtureScreenName]
@@ -61,7 +75,19 @@ export default async function BillingFixturePage({
       usage={fixture.shell.usage}
       pathnameOverride="/app/subscription"
     >
-      <BillingFixtureScreen fixture={fixture} />
+      <BillingFixtureScreen
+        fixture={fixture}
+        testBoundary={testBoundary}
+        routeQuery={{
+          search: typeof query.search === 'string' ? query.search : '',
+          eventType:
+            typeof query.eventType === 'string' ? query.eventType : null,
+          range: typeof query.range === 'string' ? query.range : 'current',
+          status: typeof query.status === 'string' ? query.status : null,
+          year: typeof query.year === 'string' ? query.year : null,
+          cursor: typeof query.cursor === 'string' ? query.cursor : null,
+        }}
+      />
     </AppShell>
   );
 }

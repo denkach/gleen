@@ -7,6 +7,8 @@ import { PortalScreen } from '@/components/billing/portal-screen';
 import { SubscriptionScreen } from '@/components/billing/subscription-screen';
 import { UsageScreen } from '@/components/billing/usage-screen';
 import type { BillingFixture } from '@/lib/billing/fixtures';
+import type { UsageEventType } from '@/lib/billing/domain';
+import { useState } from 'react';
 
 const disabledExport = async () =>
   ({ ok: false, code: 'fixture-disabled' }) as const;
@@ -15,74 +17,230 @@ const disabledPortal = async () =>
 
 export function BillingFixtureScreen({
   fixture,
-}: Readonly<{ fixture: BillingFixture }>) {
+  testBoundary,
+  routeQuery,
+}: Readonly<{
+  fixture: BillingFixture;
+  testBoundary:
+    | 'usage-actions'
+    | 'checkout-action'
+    | 'portal-actions'
+    | 'portal-error'
+    | 'invoice-actions'
+    | null;
+  routeQuery: Readonly<{
+    search: string;
+    eventType: string | null;
+    range: string;
+    status: string | null;
+    year: string | null;
+    cursor: string | null;
+  }>;
+}>) {
+  const [payload, setPayload] = useState('');
+  const [portalCount, setPortalCount] = useState(0);
+  const [openedPortal, setOpenedPortal] = useState('');
+  const boundaryEvidence =
+    testBoundary === null ? null : (
+      <span className="app-visually-hidden" aria-hidden="true">
+        <output data-testid="billing-boundary-payload">{payload}</output>
+        <output data-testid="billing-boundary-count">{portalCount}</output>
+        <output data-testid="billing-boundary-opened">{openedPortal}</output>
+      </span>
+    );
+
   switch (fixture.screen) {
     case 'subscription':
       return (
-        <SubscriptionScreen
-          presentation={fixture.presentation}
-          initialInterval="month"
-        />
+        <>
+          <SubscriptionScreen
+            presentation={fixture.presentation}
+            initialInterval="month"
+          />
+          {boundaryEvidence}
+        </>
       );
-    case 'usage':
+    case 'usage': {
+      const range = ['current', 'last90', 'all'].includes(routeQuery.range)
+        ? (routeQuery.range as 'current' | 'last90' | 'all')
+        : 'current';
+      const eventType = [
+        'reservation',
+        'settlement',
+        'release',
+        'period_renewal',
+        'manual_adjustment',
+        'refund',
+        'technical_retry',
+      ].includes(routeQuery.eventType ?? '')
+        ? (routeQuery.eventType as UsageEventType)
+        : null;
+      const usage =
+        testBoundary === 'usage-actions'
+          ? { ...fixture.usage, nextCursor: '25', totalCount: 27 }
+          : fixture.usage;
+      const periodBounds =
+        range === 'last90'
+          ? {
+              periodStart: '2025-05-01T00:00:00.000Z',
+              periodEnd: '2025-08-01T00:00:00.000Z',
+            }
+          : {
+              periodStart: range === 'all' ? null : '2025-07-01T00:00:00.000Z',
+              periodEnd: range === 'all' ? null : '2025-08-01T00:00:00.000Z',
+            };
       return (
-        <UsageScreen
-          subscription={fixture.subscription}
-          usage={fixture.usage}
-          query={{
-            search: '',
-            eventType: null,
-            range: 'current',
-            cursor: null,
-          }}
-          periodBounds={{
-            periodStart: '2025-07-01T00:00:00.000Z',
-            periodEnd: '2025-08-01T00:00:00.000Z',
-          }}
-          pageSize={25}
-          exportAction={disabledExport}
-        />
+        <>
+          <UsageScreen
+            subscription={fixture.subscription}
+            usage={usage}
+            query={{
+              search: routeQuery.search,
+              eventType,
+              range,
+              cursor: routeQuery.cursor,
+            }}
+            periodBounds={periodBounds}
+            pageSize={25}
+            exportAction={
+              testBoundary === 'usage-actions'
+                ? async (filters) => {
+                    setPayload(JSON.stringify(filters));
+                    return {
+                      ok: true,
+                      filename: 'gleen-usage.csv',
+                      contentType: 'text/csv;charset=utf-8',
+                      content:
+                        '\uFEFF"Event","Source"\r\n"\'=SUM(A1:A2)","fixture"\r\n',
+                    } as const;
+                  }
+                : disabledExport
+            }
+          />
+          {boundaryEvidence}
+        </>
       );
+    }
     case 'checkout':
       return (
-        <CheckoutScreen
-          presentation={fixture.presentation}
-          prices={fixture.prices}
-          state={{ kind: 'ready' }}
-          stripeCheckout={
-            <div className="billing-stripe-skeleton" role="status">
-              Secure payment form is disabled in this visual fixture.
-            </div>
-          }
-          totals={fixture.totals}
-          canSubmit={false}
-        />
+        <>
+          <CheckoutScreen
+            presentation={fixture.presentation}
+            prices={fixture.prices}
+            state={{ kind: 'ready' }}
+            stripeCheckout={
+              <div className="billing-stripe-skeleton" role="status">
+                Secure payment form is disabled in this visual fixture.
+              </div>
+            }
+            totals={fixture.totals}
+            canSubmit={testBoundary === 'checkout-action'}
+            onSubmit={
+              testBoundary === 'checkout-action'
+                ? () =>
+                    setPayload(
+                      JSON.stringify({
+                        plan: fixture.presentation.plan.slug,
+                        interval: fixture.presentation.price.interval,
+                      }),
+                    )
+                : undefined
+            }
+          />
+          {boundaryEvidence}
+        </>
       );
     case 'portal':
       return (
-        <PortalScreen
-          subscription={fixture.subscription}
-          activity={fixture.activity}
-          portalAction={disabledPortal}
-        />
+        <>
+          <PortalScreen
+            subscription={fixture.subscription}
+            activity={fixture.activity}
+            portalAction={
+              testBoundary === 'portal-actions' ||
+              testBoundary === 'portal-error'
+                ? async () => {
+                    const count = portalCount + 1;
+                    setPortalCount(count);
+                    await new Promise((resolve) =>
+                      window.setTimeout(resolve, 80),
+                    );
+                    return testBoundary === 'portal-error'
+                      ? ({ ok: false, code: 'fixture-error' } as const)
+                      : ({
+                          ok: true,
+                          url: `https://billing.stripe.test/session/${count}`,
+                        } as const);
+                  }
+                : disabledPortal
+            }
+            openPortal={
+              testBoundary === 'portal-actions'
+                ? (url) => setOpenedPortal(url)
+                : undefined
+            }
+          />
+          {boundaryEvidence}
+        </>
       );
-    case 'invoices':
+    case 'invoices': {
+      const status = [
+        'draft',
+        'open',
+        'paid',
+        'uncollectible',
+        'void',
+        'failed',
+        'refunded',
+      ].includes(routeQuery.status ?? '')
+        ? (routeQuery.status as
+            | 'draft'
+            | 'open'
+            | 'paid'
+            | 'uncollectible'
+            | 'void'
+            | 'failed'
+            | 'refunded')
+        : null;
       return (
-        <InvoicesScreen
-          subscription={fixture.subscription}
-          invoices={fixture.invoices}
-          summary={fixture.summary}
-          query={{ search: '', status: null, year: null, cursor: null }}
-          pageSize={25}
-          exportAction={disabledExport}
-        />
+        <>
+          <InvoicesScreen
+            subscription={fixture.subscription}
+            invoices={
+              testBoundary === 'invoice-actions'
+                ? {
+                    ...fixture.invoices,
+                    nextCursor: '25',
+                    totalCount: 26,
+                  }
+                : fixture.invoices
+            }
+            summary={fixture.summary}
+            query={{
+              search: routeQuery.search,
+              status,
+              year:
+                routeQuery.year !== null && /^\d{4}$/.test(routeQuery.year)
+                  ? Number(routeQuery.year)
+                  : null,
+              cursor: routeQuery.cursor,
+            }}
+            pageSize={25}
+            exportAction={disabledExport}
+          />
+          {boundaryEvidence}
+        </>
       );
+    }
     case 'limit-reached':
       return (
-        <LimitReachedScreen
-          presentation={fixture.presentation}
-          now={fixture.now}
-        />
+        <>
+          <LimitReachedScreen
+            presentation={fixture.presentation}
+            now={fixture.now}
+          />
+          {boundaryEvidence}
+        </>
       );
   }
 }
