@@ -186,6 +186,7 @@ async function subscriptionProjection(
   if (subscription.object !== 'subscription') {
     throw new ControlledWebhookFailure('malformed_event');
   }
+  const externalSubscriptionId = stringStripeId(subscription.id, 'sub_');
   const items = objectValue(subscription.items).data;
   if (!Array.isArray(items) || items.length !== 1) {
     throw new ControlledWebhookFailure('malformed_event');
@@ -215,7 +216,7 @@ async function subscriptionProjection(
     eventId: event.id,
     eventCreatedAt: eventTime(event),
     userId: ownership.userId,
-    externalSubscriptionId: stringStripeId(subscription.id, 'sub_'),
+    externalSubscriptionId,
     externalPriceId: ownership.stripePriceId,
     planSlug: ownership.planSlug,
     interval: ownership.interval,
@@ -283,6 +284,7 @@ async function invoiceProjection(
   if (invoice.object !== 'invoice') {
     throw new ControlledWebhookFailure('malformed_event');
   }
+  const externalInvoiceId = stringStripeId(invoice.id, 'in_');
   const ownership = await resolveOwnership(
     invoice,
     invoicePriceId(invoice),
@@ -298,7 +300,7 @@ async function invoiceProjection(
     eventId: event.id,
     eventCreatedAt: eventTime(event),
     userId: ownership.userId,
-    externalInvoiceId: stringStripeId(invoice.id, 'in_'),
+    externalInvoiceId,
     externalSubscriptionId: invoiceSubscriptionId(invoice),
     number: nullableString(invoice.number),
     planSlug: ownership.planSlug,
@@ -326,6 +328,7 @@ async function refundedInvoiceProjection(
   if (charge.object !== 'charge') {
     throw new ControlledWebhookFailure('malformed_event');
   }
+  stringStripeId(charge.id, 'ch_');
   const paymentIntentId = stripeId(
     charge.payment_intent,
     'pi_',

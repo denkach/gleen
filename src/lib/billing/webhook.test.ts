@@ -243,6 +243,39 @@ describe('processStripeWebhook', () => {
     expect(deps.repository.claimWebhookEvent).not.toHaveBeenCalled();
   });
 
+  it('rejects a malformed subscription object ID before ownership resolution', async () => {
+    const deps = dependencies(
+      event(
+        'customer.subscription.updated',
+        subscription({ id: 'sub_bad_id' }),
+      ),
+    );
+
+    await expect(processStripeWebhook('{}', 'sig_1', deps)).resolves.toEqual({
+      ok: false,
+      code: 'malformed_event',
+      retryable: false,
+    });
+    expect(deps.repository.resolveWebhookUserId).not.toHaveBeenCalled();
+    expect(deps.repository.resolveWebhookPrice).not.toHaveBeenCalled();
+    expect(deps.repository.applySubscription).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed invoice object ID before ownership resolution', async () => {
+    const deps = dependencies(
+      event('invoice.updated', invoice({ id: 'in_bad_id' })),
+    );
+
+    await expect(processStripeWebhook('{}', 'sig_1', deps)).resolves.toEqual({
+      ok: false,
+      code: 'malformed_event',
+      retryable: false,
+    });
+    expect(deps.repository.resolveWebhookUserId).not.toHaveBeenCalled();
+    expect(deps.repository.resolveWebhookPrice).not.toHaveBeenCalled();
+    expect(deps.repository.applyInvoice).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['invoice.paid', 'paid', eventCreated + 60],
     ['invoice.payment_failed', 'failed', null],
