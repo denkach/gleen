@@ -41,7 +41,9 @@ function CheckoutElements({
 }>) {
   const result = useCheckoutElements();
   const [submitting, setSubmitting] = useState(false);
-  const [confirmationError, setConfirmationError] = useState(false);
+  const [confirmationError, setConfirmationError] = useState<string | null>(
+    null,
+  );
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -87,14 +89,16 @@ function CheckoutElements({
   async function confirm() {
     if (submitting) return;
     setSubmitting(true);
-    setConfirmationError(false);
+    setConfirmationError(null);
     try {
       const confirmation = await checkout.confirm();
       if (mounted.current && confirmation.type === 'error') {
-        setConfirmationError(true);
+        setConfirmationError(confirmation.error.message);
       }
     } catch {
-      if (mounted.current) setConfirmationError(true);
+      if (mounted.current) {
+        setConfirmationError('Checkout could not be loaded.');
+      }
     } finally {
       if (mounted.current) setSubmitting(false);
     }
@@ -105,8 +109,8 @@ function CheckoutElements({
       presentation={presentation}
       prices={prices}
       state={
-        confirmationError
-          ? { kind: 'retryable-error' }
+        confirmationError !== null
+          ? { kind: 'retryable-error', message: confirmationError }
           : submitting
             ? { kind: 'submitting' }
             : { kind: 'ready' }
@@ -120,7 +124,7 @@ function CheckoutElements({
       totals={totals}
       onSubmit={confirm}
       onRetry={() => {
-        setConfirmationError(false);
+        setConfirmationError(null);
       }}
     />
   );

@@ -152,6 +152,40 @@ describe('CheckoutExperience rejection and cleanup', () => {
     expect(screen.getByRole('button', { name: 'Start Starter' })).toBeEnabled();
   });
 
+  it('shows the user-facing Stripe confirmation error instead of hiding it', async () => {
+    const confirm = vi.fn().mockResolvedValue({
+      type: 'error',
+      error: {
+        code: 'payment_intent_unexpected_state',
+        message: 'Your payment could not be completed. Try again.',
+      },
+    });
+    useCheckoutElements.mockReturnValue(readyCheckout(confirm));
+    render(
+      <CheckoutExperience
+        presentation={presentation}
+        prices={[presentation.price]}
+        publishableKey="pk_test_checkout"
+        sessionId={null}
+        createCheckout={vi.fn().mockResolvedValue({
+          ok: true,
+          clientSecret: 'cs_test_secret',
+        })}
+        getConfirmation={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Start Starter' }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Your payment could not be completed. Try again.',
+      ),
+    ).toHaveAttribute('role', 'alert');
+  });
+
   it('lets Stripe confirm validate the elements when canConfirm is stale', async () => {
     const confirm = vi.fn().mockResolvedValue({ type: 'error' });
     useCheckoutElements.mockReturnValue({

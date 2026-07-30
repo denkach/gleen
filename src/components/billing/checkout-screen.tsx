@@ -17,7 +17,7 @@ export type CheckoutScreenState =
   | Readonly<{ kind: 'authentication-required' }>
   | Readonly<{ kind: 'confirming' }>
   | Readonly<{ kind: 'canceled' }>
-  | Readonly<{ kind: 'retryable-error' }>;
+  | Readonly<{ kind: 'retryable-error'; message?: string }>;
 
 export type CheckoutConfirmationState =
   | 'pending'
@@ -96,7 +96,7 @@ function stateMessage(state: CheckoutScreenState) {
     case 'canceled':
       return 'Checkout was canceled.';
     case 'retryable-error':
-      return 'Checkout could not be loaded.';
+      return state.message ?? 'Checkout could not be loaded.';
     default:
       return null;
   }
