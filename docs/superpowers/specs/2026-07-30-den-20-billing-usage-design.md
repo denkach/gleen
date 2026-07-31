@@ -72,6 +72,8 @@ Required server-only environment values are:
 
 - `STRIPE_SECRET_KEY`;
 - `STRIPE_WEBHOOK_SECRET`;
+- `STRIPE_PORTAL_CONFIGURATION_ID`, identifying the dedicated upgrade-only
+  Customer Portal configuration.
 
 The Stripe publishable key is the only Stripe value permitted in browser code.
 Plan and Price identifiers are resolved server-side from the database rather
@@ -215,9 +217,19 @@ Cancellation returns to Subscription without changing entitlement.
 ### Customer Portal
 
 The approved in-app Billing portal screen is a summary and navigation surface.
-Payment-method, billing-detail, plan-change, downgrade, and cancellation
-actions create short-lived Stripe Customer Portal sessions or deep links on
-demand. The browser never supplies a customer ID.
+Payment-method, billing-detail, upgrade, and cancellation actions create
+short-lived Stripe Customer Portal sessions or deep links on demand. The
+browser never supplies a customer ID. A downgrade does not enter Customer
+Portal: it uses the server-authoritative Subscription Schedule flow described
+below.
+
+Gleen uses two Portal policies. The default general-management configuration
+does not allow arbitrary plan switching, so a user cannot bypass Gleen's
+upgrade/downgrade classification from the Portal home page. A dedicated
+upgrade-only configuration allows active Gleen catalog prices, requires
+`proration_behavior=always_invoice`, preserves the billing-cycle anchor, and
+is used only by a server-created, target-aware `subscription_update_confirm`
+flow. The server rejects that flow unless the target is an upgrade.
 
 Scheduled cancellation retains access through the explicitly displayed date.
 Downgrades take effect at the end of the paid period. Upgrades become active
@@ -244,12 +256,50 @@ Plan changes preserve the current billing-cycle anchor:
 - a failed upgrade payment leaves the current plan and entitlement unchanged;
 - the customer sees Stripe's authoritative proration before confirming.
 
-The Portal configuration permits only active Gleen catalog prices and price
-changes. Gleen never calculates the monetary difference in the browser or
-accepts a client-supplied subscription, product, Price ID, amount, or proration.
-If Stripe Customer Portal cannot schedule a downgrade across the configured
-catalog structure, Gleen uses a server-authoritative subscription schedule for
-the same end-of-period behavior rather than applying an immediate downgrade.
+The server classifies direction from catalog plan order, never from a
+client-supplied amount. A higher-tier target is an upgrade even when its
+interval is shorter. A lower-tier target is a downgrade even when its interval
+is longer. Within the same tier, monthly-to-yearly is immediate and
+yearly-to-monthly is deferred until the paid period ends.
+
+The upgrade Portal configuration permits only active Gleen catalog prices and
+price changes. Gleen never calculates the monetary difference in the browser
+or accepts a client-supplied subscription, product, Price ID, amount, or
+proration.
+
+Stripe Customer Portal can schedule an end-of-period downgrade only between
+Prices belonging to the same Stripe Product. Starter and Prism Pro are
+intentionally separate Products, so all Gleen downgrades use Stripe
+Subscription Schedules instead of Portal plan switching. This constraint is
+documented in Stripe's
+[Customer Portal configuration guide](https://docs.stripe.com/customer-management/configure-portal).
+The downgrade server action:
+
+1. authenticates the user and resolves the target from the purchasable server
+   catalog;
+2. requires exactly one non-terminal, single-item Stripe Subscription owned by
+   that user's Stripe Customer;
+3. confirms that the target is a downgrade under the catalog-order policy;
+4. creates a schedule from the current Subscription, preserving its current
+   phase through `current_period_end` without proration;
+5. adds one target-price phase beginning at that exact boundary and releases
+   the Subscription after that phase so the target plan continues normally;
+6. records Gleen ownership and an idempotency key in schedule metadata;
+7. returns the effective date but grants no new entitlement until verified
+   Stripe webhooks project the phase transition.
+
+Retrying the same target and effective date returns the existing scheduled
+result. Selecting a different downgrade updates only a compatible
+Gleen-owned schedule. An existing external or structurally incompatible
+schedule fails closed. The user can cancel a pending downgrade; Gleen releases
+its owned schedule while preserving the active Subscription and paid plan.
+General cancellation remains a distinct Portal action and still occurs at the
+end of the billing period.
+
+Verified `subscription_schedule.created`, `updated`, `completed`, `released`,
+and `canceled` webhooks project the scheduled target and effective date. The
+normal Subscription and Invoice webhooks remain authoritative when the phase
+actually changes and when payment is collected.
 
 Verified subscription webhooks project both Stripe cancellation forms:
 `cancel_at_period_end` and an explicit future `cancel_at`. A future cancellation
@@ -397,8 +447,10 @@ Integration tests cover:
   subscription;
 - client plan or Price ID substitution;
 - successful subscription activation;
-- immediate prorated upgrade, failed-upgrade rollback, scheduled downgrade,
-  and both scheduled-cancellation representations;
+- immediate prorated upgrade, failed-upgrade rollback, cross-Product scheduled
+  downgrade, idempotent downgrade retry, conflicting-schedule rejection,
+  scheduled-downgrade replacement and cancellation, and both
+  scheduled-cancellation representations;
 - payment failure, retry, recovery, unpaid fallback, and refund projection;
 - full failure release and non-billable retry behavior.
 
@@ -419,8 +471,12 @@ The final sandbox acceptance path is:
 4. verify a technical retry costs zero;
 5. simulate renewal and failed payment;
 6. update the payment method and recover;
-7. schedule downgrade and cancellation;
-8. verify invoice, refund, and reset projections.
+7. confirm Stripe's immediate net proration for an upgrade;
+8. schedule a cross-Product downgrade and verify that no immediate invoice or
+   entitlement change occurs;
+9. advance the period, verify the scheduled plan transition, then verify
+   cancellation;
+10. verify invoice, refund, and reset projections.
 
 Formatting, linting, type checking, unit/integration tests, production build,
 desktop/mobile browser verification, and reduced-motion verification must all
