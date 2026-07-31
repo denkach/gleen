@@ -234,6 +234,7 @@ export function createSupabaseBillingRepository(
                 kind: 'cancellation' as const,
                 plan: null,
                 effectiveAt: overview.cancellation_effective_at,
+                revision: overview.scheduled_change_revision,
               }
             : overview.scheduled_plan_slug !== null &&
                 overview.scheduled_change_at !== null
@@ -241,6 +242,7 @@ export function createSupabaseBillingRepository(
                   kind: 'downgrade' as const,
                   plan: findPlan(catalog, overview.scheduled_plan_slug).plan,
                   effectiveAt: overview.scheduled_change_at,
+                  revision: overview.scheduled_change_revision,
                 }
               : null;
 

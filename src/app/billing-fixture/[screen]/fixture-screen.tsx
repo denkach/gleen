@@ -31,6 +31,7 @@ const fixtureDowngrade = {
   interval: 'month',
 } as const satisfies CheckoutActionInput;
 const fixtureEffectiveAt = '2026-08-01T00:00:00.000Z';
+const fixtureScheduleRevision = '9e107d9d372bb6826bd81d3542a419d6';
 const fixturePlanCatalog = billingFixtureCatalog.map(({ plan }) => plan);
 const fixtureStarterPlan = billingFixtureCatalog.find(
   ({ plan }) => plan.slug === 'starter',
@@ -289,6 +290,7 @@ export function BillingFixtureScreen({
                       kind: 'downgrade',
                       plan: fixtureStarterPlan,
                       effectiveAt: fixtureEffectiveAt,
+                      revision: fixtureScheduleRevision,
                     }
                   : null,
             }}

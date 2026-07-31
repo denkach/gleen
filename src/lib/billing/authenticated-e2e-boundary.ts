@@ -49,6 +49,7 @@ const ownerRows = {
       cancellation_effective_at: null,
       scheduled_plan_slug: null,
       scheduled_change_at: null,
+      scheduled_change_revision: null,
       paid_through: '2026-08-01T00:00:00.000Z',
     },
   ],

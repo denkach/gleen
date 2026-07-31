@@ -290,11 +290,14 @@ export const billingUsageSummarySchema = z
   .readonly();
 export type BillingUsageSummary = z.infer<typeof billingUsageSummarySchema>;
 
+export const scheduledChangeRevisionSchema = z.string().regex(/^[a-f0-9]{32}$/);
+
 export const scheduledBillingChangeSchema = z
   .object({
     kind: z.enum(['downgrade', 'cancellation']),
     plan: billingPlanSchema.nullable(),
     effectiveAt: timestampSchema,
+    revision: scheduledChangeRevisionSchema.nullable(),
   })
   .strict()
   .superRefine((change, context) => {
@@ -306,6 +309,13 @@ export const scheduledBillingChangeSchema = z
         code: 'custom',
         message: 'Scheduled change does not match its plan',
         path: ['plan'],
+      });
+    }
+    if (change.kind === 'downgrade' && change.revision === null) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Scheduled downgrade requires an opaque revision',
+        path: ['revision'],
       });
     }
   })
@@ -576,6 +586,7 @@ export const billingSubscriptionOverviewRowSchema = z
     cancellation_effective_at: nullableTimestampSchema,
     scheduled_plan_slug: billingPlanSlugSchema.nullable(),
     scheduled_change_at: nullableTimestampSchema,
+    scheduled_change_revision: scheduledChangeRevisionSchema.nullable(),
     paid_through: nullableTimestampSchema,
   })
   .strict()

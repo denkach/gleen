@@ -430,6 +430,16 @@ test('keeps a deterministic keyboard focus order through billing controls', asyn
 });
 
 test('keeps scheduled plan controls keyboard operable', async ({ page }) => {
+  await openFixture(page, 'portal', 'active', 'portal-downgrade');
+  const confirm = page.getByRole('button', { name: 'Confirm plan change' });
+  await confirm.focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('region', { name: 'Billing portal' }).getByRole('status'),
+  ).toHaveText(
+    'Starter is scheduled for Aug 1, 2026. Your Prism Pro access remains active until then.',
+  );
+
   await openFixture(page, 'portal', 'active', 'portal-cancel');
   const cancel = page.getByRole('button', {
     name: 'Cancel scheduled downgrade',

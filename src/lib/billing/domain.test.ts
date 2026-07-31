@@ -13,6 +13,7 @@ import {
   invoiceSummarySchema,
   invoicePageSchema,
   parseBillingCatalogRows,
+  scheduledBillingChangeSchema,
   usageLedgerEntrySchema,
   usageLedgerPageSchema,
 } from './domain';
@@ -28,6 +29,42 @@ describe('billing domain', () => {
     expect(() =>
       billingSubscriptionStatusSchema.parse('payment_failed'),
     ).toThrow();
+  });
+
+  it('requires an opaque revision for downgrades without accepting schedule identifiers', () => {
+    const downgrade = {
+      kind: 'downgrade',
+      plan: {
+        id: 'starter',
+        slug: 'starter',
+        displayName: 'Starter',
+        description: 'For individuals.',
+        analysisLimit: 10,
+        features: ['10 analyses per month'],
+        purchasable: true,
+      },
+      effectiveAt: '2026-08-01T00:00:00.000Z',
+    } as const;
+    const revision = '9e107d9d372bb6826bd81d3542a419d6';
+
+    expect(
+      scheduledBillingChangeSchema.parse({ ...downgrade, revision }),
+    ).toMatchObject({ revision });
+    expect(() => scheduledBillingChangeSchema.parse(downgrade)).toThrow();
+    expect(() =>
+      scheduledBillingChangeSchema.parse({
+        ...downgrade,
+        revision: 'sub_sched_private',
+      }),
+    ).toThrow();
+    expect(
+      scheduledBillingChangeSchema.parse({
+        kind: 'cancellation',
+        plan: null,
+        effectiveAt: '2026-08-01T00:00:00.000Z',
+        revision: null,
+      }),
+    ).toMatchObject({ revision: null });
   });
 
   it('rejects unsupported plans and secret-bearing catalog objects', () => {

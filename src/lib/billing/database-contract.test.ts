@@ -574,6 +574,25 @@ describe('DEN-20 scheduled plan change projection', () => {
     );
   });
 
+  it('exposes only an opaque schedule revision through the owner-scoped security-invoker overview', () => {
+    const replacementStart = scheduledPlanChangeProjectionSql.indexOf(
+      'create or replace view public.billing_subscription_overview',
+    );
+    const overview = scheduledPlanChangeProjectionSql.slice(replacementStart);
+
+    expect(replacementStart).toBeGreaterThanOrEqual(0);
+    expect(overview).toMatch(
+      /create or replace view public\.billing_subscription_overview\s+with \(security_invoker = true\)/,
+    );
+    expect(overview).toMatch(
+      /subscription\.scheduled_change_at,\s+subscription\.paid_through,\s+pg_catalog\.md5\(\s*subscription\.stripe_subscription_schedule_id\s*\) as scheduled_change_revision/,
+    );
+    expect(overview).not.toMatch(
+      /subscription\.stripe_subscription_schedule_id\s*(?:,|as\s+stripe_subscription_schedule_id)/,
+    );
+    expect(overview).not.toMatch(/as\s+stripe_subscription_schedule_id/);
+  });
+
   it('preserves a pending schedule from ordinary subscription projections until its boundary', () => {
     expect(scheduledPlanChangeProjectionSql).toContain(
       'new.scheduled_change_event_created_at is not distinct from old.scheduled_change_event_created_at',

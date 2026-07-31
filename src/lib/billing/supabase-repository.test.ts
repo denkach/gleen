@@ -89,6 +89,7 @@ function queryReturning(result: {
 function snapshotClient(
   activityData: unknown[] = [],
   paymentData: unknown[] = [],
+  overviewData?: unknown,
 ) {
   const results = {
     billing_plan_catalog: queryReturning({
@@ -129,7 +130,7 @@ function snapshotClient(
       error: null,
     }),
     billing_subscription_overview: queryReturning({
-      data: {
+      data: overviewData ?? {
         user_id: userId,
         plan_slug: 'free',
         plan_name: 'Free',
@@ -145,6 +146,7 @@ function snapshotClient(
         cancellation_effective_at: null,
         scheduled_plan_slug: null,
         scheduled_change_at: null,
+        scheduled_change_revision: null,
         paid_through: null,
       },
       error: null,
@@ -241,6 +243,7 @@ describe('Supabase billing repository', () => {
         cancellation_effective_at: null,
         scheduled_plan_slug: null,
         scheduled_change_at: null,
+        scheduled_change_revision: null,
         paid_through: null,
       },
       error: null,
@@ -616,4 +619,39 @@ describe('Supabase billing repository', () => {
       'createSupabaseBillingProjectionRepository',
     );
   });
+});
+
+it('maps the opaque schedule revision without exposing the raw Schedule ID', async () => {
+  const revision = '9e107d9d372bb6826bd81d3542a419d6';
+  const client = snapshotClient([], [], {
+    user_id: userId,
+    plan_slug: 'free',
+    plan_name: 'Free',
+    plan_description: 'For exploring Gleen.',
+    analysis_limit: 3,
+    used_analyses: 2,
+    remaining_analyses: 1,
+    period_start: now,
+    resets_at: reset,
+    subscription_status: null,
+    billing_interval: null,
+    cancel_at_period_end: false,
+    cancellation_effective_at: null,
+    scheduled_plan_slug: 'starter',
+    scheduled_change_at: reset,
+    scheduled_change_revision: revision,
+    paid_through: null,
+  });
+
+  const snapshot = await createSupabaseBillingRepository(
+    client as unknown as SupabaseBillingClient,
+  ).getOwnedSnapshot(userId);
+
+  expect(snapshot.scheduledChange).toMatchObject({
+    kind: 'downgrade',
+    plan: { slug: 'starter' },
+    effectiveAt: reset,
+    revision,
+  });
+  expect(JSON.stringify(snapshot)).not.toContain('sub_sched_');
 });

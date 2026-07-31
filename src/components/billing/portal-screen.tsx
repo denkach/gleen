@@ -86,21 +86,17 @@ type OptimisticScheduledChange =
     }>;
 
 function scheduledDowngradeKey(
-  downgrade:
-    | LocalScheduledDowngrade
-    | NonNullable<PortalSubscription['scheduledChange']>
-    | null,
+  downgrade: NonNullable<PortalSubscription['scheduledChange']> | null,
 ) {
   if (
     downgrade === null ||
-    ('kind' in downgrade && downgrade.kind === 'cancellation')
+    downgrade.kind === 'cancellation' ||
+    downgrade.plan === null ||
+    downgrade.revision === null
   ) {
     return null;
   }
-  if (downgrade.plan === null) return null;
-  const plan =
-    typeof downgrade.plan === 'string' ? downgrade.plan : downgrade.plan.slug;
-  return `${plan}:${downgrade.effectiveAt}`;
+  return `${downgrade.revision}:${downgrade.plan.slug}:${downgrade.effectiveAt}`;
 }
 
 function PortalActionButton({

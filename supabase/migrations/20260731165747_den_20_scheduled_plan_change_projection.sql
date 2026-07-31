@@ -219,3 +219,58 @@ grant execute on function public.apply_billing_schedule_projection_service_role(
   text,
   timestamptz
 ) to service_role;
+
+create or replace view public.billing_subscription_overview
+with (security_invoker = true)
+as
+select
+  distinct on (entitlement.user_id)
+  entitlement.user_id,
+  plan.slug as plan_slug,
+  plan.display_name as plan_name,
+  plan.description as plan_description,
+  entitlement.analysis_limit,
+  (
+    select count(*)::integer
+    from public.analysis_usage_reservations as reservation
+    where reservation.entitlement_period_id = entitlement.id
+      and reservation.status in ('reserved', 'settled')
+  ) as used_analyses,
+  greatest(
+    entitlement.analysis_limit - (
+      select count(*)::integer
+      from public.analysis_usage_reservations as reservation
+      where reservation.entitlement_period_id = entitlement.id
+        and reservation.status in ('reserved', 'settled')
+    ),
+    0
+  ) as remaining_analyses,
+  entitlement.period_start,
+  entitlement.period_end as resets_at,
+  subscription.status as subscription_status,
+  subscription.billing_interval,
+  subscription.cancel_at_period_end,
+  subscription.cancellation_effective_at,
+  scheduled_plan.slug as scheduled_plan_slug,
+  subscription.scheduled_change_at,
+  subscription.paid_through,
+  pg_catalog.md5(
+    subscription.stripe_subscription_schedule_id
+  ) as scheduled_change_revision
+from public.billing_entitlement_periods as entitlement
+join public.billing_plans as plan on plan.id = entitlement.plan_id
+left join public.billing_subscriptions as subscription
+  on subscription.id = entitlement.subscription_id
+left join public.billing_plans as scheduled_plan
+  on scheduled_plan.id = subscription.scheduled_plan_id
+where entitlement.period_start <= pg_catalog.now()
+  and entitlement.period_end > pg_catalog.now()
+  and (
+    (entitlement.source = 'stripe' and entitlement.is_paid_through)
+    or entitlement.source = 'free'
+  )
+order by
+  entitlement.user_id,
+  case when entitlement.source = 'stripe' then 0 else 1 end,
+  entitlement.period_end desc,
+  entitlement.id;

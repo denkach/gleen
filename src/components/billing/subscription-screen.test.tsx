@@ -59,6 +59,7 @@ const presentation: SubscriptionPresentation = {
       purchasable: true,
     },
     effectiveAt: '2026-08-01T00:00:00.000Z',
+    revision: '9e107d9d372bb6826bd81d3542a419d6',
   },
   paymentMethod: {
     status: 'available',

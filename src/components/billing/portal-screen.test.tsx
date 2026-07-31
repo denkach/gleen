@@ -152,6 +152,8 @@ const freePlan = {
   features: ['3 analyses per month'],
   purchasable: false,
 } as const;
+const scheduleRevisionOne = '9e107d9d372bb6826bd81d3542a419d6';
+const scheduleRevisionTwo = 'e4d909c290d0fb1ca068ffaddf22cbd0';
 
 describe('PortalScreen', () => {
   beforeEach(() => refresh.mockClear());
@@ -310,6 +312,7 @@ describe('PortalScreen', () => {
             kind: 'downgrade',
             plan: freePlan,
             effectiveAt: '2026-09-01T00:00:00.000Z',
+            revision: scheduleRevisionTwo,
           },
         }}
         {...commonProps}
@@ -337,6 +340,7 @@ describe('PortalScreen', () => {
             kind: 'downgrade',
             plan: subscription.availablePlans[0].plan,
             effectiveAt: '2026-08-01T00:00:00.000Z',
+            revision: scheduleRevisionOne,
           },
         }}
         activity={activity}
@@ -367,6 +371,7 @@ describe('PortalScreen', () => {
             kind: 'downgrade',
             plan: subscription.availablePlans[0].plan,
             effectiveAt: '2026-08-01T00:00:00.000Z',
+            revision: scheduleRevisionOne,
           },
         }}
         activity={activity}
@@ -414,6 +419,7 @@ describe('PortalScreen', () => {
         kind: 'downgrade' as const,
         plan: subscription.availablePlans[0].plan,
         effectiveAt: '2026-08-01T00:00:00.000Z',
+        revision: scheduleRevisionOne,
       },
     };
     const view = render(
@@ -453,6 +459,7 @@ describe('PortalScreen', () => {
             kind: 'downgrade',
             plan: freePlan,
             effectiveAt: '2026-09-01T00:00:00.000Z',
+            revision: scheduleRevisionTwo,
           },
         }}
         {...commonProps}
@@ -460,6 +467,57 @@ describe('PortalScreen', () => {
     );
     expect(screen.getByRole('status')).toHaveTextContent(
       'Free is scheduled for Sep 1, 2026.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),
+    ).toBeEnabled();
+  });
+
+  it('shows a new schedule generation with the same plan and date after canceling the previous generation', async () => {
+    const cancelScheduledDowngradeAction = vi
+      .fn()
+      .mockResolvedValue({ ok: true });
+    const baseline = {
+      kind: 'downgrade' as const,
+      plan: subscription.availablePlans[0].plan,
+      effectiveAt: '2026-08-01T00:00:00.000Z',
+      revision: scheduleRevisionOne,
+    };
+    const commonProps = {
+      activity,
+      portalAction: vi.fn(),
+      cancelScheduledDowngradeAction,
+      openPortal: vi.fn(),
+    };
+    const view = render(
+      <PortalScreen
+        subscription={{ ...subscription, scheduledChange: baseline }}
+        {...commonProps}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),
+    );
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Scheduled downgrade canceled.',
+    );
+
+    view.rerender(
+      <PortalScreen
+        subscription={{
+          ...subscription,
+          scheduledChange: {
+            ...baseline,
+            revision: scheduleRevisionTwo,
+          },
+        }}
+        {...commonProps}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Starter is scheduled for Aug 1, 2026.',
     );
     expect(
       screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),
@@ -487,6 +545,7 @@ describe('PortalScreen', () => {
                     kind: 'downgrade',
                     plan: subscription.availablePlans[0].plan,
                     effectiveAt: '2026-08-01T00:00:00.000Z',
+                    revision: scheduleRevisionOne,
                   }
                 : null,
           }}
@@ -545,6 +604,7 @@ describe('PortalScreen', () => {
                     kind: 'downgrade',
                     plan: subscription.availablePlans[0].plan,
                     effectiveAt: '2026-08-01T00:00:00.000Z',
+                    revision: scheduleRevisionOne,
                   }
                 : null,
           }}
