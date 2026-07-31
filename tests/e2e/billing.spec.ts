@@ -275,37 +275,60 @@ test('submits only plan and interval at the checkout boundary and renders no fix
   );
 });
 
-test('creates one fresh Portal action per intent, blocks concurrency, and exposes recoverable errors', async ({
+test('splits Portal upgrade, downgrade, cancellation, concurrency, and retry boundaries', async ({
   page,
 }) => {
-  await openFixture(page, 'portal', 'active', 'portal-actions');
-  const update = page.getByRole('button', { name: 'Update payment method' });
-  await update.dblclick();
+  await openFixture(page, 'portal', 'active', 'portal-upgrade');
+  await page.getByRole('button', { name: 'Confirm plan change' }).dblclick();
   await expect(page.getByTestId('billing-boundary-count')).toHaveText('1');
-  await expect(page.getByTestId('billing-boundary-opened')).toHaveText(
-    'https://billing.stripe.test/session/1',
-  );
-  await page
-    .getByRole('button', { name: 'Review plan change in Stripe' })
-    .click();
   await expect(page.getByTestId('billing-boundary-payload')).toHaveText(
     JSON.stringify({ plan: 'prism-pro', interval: 'year' }),
   );
-  await expect(page.getByTestId('billing-boundary-count')).toHaveText('2');
   await expect(page.getByTestId('billing-boundary-opened')).toHaveText(
-    'https://billing.stripe.test/session/2',
-  );
-  await page.getByRole('button', { name: 'Manage cancellation' }).click();
-  await expect(page.getByTestId('billing-boundary-count')).toHaveText('3');
-  await expect(page.getByTestId('billing-boundary-opened')).toHaveText(
-    'https://billing.stripe.test/session/3',
+    'https://billing.stripe.test/session/1',
   );
 
-  await openFixture(page, 'portal', 'active', 'portal-error');
-  await page.getByRole('button', { name: 'Manage cancellation' }).click();
+  await openFixture(page, 'portal', 'active', 'portal-downgrade');
+  await page.getByRole('button', { name: 'Confirm plan change' }).dblclick();
+  await expect(page.getByTestId('billing-boundary-payload')).toHaveText(
+    JSON.stringify({ plan: 'starter', interval: 'month' }),
+  );
+  await expect(page.getByTestId('billing-boundary-count')).toHaveText('1');
+  await expect(page.getByTestId('billing-boundary-opened')).toHaveText('');
   await expect(
-    page.locator('.billing-inline-error[role="alert"]'),
-  ).toContainText('Stripe’s billing portal could not be opened.');
+    page.getByRole('region', { name: 'Billing portal' }).getByRole('status'),
+  ).toHaveText(
+    'Starter is scheduled for Aug 1, 2026. Your Prism Pro access remains active until then.',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Cancel scheduled downgrade' }),
+  ).toBeEnabled();
+
+  await openFixture(page, 'portal', 'active', 'portal-cancel');
+  await expect(page.getByTestId('billing-boundary-payload')).toHaveText('');
+  await page
+    .getByRole('button', { name: 'Cancel scheduled downgrade' })
+    .dblclick();
+  await expect(page.getByTestId('billing-boundary-count')).toHaveText('1');
+  await expect(page.getByTestId('billing-boundary-payload')).toHaveText('');
+  await expect(page.getByTestId('billing-boundary-opened')).toHaveText('');
+  await expect(
+    page.getByRole('region', { name: 'Billing portal' }).getByRole('status'),
+  ).toHaveText(
+    'Scheduled downgrade canceled. Your current plan remains active.',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Cancel scheduled downgrade' }),
+  ).toHaveCount(0);
+
+  await openFixture(page, 'portal', 'active', 'portal-error');
+  await page.getByRole('button', { name: 'Confirm plan change' }).click();
+  await expect(page.locator('.billing-inline-error[role="alert"]')).toHaveText(
+    'We couldn’t update your billing settings. Please try again.',
+  );
+  await expect(page.getByText(/sub_sched|price_|customer|secret/i)).toHaveCount(
+    0,
+  );
   await expect(
     page.getByRole('region', { name: 'Billing portal' }),
   ).toHaveAttribute('aria-busy', 'false');
@@ -402,8 +425,23 @@ test('keeps a deterministic keyboard focus order through billing controls', asyn
   await expect(page.getByRole('link', { name: 'Manage plan' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(
-    page.getByRole('link', { name: 'Choose Prism Pro' }),
+    page.getByRole('link', { name: 'Change to Prism Pro' }),
   ).toBeFocused();
+});
+
+test('keeps scheduled plan controls keyboard operable', async ({ page }) => {
+  await openFixture(page, 'portal', 'active', 'portal-downgrade');
+  const confirm = page.getByRole('button', { name: 'Confirm plan change' });
+  await confirm.focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('region', { name: 'Billing portal' }).getByRole('status'),
+  ).toBeVisible();
+  const cancel = page.getByRole('button', {
+    name: 'Cancel scheduled downgrade',
+  });
+  await cancel.focus();
+  await expect(cancel).toBeFocused();
 });
 
 test('durable mobile billing sheet traps focus, closes with Escape, and restores the More trigger', async ({
@@ -445,6 +483,25 @@ test('durable billing screens have no horizontal overflow at 320px', async ({
           document.documentElement.clientWidth,
       ),
       `${screen} overflowed at 320px`,
+    ).toBe(true);
+  }
+  for (const boundary of ['portal-downgrade', 'portal-cancel'] as const) {
+    await openFixture(page, 'portal', 'active', boundary);
+    if (boundary === 'portal-downgrade') {
+      await page.getByRole('button', { name: 'Confirm plan change' }).click();
+      await expect(
+        page
+          .getByRole('region', { name: 'Billing portal' })
+          .getByRole('status'),
+      ).toBeVisible();
+    }
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth ===
+          document.documentElement.clientWidth,
+      ),
+      `${boundary} overflowed at 320px`,
     ).toBe(true);
   }
 });
@@ -493,4 +550,28 @@ test('durable reduced motion removes billing transitions and animated progress w
     'aria-valuenow',
     '10',
   );
+
+  await openFixture(page, 'portal', 'active', 'portal-downgrade');
+  await page.getByRole('button', { name: 'Confirm plan change' }).click();
+  const scheduledStatus = page
+    .getByRole('region', { name: 'Billing portal' })
+    .getByRole('status');
+  await expect(scheduledStatus).toHaveText(
+    'Starter is scheduled for Aug 1, 2026. Your Prism Pro access remains active until then.',
+  );
+  const scheduledMotion = await scheduledStatus.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      animationName: style.animationName,
+      animationDuration: style.animationDuration,
+      transitionDuration: style.transitionDuration,
+    };
+  });
+  expect(scheduledMotion.animationName).toBe('none');
+  expect(
+    Number.parseFloat(scheduledMotion.animationDuration),
+  ).toBeLessThanOrEqual(0.001);
+  expect(
+    Number.parseFloat(scheduledMotion.transitionDuration),
+  ).toBeLessThanOrEqual(0.001);
 });

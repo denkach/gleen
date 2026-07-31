@@ -5,7 +5,14 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh }),
+  usePathname: () => '/app/subscription/portal',
+}));
 
 import type {
   InvoicePresentation,
@@ -49,6 +56,35 @@ const subscription = {
     currency: 'jpy',
     formattedAmount: '¥0',
   },
+  scheduledChange: null,
+  availablePlans: [
+    {
+      plan: {
+        id: 'starter',
+        slug: 'starter',
+        displayName: 'Starter',
+        description: 'For individuals getting started.',
+        analysisLimit: 10,
+        features: ['10 analyses per month'],
+        purchasable: true,
+      },
+      prices: [],
+      action: { enabled: true, reason: null },
+    },
+    {
+      plan: {
+        id: 'prism-pro',
+        slug: 'prism-pro',
+        displayName: 'Prism Pro',
+        description: 'Professional analysis.',
+        analysisLimit: 25,
+        features: ['25 analyses per month'],
+        purchasable: true,
+      },
+      prices: [],
+      action: { enabled: true, reason: null },
+    },
+  ],
 } as const satisfies Pick<
   SubscriptionPresentation,
   | 'currentPlan'
@@ -57,6 +93,8 @@ const subscription = {
   | 'resetAt'
   | 'resetAtLabel'
   | 'paymentMethod'
+  | 'scheduledChange'
+  | 'availablePlans'
 > & {
   outstandingBalance: {
     amountMinor: number;
@@ -104,6 +142,8 @@ const activity = {
 } satisfies InvoicePresentation;
 
 describe('PortalScreen', () => {
+  beforeEach(() => refresh.mockClear());
+
   it('renders the owned plan, masked payment method, renewal, balance, and billing activity', () => {
     render(
       <PortalScreen
@@ -150,9 +190,10 @@ describe('PortalScreen', () => {
     expect(openPortal).toHaveBeenCalledTimes(3);
   });
 
-  it('announces a selected plan change and sends only its target to Stripe', async () => {
+  it('opens Stripe only for an upgrade result and shows no scheduled notice', async () => {
     const planChangeAction = vi.fn().mockResolvedValue({
       ok: true,
+      kind: 'upgrade',
       url: 'https://billing.stripe.com/p/session_plan_change',
     });
     const openPortal = vi.fn();
@@ -167,9 +208,8 @@ describe('PortalScreen', () => {
       />,
     );
 
-    expect(screen.getByRole('status')).toHaveTextContent('prism-pro');
     fireEvent.click(
-      screen.getByRole('button', { name: 'Review plan change in Stripe' }),
+      screen.getByRole('button', { name: 'Confirm plan change' }),
     );
 
     await waitFor(() =>
@@ -181,7 +221,220 @@ describe('PortalScreen', () => {
     expect(openPortal).toHaveBeenCalledWith(
       'https://billing.stripe.com/p/session_plan_change',
     );
+    expect(openPortal).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/is scheduled for/i)).not.toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled();
   });
+
+  it('announces a downgrade locally without opening Stripe and refreshes the projection', async () => {
+    const planChangeAction = vi.fn().mockResolvedValue({
+      ok: true,
+      kind: 'downgrade',
+      plan: 'starter',
+      interval: 'month',
+      effectiveAt: '2026-08-01T00:00:00.000Z',
+    });
+    const openPortal = vi.fn();
+    render(
+      <PortalScreen
+        subscription={subscription}
+        activity={activity}
+        portalAction={vi.fn()}
+        planChangeAction={planChangeAction}
+        cancelScheduledDowngradeAction={vi.fn()}
+        planChange={{ plan: 'starter', interval: 'month' }}
+        planCatalog={subscription.availablePlans.map(({ plan }) => plan)}
+        openPortal={openPortal}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm plan change' }),
+    );
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Starter is scheduled for Aug 1, 2026. Your Prism Pro access remains active until then.',
+    );
+    expect(openPortal).not.toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),
+    ).toBeEnabled();
+  });
+
+  it('renders a projected downgrade with its effective date and cancellation control', () => {
+    render(
+      <PortalScreen
+        subscription={{
+          ...subscription,
+          scheduledChange: {
+            kind: 'downgrade',
+            plan: subscription.availablePlans[0].plan,
+            effectiveAt: '2026-08-01T00:00:00.000Z',
+          },
+        }}
+        activity={activity}
+        portalAction={vi.fn()}
+        cancelScheduledDowngradeAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Starter is scheduled for Aug 1, 2026. Your Prism Pro access remains active until then.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),
+    ).toBeEnabled();
+  });
+
+  it('announces successful scheduled-downgrade cancellation without opening Stripe', async () => {
+    const cancelScheduledDowngradeAction = vi
+      .fn()
+      .mockResolvedValue({ ok: true });
+    const openPortal = vi.fn();
+    render(
+      <PortalScreen
+        subscription={{
+          ...subscription,
+          scheduledChange: {
+            kind: 'downgrade',
+            plan: subscription.availablePlans[0].plan,
+            effectiveAt: '2026-08-01T00:00:00.000Z',
+          },
+        }}
+        activity={activity}
+        portalAction={vi.fn()}
+        cancelScheduledDowngradeAction={cancelScheduledDowngradeAction}
+        openPortal={openPortal}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),
+    );
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Scheduled downgrade canceled. Your current plan remains active.',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Cancel scheduled downgrade' }),
+    ).not.toBeInTheDocument();
+    expect(cancelScheduledDowngradeAction).toHaveBeenCalledWith();
+    expect(openPortal).not.toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['change', 'cancel'] as const)(
+    'renders one generic retryable alert and clears busy state after a failed %s action',
+    async (intent) => {
+      const internalMessage =
+        'Stripe subscription schedule sub_sched_secret is incompatible';
+      const planChangeAction = vi
+        .fn()
+        .mockRejectedValue(new Error(internalMessage));
+      const cancelScheduledDowngradeAction = vi
+        .fn()
+        .mockRejectedValue(new Error(internalMessage));
+      render(
+        <PortalScreen
+          subscription={{
+            ...subscription,
+            scheduledChange:
+              intent === 'cancel'
+                ? {
+                    kind: 'downgrade',
+                    plan: subscription.availablePlans[0].plan,
+                    effectiveAt: '2026-08-01T00:00:00.000Z',
+                  }
+                : null,
+          }}
+          activity={activity}
+          portalAction={vi.fn()}
+          planChangeAction={planChangeAction}
+          cancelScheduledDowngradeAction={cancelScheduledDowngradeAction}
+          planChange={
+            intent === 'change' ? { plan: 'starter', interval: 'month' } : null
+          }
+          openPortal={vi.fn()}
+        />,
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name:
+            intent === 'change'
+              ? 'Confirm plan change'
+              : 'Cancel scheduled downgrade',
+        }),
+      );
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(
+        'We couldn’t update your billing settings. Please try again.',
+      );
+      expect(screen.getAllByRole('alert')).toHaveLength(1);
+      expect(alert).not.toHaveTextContent(internalMessage);
+      expect(
+        screen.getByRole('region', { name: 'Billing portal' }),
+      ).toHaveAttribute('aria-busy', 'false');
+    },
+  );
+
+  it.each(['change', 'cancel'] as const)(
+    'invokes the %s Server Action once for rapid repeated activation',
+    async (intent) => {
+      let resolveAction!: (result: {
+        ok: false;
+        code: 'billing_unavailable';
+      }) => void;
+      const action = vi.fn(
+        () =>
+          new Promise<{ ok: false; code: 'billing_unavailable' }>((resolve) => {
+            resolveAction = resolve;
+          }),
+      );
+      render(
+        <PortalScreen
+          subscription={{
+            ...subscription,
+            scheduledChange:
+              intent === 'cancel'
+                ? {
+                    kind: 'downgrade',
+                    plan: subscription.availablePlans[0].plan,
+                    effectiveAt: '2026-08-01T00:00:00.000Z',
+                  }
+                : null,
+          }}
+          activity={activity}
+          portalAction={vi.fn()}
+          planChangeAction={intent === 'change' ? action : undefined}
+          cancelScheduledDowngradeAction={
+            intent === 'cancel' ? action : undefined
+          }
+          planChange={
+            intent === 'change' ? { plan: 'starter', interval: 'month' } : null
+          }
+          openPortal={vi.fn()}
+        />,
+      );
+      const button = screen.getByRole('button', {
+        name:
+          intent === 'change'
+            ? 'Confirm plan change'
+            : 'Cancel scheduled downgrade',
+      });
+
+      fireEvent.click(button);
+      fireEvent.click(button);
+      expect(action).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        resolveAction({ ok: false, code: 'billing_unavailable' });
+        await Promise.resolve();
+      });
+    },
+  );
 
   it('keeps Team controls truly disabled and explained', () => {
     render(
@@ -277,7 +530,7 @@ describe('PortalScreen', () => {
       expect(screen.getByRole('button', { name: 'Manage plan' })).toBeEnabled(),
     );
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Stripe’s billing portal could not be opened.',
+      'We couldn’t update your billing settings. Please try again.',
     );
   });
 

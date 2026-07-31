@@ -6,9 +6,15 @@ import { LimitReachedScreen } from '@/components/billing/limit-reached-screen';
 import { PortalScreen } from '@/components/billing/portal-screen';
 import { SubscriptionScreen } from '@/components/billing/subscription-screen';
 import { UsageScreen } from '@/components/billing/usage-screen';
-import type { BillingFixture } from '@/lib/billing/fixtures';
+import {
+  billingFixtureCatalog,
+  type BillingFixture,
+} from '@/lib/billing/fixtures';
 import type { UsageEventType } from '@/lib/billing/domain';
-import type { CheckoutActionInput } from '@/lib/billing/actions';
+import type {
+  CheckoutActionInput,
+  PlanChangeResult,
+} from '@/lib/billing/actions';
 import { useState, useSyncExternalStore } from 'react';
 
 const disabledExport = async () =>
@@ -16,10 +22,22 @@ const disabledExport = async () =>
 const disabledPortal = async () =>
   ({ ok: false, code: 'fixture-disabled' }) as const;
 const subscribeHydration = () => () => undefined;
-const fixturePlanChange = {
+const fixtureUpgrade = {
   plan: 'prism-pro',
   interval: 'year',
 } as const satisfies CheckoutActionInput;
+const fixtureDowngrade = {
+  plan: 'starter',
+  interval: 'month',
+} as const satisfies CheckoutActionInput;
+const fixtureEffectiveAt = '2026-08-01T00:00:00.000Z';
+const fixturePlanCatalog = billingFixtureCatalog.map(({ plan }) => plan);
+const fixtureStarterPlan = billingFixtureCatalog.find(
+  ({ plan }) => plan.slug === 'starter',
+)!.plan;
+const fixturePrismProPlan = billingFixtureCatalog.find(
+  ({ plan }) => plan.slug === 'prism-pro',
+)!.plan;
 
 export function BillingFixtureScreen({
   fixture,
@@ -30,7 +48,9 @@ export function BillingFixtureScreen({
   testBoundary:
     | 'usage-actions'
     | 'checkout-action'
-    | 'portal-actions'
+    | 'portal-upgrade'
+    | 'portal-downgrade'
+    | 'portal-cancel'
     | 'portal-error'
     | 'invoice-actions'
     | null;
@@ -51,27 +71,45 @@ export function BillingFixtureScreen({
   const [payload, setPayload] = useState('');
   const [portalCount, setPortalCount] = useState(0);
   const [openedPortal, setOpenedPortal] = useState('');
-  const portalAction =
-    testBoundary === 'portal-actions' || testBoundary === 'portal-error'
-      ? async () => {
-          const count = portalCount + 1;
-          setPortalCount(count);
-          await new Promise((resolve) => window.setTimeout(resolve, 80));
-          return testBoundary === 'portal-error'
-            ? ({ ok: false, code: 'fixture-error' } as const)
-            : ({
-                ok: true,
-                url: `https://billing.stripe.test/session/${count}`,
-              } as const);
-        }
-      : disabledPortal;
+  const portalAction = disabledPortal;
   const planChangeAction =
-    testBoundary === 'portal-actions'
+    testBoundary === 'portal-upgrade' ||
+    testBoundary === 'portal-downgrade' ||
+    testBoundary === 'portal-error'
       ? async (input: CheckoutActionInput) => {
           setPayload(JSON.stringify(input));
-          return portalAction();
+          setPortalCount((count) => count + 1);
+          await new Promise((resolve) => window.setTimeout(resolve, 80));
+          if (testBoundary === 'portal-error') {
+            return {
+              ok: false,
+              code: 'fixture-error',
+            } as unknown as PlanChangeResult;
+          }
+          if (testBoundary === 'portal-downgrade') {
+            return {
+              ok: true,
+              kind: 'downgrade',
+              plan: 'starter',
+              interval: 'month',
+              effectiveAt: fixtureEffectiveAt,
+            } as const;
+          }
+          return {
+            ok: true,
+            kind: 'upgrade',
+            url: 'https://billing.stripe.test/session/1',
+          } as const;
         }
-      : disabledPortal;
+      : undefined;
+  const cancelScheduledDowngradeAction =
+    testBoundary === 'portal-cancel'
+      ? async () => {
+          setPortalCount((count) => count + 1);
+          await new Promise((resolve) => window.setTimeout(resolve, 80));
+          return { ok: true } as const;
+        }
+      : undefined;
 
   const boundaryEvidence = (
     <>
@@ -232,18 +270,42 @@ export function BillingFixtureScreen({
         </>
       );
     case 'portal':
+      const downgradeBoundary =
+        testBoundary === 'portal-downgrade' ||
+        testBoundary === 'portal-cancel' ||
+        testBoundary === 'portal-error';
       return (
         <>
           <PortalScreen
-            subscription={fixture.subscription}
+            subscription={{
+              ...fixture.subscription,
+              currentPlan: downgradeBoundary
+                ? fixturePrismProPlan
+                : fixture.subscription.currentPlan,
+              scheduledChange:
+                testBoundary === 'portal-cancel'
+                  ? {
+                      kind: 'downgrade',
+                      plan: fixtureStarterPlan,
+                      effectiveAt: fixtureEffectiveAt,
+                    }
+                  : null,
+            }}
             activity={fixture.activity}
             portalAction={portalAction}
             planChangeAction={planChangeAction}
+            cancelScheduledDowngradeAction={cancelScheduledDowngradeAction}
             planChange={
-              testBoundary === 'portal-actions' ? fixturePlanChange : null
+              testBoundary === 'portal-upgrade'
+                ? fixtureUpgrade
+                : testBoundary === 'portal-downgrade' ||
+                    testBoundary === 'portal-error'
+                  ? fixtureDowngrade
+                  : null
             }
+            planCatalog={fixturePlanCatalog}
             openPortal={
-              testBoundary === 'portal-actions'
+              testBoundary === 'portal-upgrade'
                 ? (url) => setOpenedPortal(url)
                 : undefined
             }

@@ -85,6 +85,26 @@ describe('BillingFixturePage guard', () => {
   });
 
   it.each([
+    'portal-upgrade',
+    'portal-downgrade',
+    'portal-cancel',
+    'portal-error',
+  ] as const)('accepts the deterministic %s boundary', async (testBoundary) => {
+    isUiPreviewEnabled.mockReturnValue(true);
+
+    render(
+      await BillingFixturePage({
+        params: Promise.resolve({ screen: 'portal' }),
+        searchParams: Promise.resolve({ state: 'active', testBoundary }),
+      }),
+    );
+
+    expect(renderFixture).toHaveBeenCalledWith(
+      expect.objectContaining({ testBoundary }),
+    );
+  });
+
+  it.each([
     ['subscription', 'free', 'Free', 1, 3, '2 analyses left'],
     ['subscription', 'active', 'Starter', 3, 10, '7 analyses left'],
     ['limit-reached', 'limit-reached', 'Starter', 10, 10, '0 analyses left'],

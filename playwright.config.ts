@@ -54,6 +54,7 @@ export default defineConfig({
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'pk_test_den20_fixture',
       STRIPE_SECRET_KEY: 'sk_test_den20_fixture',
       STRIPE_WEBHOOK_SECRET: 'whsec_den20_fixture',
+      STRIPE_PORTAL_CONFIGURATION_ID: 'bpc_test_den20_fixture',
       SUPABASE_SECRET_KEY: 'sb_secret_den20_fixture',
     },
     reuseExistingServer: !process.env.CI,

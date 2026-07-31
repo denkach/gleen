@@ -23,7 +23,9 @@ const defaultState = {
 const fixtureBoundaries = [
   'usage-actions',
   'checkout-action',
-  'portal-actions',
+  'portal-upgrade',
+  'portal-downgrade',
+  'portal-cancel',
   'portal-error',
   'invoice-actions',
 ] as const;

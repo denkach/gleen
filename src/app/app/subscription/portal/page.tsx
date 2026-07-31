@@ -7,8 +7,9 @@ import {
   type PortalSubscription,
 } from '@/components/billing/portal-screen';
 import {
+  cancelScheduledDowngrade,
+  changePlan,
   createPortalSession,
-  createPlanChangePortalSession,
   getPaymentMethodSummary,
   type CheckoutActionInput,
 } from '@/lib/billing/actions';
@@ -75,6 +76,10 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
   );
 
   let portalSubscription: PortalSubscription | null = null;
+  let portalPlanCatalog: readonly Readonly<{
+    slug: CheckoutActionInput['plan'];
+    displayName: string;
+  }>[] = [];
   let activity: ReturnType<typeof toInvoicePresentation> | null = null;
   try {
     const [snapshot, paymentMethod, invoices] = await Promise.all([
@@ -101,6 +106,7 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
       resetAt: subscription.resetAt,
       resetAtLabel: subscription.resetAtLabel,
       paymentMethod: subscription.paymentMethod,
+      scheduledChange: subscription.scheduledChange,
       outstandingBalance: {
         amountMinor: snapshot.paymentSummary.outstandingAmountMinor,
         currency: snapshot.paymentSummary.currency,
@@ -110,6 +116,10 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
         }),
       },
     };
+    portalPlanCatalog = subscription.availablePlans.map(({ plan }) => ({
+      slug: plan.slug,
+      displayName: plan.displayName,
+    }));
     activity = toInvoicePresentation(invoices);
   } catch {
     // The screen preserves navigation and renders the explicit error state.
@@ -119,8 +129,10 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
       subscription={portalSubscription}
       activity={activity}
       portalAction={createPortalSession}
-      planChangeAction={createPlanChangePortalSession}
+      planChangeAction={changePlan}
+      cancelScheduledDowngradeAction={cancelScheduledDowngrade}
       planChange={planChange}
+      planCatalog={portalPlanCatalog}
     />
   );
 }

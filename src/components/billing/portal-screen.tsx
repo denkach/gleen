@@ -1,13 +1,19 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import type {
   InvoicePresentation,
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
-import type { CheckoutActionInput } from '@/lib/billing/actions';
+import type {
+  CancelScheduledDowngradeResult,
+  CheckoutActionInput,
+  PlanChangeResult,
+} from '@/lib/billing/actions';
+import type { BillingPlanSlug } from '@/lib/billing/domain';
 
 import { BillingIcon } from './billing-icons';
 import {
@@ -19,6 +25,10 @@ import {
 
 type PortalActionResult =
   Readonly<{ ok: true; url: string }> | Readonly<{ ok: false; code: string }>;
+type PortalPlanCatalogEntry = Readonly<{
+  slug: BillingPlanSlug;
+  displayName: string;
+}>;
 
 export type PortalSubscription = Pick<
   SubscriptionPresentation,
@@ -28,6 +38,7 @@ export type PortalSubscription = Pick<
   | 'resetAt'
   | 'resetAtLabel'
   | 'paymentMethod'
+  | 'scheduledChange'
 > &
   Readonly<{
     outstandingBalance: Readonly<{
@@ -40,6 +51,28 @@ export type PortalSubscription = Pick<
 function defaultOpenPortal(url: string) {
   window.location.assign(url);
 }
+
+const unavailablePlanChangeAction = async (): Promise<PlanChangeResult> => ({
+  ok: false,
+  code: 'billing_unavailable',
+});
+
+const unavailableCancelAction =
+  async (): Promise<CancelScheduledDowngradeResult> => ({
+    ok: false,
+    code: 'billing_unavailable',
+  });
+
+const scheduledDateFormatter = new Intl.DateTimeFormat('en-US', {
+  dateStyle: 'medium',
+  timeZone: 'UTC',
+});
+const emptyPlanCatalog: readonly PortalPlanCatalogEntry[] = [];
+
+type LocalScheduledDowngrade = Readonly<{
+  plan: BillingPlanSlug;
+  effectiveAt: string;
+}>;
 
 function PortalActionButton({
   children,
@@ -64,22 +97,31 @@ export function PortalScreen({
   subscription,
   activity,
   portalAction,
-  planChangeAction = portalAction,
+  planChangeAction = unavailablePlanChangeAction,
+  cancelScheduledDowngradeAction = unavailableCancelAction,
   planChange = null,
+  planCatalog = emptyPlanCatalog,
   openPortal = defaultOpenPortal,
 }: Readonly<{
   subscription: PortalSubscription | null;
   activity: InvoicePresentation | null;
   portalAction: () => Promise<PortalActionResult>;
-  planChangeAction?: (
-    input: CheckoutActionInput,
-  ) => Promise<PortalActionResult>;
+  planChangeAction?: (input: CheckoutActionInput) => Promise<PlanChangeResult>;
+  cancelScheduledDowngradeAction?: () => Promise<CancelScheduledDowngradeResult>;
   planChange?: CheckoutActionInput | null;
+  planCatalog?: readonly PortalPlanCatalogEntry[];
   openPortal?: (url: string) => void;
 }>) {
+  const router = useRouter();
   const [opening, setOpening] = useState(false);
   const [actionError, setActionError] = useState(false);
+  const [localScheduledDowngrade, setLocalScheduledDowngrade] =
+    useState<LocalScheduledDowngrade | null>(null);
+  const [scheduledDowngradeCanceled, setScheduledDowngradeCanceled] =
+    useState(false);
+  const [cancellationStatus, setCancellationStatus] = useState(false);
   const mounted = useRef(true);
+  const pending = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
@@ -89,7 +131,8 @@ export function PortalScreen({
   }, []);
 
   async function launchPortal(action = portalAction) {
-    if (opening) return;
+    if (pending.current) return;
+    pending.current = true;
     setOpening(true);
     setActionError(false);
     try {
@@ -103,6 +146,62 @@ export function PortalScreen({
     } catch {
       if (mounted.current) setActionError(true);
     } finally {
+      pending.current = false;
+      if (mounted.current) setOpening(false);
+    }
+  }
+
+  async function submitPlanChange() {
+    if (planChange === null || pending.current) return;
+    pending.current = true;
+    setOpening(true);
+    setActionError(false);
+    setCancellationStatus(false);
+    try {
+      const result = await planChangeAction(planChange);
+      if (!mounted.current) return;
+      if (!result.ok) {
+        setActionError(true);
+        return;
+      }
+      if (result.kind === 'upgrade') {
+        openPortal(result.url);
+        return;
+      }
+      setLocalScheduledDowngrade({
+        plan: result.plan,
+        effectiveAt: result.effectiveAt,
+      });
+      setScheduledDowngradeCanceled(false);
+      router.refresh();
+    } catch {
+      if (mounted.current) setActionError(true);
+    } finally {
+      pending.current = false;
+      if (mounted.current) setOpening(false);
+    }
+  }
+
+  async function cancelScheduledDowngrade() {
+    if (pending.current) return;
+    pending.current = true;
+    setOpening(true);
+    setActionError(false);
+    try {
+      const result = await cancelScheduledDowngradeAction();
+      if (!mounted.current) return;
+      if (!result.ok) {
+        setActionError(true);
+        return;
+      }
+      setScheduledDowngradeCanceled(true);
+      setLocalScheduledDowngrade(null);
+      setCancellationStatus(true);
+      router.refresh();
+    } catch {
+      if (mounted.current) setActionError(true);
+    } finally {
+      pending.current = false;
       if (mounted.current) setOpening(false);
     }
   }
@@ -131,6 +230,26 @@ export function PortalScreen({
   }
 
   const teamExplanationId = 'billing-team-seats-unavailable';
+  const projectedDowngrade =
+    subscription.scheduledChange?.kind === 'downgrade'
+      ? subscription.scheduledChange
+      : null;
+  const scheduledDowngrade = scheduledDowngradeCanceled
+    ? null
+    : (localScheduledDowngrade ?? projectedDowngrade);
+  const scheduledPlan =
+    scheduledDowngrade === null
+      ? null
+      : typeof scheduledDowngrade.plan === 'string'
+        ? (planCatalog.find(({ slug }) => slug === scheduledDowngrade.plan) ??
+          null)
+        : scheduledDowngrade.plan;
+  const scheduledStatus =
+    scheduledDowngrade !== null && scheduledPlan !== null
+      ? `${scheduledPlan.displayName} is scheduled for ${scheduledDateFormatter.format(
+          new Date(scheduledDowngrade.effectiveAt),
+        )}. Your ${subscription.currentPlan.displayName} access remains active until then.`
+      : null;
 
   return (
     <BillingPage
@@ -141,8 +260,18 @@ export function PortalScreen({
     >
       {actionError && (
         <p className="billing-inline-error" role="alert">
-          Stripe’s billing portal could not be opened. Please try again.
+          We couldn’t update your billing settings. Please try again.
         </p>
+      )}
+      {(cancellationStatus || scheduledStatus !== null) && (
+        <div className="billing-scheduled-state" role="status">
+          <BillingIcon name="plan" />
+          <span>
+            {cancellationStatus
+              ? 'Scheduled downgrade canceled. Your current plan remains active.'
+              : scheduledStatus}
+          </span>
+        </div>
       )}
       <BillingCard className="billing-portal-summary">
         <div className="billing-portal-plan">
@@ -232,26 +361,23 @@ export function PortalScreen({
               </p>
             </div>
           </div>
-          {planChange !== null && (
-            <p className="billing-section-copy" role="status">
-              Plan change to {planChange.plan} on a {planChange.interval}{' '}
-              interval selected. Stripe will show the exact proration before
-              confirmation.
-            </p>
-          )}
           <div className="billing-action-list">
             <PortalActionButton
               action={
-                planChange === null
-                  ? () => launchPortal()
-                  : () => launchPortal(() => planChangeAction(planChange))
+                planChange === null ? () => launchPortal() : submitPlanChange
               }
               disabled={opening}
             >
-              {planChange === null
-                ? 'Manage plan'
-                : 'Review plan change in Stripe'}
+              {planChange === null ? 'Manage plan' : 'Confirm plan change'}
             </PortalActionButton>
+            {scheduledDowngrade !== null && (
+              <PortalActionButton
+                action={cancelScheduledDowngrade}
+                disabled={opening}
+              >
+                Cancel scheduled downgrade
+              </PortalActionButton>
+            )}
             <PortalActionButton
               action={() => launchPortal()}
               disabled={opening}
