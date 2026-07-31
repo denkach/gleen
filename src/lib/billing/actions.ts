@@ -16,8 +16,11 @@ import {
   usageEventTypeSchema,
   type Invoice,
   type BillingPaymentMethod,
+  type BillingInterval,
+  type BillingPlanSlug,
   type UsageLedgerEntry,
 } from './domain';
+import { classifyPlanChange, PlanChangePolicyError } from './plan-change';
 import {
   type BillingRepository,
   type InvoiceQuery,
@@ -28,6 +31,12 @@ import {
   createSupabaseBillingRepository,
   type SupabaseBillingClient,
 } from './supabase-repository';
+import {
+  releaseOwnedDowngrade,
+  scheduleOwnedDowngrade,
+  type OwnedSingleItemSubscription,
+  type SubscriptionScheduleStripeClient,
+} from './subscription-schedule';
 
 const checkoutInputSchema = z
   .object({
@@ -121,7 +130,7 @@ export type ActionErrorCode =
   | 'session_expired'
   | 'subscription_already_exists';
 
-type ActionError = Readonly<{ ok: false; code: ActionErrorCode }>;
+export type ActionError = Readonly<{ ok: false; code: ActionErrorCode }>;
 type CheckoutResult =
   Readonly<{ ok: true; clientSecret: string }> | ActionError;
 type CheckoutConfirmationResult = Readonly<{
@@ -134,6 +143,18 @@ type CheckoutConfirmationResult = Readonly<{
     | 'retryable-error';
 }>;
 type PortalResult = Readonly<{ ok: true; url: string }> | ActionError;
+export type PlanChangeResult =
+  | Readonly<{ ok: true; kind: 'upgrade'; url: string }>
+  | Readonly<{
+      ok: true;
+      kind: 'downgrade';
+      plan: BillingPlanSlug;
+      interval: BillingInterval;
+      effectiveAt: string;
+    }>
+  | ActionError;
+export type CancelScheduledDowngradeResult =
+  Readonly<{ ok: true }> | ActionError;
 export type PaymentMethodResult =
   Readonly<{ ok: true; paymentMethod: BillingPaymentMethod }> | ActionError;
 type CsvResult =
@@ -145,64 +166,80 @@ type CsvResult =
     }>
   | ActionError;
 
-export type BillingStripeClient = Readonly<{
-  checkout: Readonly<{
-    sessions: Readonly<{
-      create(
-        input: Stripe.Checkout.SessionCreateParams,
-      ): PromiseLike<Pick<Stripe.Checkout.Session, 'client_secret'>>;
-      retrieve(
-        sessionId: string,
+export type BillingStripeClient = SubscriptionScheduleStripeClient &
+  Readonly<{
+    checkout: Readonly<{
+      sessions: Readonly<{
+        create(
+          input: Stripe.Checkout.SessionCreateParams,
+        ): PromiseLike<Pick<Stripe.Checkout.Session, 'client_secret'>>;
+        retrieve(
+          sessionId: string,
+        ): PromiseLike<
+          Pick<
+            Stripe.Checkout.Session,
+            'id' | 'client_reference_id' | 'status' | 'metadata'
+          >
+        >;
+      }>;
+    }>;
+    billingPortal: Readonly<{
+      configurations: Readonly<{
+        retrieve(
+          configurationId: string,
+        ): PromiseLike<Pick<Stripe.BillingPortal.Configuration, 'features'>>;
+      }>;
+      sessions: Readonly<{
+        create(
+          input: Stripe.BillingPortal.SessionCreateParams,
+        ): PromiseLike<Pick<Stripe.BillingPortal.Session, 'url'>>;
+      }>;
+    }>;
+    subscriptions: Readonly<{
+      list(
+        input: Pick<
+          Stripe.SubscriptionListParams,
+          'customer' | 'status' | 'limit'
+        >,
       ): PromiseLike<
-        Pick<
-          Stripe.Checkout.Session,
-          'id' | 'client_reference_id' | 'status' | 'metadata'
-        >
+        Readonly<{
+          data: readonly (Pick<
+            Stripe.Subscription,
+            'id' | 'status' | 'schedule'
+          > &
+            Readonly<{
+              items: Readonly<{
+                data: readonly Pick<
+                  Stripe.SubscriptionItem,
+                  | 'id'
+                  | 'price'
+                  | 'quantity'
+                  | 'current_period_start'
+                  | 'current_period_end'
+                >[];
+              }>;
+            }>)[];
+        }>
       >;
     }>;
-  }>;
-  billingPortal: Readonly<{
-    configurations: Readonly<{
-      retrieve(
-        configurationId: string,
-      ): PromiseLike<Pick<Stripe.BillingPortal.Configuration, 'features'>>;
-    }>;
-    sessions: Readonly<{
+    customers: Readonly<{
       create(
-        input: Stripe.BillingPortal.SessionCreateParams,
-      ): PromiseLike<Pick<Stripe.BillingPortal.Session, 'url'>>;
+        input: Stripe.CustomerCreateParams,
+        options: Stripe.RequestOptions,
+      ): PromiseLike<Pick<Stripe.Customer, 'id'>>;
+      update(
+        customerId: string,
+        input: Stripe.CustomerUpdateParams,
+      ): PromiseLike<Pick<Stripe.Customer, 'id'>>;
+      retrieve(
+        customerId: string,
+        params: Stripe.CustomerRetrieveParams,
+      ): PromiseLike<Stripe.Customer | Stripe.DeletedCustomer>;
+    }>;
+    paymentMethods: Readonly<{
+      retrieve(paymentMethodId: string): PromiseLike<Stripe.PaymentMethod>;
     }>;
   }>;
-  subscriptions: Readonly<{
-    list(
-      input: Pick<
-        Stripe.SubscriptionListParams,
-        'customer' | 'status' | 'limit'
-      >,
-    ): PromiseLike<
-      Readonly<{
-        data: readonly Pick<Stripe.Subscription, 'id' | 'status' | 'items'>[];
-      }>
-    >;
-  }>;
-  customers: Readonly<{
-    create(
-      input: Stripe.CustomerCreateParams,
-      options: Stripe.RequestOptions,
-    ): PromiseLike<Pick<Stripe.Customer, 'id'>>;
-    update(
-      customerId: string,
-      input: Stripe.CustomerUpdateParams,
-    ): PromiseLike<Pick<Stripe.Customer, 'id'>>;
-    retrieve(
-      customerId: string,
-      params: Stripe.CustomerRetrieveParams,
-    ): PromiseLike<Stripe.Customer | Stripe.DeletedCustomer>;
-  }>;
-  paymentMethods: Readonly<{
-    retrieve(paymentMethodId: string): PromiseLike<Stripe.PaymentMethod>;
-  }>;
-}>;
 
 export type BillingActionAdminRepository = Readonly<{
   resolvePurchasablePrice(
@@ -266,15 +303,21 @@ const terminalSubscriptionStatuses = new Set<Stripe.Subscription.Status>([
 async function listNonTerminalSubscriptions(
   stripe: BillingStripeClient,
   customerId: string,
-) {
+): Promise<readonly OwnedSingleItemSubscription[]> {
   const result = await stripe.subscriptions.list({
     customer: customerId,
     status: 'all',
     limit: 10,
   });
-  return result.data.filter(
-    (subscription) => !terminalSubscriptionStatuses.has(subscription.status),
-  );
+  return result.data
+    .filter(
+      (subscription) => !terminalSubscriptionStatuses.has(subscription.status),
+    )
+    .map((subscription) => ({
+      id: subscription.id,
+      schedule: subscription.schedule,
+      items: subscription.items,
+    }));
 }
 
 export function createBillingActions(dependencies: BillingActionsDependencies) {
@@ -462,7 +505,7 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
       }
     },
 
-    async createPlanChangePortalForUser(input: unknown): Promise<PortalResult> {
+    async changePlanForUser(input: unknown): Promise<PlanChangeResult> {
       const parsed = planChangeInputSchema.safeParse(input);
       if (!parsed.success) return actionFailure('invalid_request');
 
@@ -472,6 +515,10 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
         );
         if (customerId === null) return actionFailure('plan_unavailable');
         const ownedCustomerId = stripeCustomerIdSchema.parse(customerId);
+
+        const snapshot = await dependencies.repository.getOwnedSnapshot(
+          parsed.data.userId,
+        );
 
         const priceId =
           await dependencies.adminRepository.resolvePurchasablePrice(
@@ -489,10 +536,35 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
           return actionFailure('billing_unavailable');
         }
         const [subscription] = subscriptions;
-        if (subscription.items.data.length !== 1) {
+        if (
+          subscription === undefined ||
+          subscription.items.data.length !== 1
+        ) {
           return actionFailure('billing_unavailable');
         }
         const [item] = subscription.items.data;
+
+        const direction = classifyPlanChange(snapshot, parsed.data);
+        if (direction === 'unchanged') return actionFailure('invalid_request');
+
+        if (direction === 'downgrade') {
+          const scheduled = await scheduleOwnedDowngrade({
+            stripe: dependencies.stripe,
+            subscription,
+            targetPriceId: ownedPriceId,
+            targetPlan: parsed.data.plan,
+            targetInterval: parsed.data.interval,
+          });
+          return {
+            ok: true,
+            kind: 'downgrade',
+            plan: scheduled.targetPlan,
+            interval: scheduled.targetInterval,
+            effectiveAt: scheduled.effectiveAt,
+          };
+        }
+
+        if (item === undefined) return actionFailure('billing_unavailable');
 
         const configuration =
           await dependencies.stripe.billingPortal.configurations.retrieve(
@@ -527,7 +599,51 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
             },
           },
         );
-        return { ok: true, url: portalUrlSchema.parse(session.url) };
+        return {
+          ok: true,
+          kind: 'upgrade',
+          url: portalUrlSchema.parse(session.url),
+        };
+      } catch (error) {
+        if (error instanceof PlanChangePolicyError) {
+          return actionFailure('invalid_request');
+        }
+        return actionFailure('billing_unavailable');
+      }
+    },
+
+    async cancelScheduledDowngradeForUser(
+      input: unknown,
+    ): Promise<CancelScheduledDowngradeResult> {
+      const parsed = portalInputSchema.safeParse(input);
+      if (!parsed.success) return actionFailure('invalid_request');
+
+      try {
+        const customerId = await dependencies.repository.getOwnedCustomerId(
+          parsed.data.userId,
+        );
+        if (customerId === null) return actionFailure('plan_unavailable');
+        const ownedCustomerId = stripeCustomerIdSchema.parse(customerId);
+        const subscriptions = await listNonTerminalSubscriptions(
+          dependencies.stripe,
+          ownedCustomerId,
+        );
+        if (subscriptions.length !== 1) {
+          return actionFailure('billing_unavailable');
+        }
+        const [subscription] = subscriptions;
+        if (
+          subscription === undefined ||
+          subscription.items.data.length !== 1
+        ) {
+          return actionFailure('billing_unavailable');
+        }
+
+        await releaseOwnedDowngrade({
+          stripe: dependencies.stripe,
+          subscription,
+        });
+        return { ok: true };
       } catch {
         return actionFailure('billing_unavailable');
       }
@@ -873,9 +989,9 @@ export async function createPortalSession(): Promise<PortalResult> {
   ).createPortalForUser({ userId: context.userId });
 }
 
-export async function createPlanChangePortalSession(
+export async function changePlan(
   input: CheckoutActionInput,
-): Promise<PortalResult> {
+): Promise<PlanChangeResult> {
   'use server';
   const context = await authenticatedContext();
   if (context === null) return actionFailure('session_expired');
@@ -884,10 +1000,34 @@ export async function createPlanChangePortalSession(
   return productionBillingActions(
     context.supabase,
     await requestBillingAppUrl(),
-  ).createPlanChangePortalForUser({
+  ).changePlanForUser({
     userId: context.userId,
     ...parsed.data,
   });
+}
+
+export async function cancelScheduledDowngrade(): Promise<CancelScheduledDowngradeResult> {
+  'use server';
+  const context = await authenticatedContext();
+  if (context === null) return actionFailure('session_expired');
+  return productionBillingActions(
+    context.supabase,
+  ).cancelScheduledDowngradeForUser({ userId: context.userId });
+}
+
+/**
+ * Temporary compatibility boundary for the existing Portal-only subscription
+ * page. The split action is the product API; callers that require a Portal
+ * URL cannot represent scheduled downgrades and must migrate to changePlan.
+ */
+export async function createPlanChangePortalSession(
+  input: CheckoutActionInput,
+): Promise<PortalResult> {
+  const result = await changePlan(input);
+  if (!result.ok) return result;
+  return result.kind === 'upgrade'
+    ? { ok: true, url: result.url }
+    : actionFailure('invalid_request');
 }
 
 export async function getPaymentMethodSummary(): Promise<PaymentMethodResult> {

@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { BillingSnapshot } from './domain';
 import type { BillingRepository } from './repository';
 
 const getUser = vi.hoisted(() => vi.fn());
@@ -13,7 +14,8 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import {
   createBillingActions,
-  createPlanChangePortalSession,
+  cancelScheduledDowngrade,
+  changePlan,
   createCheckoutSession,
   getCheckoutConfirmation,
   createPortalSession,
@@ -32,6 +34,150 @@ type TestStripeClient = BillingStripeClient &
         configurations: Readonly<{ retrieve: ReturnType<typeof vi.fn> }>;
       }>;
   }>;
+
+const periodStart = 1782864000;
+const periodEnd = 1785542400;
+
+function plan(slug: 'starter' | 'prism-pro') {
+  return {
+    id: slug,
+    slug,
+    displayName: slug === 'starter' ? 'Starter' : 'Prism Pro',
+    description: `${slug} plan`,
+    analysisLimit: slug === 'starter' ? 10 : 100,
+    features: [],
+    purchasable: true,
+  } as const;
+}
+
+function snapshot(
+  currentSlug: 'starter' | 'prism-pro',
+  currentInterval: 'month' | 'year' = 'month',
+  overrides: Partial<BillingSnapshot> = {},
+): BillingSnapshot {
+  const starter = plan('starter');
+  const prismPro = plan('prism-pro');
+  return {
+    currentPlan: currentSlug === 'starter' ? starter : prismPro,
+    currentPrice: {
+      planId: currentSlug,
+      interval: currentInterval,
+      amountMinor: currentSlug === 'starter' ? 900 : 1900,
+      monthlyEquivalentMinor: currentSlug === 'starter' ? 900 : 1900,
+      currency: 'usd',
+      savingsPercent: null,
+    },
+    period: {
+      startsAt: '2026-07-01T00:00:00.000Z',
+      endsAt: '2026-08-01T00:00:00.000Z',
+    },
+    usage: { used: 0, reserved: 0, remaining: 10, limit: 10, extraCredits: 0 },
+    scheduledChange: null,
+    paymentSummary: {
+      subscriptionStatus: 'active',
+      paidThrough: '2026-08-01T00:00:00.000Z',
+      outstandingAmountMinor: 0,
+      currency: 'usd',
+    },
+    recentActivity: [],
+    availablePlans: [
+      {
+        plan: starter,
+        prices: [
+          {
+            planId: 'starter',
+            interval: 'month',
+            amountMinor: 900,
+            monthlyEquivalentMinor: 900,
+            currency: 'usd',
+            savingsPercent: null,
+          },
+        ],
+      },
+      {
+        plan: prismPro,
+        prices: [
+          {
+            planId: 'prism-pro',
+            interval: 'month',
+            amountMinor: 1900,
+            monthlyEquivalentMinor: 1900,
+            currency: 'usd',
+            savingsPercent: null,
+          },
+        ],
+      },
+    ],
+    ...overrides,
+  };
+}
+
+function activeSubscription(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'sub_active',
+    status: 'active',
+    schedule: null,
+    items: {
+      data: [
+        {
+          id: 'si_current',
+          price: { id: 'price_prism_month' },
+          quantity: 1,
+          current_period_start: periodStart,
+          current_period_end: periodEnd,
+        },
+      ],
+    },
+    ...overrides,
+  };
+}
+
+function subscriptionSchedule(
+  overrides: Record<string, unknown> = {},
+): Stripe.SubscriptionSchedule {
+  return {
+    id: 'sub_sched_owned',
+    status: 'active',
+    subscription: 'sub_active',
+    end_behavior: 'release',
+    metadata: {},
+    phases: [
+      {
+        add_invoice_items: [],
+        application_fee_percent: null,
+        automatic_tax: undefined,
+        billing_cycle_anchor: null,
+        billing_thresholds: null,
+        collection_method: null,
+        currency: 'usd',
+        default_payment_method: null,
+        default_tax_rates: null,
+        description: null,
+        discounts: [],
+        end_date: periodEnd,
+        invoice_settings: null,
+        items: [
+          {
+            billing_thresholds: null,
+            discounts: [],
+            metadata: null,
+            plan: 'price_prism_month',
+            price: { id: 'price_prism_month' },
+            quantity: 1,
+            tax_rates: null,
+          },
+        ],
+        metadata: null,
+        on_behalf_of: null,
+        proration_behavior: 'none',
+        start_date: periodStart,
+        transfer_data: null,
+        trial_end: null,
+      },
+    ],
+    ...overrides,
+  } as unknown as Stripe.SubscriptionSchedule;
+}
 
 const nativeCustomCheckoutPayload = {
   mode: 'subscription',
@@ -132,6 +278,12 @@ function createStripe(): TestStripeClient {
           url: 'https://billing.stripe.com/p/session/test',
         })),
       },
+    },
+    subscriptionSchedules: {
+      create: vi.fn(async () => subscriptionSchedule()),
+      retrieve: vi.fn(async () => subscriptionSchedule()),
+      update: vi.fn(async () => subscriptionSchedule()),
+      release: vi.fn(async () => subscriptionSchedule()),
     },
     customers: {
       create: vi.fn(async () => ({ id: 'cus_created' })),
@@ -328,12 +480,14 @@ describe('billing checkout actions', () => {
     await expect(
       Promise.all([
         createCheckoutSession({ plan: 'prism-pro', interval: 'year' }),
-        createPlanChangePortalSession({ plan: 'prism-pro', interval: 'year' }),
+        changePlan({ plan: 'prism-pro', interval: 'year' }),
+        cancelScheduledDowngrade(),
         createPortalSession(),
         exportUsageCsv(),
         exportInvoicesCsv(),
       ]),
     ).resolves.toEqual([
+      { ok: false, code: 'session_expired' },
       { ok: false, code: 'session_expired' },
       { ok: false, code: 'session_expired' },
       { ok: false, code: 'session_expired' },
@@ -355,7 +509,7 @@ describe('billing checkout actions', () => {
       } as never),
     ).resolves.toEqual({ ok: false, code: 'invalid_request' });
     await expect(
-      createPlanChangePortalSession({
+      changePlan({
         plan: 'prism-pro',
         interval: 'year',
         userId: 'attacker',
@@ -551,29 +705,27 @@ describe('billing portal and CSV actions', () => {
     expect(stripe.customers.retrieve).not.toHaveBeenCalled();
   });
 
-  it('creates a prorated plan-change Portal session from server-owned identifiers', async () => {
+  it('returns an upgrade Portal session from server-owned identifiers', async () => {
     const stripe = createStripe();
     vi.mocked(stripe.subscriptions.list).mockResolvedValue({
-      data: [
-        {
-          id: 'sub_active',
-          status: 'active',
-          items: {
-            data: [{ id: 'si_current', price: { id: 'price_current' } }],
-          },
-        },
-      ],
+      data: [activeSubscription()],
     } as never);
-    const { actions } = createActions({ stripe });
+    const { actions } = createActions({
+      stripe,
+      repository: createRepository({
+        getOwnedSnapshot: vi.fn(async () => snapshot('starter')),
+      }),
+    });
 
     await expect(
-      actions.createPlanChangePortalForUser({
+      actions.changePlanForUser({
         userId: 'u1',
         plan: 'prism-pro',
         interval: 'month',
       }),
     ).resolves.toEqual({
       ok: true,
+      kind: 'upgrade',
       url: 'https://billing.stripe.com/p/session/test',
     });
     expect(stripe.subscriptions.list).toHaveBeenCalledWith({
@@ -581,6 +733,9 @@ describe('billing portal and CSV actions', () => {
       status: 'all',
       limit: 10,
     });
+    expect(stripe.billingPortal.configurations.retrieve).toHaveBeenCalledWith(
+      'bpc_test_prorated',
+    );
     expect(stripe.billingPortal.sessions.create).toHaveBeenCalledWith({
       configuration: 'bpc_test_prorated',
       customer: 'cus_owned',
@@ -601,7 +756,156 @@ describe('billing portal and CSV actions', () => {
     });
   });
 
+  it('schedules a downgrade with only server-owned subscription and Price data', async () => {
+    const stripe = createStripe();
+    vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+      data: [activeSubscription()],
+    } as never);
+    const adminRepository = createAdminRepository({
+      resolvePurchasablePrice: vi.fn(async () => 'price_starter_month'),
+    });
+    const { actions } = createActions({
+      stripe,
+      adminRepository,
+      repository: createRepository({
+        getOwnedSnapshot: vi.fn(async () => snapshot('prism-pro')),
+      }),
+    });
+
+    const input = { userId: 'u1', plan: 'starter', interval: 'month' } as const;
+    await expect(actions.changePlanForUser(input)).resolves.toEqual({
+      ok: true,
+      kind: 'downgrade',
+      plan: 'starter',
+      interval: 'month',
+      effectiveAt: '2026-08-01T00:00:00.000Z',
+    });
+    await expect(actions.changePlanForUser(input)).resolves.toEqual({
+      ok: true,
+      kind: 'downgrade',
+      plan: 'starter',
+      interval: 'month',
+      effectiveAt: '2026-08-01T00:00:00.000Z',
+    });
+    expect(adminRepository.resolvePurchasablePrice).toHaveBeenCalledWith(
+      'starter',
+      'month',
+    );
+    expect(stripe.billingPortal.configurations.retrieve).not.toHaveBeenCalled();
+    expect(stripe.billingPortal.sessions.create).not.toHaveBeenCalled();
+    expect(stripe.subscriptionSchedules.create).toHaveBeenCalledWith(
+      { from_subscription: 'sub_active' },
+      { idempotencyKey: 'gleen-den20-schedule:sub_active:1785542400' },
+    );
+    expect(stripe.subscriptionSchedules.update).toHaveBeenCalledWith(
+      'sub_sched_owned',
+      expect.objectContaining({
+        phases: expect.arrayContaining([
+          expect.objectContaining({
+            items: [{ price: 'price_starter_month', quantity: 1 }],
+          }),
+        ]),
+      }),
+      expect.objectContaining({
+        idempotencyKey:
+          'gleen-den20-update:sub_sched_owned:price_starter_month:1785542400',
+      }),
+    );
+  });
+
   it.each([
+    {
+      name: 'does not always invoice proration',
+      configuration: {
+        features: {
+          subscription_update: {
+            enabled: true,
+            proration_behavior: 'create_prorations',
+            products: [
+              { product: 'prod_gleen', prices: ['price_server_owned'] },
+            ],
+          },
+        },
+      },
+    },
+    {
+      name: 'omits the configured target Price',
+      configuration: {
+        features: {
+          subscription_update: {
+            enabled: true,
+            proration_behavior: 'always_invoice',
+            products: [{ product: 'prod_gleen', prices: ['price_other'] }],
+          },
+        },
+      },
+    },
+  ])(
+    'fails closed when the upgrade Portal $name',
+    async ({ configuration }) => {
+      const stripe = createStripe();
+      vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+        data: [activeSubscription()],
+      } as never);
+      vi.mocked(stripe.billingPortal.configurations.retrieve).mockResolvedValue(
+        configuration as never,
+      );
+      const { actions } = createActions({
+        stripe,
+        repository: createRepository({
+          getOwnedSnapshot: vi.fn(async () => snapshot('starter')),
+        }),
+      });
+
+      await expect(
+        actions.changePlanForUser({
+          userId: 'u1',
+          plan: 'prism-pro',
+          interval: 'month',
+        }),
+      ).resolves.toEqual({ ok: false, code: 'billing_unavailable' });
+      expect(stripe.billingPortal.sessions.create).not.toHaveBeenCalled();
+      expect(stripe.subscriptionSchedules.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('releases only a Gleen-owned attached downgrade schedule', async () => {
+    const stripe = createStripe();
+    vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+      data: [activeSubscription({ schedule: 'sub_sched_owned' })],
+    } as never);
+    vi.mocked(stripe.subscriptionSchedules.retrieve).mockResolvedValue(
+      subscriptionSchedule({
+        metadata: {
+          gleen_owner: 'den-20',
+          gleen_subscription_id: 'sub_active',
+        },
+      }),
+    );
+    const { actions } = createActions({ stripe });
+
+    await expect(
+      actions.cancelScheduledDowngradeForUser({ userId: 'u1' }),
+    ).resolves.toEqual({ ok: true });
+    expect(stripe.subscriptionSchedules.release).toHaveBeenCalledWith(
+      'sub_sched_owned',
+      { preserve_cancel_date: true },
+      { idempotencyKey: 'gleen-den20-release:sub_sched_owned' },
+    );
+    expect(stripe.billingPortal.sessions.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: 'the requested plan and interval are unchanged',
+      setup: (stripe: TestStripeClient) =>
+        createActions({
+          stripe,
+          repository: createRepository({
+            getOwnedSnapshot: vi.fn(async () => snapshot('prism-pro')),
+          }),
+        }),
+    },
     {
       name: 'the customer mapping is absent',
       setup: (stripe: TestStripeClient) =>
@@ -613,6 +917,32 @@ describe('billing portal and CSV actions', () => {
         }),
     },
     {
+      name: 'the current snapshot Price is absent',
+      setup: (stripe: TestStripeClient) =>
+        createActions({
+          stripe,
+          repository: createRepository({
+            getOwnedSnapshot: vi.fn(async () =>
+              snapshot('prism-pro', 'month', { currentPrice: null }),
+            ),
+          }),
+        }),
+    },
+    {
+      name: 'the target catalog entry is absent',
+      setup: (stripe: TestStripeClient) =>
+        createActions({
+          stripe,
+          repository: createRepository({
+            getOwnedSnapshot: vi.fn(async () =>
+              snapshot('prism-pro', 'month', {
+                availablePlans: [snapshot('prism-pro').availablePlans[1]!],
+              }),
+            ),
+          }),
+        }),
+    },
+    {
       name: 'the target catalog Price is unavailable',
       setup: (stripe: TestStripeClient) =>
         createActions({
@@ -620,39 +950,50 @@ describe('billing portal and CSV actions', () => {
           adminRepository: createAdminRepository({
             resolvePurchasablePrice: vi.fn(async () => null),
           }),
+          repository: createRepository({
+            getOwnedSnapshot: vi.fn(async () => snapshot('prism-pro')),
+          }),
         }),
     },
     {
       name: 'there is no non-terminal subscription',
-      setup: (stripe: TestStripeClient) => createActions({ stripe }),
+      setup: (stripe: TestStripeClient) =>
+        createActions({
+          stripe,
+          repository: createRepository({
+            getOwnedSnapshot: vi.fn(async () => snapshot('prism-pro')),
+          }),
+        }),
     },
     {
       name: 'there is more than one non-terminal subscription',
       setup: (stripe: TestStripeClient) => {
         vi.mocked(stripe.subscriptions.list).mockResolvedValue({
           data: [
-            {
-              id: 'sub_one',
-              status: 'active',
-              items: { data: [{ id: 'si_one', price: { id: 'price_one' } }] },
-            },
-            {
-              id: 'sub_two',
-              status: 'trialing',
-              items: { data: [{ id: 'si_two', price: { id: 'price_two' } }] },
-            },
+            activeSubscription({ id: 'sub_one' }),
+            activeSubscription({ id: 'sub_two', status: 'trialing' }),
           ],
         } as never);
-        return createActions({ stripe });
+        return createActions({
+          stripe,
+          repository: createRepository({
+            getOwnedSnapshot: vi.fn(async () => snapshot('prism-pro')),
+          }),
+        });
       },
     },
     {
       name: 'the subscription has zero items',
       setup: (stripe: TestStripeClient) => {
         vi.mocked(stripe.subscriptions.list).mockResolvedValue({
-          data: [{ id: 'sub_active', status: 'active', items: { data: [] } }],
+          data: [activeSubscription({ items: { data: [] } })],
         } as never);
-        return createActions({ stripe });
+        return createActions({
+          stripe,
+          repository: createRepository({
+            getOwnedSnapshot: vi.fn(async () => snapshot('prism-pro')),
+          }),
+        });
       },
     },
     {
@@ -660,77 +1001,39 @@ describe('billing portal and CSV actions', () => {
       setup: (stripe: TestStripeClient) => {
         vi.mocked(stripe.subscriptions.list).mockResolvedValue({
           data: [
-            {
-              id: 'sub_active',
-              status: 'active',
+            activeSubscription({
               items: {
                 data: [
-                  { id: 'si_one', price: { id: 'price_one' } },
-                  { id: 'si_two', price: { id: 'price_two' } },
+                  activeSubscription().items.data[0],
+                  { ...activeSubscription().items.data[0], id: 'si_second' },
                 ],
               },
-            },
+            }),
           ],
         } as never);
-        return createActions({ stripe });
+        return createActions({
+          stripe,
+          repository: createRepository({
+            getOwnedSnapshot: vi.fn(async () => snapshot('prism-pro')),
+          }),
+        });
       },
     },
     {
-      name: 'the Portal does not always invoice proration',
+      name: 'an external Schedule is attached',
       setup: (stripe: TestStripeClient) => {
         vi.mocked(stripe.subscriptions.list).mockResolvedValue({
-          data: [
-            {
-              id: 'sub_active',
-              status: 'active',
-              items: {
-                data: [{ id: 'si_current', price: { id: 'price_current' } }],
-              },
-            },
-          ],
+          data: [activeSubscription({ schedule: 'sub_sched_external' })],
         } as never);
-        vi.mocked(
-          stripe.billingPortal.configurations.retrieve,
-        ).mockResolvedValue({
-          features: {
-            subscription_update: {
-              enabled: true,
-              proration_behavior: 'create_prorations',
-              products: [
-                { product: 'prod_gleen', prices: ['price_server_owned'] },
-              ],
-            },
-          },
-        } as never);
-        return createActions({ stripe });
-      },
-    },
-    {
-      name: 'the Portal configuration omits the target Price',
-      setup: (stripe: TestStripeClient) => {
-        vi.mocked(stripe.subscriptions.list).mockResolvedValue({
-          data: [
-            {
-              id: 'sub_active',
-              status: 'active',
-              items: {
-                data: [{ id: 'si_current', price: { id: 'price_current' } }],
-              },
-            },
-          ],
-        } as never);
-        vi.mocked(
-          stripe.billingPortal.configurations.retrieve,
-        ).mockResolvedValue({
-          features: {
-            subscription_update: {
-              enabled: true,
-              proration_behavior: 'always_invoice',
-              products: [{ product: 'prod_gleen', prices: ['price_other'] }],
-            },
-          },
-        } as never);
-        return createActions({ stripe });
+        vi.mocked(stripe.subscriptionSchedules.retrieve).mockResolvedValue(
+          subscriptionSchedule({ id: 'sub_sched_external' }),
+        );
+        return createActions({
+          stripe,
+          repository: createRepository({
+            getOwnedSnapshot: vi.fn(async () => snapshot('prism-pro')),
+          }),
+        });
       },
     },
   ])('fails closed when $name', async ({ setup }) => {
@@ -738,13 +1041,15 @@ describe('billing portal and CSV actions', () => {
     const { actions } = setup(stripe);
 
     await expect(
-      actions.createPlanChangePortalForUser({
+      actions.changePlanForUser({
         userId: 'u1',
-        plan: 'prism-pro',
+        plan: 'starter',
         interval: 'month',
       }),
     ).resolves.toMatchObject({ ok: false });
     expect(stripe.billingPortal.sessions.create).not.toHaveBeenCalled();
+    expect(stripe.subscriptionSchedules.update).not.toHaveBeenCalled();
+    expect(stripe.subscriptionSchedules.release).not.toHaveBeenCalled();
   });
 
   it('creates a fresh portal session only for the owned customer', async () => {
