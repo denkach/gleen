@@ -506,6 +506,22 @@ describe('scheduleOwnedDowngrade', () => {
         ],
       }),
     ],
+    [
+      'an unexpected currency',
+      managedTargetPhase('price_starter_year', 'year'),
+      (future: Stripe.SubscriptionSchedule.Phase) => ({
+        ...future,
+        currency: 'eur',
+      }),
+    ],
+    [
+      'an unexpected legacy plan',
+      managedTargetPhase('price_starter_year', 'year'),
+      (future: Stripe.SubscriptionSchedule.Phase) => ({
+        ...future,
+        items: [{ ...future.items[0]!, plan: 'price_other_year' }],
+      }),
+    ],
   ] as const)(
     'rejects replacing a target phase with %s',
     async (_reason, future, unsafeFuture) => {

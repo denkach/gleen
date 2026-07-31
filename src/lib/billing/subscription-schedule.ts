@@ -305,6 +305,7 @@ function targetPhaseIsGleenCompatible(
   targetPriceId: string,
   targetInterval: BillingInterval,
   effectiveAt: number,
+  expectedCurrency: string,
 ): void {
   if (
     phase.start_date !== effectiveAt ||
@@ -316,6 +317,7 @@ function targetPhaseIsGleenCompatible(
     phase.billing_cycle_anchor !== null ||
     phase.billing_thresholds !== null ||
     phase.collection_method !== null ||
+    phase.currency !== expectedCurrency ||
     phase.default_payment_method !== null ||
     !hasNoTaxRates(phase.default_tax_rates) ||
     phase.description !== null ||
@@ -333,6 +335,7 @@ function targetPhaseIsGleenCompatible(
   const [item] = phase.items;
   if (
     item === undefined ||
+    stripeId(item.plan, 'price') !== targetPriceId ||
     stripeId(item.price, 'price') !== targetPriceId ||
     item.quantity !== 1 ||
     item.billing_thresholds !== null ||
@@ -389,7 +392,7 @@ function validatesManagedTargetPhase(
   target: ManagedTarget,
 ): void {
   if (schedule.end_behavior !== 'release') return conflict();
-  const [, future] = currentAndFuturePhases(
+  const [current, future] = currentAndFuturePhases(
     schedule,
     currentPeriodStart,
     currentPeriodEnd,
@@ -400,6 +403,7 @@ function validatesManagedTargetPhase(
     target.priceId,
     target.interval,
     currentPeriodEnd,
+    current.currency,
   );
 }
 
