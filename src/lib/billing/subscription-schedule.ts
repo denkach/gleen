@@ -55,6 +55,12 @@ function conflict(): never {
 }
 
 function stripeId(value: string | { id: string }, prefix: string): string {
+  const id = stripeObjectId(value);
+  if (!id.startsWith(`${prefix}_`)) return conflict();
+  return id;
+}
+
+function stripeObjectId(value: string | { id: string }): string {
   if (
     typeof value !== 'string' &&
     'deleted' in value &&
@@ -64,7 +70,7 @@ function stripeId(value: string | { id: string }, prefix: string): string {
   }
 
   const id = typeof value === 'string' ? value : value.id;
-  if (!id.startsWith(`${prefix}_`)) return conflict();
+  if (id.trim().length === 0) return conflict();
   return id;
 }
 
@@ -94,7 +100,7 @@ function phaseDiscount(
   const serialized: Stripe.SubscriptionScheduleUpdateParams.Phase.Discount = {};
 
   if (discount.coupon !== null) {
-    serialized.coupon = stripeId(discount.coupon, 'coupon');
+    serialized.coupon = stripeObjectId(discount.coupon);
   }
   if (discount.discount !== null) {
     serialized.discount = stripeId(discount.discount, 'di');
@@ -221,11 +227,14 @@ function addInvoiceItem(
   };
 }
 
-function currentPhase(
+function currentAndFuturePhases(
   schedule: Stripe.SubscriptionSchedule,
   periodStart: number,
   periodEnd: number,
-): Stripe.SubscriptionSchedule.Phase {
+): readonly [
+  Stripe.SubscriptionSchedule.Phase,
+  Stripe.SubscriptionSchedule.Phase | undefined,
+] {
   const currentAndFuture = schedule.phases.filter(
     (phase) => phase.end_date > periodStart,
   );
@@ -250,7 +259,148 @@ function currentPhase(
   ) {
     return conflict();
   }
-  return current;
+  return [current, future];
+}
+
+function currentPhase(
+  schedule: Stripe.SubscriptionSchedule,
+  periodStart: number,
+  periodEnd: number,
+): Stripe.SubscriptionSchedule.Phase {
+  return currentAndFuturePhases(schedule, periodStart, periodEnd)[0];
+}
+
+function intervalEnd(start: number, interval: BillingInterval): number {
+  const date = new Date(start * 1000);
+  const targetYear = date.getUTCFullYear() + (interval === 'year' ? 1 : 0);
+  const targetMonth = date.getUTCMonth() + (interval === 'month' ? 1 : 0);
+  const daysInTargetMonth = new Date(
+    Date.UTC(targetYear, targetMonth + 1, 0),
+  ).getUTCDate();
+  return (
+    Date.UTC(
+      targetYear,
+      targetMonth,
+      Math.min(date.getUTCDate(), daysInTargetMonth),
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds(),
+      date.getUTCMilliseconds(),
+    ) / 1000
+  );
+}
+
+function hasNoMetadata(metadata: Stripe.Metadata | null): boolean {
+  return metadata === null || Object.keys(metadata).length === 0;
+}
+
+function hasNoTaxRates(
+  taxRates: readonly Stripe.TaxRate[] | null | undefined,
+): boolean {
+  return taxRates === null || taxRates === undefined || taxRates.length === 0;
+}
+
+function targetPhaseIsGleenCompatible(
+  phase: Stripe.SubscriptionSchedule.Phase,
+  targetPriceId: string,
+  targetInterval: BillingInterval,
+  effectiveAt: number,
+): void {
+  if (
+    phase.start_date !== effectiveAt ||
+    phase.end_date !== intervalEnd(effectiveAt, targetInterval) ||
+    phase.proration_behavior !== 'none' ||
+    phase.add_invoice_items.length !== 0 ||
+    phase.application_fee_percent !== null ||
+    phase.automatic_tax !== undefined ||
+    phase.billing_cycle_anchor !== null ||
+    phase.billing_thresholds !== null ||
+    phase.collection_method !== null ||
+    phase.default_payment_method !== null ||
+    !hasNoTaxRates(phase.default_tax_rates) ||
+    phase.description !== null ||
+    phase.discounts.length !== 0 ||
+    phase.invoice_settings !== null ||
+    !hasNoMetadata(phase.metadata) ||
+    phase.on_behalf_of !== null ||
+    phase.transfer_data !== null ||
+    phase.trial_end !== null ||
+    phase.items.length !== 1
+  ) {
+    return conflict();
+  }
+
+  const [item] = phase.items;
+  if (
+    item === undefined ||
+    stripeId(item.price, 'price') !== targetPriceId ||
+    item.quantity !== 1 ||
+    item.billing_thresholds !== null ||
+    item.discounts.length !== 0 ||
+    !hasNoMetadata(item.metadata) ||
+    !hasNoTaxRates(item.tax_rates)
+  ) {
+    return conflict();
+  }
+}
+
+type ManagedTarget = Readonly<{
+  priceId: string;
+  interval: BillingInterval;
+  changeKey: string;
+}>;
+
+function managedTarget(
+  schedule: Stripe.SubscriptionSchedule,
+  currentPeriodEnd: number,
+): ManagedTarget {
+  const metadata = schedule.metadata;
+  const targetPlan = metadata?.gleen_target_plan;
+  const targetInterval = metadata?.gleen_target_interval;
+  const effectiveAt = metadata?.gleen_effective_at;
+  const changeKey = metadata?.gleen_change_key;
+  if (
+    targetPlan === undefined ||
+    targetPlan.trim().length === 0 ||
+    (targetInterval !== 'month' && targetInterval !== 'year') ||
+    effectiveAt !== new Date(currentPeriodEnd * 1000).toISOString() ||
+    changeKey === undefined
+  ) {
+    return conflict();
+  }
+
+  const prefix = `gleen-den20-update:${schedule.id}:`;
+  const suffix = `:${currentPeriodEnd}`;
+  if (!changeKey.startsWith(prefix) || !changeKey.endsWith(suffix)) {
+    return conflict();
+  }
+  const priceId = changeKey.slice(prefix.length, -suffix.length);
+  if (priceId.includes(':') || stripeId(priceId, 'price') !== priceId) {
+    return conflict();
+  }
+
+  return { priceId, interval: targetInterval, changeKey };
+}
+
+function validatesManagedTargetPhase(
+  schedule: Stripe.SubscriptionSchedule,
+  currentPeriodStart: number,
+  currentPeriodEnd: number,
+  target: ManagedTarget,
+): void {
+  if (schedule.end_behavior !== 'release') return conflict();
+  const [, future] = currentAndFuturePhases(
+    schedule,
+    currentPeriodStart,
+    currentPeriodEnd,
+  );
+  if (future === undefined) return conflict();
+  targetPhaseIsGleenCompatible(
+    future,
+    target.priceId,
+    target.interval,
+    currentPeriodEnd,
+  );
 }
 
 function currentPhaseUpdate(
@@ -423,13 +573,28 @@ export async function scheduleOwnedDowngrade(
     currentPeriodEnd,
   );
   currentPhase(schedule, currentPeriodStart, currentPeriodEnd);
-  if (
-    ownedMetadata(schedule, input.subscription.id) &&
-    schedule.metadata?.gleen_target_plan === input.targetPlan &&
-    schedule.metadata.gleen_target_interval === input.targetInterval &&
-    schedule.metadata.gleen_effective_at === scheduled.effectiveAt
-  ) {
-    return scheduled;
+  if (ownedMetadata(schedule, input.subscription.id)) {
+    const existingTarget = managedTarget(schedule, currentPeriodEnd);
+    if (
+      schedule.metadata?.gleen_target_plan === input.targetPlan &&
+      schedule.metadata.gleen_target_interval === input.targetInterval
+    ) {
+      const expectedChangeKey = `gleen-den20-update:${schedule.id}:${input.targetPriceId}:${currentPeriodEnd}`;
+      if (existingTarget.changeKey !== expectedChangeKey) return conflict();
+      validatesManagedTargetPhase(
+        schedule,
+        currentPeriodStart,
+        currentPeriodEnd,
+        existingTarget,
+      );
+      return scheduled;
+    }
+    validatesManagedTargetPhase(
+      schedule,
+      currentPeriodStart,
+      currentPeriodEnd,
+      existingTarget,
+    );
   }
 
   const changeKey = `gleen-den20-update:${schedule.id}:${input.targetPriceId}:${currentPeriodEnd}`;

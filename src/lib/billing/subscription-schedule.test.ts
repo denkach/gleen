@@ -100,6 +100,44 @@ function phase(
   };
 }
 
+function managedTargetPhase(
+  targetPriceId = 'price_starter_month',
+  targetInterval: BillingInterval = 'month',
+): Stripe.SubscriptionSchedule.Phase {
+  return phase({
+    add_invoice_items: [],
+    application_fee_percent: null,
+    automatic_tax: undefined,
+    billing_cycle_anchor: null,
+    billing_thresholds: null,
+    collection_method: null,
+    default_payment_method: null,
+    default_tax_rates: null,
+    description: null,
+    discounts: [],
+    end_date:
+      targetInterval === 'month' ? periodEnd + 2678400 : periodEnd + 31536000,
+    invoice_settings: null,
+    items: [
+      {
+        billing_thresholds: null,
+        discounts: [],
+        metadata: null,
+        plan: targetPriceId,
+        price: { id: targetPriceId } as Stripe.Price,
+        quantity: 1,
+        tax_rates: null,
+      },
+    ],
+    metadata: null,
+    on_behalf_of: null,
+    proration_behavior: 'none',
+    start_date: periodEnd,
+    transfer_data: null,
+    trial_end: null,
+  });
+}
+
 function schedule(
   overrides: Partial<Stripe.SubscriptionSchedule> = {},
 ): Stripe.SubscriptionSchedule {
@@ -269,6 +307,33 @@ describe('scheduleOwnedDowngrade', () => {
     });
   });
 
+  it('preserves a merchant-defined Coupon ID in the current phase', async () => {
+    const current = schedule({
+      phases: [
+        phase({
+          discounts: [
+            {
+              coupon: 'merchant_coupon_42',
+              discount: null,
+              promotion_code: null,
+            },
+          ],
+        }),
+      ],
+    });
+    const { stripe, update } = stripeClient(current);
+
+    await scheduleOwnedDowngrade(scheduleInput(stripe));
+
+    const [, params] = update.mock.calls[0] as [
+      string,
+      Stripe.SubscriptionScheduleUpdateParams,
+    ];
+    expect(params.phases?.[0]?.discounts).toEqual([
+      { coupon: 'merchant_coupon_42' },
+    ]);
+  });
+
   it('returns a same-target owned schedule without updating it', async () => {
     const owned = schedule({
       metadata: {
@@ -280,10 +345,7 @@ describe('scheduleOwnedDowngrade', () => {
         gleen_change_key:
           'gleen-den20-update:sub_sched_owned:price_starter_month:1785542400',
       },
-      phases: [
-        phase(),
-        phase({ start_date: periodEnd, end_date: periodEnd + 2678400 }),
-      ],
+      phases: [phase(), managedTargetPhase()],
     });
     const { stripe, update } = stripeClient(owned);
 
@@ -296,6 +358,63 @@ describe('scheduleOwnedDowngrade', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [
+      'has no future target phase',
+      schedule({
+        metadata: {
+          gleen_owner: 'den-20',
+          gleen_subscription_id: 'sub_owned',
+          gleen_target_plan: 'starter',
+          gleen_target_interval: 'month',
+          gleen_effective_at: '2026-08-01T00:00:00.000Z',
+          gleen_change_key:
+            'gleen-den20-update:sub_sched_owned:price_starter_month:1785542400',
+        },
+      }),
+    ],
+    [
+      'has a future target phase with the wrong Price',
+      schedule({
+        metadata: {
+          gleen_owner: 'den-20',
+          gleen_subscription_id: 'sub_owned',
+          gleen_target_plan: 'starter',
+          gleen_target_interval: 'month',
+          gleen_effective_at: '2026-08-01T00:00:00.000Z',
+          gleen_change_key:
+            'gleen-den20-update:sub_sched_owned:price_starter_month:1785542400',
+        },
+        phases: [phase(), managedTargetPhase('price_other_month')],
+      }),
+    ],
+    [
+      'has an incompatible end behavior',
+      schedule({
+        end_behavior: 'cancel',
+        metadata: {
+          gleen_owner: 'den-20',
+          gleen_subscription_id: 'sub_owned',
+          gleen_target_plan: 'starter',
+          gleen_target_interval: 'month',
+          gleen_effective_at: '2026-08-01T00:00:00.000Z',
+          gleen_change_key:
+            'gleen-den20-update:sub_sched_owned:price_starter_month:1785542400',
+        },
+        phases: [phase(), managedTargetPhase()],
+      }),
+    ],
+  ])('rejects a same-target retry that %s', async (_reason, unsafeSchedule) => {
+    const { stripe, update } = stripeClient(unsafeSchedule);
+
+    await expect(
+      scheduleOwnedDowngrade(
+        scheduleInput(stripe, subscription('sub_sched_owned')),
+      ),
+    ).rejects.toThrow(SubscriptionScheduleConflictError);
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it('replaces only the future phase of an owned schedule with a different target', async () => {
     const currentPhase = phase();
     const owned = schedule({
@@ -305,12 +424,10 @@ describe('scheduleOwnedDowngrade', () => {
         gleen_target_plan: 'starter',
         gleen_target_interval: 'year',
         gleen_effective_at: '2026-08-01T00:00:00.000Z',
-        gleen_change_key: 'old-key',
+        gleen_change_key:
+          'gleen-den20-update:sub_sched_owned:price_starter_year:1785542400',
       },
-      phases: [
-        currentPhase,
-        phase({ start_date: periodEnd, end_date: periodEnd + 31536000 }),
-      ],
+      phases: [currentPhase, managedTargetPhase('price_starter_year', 'year')],
     });
     const { stripe, update } = stripeClient(owned);
 
@@ -336,6 +453,84 @@ describe('scheduleOwnedDowngrade', () => {
       items: [{ price: 'price_starter_month', quantity: 1 }],
     });
   });
+
+  it.each([
+    [
+      'a deleted Price',
+      managedTargetPhase('price_starter_year', 'year'),
+      (future: Stripe.SubscriptionSchedule.Phase) => ({
+        ...future,
+        items: [
+          {
+            ...future.items[0]!,
+            price: {
+              id: 'price_deleted',
+              object: 'price',
+              deleted: true,
+            } as Stripe.DeletedPrice,
+          },
+        ],
+      }),
+    ],
+    [
+      'phase discounts',
+      managedTargetPhase('price_starter_year', 'year'),
+      (future: Stripe.SubscriptionSchedule.Phase) => ({
+        ...future,
+        discounts: [
+          {
+            coupon: 'merchant_coupon_42',
+            discount: null,
+            promotion_code: null,
+          },
+        ],
+      }),
+    ],
+    [
+      'add invoice items',
+      managedTargetPhase('price_starter_year', 'year'),
+      (future: Stripe.SubscriptionSchedule.Phase) => ({
+        ...future,
+        add_invoice_items: [
+          {
+            discounts: [],
+            metadata: null,
+            period: {
+              start: { type: 'phase_start' as const },
+              end: { type: 'phase_end' as const },
+            },
+            price: { id: 'price_addon' } as Stripe.Price,
+            quantity: 1,
+            tax_rates: null,
+          },
+        ],
+      }),
+    ],
+  ] as const)(
+    'rejects replacing a target phase with %s',
+    async (_reason, future, unsafeFuture) => {
+      const owned = schedule({
+        metadata: {
+          gleen_owner: 'den-20',
+          gleen_subscription_id: 'sub_owned',
+          gleen_target_plan: 'starter',
+          gleen_target_interval: 'year',
+          gleen_effective_at: '2026-08-01T00:00:00.000Z',
+          gleen_change_key:
+            'gleen-den20-update:sub_sched_owned:price_starter_year:1785542400',
+        },
+        phases: [phase(), unsafeFuture(future)],
+      });
+      const { stripe, update } = stripeClient(owned);
+
+      await expect(
+        scheduleOwnedDowngrade(
+          scheduleInput(stripe, subscription('sub_sched_owned')),
+        ),
+      ).rejects.toThrow(SubscriptionScheduleConflictError);
+      expect(update).not.toHaveBeenCalled();
+    },
+  );
 
   it('only adopts a metadata-free attached schedule when bootstrap replay returns it', async () => {
     const current = schedule({ metadata: {} });
