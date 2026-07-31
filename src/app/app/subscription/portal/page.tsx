@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { z } from 'zod';
 
 import {
   PortalScreen,
@@ -7,8 +8,14 @@ import {
 } from '@/components/billing/portal-screen';
 import {
   createPortalSession,
+  createPlanChangePortalSession,
   getPaymentMethodSummary,
+  type CheckoutActionInput,
 } from '@/lib/billing/actions';
+import {
+  billingIntervalSchema,
+  billingPlanSlugSchema,
+} from '@/lib/billing/domain';
 import {
   formatMoney,
   toInvoicePresentation,
@@ -24,12 +31,44 @@ export const metadata: Metadata = {
   title: 'Billing portal — Gleen',
 };
 
-export default async function PortalPage() {
+const planChangeQuerySchema = z
+  .object({
+    plan: billingPlanSlugSchema.optional(),
+    interval: billingIntervalSchema.optional(),
+  })
+  .strict();
+
+type PortalPageProps = Readonly<{
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}>;
+
+function parsePlanChange(
+  raw: Record<string, string | string[] | undefined>,
+): CheckoutActionInput | null {
+  const parsed = planChangeQuerySchema.safeParse({
+    plan: typeof raw.plan === 'string' ? raw.plan : undefined,
+    interval: typeof raw.interval === 'string' ? raw.interval : undefined,
+  });
+  if (
+    !parsed.success ||
+    parsed.data.plan === undefined ||
+    parsed.data.interval === undefined ||
+    parsed.data.plan === 'free' ||
+    parsed.data.plan === 'team'
+  ) {
+    return null;
+  }
+  return { plan: parsed.data.plan, interval: parsed.data.interval };
+}
+
+export default async function PortalPage({ searchParams }: PortalPageProps) {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/session-expired');
+
+  const planChange = parsePlanChange(await searchParams);
 
   const repository = createSupabaseBillingRepository(
     supabase as unknown as SupabaseBillingClient,
@@ -80,6 +119,8 @@ export default async function PortalPage() {
       subscription={portalSubscription}
       activity={activity}
       portalAction={createPortalSession}
+      planChangeAction={createPlanChangePortalSession}
+      planChange={planChange}
     />
   );
 }

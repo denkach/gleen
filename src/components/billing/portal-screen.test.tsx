@@ -150,6 +150,39 @@ describe('PortalScreen', () => {
     expect(openPortal).toHaveBeenCalledTimes(3);
   });
 
+  it('announces a selected plan change and sends only its target to Stripe', async () => {
+    const planChangeAction = vi.fn().mockResolvedValue({
+      ok: true,
+      url: 'https://billing.stripe.com/p/session_plan_change',
+    });
+    const openPortal = vi.fn();
+    render(
+      <PortalScreen
+        subscription={subscription}
+        activity={activity}
+        portalAction={vi.fn()}
+        planChangeAction={planChangeAction}
+        planChange={{ plan: 'prism-pro', interval: 'month' }}
+        openPortal={openPortal}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('prism-pro');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review plan change in Stripe' }),
+    );
+
+    await waitFor(() =>
+      expect(planChangeAction).toHaveBeenCalledWith({
+        plan: 'prism-pro',
+        interval: 'month',
+      }),
+    );
+    expect(openPortal).toHaveBeenCalledWith(
+      'https://billing.stripe.com/p/session_plan_change',
+    );
+  });
+
   it('keeps Team controls truly disabled and explained', () => {
     render(
       <PortalScreen

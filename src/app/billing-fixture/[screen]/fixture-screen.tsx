@@ -8,6 +8,7 @@ import { SubscriptionScreen } from '@/components/billing/subscription-screen';
 import { UsageScreen } from '@/components/billing/usage-screen';
 import type { BillingFixture } from '@/lib/billing/fixtures';
 import type { UsageEventType } from '@/lib/billing/domain';
+import type { CheckoutActionInput } from '@/lib/billing/actions';
 import { useState, useSyncExternalStore } from 'react';
 
 const disabledExport = async () =>
@@ -15,6 +16,10 @@ const disabledExport = async () =>
 const disabledPortal = async () =>
   ({ ok: false, code: 'fixture-disabled' }) as const;
 const subscribeHydration = () => () => undefined;
+const fixturePlanChange = {
+  plan: 'prism-pro',
+  interval: 'year',
+} as const satisfies CheckoutActionInput;
 
 export function BillingFixtureScreen({
   fixture,
@@ -46,6 +51,27 @@ export function BillingFixtureScreen({
   const [payload, setPayload] = useState('');
   const [portalCount, setPortalCount] = useState(0);
   const [openedPortal, setOpenedPortal] = useState('');
+  const portalAction =
+    testBoundary === 'portal-actions' || testBoundary === 'portal-error'
+      ? async () => {
+          const count = portalCount + 1;
+          setPortalCount(count);
+          await new Promise((resolve) => window.setTimeout(resolve, 80));
+          return testBoundary === 'portal-error'
+            ? ({ ok: false, code: 'fixture-error' } as const)
+            : ({
+                ok: true,
+                url: `https://billing.stripe.test/session/${count}`,
+              } as const);
+        }
+      : disabledPortal;
+  const planChangeAction =
+    testBoundary === 'portal-actions'
+      ? async (input: CheckoutActionInput) => {
+          setPayload(JSON.stringify(input));
+          return portalAction();
+        }
+      : disabledPortal;
 
   const boundaryEvidence = (
     <>
@@ -211,23 +237,10 @@ export function BillingFixtureScreen({
           <PortalScreen
             subscription={fixture.subscription}
             activity={fixture.activity}
-            portalAction={
-              testBoundary === 'portal-actions' ||
-              testBoundary === 'portal-error'
-                ? async () => {
-                    const count = portalCount + 1;
-                    setPortalCount(count);
-                    await new Promise((resolve) =>
-                      window.setTimeout(resolve, 80),
-                    );
-                    return testBoundary === 'portal-error'
-                      ? ({ ok: false, code: 'fixture-error' } as const)
-                      : ({
-                          ok: true,
-                          url: `https://billing.stripe.test/session/${count}`,
-                        } as const);
-                  }
-                : disabledPortal
+            portalAction={portalAction}
+            planChangeAction={planChangeAction}
+            planChange={
+              testBoundary === 'portal-actions' ? fixturePlanChange : null
             }
             openPortal={
               testBoundary === 'portal-actions'

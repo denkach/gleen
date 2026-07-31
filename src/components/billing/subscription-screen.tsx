@@ -77,6 +77,11 @@ export function SubscriptionScreen({
     ) ?? null;
   const comparisonPrice =
     currentRow === null ? null : priceForInterval(currentRow, interval);
+  const hasPaidSubscription =
+    presentation.currentPrice !== null &&
+    ['active', 'trial', 'past_due_with_access'].includes(
+      presentation.entitlement.key,
+    );
 
   return (
     <BillingPage
@@ -171,7 +176,16 @@ export function SubscriptionScreen({
             const available = row.action.enabled && price !== null;
             const actionLabel = current
               ? 'Manage plan'
-              : `Choose ${row.plan.displayName}`;
+              : hasPaidSubscription
+                ? `Change to ${row.plan.displayName}`
+                : `Choose ${row.plan.displayName}`;
+            const href = hasPaidSubscription
+              ? `/app/subscription/portal?plan=${encodeURIComponent(
+                  row.plan.slug,
+                )}&interval=${interval}`
+              : `/app/subscription/checkout?plan=${encodeURIComponent(
+                  row.plan.slug,
+                )}&interval=${interval}`;
 
             return (
               <BillingCard
@@ -200,12 +214,7 @@ export function SubscriptionScreen({
                     {actionLabel}
                   </Link>
                 ) : available ? (
-                  <Link
-                    className="billing-button"
-                    href={`/app/subscription/checkout?plan=${encodeURIComponent(
-                      row.plan.slug,
-                    )}&interval=${interval}`}
-                  >
+                  <Link className="billing-button" href={href}>
                     {actionLabel}
                   </Link>
                 ) : (

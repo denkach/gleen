@@ -36,7 +36,7 @@ const authenticatedOwner = {
 async function openFixture(
   page: Page,
   screen: (typeof billingFixtures)[number][0],
-  state: (typeof billingFixtures)[number][1],
+  state: (typeof billingFixtures)[number][1] | 'free',
   boundary?: string,
 ) {
   const query = new URLSearchParams({ state });
@@ -147,7 +147,7 @@ test('keeps every deterministic fixture preview-only and owner-safe routes authe
   }
 });
 
-test('switches monthly and yearly prices with annual totals and closed checkout query units', async ({
+test('switches monthly and yearly prices with annual totals and closed plan-change query units', async ({
   page,
 }) => {
   await openFixture(page, 'subscription', 'active');
@@ -165,13 +165,21 @@ test('switches monthly and yearly prices with annual totals and closed checkout 
   await expect(starter.locator('.billing-price')).toContainText('$15.00');
   await expect(prism.locator('.billing-price')).toContainText('$39.00');
   await expect(
-    page.getByRole('link', { name: 'Choose Prism Pro' }),
+    page.getByRole('link', { name: 'Change to Prism Pro' }),
   ).toHaveAttribute(
     'href',
-    '/app/subscription/checkout?plan=prism-pro&interval=year',
+    '/app/subscription/portal?plan=prism-pro&interval=year',
   );
   await expect(page.locator('.billing-summary')).toContainText('$180.00');
   await expect(page.locator('.billing-summary')).toContainText('/ year');
+
+  await openFixture(page, 'subscription', 'free');
+  await expect(
+    page.getByRole('link', { name: 'Choose Starter' }),
+  ).toHaveAttribute(
+    'href',
+    '/app/subscription/checkout?plan=starter&interval=month',
+  );
 });
 
 test('applies usage search, event, and date filters, preserves pagination, and exports a safe closed CSV payload', async ({
@@ -277,10 +285,20 @@ test('creates one fresh Portal action per intent, blocks concurrency, and expose
   await expect(page.getByTestId('billing-boundary-opened')).toHaveText(
     'https://billing.stripe.test/session/1',
   );
-  await page.getByRole('button', { name: 'Manage plan' }).click();
+  await page
+    .getByRole('button', { name: 'Review plan change in Stripe' })
+    .click();
+  await expect(page.getByTestId('billing-boundary-payload')).toHaveText(
+    JSON.stringify({ plan: 'prism-pro', interval: 'year' }),
+  );
   await expect(page.getByTestId('billing-boundary-count')).toHaveText('2');
   await expect(page.getByTestId('billing-boundary-opened')).toHaveText(
     'https://billing.stripe.test/session/2',
+  );
+  await page.getByRole('button', { name: 'Manage cancellation' }).click();
+  await expect(page.getByTestId('billing-boundary-count')).toHaveText('3');
+  await expect(page.getByTestId('billing-boundary-opened')).toHaveText(
+    'https://billing.stripe.test/session/3',
   );
 
   await openFixture(page, 'portal', 'active', 'portal-error');

@@ -7,6 +7,7 @@ import type {
   InvoicePresentation,
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
+import type { CheckoutActionInput } from '@/lib/billing/actions';
 
 import { BillingIcon } from './billing-icons';
 import {
@@ -63,11 +64,17 @@ export function PortalScreen({
   subscription,
   activity,
   portalAction,
+  planChangeAction = portalAction,
+  planChange = null,
   openPortal = defaultOpenPortal,
 }: Readonly<{
   subscription: PortalSubscription | null;
   activity: InvoicePresentation | null;
   portalAction: () => Promise<PortalActionResult>;
+  planChangeAction?: (
+    input: CheckoutActionInput,
+  ) => Promise<PortalActionResult>;
+  planChange?: CheckoutActionInput | null;
   openPortal?: (url: string) => void;
 }>) {
   const [opening, setOpening] = useState(false);
@@ -81,12 +88,12 @@ export function PortalScreen({
     };
   }, []);
 
-  async function launchPortal() {
+  async function launchPortal(action = portalAction) {
     if (opening) return;
     setOpening(true);
     setActionError(false);
     try {
-      const result = await portalAction();
+      const result = await action();
       if (!mounted.current) return;
       if (!result.ok) {
         setActionError(true);
@@ -195,7 +202,10 @@ export function PortalScreen({
             </div>
           </div>
           <div className="billing-action-list">
-            <PortalActionButton action={launchPortal} disabled={opening}>
+            <PortalActionButton
+              action={() => launchPortal()}
+              disabled={opening}
+            >
               Update payment method
             </PortalActionButton>
             <div className="billing-owned-payment">
@@ -222,11 +232,30 @@ export function PortalScreen({
               </p>
             </div>
           </div>
+          {planChange !== null && (
+            <p className="billing-section-copy" role="status">
+              Plan change to {planChange.plan} on a {planChange.interval}{' '}
+              interval selected. Stripe will show the exact proration before
+              confirmation.
+            </p>
+          )}
           <div className="billing-action-list">
-            <PortalActionButton action={launchPortal} disabled={opening}>
-              Manage plan
+            <PortalActionButton
+              action={
+                planChange === null
+                  ? () => launchPortal()
+                  : () => launchPortal(() => planChangeAction(planChange))
+              }
+              disabled={opening}
+            >
+              {planChange === null
+                ? 'Manage plan'
+                : 'Review plan change in Stripe'}
             </PortalActionButton>
-            <PortalActionButton action={launchPortal} disabled={opening}>
+            <PortalActionButton
+              action={() => launchPortal()}
+              disabled={opening}
+            >
               Manage cancellation
             </PortalActionButton>
           </div>
@@ -245,7 +274,10 @@ export function PortalScreen({
             </div>
           </div>
           <div className="billing-action-list">
-            <PortalActionButton action={launchPortal} disabled={opening}>
+            <PortalActionButton
+              action={() => launchPortal()}
+              disabled={opening}
+            >
               Edit billing details
             </PortalActionButton>
           </div>
@@ -336,7 +368,7 @@ export function PortalScreen({
           <button
             className="billing-button billing-portal-full-button"
             type="button"
-            onClick={launchPortal}
+            onClick={() => launchPortal()}
             disabled={opening}
           >
             Open secure billing portal

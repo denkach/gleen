@@ -277,6 +277,45 @@ describe('SubscriptionScreen', () => {
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('routes paid alternatives to Portal confirmation and Free alternatives to Checkout', () => {
+    const { rerender } = render(
+      <SubscriptionScreen
+        presentation={presentation}
+        initialInterval="month"
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Change to Starter' }),
+    ).toHaveAttribute(
+      'href',
+      '/app/subscription/portal?plan=starter&interval=month',
+    );
+
+    rerender(
+      <SubscriptionScreen
+        presentation={{
+          ...presentation,
+          currentPlan: presentation.availablePlans[0]!.plan,
+          currentPrice: null,
+          entitlement: {
+            key: 'free',
+            label: 'Free',
+            variant: 'neutral',
+          },
+        }}
+        initialInterval="month"
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Choose Starter' }),
+    ).toHaveAttribute(
+      'href',
+      '/app/subscription/checkout?plan=starter&interval=month',
+    );
+  });
+
   it('renders a truthful unavailable state', () => {
     render(<SubscriptionScreen presentation={null} initialInterval="month" />);
 
