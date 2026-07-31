@@ -223,6 +223,41 @@ Scheduled cancellation retains access through the explicitly displayed date.
 Downgrades take effect at the end of the paid period. Upgrades become active
 only after the required invoice is paid and the verified webhook is applied.
 
+### Existing-subscription plan changes
+
+Checkout creates a subscription only for a customer who has no non-terminal
+paid subscription. The Subscription screen sends an existing paid customer to
+Stripe Customer Portal to change the current subscription instead of creating
+another Checkout Session. The checkout server action independently checks the
+Stripe-owned customer and rejects a second subscription when the UI is stale,
+the action is replayed, or the route is called directly.
+
+Plan changes preserve the current billing-cycle anchor:
+
+- an upgrade takes effect immediately, credits the unused portion of the
+  current plan, and invoices only Stripe's prorated difference with
+  `proration_behavior=always_invoice`;
+- an upgrade is applied only when the proration invoice is paid, using Stripe
+  pending-update semantics where supported;
+- a downgrade is scheduled for the end of the already-paid period, with no
+  immediate refund or credit;
+- a failed upgrade payment leaves the current plan and entitlement unchanged;
+- the customer sees Stripe's authoritative proration before confirming.
+
+The Portal configuration permits only active Gleen catalog prices and price
+changes. Gleen never calculates the monetary difference in the browser or
+accepts a client-supplied subscription, product, Price ID, amount, or proration.
+If Stripe Customer Portal cannot schedule a downgrade across the configured
+catalog structure, Gleen uses a server-authoritative subscription schedule for
+the same end-of-period behavior rather than applying an immediate downgrade.
+
+Verified subscription webhooks project both Stripe cancellation forms:
+`cancel_at_period_end` and an explicit future `cancel_at`. A future cancellation
+keeps the subscription active while recording its effective date. Invoice
+projection tolerates Stripe delivering `invoice.paid` before the corresponding
+subscription-created or subscription-updated event and is repaired
+idempotently when the missing relationship arrives.
+
 ### Status policy
 
 - `trialing` and `active` grant the verified plan.
@@ -358,9 +393,12 @@ Integration tests cover:
 - raw-body Stripe signature verification;
 - duplicate and out-of-order webhooks;
 - Checkout and Portal authorization;
+- rejection of Checkout when the customer already owns a non-terminal
+  subscription;
 - client plan or Price ID substitution;
 - successful subscription activation;
-- upgrade, scheduled downgrade, and scheduled cancellation;
+- immediate prorated upgrade, failed-upgrade rollback, scheduled downgrade,
+  and both scheduled-cancellation representations;
 - payment failure, retry, recovery, unpaid fallback, and refund projection;
 - full failure release and non-billable retry behavior.
 
