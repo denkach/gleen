@@ -2,6 +2,7 @@ import {
   validateAnalysisProviderEnv,
   validateProviderEnv,
   validatePublicEnv,
+  validateStripePortalEnv,
   validateStripePublicEnv,
   validateStripeServerEnv,
   validateSupabaseAdminEnv,
@@ -190,6 +191,32 @@ describe('validateStripeServerEnv', () => {
     ).toEqual({
       STRIPE_SECRET_KEY: 'sk_test_123',
       STRIPE_WEBHOOK_SECRET: 'whsec_123',
+    });
+  });
+});
+
+describe('validateStripePortalEnv', () => {
+  it('requires a Portal configuration ID', () => {
+    expect(() => validateStripePortalEnv({})).toThrow(
+      'STRIPE_PORTAL_CONFIGURATION_ID is required',
+    );
+  });
+
+  it('rejects malformed Portal configuration IDs', () => {
+    expect(() =>
+      validateStripePortalEnv({
+        STRIPE_PORTAL_CONFIGURATION_ID: 'pc_test_prorated',
+      }),
+    ).toThrow('STRIPE_PORTAL_CONFIGURATION_ID must start with bpc_');
+  });
+
+  it('trims a valid Portal configuration ID', () => {
+    expect(
+      validateStripePortalEnv({
+        STRIPE_PORTAL_CONFIGURATION_ID: ' bpc_test_prorated ',
+      }),
+    ).toEqual({
+      STRIPE_PORTAL_CONFIGURATION_ID: 'bpc_test_prorated',
     });
   });
 });

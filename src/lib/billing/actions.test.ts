@@ -13,6 +13,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import {
   createBillingActions,
+  createPlanChangePortalSession,
   createCheckoutSession,
   getCheckoutConfirmation,
   createPortalSession,
@@ -22,6 +23,15 @@ import {
   type BillingActionAdminRepository,
   type BillingStripeClient,
 } from './actions';
+
+type TestStripeClient = BillingStripeClient &
+  Readonly<{
+    subscriptions: Readonly<{ list: ReturnType<typeof vi.fn> }>;
+    billingPortal: BillingStripeClient['billingPortal'] &
+      Readonly<{
+        configurations: Readonly<{ retrieve: ReturnType<typeof vi.fn> }>;
+      }>;
+  }>;
 
 const nativeCustomCheckoutPayload = {
   mode: 'subscription',
@@ -85,7 +95,7 @@ function createAdminRepository(
   };
 }
 
-function createStripe(): BillingStripeClient {
+function createStripe(): TestStripeClient {
   return {
     checkout: {
       sessions: {
@@ -101,6 +111,22 @@ function createStripe(): BillingStripeClient {
       },
     },
     billingPortal: {
+      configurations: {
+        retrieve: vi.fn(async () => ({
+          features: {
+            subscription_update: {
+              enabled: true,
+              proration_behavior: 'always_invoice',
+              products: [
+                {
+                  product: 'prod_gleen',
+                  prices: ['price_server_owned'],
+                },
+              ],
+            },
+          },
+        })),
+      },
       sessions: {
         create: vi.fn(async () => ({
           url: 'https://billing.stripe.com/p/session/test',
@@ -118,7 +144,10 @@ function createStripe(): BillingStripeClient {
     paymentMethods: {
       retrieve: vi.fn(),
     },
-  };
+    subscriptions: {
+      list: vi.fn(async () => ({ data: [] })),
+    },
+  } as unknown as TestStripeClient;
 }
 
 function createActions(
@@ -140,6 +169,7 @@ function createActions(
       repository,
       adminRepository,
       appUrl: 'https://gleen.example/',
+      portalConfigurationId: 'bpc_test_prorated',
     }),
   };
 }
@@ -191,6 +221,71 @@ describe('billing checkout actions', () => {
     });
   });
 
+  it('blocks Checkout when an active subscription already exists', async () => {
+    const stripe = createStripe();
+    vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+      data: [
+        {
+          id: 'sub_active',
+          status: 'active',
+          items: {
+            data: [{ id: 'si_current', price: { id: 'price_current' } }],
+          },
+        },
+      ],
+    } as never);
+    const { actions } = createActions({ stripe });
+
+    await expect(
+      actions.createCheckoutForUser({
+        userId: 'u1',
+        email: 'owner@example.test',
+        plan: 'prism-pro',
+        interval: 'month',
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      code: 'subscription_already_exists',
+    });
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'incomplete',
+    'trialing',
+    'active',
+    'past_due',
+    'unpaid',
+    'paused',
+  ] as const)('blocks Checkout for a %s subscription', async (status) => {
+    const stripe = createStripe();
+    vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+      data: [
+        {
+          id: 'sub_existing',
+          status,
+          items: {
+            data: [{ id: 'si_existing', price: { id: 'price_current' } }],
+          },
+        },
+      ],
+    } as never);
+    const { actions } = createActions({ stripe });
+
+    await expect(
+      actions.createCheckoutForUser({
+        userId: 'u1',
+        email: 'owner@example.test',
+        plan: 'prism-pro',
+        interval: 'month',
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      code: 'subscription_already_exists',
+    });
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+  });
+
   it('creates and persists a server-owned customer before checkout when no mapping exists', async () => {
     const repository = createRepository({
       getOwnedCustomerId: vi.fn(async () => null),
@@ -233,11 +328,13 @@ describe('billing checkout actions', () => {
     await expect(
       Promise.all([
         createCheckoutSession({ plan: 'prism-pro', interval: 'year' }),
+        createPlanChangePortalSession({ plan: 'prism-pro', interval: 'year' }),
         createPortalSession(),
         exportUsageCsv(),
         exportInvoicesCsv(),
       ]),
     ).resolves.toEqual([
+      { ok: false, code: 'session_expired' },
       { ok: false, code: 'session_expired' },
       { ok: false, code: 'session_expired' },
       { ok: false, code: 'session_expired' },
@@ -252,6 +349,13 @@ describe('billing checkout actions', () => {
 
     await expect(
       createCheckoutSession({
+        plan: 'prism-pro',
+        interval: 'year',
+        userId: 'attacker',
+      } as never),
+    ).resolves.toEqual({ ok: false, code: 'invalid_request' });
+    await expect(
+      createPlanChangePortalSession({
         plan: 'prism-pro',
         interval: 'year',
         userId: 'attacker',
@@ -445,6 +549,202 @@ describe('billing portal and CSV actions', () => {
       } as never),
     ).resolves.toEqual({ ok: false, code: 'invalid_request' });
     expect(stripe.customers.retrieve).not.toHaveBeenCalled();
+  });
+
+  it('creates a prorated plan-change Portal session from server-owned identifiers', async () => {
+    const stripe = createStripe();
+    vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+      data: [
+        {
+          id: 'sub_active',
+          status: 'active',
+          items: {
+            data: [{ id: 'si_current', price: { id: 'price_current' } }],
+          },
+        },
+      ],
+    } as never);
+    const { actions } = createActions({ stripe });
+
+    await expect(
+      actions.createPlanChangePortalForUser({
+        userId: 'u1',
+        plan: 'prism-pro',
+        interval: 'month',
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      url: 'https://billing.stripe.com/p/session/test',
+    });
+    expect(stripe.subscriptions.list).toHaveBeenCalledWith({
+      customer: 'cus_owned',
+      status: 'all',
+      limit: 10,
+    });
+    expect(stripe.billingPortal.sessions.create).toHaveBeenCalledWith({
+      configuration: 'bpc_test_prorated',
+      customer: 'cus_owned',
+      return_url: 'https://gleen.example/app/subscription',
+      flow_data: {
+        type: 'subscription_update_confirm',
+        subscription_update_confirm: {
+          subscription: 'sub_active',
+          items: [{ id: 'si_current', price: 'price_server_owned' }],
+        },
+        after_completion: {
+          type: 'redirect',
+          redirect: {
+            return_url: 'https://gleen.example/app/subscription',
+          },
+        },
+      },
+    });
+  });
+
+  it.each([
+    {
+      name: 'the customer mapping is absent',
+      setup: (stripe: TestStripeClient) =>
+        createActions({
+          stripe,
+          repository: createRepository({
+            getOwnedCustomerId: vi.fn(async () => null),
+          }),
+        }),
+    },
+    {
+      name: 'the target catalog Price is unavailable',
+      setup: (stripe: TestStripeClient) =>
+        createActions({
+          stripe,
+          adminRepository: createAdminRepository({
+            resolvePurchasablePrice: vi.fn(async () => null),
+          }),
+        }),
+    },
+    {
+      name: 'there is no non-terminal subscription',
+      setup: (stripe: TestStripeClient) => createActions({ stripe }),
+    },
+    {
+      name: 'there is more than one non-terminal subscription',
+      setup: (stripe: TestStripeClient) => {
+        vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+          data: [
+            {
+              id: 'sub_one',
+              status: 'active',
+              items: { data: [{ id: 'si_one', price: { id: 'price_one' } }] },
+            },
+            {
+              id: 'sub_two',
+              status: 'trialing',
+              items: { data: [{ id: 'si_two', price: { id: 'price_two' } }] },
+            },
+          ],
+        } as never);
+        return createActions({ stripe });
+      },
+    },
+    {
+      name: 'the subscription has zero items',
+      setup: (stripe: TestStripeClient) => {
+        vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+          data: [{ id: 'sub_active', status: 'active', items: { data: [] } }],
+        } as never);
+        return createActions({ stripe });
+      },
+    },
+    {
+      name: 'the subscription has multiple items',
+      setup: (stripe: TestStripeClient) => {
+        vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+          data: [
+            {
+              id: 'sub_active',
+              status: 'active',
+              items: {
+                data: [
+                  { id: 'si_one', price: { id: 'price_one' } },
+                  { id: 'si_two', price: { id: 'price_two' } },
+                ],
+              },
+            },
+          ],
+        } as never);
+        return createActions({ stripe });
+      },
+    },
+    {
+      name: 'the Portal does not always invoice proration',
+      setup: (stripe: TestStripeClient) => {
+        vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+          data: [
+            {
+              id: 'sub_active',
+              status: 'active',
+              items: {
+                data: [{ id: 'si_current', price: { id: 'price_current' } }],
+              },
+            },
+          ],
+        } as never);
+        vi.mocked(
+          stripe.billingPortal.configurations.retrieve,
+        ).mockResolvedValue({
+          features: {
+            subscription_update: {
+              enabled: true,
+              proration_behavior: 'create_prorations',
+              products: [
+                { product: 'prod_gleen', prices: ['price_server_owned'] },
+              ],
+            },
+          },
+        } as never);
+        return createActions({ stripe });
+      },
+    },
+    {
+      name: 'the Portal configuration omits the target Price',
+      setup: (stripe: TestStripeClient) => {
+        vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+          data: [
+            {
+              id: 'sub_active',
+              status: 'active',
+              items: {
+                data: [{ id: 'si_current', price: { id: 'price_current' } }],
+              },
+            },
+          ],
+        } as never);
+        vi.mocked(
+          stripe.billingPortal.configurations.retrieve,
+        ).mockResolvedValue({
+          features: {
+            subscription_update: {
+              enabled: true,
+              proration_behavior: 'always_invoice',
+              products: [{ product: 'prod_gleen', prices: ['price_other'] }],
+            },
+          },
+        } as never);
+        return createActions({ stripe });
+      },
+    },
+  ])('fails closed when $name', async ({ setup }) => {
+    const stripe = createStripe();
+    const { actions } = setup(stripe);
+
+    await expect(
+      actions.createPlanChangePortalForUser({
+        userId: 'u1',
+        plan: 'prism-pro',
+        interval: 'month',
+      }),
+    ).resolves.toMatchObject({ ok: false });
+    expect(stripe.billingPortal.sessions.create).not.toHaveBeenCalled();
   });
 
   it('creates a fresh portal session only for the owned customer', async () => {

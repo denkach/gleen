@@ -28,6 +28,10 @@ export type StripeServerEnv = Readonly<{
   STRIPE_WEBHOOK_SECRET: string;
 }>;
 
+export type StripePortalEnv = Readonly<{
+  STRIPE_PORTAL_CONFIGURATION_ID: string;
+}>;
+
 const invalidUrlMessage = 'NEXT_PUBLIC_APP_URL must be an absolute HTTP(S) URL';
 
 function readHttpsSupabaseUrl(input: NodeJS.ProcessEnv): string {
@@ -116,6 +120,21 @@ export function validateStripeServerEnv(
   return Object.freeze({
     STRIPE_SECRET_KEY: secretKey,
     STRIPE_WEBHOOK_SECRET: webhookSecret,
+  });
+}
+
+export function validateStripePortalEnv(
+  input: Readonly<Partial<NodeJS.ProcessEnv>>,
+): StripePortalEnv {
+  const configurationId = input.STRIPE_PORTAL_CONFIGURATION_ID?.trim();
+  if (!configurationId) {
+    throw new Error('STRIPE_PORTAL_CONFIGURATION_ID is required');
+  }
+  if (!configurationId.startsWith('bpc_')) {
+    throw new Error('STRIPE_PORTAL_CONFIGURATION_ID must start with bpc_');
+  }
+  return Object.freeze({
+    STRIPE_PORTAL_CONFIGURATION_ID: configurationId,
   });
 }
 
