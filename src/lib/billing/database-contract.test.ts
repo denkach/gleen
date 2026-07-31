@@ -131,6 +131,16 @@ const exactWebhookPriceSql =
         join(migrationsDirectory, exactWebhookPriceMigrationName),
         'utf8',
       );
+const secretKeyRpcCompatibilityMigrationName = migrationNames.find((name) =>
+  name.endsWith('_den_20_secret_key_rpc_compatibility.sql'),
+);
+const secretKeyRpcCompatibilitySql =
+  secretKeyRpcCompatibilityMigrationName === undefined
+    ? ''
+    : readFileSync(
+        join(migrationsDirectory, secretKeyRpcCompatibilityMigrationName),
+        'utf8',
+      );
 const invoicePaidMigrationName =
   '20260730031822_den_20_invoice_paid_projection.sql';
 const invoicePaidSql = readFileSync(
@@ -359,6 +369,22 @@ describe('DEN-20 billing repository database boundaries', () => {
     expect(repositoryBoundarySql).toContain('mark_billing_webhook_failed');
     expect(repositoryBoundarySql).toContain("is distinct from 'service_role'");
     expect(repositoryBoundarySql).toContain('revoke all on function');
+  });
+
+  it('keeps projection RPCs compatible with Supabase secret keys', () => {
+    expect(secretKeyRpcCompatibilityMigrationName).toBeDefined();
+    expect(secretKeyRpcCompatibilitySql).toContain(
+      'create function public.claim_billing_webhook_event_service_role',
+    );
+    expect(secretKeyRpcCompatibilitySql).toMatch(
+      /set_config\(\s*'request\.jwt\.claim\.role',\s*'service_role',\s*true\s*\)/,
+    );
+    expect(secretKeyRpcCompatibilitySql).toContain(
+      'revoke all on function public.claim_billing_webhook_event_service_role',
+    );
+    expect(secretKeyRpcCompatibilitySql).toContain(
+      'grant execute on function public.claim_billing_webhook_event_service_role',
+    );
   });
 
   it('leases webhook claims without admitting concurrent fresh processing', () => {

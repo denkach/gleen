@@ -42,7 +42,7 @@ describe('Supabase billing projection repository', () => {
 
     expect(admin.rpc).toHaveBeenNthCalledWith(
       1,
-      'claim_billing_webhook_event',
+      'claim_billing_webhook_event_service_role',
       {
         target_event_id: 'evt_1',
         target_event_type: 'invoice.paid',
@@ -51,7 +51,7 @@ describe('Supabase billing projection repository', () => {
     );
     expect(admin.rpc).toHaveBeenNthCalledWith(
       2,
-      'mark_billing_webhook_processed',
+      'mark_billing_webhook_processed_service_role',
       { target_event_id: 'evt_1' },
     );
   });
@@ -148,7 +148,7 @@ describe('Supabase billing projection repository', () => {
     });
 
     expect(admin.rpc).toHaveBeenCalledWith(
-      'apply_billing_subscription_projection',
+      'apply_billing_subscription_projection_service_role',
       expect.objectContaining({ target_external_price_id: 'price_retired' }),
     );
   });
@@ -186,7 +186,7 @@ describe('Supabase billing projection repository', () => {
     });
 
     expect(admin.rpc).toHaveBeenCalledWith(
-      'apply_billing_invoice_projection',
+      'apply_billing_invoice_projection_service_role',
       expect.objectContaining({ target_advance_paid_through: true }),
     );
   });

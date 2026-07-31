@@ -105,7 +105,7 @@ export function createSupabaseBillingProjectionRepository(
     async claimWebhookEvent(input) {
       const event = parseValue(billingWebhookEventSchema, input);
       const data = rpcSuccess(
-        await adminClient.rpc('claim_billing_webhook_event', {
+        await adminClient.rpc('claim_billing_webhook_event_service_role', {
           target_event_id: event.eventId,
           target_event_type: event.type,
           target_created_at: event.createdAt,
@@ -118,31 +118,35 @@ export function createSupabaseBillingProjectionRepository(
     async applySubscription(input) {
       const projection = parseValue(subscriptionProjectionSchema, input);
       rpcSuccess(
-        await adminClient.rpc('apply_billing_subscription_projection', {
-          target_event_id: projection.eventId,
-          target_event_created_at: projection.eventCreatedAt,
-          target_user_id: projection.userId,
-          target_external_subscription_id: projection.externalSubscriptionId,
-          target_external_price_id: projection.externalPriceId,
-          target_plan_slug: projection.planSlug,
-          target_interval: projection.interval,
-          target_status: projection.status,
-          target_period_start: projection.currentPeriodStart,
-          target_period_end: projection.currentPeriodEnd,
-          target_trial_ends_at: projection.trialEndsAt,
-          target_cancel_at_period_end: projection.cancelAtPeriodEnd,
-          target_cancellation_effective_at: projection.cancellationEffectiveAt,
-          target_scheduled_plan_slug: projection.scheduledPlanSlug,
-          target_scheduled_change_at: projection.scheduledChangeAt,
-          target_paid_through: projection.paidThrough,
-        }),
+        await adminClient.rpc(
+          'apply_billing_subscription_projection_service_role',
+          {
+            target_event_id: projection.eventId,
+            target_event_created_at: projection.eventCreatedAt,
+            target_user_id: projection.userId,
+            target_external_subscription_id: projection.externalSubscriptionId,
+            target_external_price_id: projection.externalPriceId,
+            target_plan_slug: projection.planSlug,
+            target_interval: projection.interval,
+            target_status: projection.status,
+            target_period_start: projection.currentPeriodStart,
+            target_period_end: projection.currentPeriodEnd,
+            target_trial_ends_at: projection.trialEndsAt,
+            target_cancel_at_period_end: projection.cancelAtPeriodEnd,
+            target_cancellation_effective_at:
+              projection.cancellationEffectiveAt,
+            target_scheduled_plan_slug: projection.scheduledPlanSlug,
+            target_scheduled_change_at: projection.scheduledChangeAt,
+            target_paid_through: projection.paidThrough,
+          },
+        ),
       );
     },
 
     async applyInvoice(input) {
       const projection = parseValue(invoiceProjectionSchema, input);
       rpcSuccess(
-        await adminClient.rpc('apply_billing_invoice_projection', {
+        await adminClient.rpc('apply_billing_invoice_projection_service_role', {
           target_event_id: projection.eventId,
           target_event_created_at: projection.eventCreatedAt,
           target_user_id: projection.userId,
@@ -169,7 +173,7 @@ export function createSupabaseBillingProjectionRepository(
 
     async markWebhookProcessed(eventId) {
       rpcSuccess(
-        await adminClient.rpc('mark_billing_webhook_processed', {
+        await adminClient.rpc('mark_billing_webhook_processed_service_role', {
           target_event_id: eventId,
         }),
       );
@@ -177,7 +181,7 @@ export function createSupabaseBillingProjectionRepository(
 
     async markWebhookFailed(eventId, code) {
       rpcSuccess(
-        await adminClient.rpc('mark_billing_webhook_failed', {
+        await adminClient.rpc('mark_billing_webhook_failed_service_role', {
           target_event_id: eventId,
           target_error_code: code,
         }),
