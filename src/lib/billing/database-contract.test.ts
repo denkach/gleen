@@ -167,6 +167,16 @@ const resilientInvoiceSql =
         join(migrationsDirectory, resilientInvoiceMigrationName),
         'utf8',
       );
+const serializedInvoiceLinkMigrationName = migrationNames.find((name) =>
+  name.endsWith('_den_20_serialize_subscription_invoice_projection.sql'),
+);
+const serializedInvoiceLinkSql =
+  serializedInvoiceLinkMigrationName === undefined
+    ? ''
+    : readFileSync(
+        join(migrationsDirectory, serializedInvoiceLinkMigrationName),
+        'utf8',
+      );
 const invoicePaidForwardChainSql = migrationNames
   .filter((name) => name > invoicePaidMigrationName)
   .sort()
@@ -472,7 +482,9 @@ describe('DEN-20 invoice paid projection SQL correction', () => {
 
 describe('DEN-20 resilient subscription invoice projection', () => {
   it('stores invoice subscription identity and links invoice-first projections later', () => {
-    expect(resilientInvoiceMigrationName).toBeDefined();
+    expect(resilientInvoiceMigrationName).toBe(
+      '20260731023317_den_20_resilient_subscription_invoice_projection.sql',
+    );
     expect(resilientInvoiceSql).toContain(
       'add column if not exists stripe_subscription_id text',
     );
@@ -488,6 +500,37 @@ describe('DEN-20 resilient subscription invoice projection', () => {
     );
     expect(resilientInvoiceSql).toContain(
       'grant execute on function public.apply_billing_invoice_projection',
+    );
+  });
+
+  it('serializes both projection paths before reconciling either arrival order', () => {
+    expect(serializedInvoiceLinkMigrationName).toBe(
+      '20260731125650_den_20_serialize_subscription_invoice_projection.sql',
+    );
+    expect(serializedInvoiceLinkSql).toContain(
+      'perform pg_catalog.pg_advisory_xact_lock',
+    );
+    expect(serializedInvoiceLinkSql).toContain(
+      'create trigger billing_subscriptions_serialize_invoice_projection',
+    );
+    expect(serializedInvoiceLinkSql).toContain(
+      'create trigger billing_invoices_serialize_subscription_projection',
+    );
+    expect(serializedInvoiceLinkSql).toContain(
+      'create trigger billing_invoices_link_subscription',
+    );
+    expect(serializedInvoiceLinkSql).toContain(
+      'invoice.user_id = subscription.user_id',
+    );
+    expect(serializedInvoiceLinkSql).toContain(
+      'invoice.stripe_subscription_id = subscription.stripe_subscription_id',
+    );
+    expect(serializedInvoiceLinkSql).toContain("set search_path = ''");
+    expect(serializedInvoiceLinkSql).toContain(
+      'revoke all on function private.serialize_billing_subscription_projection',
+    );
+    expect(serializedInvoiceLinkSql).not.toContain(
+      'create or replace function public.apply_billing_',
     );
   });
 });
