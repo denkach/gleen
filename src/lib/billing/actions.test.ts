@@ -50,6 +50,16 @@ describe('billing request origin', () => {
       resolveBillingAppUrl(requestHeaders, 'https://gleen-staging.vercel.app'),
     ).toBe('https://gleen-staging-preview-denisito-projects.vercel.app');
   });
+
+  it('uses the Server Action origin when proxy host headers are absent', () => {
+    const requestHeaders = new Headers({
+      origin: 'https://gleen-staging-denkach-denisito-projects.vercel.app',
+    });
+
+    expect(
+      resolveBillingAppUrl(requestHeaders, 'https://gleen-staging.vercel.app'),
+    ).toBe('https://gleen-staging-denkach-denisito-projects.vercel.app');
+  });
 });
 
 function createRepository(

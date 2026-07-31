@@ -213,7 +213,20 @@ export function resolveBillingAppUrl(
   const host =
     requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
   const protocol = requestHeaders.get('x-forwarded-proto') ?? 'https';
-  if (host === null) return new URL(fallback).origin;
+  if (host === null) {
+    const requestOrigin = requestHeaders.get('origin');
+    if (requestOrigin !== null) {
+      try {
+        const origin = new URL(requestOrigin);
+        if (origin.protocol === 'https:' || origin.protocol === 'http:') {
+          return origin.origin;
+        }
+      } catch {
+        // Fall through to the configured application origin.
+      }
+    }
+    return new URL(fallback).origin;
+  }
   try {
     const origin = new URL(`${protocol}://${host}`).origin;
     return origin;
