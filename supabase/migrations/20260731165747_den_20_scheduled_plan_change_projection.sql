@@ -20,6 +20,10 @@ begin
     and new.scheduled_plan_id is null
     and new.scheduled_change_at is null
     and new.scheduled_change_event_created_at is not distinct from old.scheduled_change_event_created_at
+    and pg_catalog.current_setting(
+      'gleen.billing_schedule_projection_write',
+      true
+    ) is distinct from 'on'
   then
     if new.plan_id = old.scheduled_plan_id
       or new.current_period_start >= old.scheduled_change_at
@@ -96,6 +100,11 @@ begin
     from public.billing_plans as billing_plan
     where billing_plan.slug = target_scheduled_plan_slug;
 
+    perform pg_catalog.set_config(
+      'gleen.billing_schedule_projection_write',
+      'on',
+      true
+    );
     update public.billing_subscriptions as subscription
     set
       stripe_subscription_schedule_id = target_external_schedule_id,
@@ -108,7 +117,17 @@ begin
         subscription.scheduled_change_event_created_at is null
         or subscription.scheduled_change_event_created_at <= target_event_created_at
       );
+    perform pg_catalog.set_config(
+      'gleen.billing_schedule_projection_write',
+      'off',
+      true
+    );
   else
+    perform pg_catalog.set_config(
+      'gleen.billing_schedule_projection_write',
+      'on',
+      true
+    );
     update public.billing_subscriptions as subscription
     set
       stripe_subscription_schedule_id = null,
@@ -122,6 +141,11 @@ begin
         subscription.scheduled_change_event_created_at is null
         or subscription.scheduled_change_event_created_at <= target_event_created_at
       );
+    perform pg_catalog.set_config(
+      'gleen.billing_schedule_projection_write',
+      'off',
+      true
+    );
   end if;
 end;
 $$;

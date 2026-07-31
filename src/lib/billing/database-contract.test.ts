@@ -595,6 +595,58 @@ describe('DEN-20 scheduled plan change projection', () => {
     );
   });
 
+  it('lets an equal-time schedule clear bypass preservation only during the schedule RPC update', () => {
+    const triggerStart = scheduledPlanChangeProjectionSql.indexOf(
+      'create function private.preserve_billing_schedule_projection()',
+    );
+    const triggerEnd = scheduledPlanChangeProjectionSql.indexOf(
+      'create trigger billing_subscriptions_preserve_schedule_projection',
+      triggerStart,
+    );
+    const rpcStart = scheduledPlanChangeProjectionSql.indexOf(
+      'create function public.apply_billing_schedule_projection(',
+    );
+    const rpcEnd = scheduledPlanChangeProjectionSql.indexOf(
+      'create function public.apply_billing_schedule_projection_service_role(',
+      rpcStart,
+    );
+    const triggerSql = scheduledPlanChangeProjectionSql.slice(
+      triggerStart,
+      triggerEnd,
+    );
+    const rpcSql = scheduledPlanChangeProjectionSql.slice(rpcStart, rpcEnd);
+    const markerOnPositions = [
+      ...rpcSql.matchAll(
+        /pg_catalog\.set_config\(\s*'gleen\.billing_schedule_projection_write',\s*'on',\s*true\s*\)/g,
+      ),
+    ].map((match) => match.index);
+    const updatePositions = [
+      ...rpcSql.matchAll(
+        /update public\.billing_subscriptions as subscription/g,
+      ),
+    ].map((match) => match.index);
+    const markerOffPositions = [
+      ...rpcSql.matchAll(
+        /pg_catalog\.set_config\(\s*'gleen\.billing_schedule_projection_write',\s*'off',\s*true\s*\)/g,
+      ),
+    ].map((match) => match.index);
+
+    expect(triggerSql).toMatch(
+      /pg_catalog\.current_setting\(\s*'gleen\.billing_schedule_projection_write',\s*true\s*\) is distinct from 'on'/,
+    );
+    expect(rpcSql).toContain(
+      'subscription.scheduled_change_event_created_at <= target_event_created_at',
+    );
+    expect(markerOnPositions).toHaveLength(2);
+    expect(updatePositions).toHaveLength(2);
+    expect(markerOffPositions).toHaveLength(2);
+    expect(markerOnPositions[0]).toBeLessThan(updatePositions[0]!);
+    expect(updatePositions[0]).toBeLessThan(markerOffPositions[0]!);
+    expect(markerOffPositions[0]).toBeLessThan(markerOnPositions[1]!);
+    expect(markerOnPositions[1]).toBeLessThan(updatePositions[1]!);
+    expect(updatePositions[1]).toBeLessThan(markerOffPositions[1]!);
+  });
+
   it('requires a claimed event and orders schedule events independently', () => {
     expect(scheduledPlanChangeProjectionSql).toContain(
       'create function public.apply_billing_schedule_projection(',
