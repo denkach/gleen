@@ -59,8 +59,6 @@ export default async function CheckoutPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/session-expired');
-  const customerEmail = user.email?.trim();
-  if (!customerEmail) redirect('/session-expired');
 
   const query = parseCheckoutQuery(await searchParams);
   const repository = createSupabaseBillingRepository(
@@ -93,7 +91,6 @@ export default async function CheckoutPage({
       presentation={presentation}
       prices={prices}
       publishableKey={NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
-      customerEmail={customerEmail}
       sessionId={query.sessionId}
       createCheckout={createCheckoutSession}
       getConfirmation={getCheckoutConfirmation}

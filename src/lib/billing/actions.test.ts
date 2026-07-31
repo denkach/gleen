@@ -99,6 +99,7 @@ function createStripe(): BillingStripeClient {
     },
     customers: {
       create: vi.fn(async () => ({ id: 'cus_created' })),
+      update: vi.fn(async () => ({ id: 'cus_owned' })),
       retrieve: vi.fn(async () => ({
         deleted: false,
         invoice_settings: { default_payment_method: null },
@@ -149,6 +150,7 @@ describe('billing checkout actions', () => {
       await expect(
         actions.createCheckoutForUser({
           userId: 'u1',
+          email: 'owner@example.test',
           plan,
           interval: 'month',
         }),
@@ -163,6 +165,7 @@ describe('billing checkout actions', () => {
     await expect(
       actions.createCheckoutForUser({
         userId: 'u1',
+        email: 'owner@example.test',
         plan: 'prism-pro',
         interval: 'year',
       }),
@@ -173,6 +176,9 @@ describe('billing checkout actions', () => {
     expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
       nativeCustomCheckoutPayload,
     );
+    expect(stripe.customers.update).toHaveBeenCalledWith('cus_owned', {
+      email: 'owner@example.test',
+    });
   });
 
   it('creates and persists a server-owned customer before checkout when no mapping exists', async () => {
@@ -189,18 +195,23 @@ describe('billing checkout actions', () => {
 
     await actions.createCheckoutForUser({
       userId: 'u1',
+      email: 'owner@example.test',
       plan: 'starter',
       interval: 'month',
     });
 
     expect(stripe.customers.create).toHaveBeenCalledWith(
-      { metadata: { gleen_user_id: 'u1' } },
+      {
+        email: 'owner@example.test',
+        metadata: { gleen_user_id: 'u1' },
+      },
       { idempotencyKey: 'gleen-customer-u1' },
     );
     expect(adminRepository.persistOwnedCustomerId).toHaveBeenCalledWith(
       'u1',
       'cus_created',
     );
+    expect(stripe.customers.update).not.toHaveBeenCalled();
     expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
       expect.objectContaining({ customer: 'cus_created' }),
     );
@@ -225,7 +236,9 @@ describe('billing checkout actions', () => {
   });
 
   it('rejects an authenticated client attempt to substitute the resolved user ID', async () => {
-    getUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    getUser.mockResolvedValue({
+      data: { user: { id: 'u1', email: 'owner@example.test' } },
+    });
 
     await expect(
       createCheckoutSession({
@@ -242,6 +255,7 @@ describe('billing checkout actions', () => {
     await expect(
       actions.createCheckoutForUser({
         userId: 'u1',
+        email: 'owner@example.test',
         plan: 'prism-pro',
         interval: 'year',
         priceId: 'price_attacker',

@@ -32,11 +32,15 @@ import {
 const checkoutInputSchema = z
   .object({
     userId: z.string().trim().min(1),
+    email: z.email(),
     plan: billingPlanSlugSchema,
     interval: billingIntervalSchema,
   })
   .strict();
-const checkoutActionInputSchema = checkoutInputSchema.omit({ userId: true });
+const checkoutActionInputSchema = checkoutInputSchema.omit({
+  userId: true,
+  email: true,
+});
 const checkoutConfirmationInputSchema = z
   .object({
     userId: z.string().trim().min(1),
@@ -167,6 +171,10 @@ export type BillingStripeClient = Readonly<{
     create(
       input: Stripe.CustomerCreateParams,
       options: Stripe.RequestOptions,
+    ): PromiseLike<Pick<Stripe.Customer, 'id'>>;
+    update(
+      customerId: string,
+      input: Stripe.CustomerUpdateParams,
     ): PromiseLike<Pick<Stripe.Customer, 'id'>>;
     retrieve(
       customerId: string,
@@ -311,6 +319,7 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
         if (customerId === null) {
           const customer = await dependencies.stripe.customers.create(
             {
+              email: parsed.data.email,
               metadata: { gleen_user_id: parsed.data.userId },
             },
             { idempotencyKey: `gleen-customer-${parsed.data.userId}` },
@@ -320,6 +329,11 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
               parsed.data.userId,
               stripeCustomerIdSchema.parse(customer.id),
             );
+        } else {
+          await dependencies.stripe.customers.update(
+            stripeCustomerIdSchema.parse(customerId),
+            { email: parsed.data.email },
+          );
         }
         const ownedCustomerId = stripeCustomerIdSchema.parse(customerId);
 
@@ -652,7 +666,7 @@ async function authenticatedContext() {
     data: { user },
   } = await supabase.auth.getUser();
   if (user === null) return null;
-  return { userId: user.id, supabase };
+  return { userId: user.id, email: user.email?.trim() ?? null, supabase };
 }
 
 function productionBillingActions(
@@ -682,12 +696,17 @@ export async function createCheckoutSession(
   'use server';
   const context = await authenticatedContext();
   if (context === null) return actionFailure('session_expired');
+  if (context.email === null) return actionFailure('session_expired');
   const parsed = checkoutActionInputSchema.safeParse(input);
   if (!parsed.success) return actionFailure('invalid_request');
   return productionBillingActions(
     context.supabase,
     await requestBillingAppUrl(),
-  ).createCheckoutForUser({ userId: context.userId, ...parsed.data });
+  ).createCheckoutForUser({
+    userId: context.userId,
+    email: context.email,
+    ...parsed.data,
+  });
 }
 
 export async function getCheckoutConfirmation(

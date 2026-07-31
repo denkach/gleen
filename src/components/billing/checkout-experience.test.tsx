@@ -91,7 +91,6 @@ describe('CheckoutExperience rejection and cleanup', () => {
         presentation={presentation}
         prices={[presentation.price]}
         publishableKey="pk_test_checkout"
-        customerEmail="billing-owner@example.test"
         sessionId="cs_test_owned"
         createCheckout={vi.fn()}
         getConfirmation={getConfirmation}
@@ -112,7 +111,6 @@ describe('CheckoutExperience rejection and cleanup', () => {
         presentation={presentation}
         prices={[presentation.price]}
         publishableKey="pk_test_checkout"
-        customerEmail="billing-owner@example.test"
         sessionId={null}
         createCheckout={vi.fn().mockRejectedValue(new Error('network'))}
         getConfirmation={vi.fn()}
@@ -138,7 +136,6 @@ describe('CheckoutExperience rejection and cleanup', () => {
         presentation={presentation}
         prices={[presentation.price]}
         publishableKey="pk_test_checkout"
-        customerEmail="billing-owner@example.test"
         sessionId={null}
         createCheckout={vi.fn().mockResolvedValue({
           ok: true,
@@ -173,7 +170,6 @@ describe('CheckoutExperience rejection and cleanup', () => {
         presentation={presentation}
         prices={[presentation.price]}
         publishableKey="pk_test_checkout"
-        customerEmail="billing-owner@example.test"
         sessionId={null}
         createCheckout={vi.fn().mockResolvedValue({
           ok: true,
@@ -208,7 +204,6 @@ describe('CheckoutExperience rejection and cleanup', () => {
         presentation={presentation}
         prices={[presentation.price]}
         publishableKey="pk_test_checkout"
-        customerEmail="billing-owner@example.test"
         sessionId={null}
         createCheckout={vi.fn().mockResolvedValue({
           ok: true,
@@ -223,11 +218,7 @@ describe('CheckoutExperience rejection and cleanup', () => {
     });
     expect(submit).toBeEnabled();
     fireEvent.click(submit);
-    await waitFor(() =>
-      expect(confirm).toHaveBeenCalledWith({
-        email: 'billing-owner@example.test',
-      }),
-    );
+    await waitFor(() => expect(confirm).toHaveBeenCalledOnce());
   });
 
   it('mounts the billing address before payment so Stripe does not collect it twice', async () => {
@@ -239,7 +230,6 @@ describe('CheckoutExperience rejection and cleanup', () => {
         presentation={presentation}
         prices={[presentation.price]}
         publishableKey="pk_test_checkout"
-        customerEmail="billing-owner@example.test"
         sessionId={null}
         createCheckout={vi.fn().mockResolvedValue({
           ok: true,
@@ -275,7 +265,6 @@ describe('CheckoutExperience rejection and cleanup', () => {
         presentation={presentation}
         prices={[presentation.price]}
         publishableKey="pk_test_checkout"
-        customerEmail="billing-owner@example.test"
         sessionId={null}
         createCheckout={vi.fn().mockResolvedValue({
           ok: true,
