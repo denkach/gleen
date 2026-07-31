@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
@@ -141,6 +142,17 @@ const activity = {
   totalCount: 1,
 } satisfies InvoicePresentation;
 
+const freePlan = {
+  ...subscription.availablePlans[0].plan,
+  id: 'free',
+  slug: 'free',
+  displayName: 'Free',
+  description: 'For exploring Gleen.',
+  analysisLimit: 3,
+  features: ['3 analyses per month'],
+  purchasable: false,
+} as const;
+
 describe('PortalScreen', () => {
   beforeEach(() => refresh.mockClear());
 
@@ -262,6 +274,60 @@ describe('PortalScreen', () => {
     ).toBeEnabled();
   });
 
+  it('reconciles an optimistic downgrade when the authoritative projection changes or clears', async () => {
+    const planChangeAction = vi.fn().mockResolvedValue({
+      ok: true,
+      kind: 'downgrade',
+      plan: 'starter',
+      interval: 'month',
+      effectiveAt: '2026-08-01T00:00:00.000Z',
+    });
+    const commonProps = {
+      activity,
+      portalAction: vi.fn(),
+      planChangeAction,
+      cancelScheduledDowngradeAction: vi.fn(),
+      planChange: { plan: 'starter', interval: 'month' } as const,
+      planCatalog: subscription.availablePlans.map(({ plan }) => plan),
+      openPortal: vi.fn(),
+    };
+    const view = render(
+      <PortalScreen subscription={subscription} {...commonProps} />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm plan change' }),
+    );
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Starter is scheduled for Aug 1, 2026.',
+    );
+
+    view.rerender(
+      <PortalScreen
+        subscription={{
+          ...subscription,
+          scheduledChange: {
+            kind: 'downgrade',
+            plan: freePlan,
+            effectiveAt: '2026-09-01T00:00:00.000Z',
+          },
+        }}
+        {...commonProps}
+      />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Free is scheduled for Sep 1, 2026.',
+    );
+
+    view.rerender(
+      <PortalScreen subscription={subscription} {...commonProps} />,
+    );
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Cancel scheduled downgrade' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('renders a projected downgrade with its effective date and cancellation control', () => {
     render(
       <PortalScreen
@@ -287,7 +353,8 @@ describe('PortalScreen', () => {
     ).toBeEnabled();
   });
 
-  it('announces successful scheduled-downgrade cancellation without opening Stripe', async () => {
+  it('announces and focuses a successful scheduled-downgrade cancellation without opening Stripe', async () => {
+    const user = userEvent.setup();
     const cancelScheduledDowngradeAction = vi
       .fn()
       .mockResolvedValue({ ok: true });
@@ -309,19 +376,94 @@ describe('PortalScreen', () => {
       />,
     );
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),
     );
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent(
       'Scheduled downgrade canceled. Your current plan remains active.',
     );
+    expect(status).toHaveFocus();
     expect(
       screen.queryByRole('button', { name: 'Cancel scheduled downgrade' }),
     ).not.toBeInTheDocument();
     expect(cancelScheduledDowngradeAction).toHaveBeenCalledWith();
     expect(openPortal).not.toHaveBeenCalled();
     expect(refresh).toHaveBeenCalledTimes(1);
+
+    await user.tab();
+    expect(
+      screen.getByRole('button', { name: 'Update payment method' }),
+    ).toHaveFocus();
+  });
+
+  it('hides a canceled baseline only until authoritative props reconcile, then shows a future projection', async () => {
+    const cancelScheduledDowngradeAction = vi
+      .fn()
+      .mockResolvedValue({ ok: true });
+    const commonProps = {
+      activity,
+      portalAction: vi.fn(),
+      cancelScheduledDowngradeAction,
+      openPortal: vi.fn(),
+    };
+    const projectedSubscription = {
+      ...subscription,
+      scheduledChange: {
+        kind: 'downgrade' as const,
+        plan: subscription.availablePlans[0].plan,
+        effectiveAt: '2026-08-01T00:00:00.000Z',
+      },
+    };
+    const view = render(
+      <PortalScreen subscription={projectedSubscription} {...commonProps} />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),
+    );
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Scheduled downgrade canceled.',
+    );
+
+    view.rerender(
+      <PortalScreen
+        subscription={{ ...projectedSubscription }}
+        {...commonProps}
+      />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Scheduled downgrade canceled.',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Cancel scheduled downgrade' }),
+    ).not.toBeInTheDocument();
+
+    view.rerender(
+      <PortalScreen subscription={subscription} {...commonProps} />,
+    );
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    view.rerender(
+      <PortalScreen
+        subscription={{
+          ...subscription,
+          scheduledChange: {
+            kind: 'downgrade',
+            plan: freePlan,
+            effectiveAt: '2026-09-01T00:00:00.000Z',
+          },
+        }}
+        {...commonProps}
+      />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Free is scheduled for Sep 1, 2026.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),
+    ).toBeEnabled();
   });
 
   it.each(['change', 'cancel'] as const)(

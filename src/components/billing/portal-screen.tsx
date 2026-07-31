@@ -74,6 +74,35 @@ type LocalScheduledDowngrade = Readonly<{
   effectiveAt: string;
 }>;
 
+type OptimisticScheduledChange =
+  | Readonly<{
+      kind: 'scheduled';
+      baselineProjectionKey: string | null;
+      downgrade: LocalScheduledDowngrade;
+    }>
+  | Readonly<{
+      kind: 'canceled';
+      baselineProjectionKey: string | null;
+    }>;
+
+function scheduledDowngradeKey(
+  downgrade:
+    | LocalScheduledDowngrade
+    | NonNullable<PortalSubscription['scheduledChange']>
+    | null,
+) {
+  if (
+    downgrade === null ||
+    ('kind' in downgrade && downgrade.kind === 'cancellation')
+  ) {
+    return null;
+  }
+  if (downgrade.plan === null) return null;
+  const plan =
+    typeof downgrade.plan === 'string' ? downgrade.plan : downgrade.plan.slug;
+  return `${plan}:${downgrade.effectiveAt}`;
+}
+
 function PortalActionButton({
   children,
   action,
@@ -115,13 +144,29 @@ export function PortalScreen({
   const router = useRouter();
   const [opening, setOpening] = useState(false);
   const [actionError, setActionError] = useState(false);
-  const [localScheduledDowngrade, setLocalScheduledDowngrade] =
-    useState<LocalScheduledDowngrade | null>(null);
-  const [scheduledDowngradeCanceled, setScheduledDowngradeCanceled] =
-    useState(false);
-  const [cancellationStatus, setCancellationStatus] = useState(false);
+  const [optimisticScheduledChange, setOptimisticScheduledChange] =
+    useState<OptimisticScheduledChange | null>(null);
   const mounted = useRef(true);
   const pending = useRef(false);
+  const scheduledStatusRef = useRef<HTMLDivElement>(null);
+
+  const projectedDowngrade =
+    subscription?.scheduledChange?.kind === 'downgrade'
+      ? subscription.scheduledChange
+      : null;
+  const projectionKey = scheduledDowngradeKey(projectedDowngrade);
+  const projectionStillAtOptimisticBaseline =
+    optimisticScheduledChange?.baselineProjectionKey === projectionKey;
+  if (
+    optimisticScheduledChange !== null &&
+    !projectionStillAtOptimisticBaseline
+  ) {
+    setOptimisticScheduledChange(null);
+  }
+  const activeOptimisticChange = projectionStillAtOptimisticBaseline
+    ? optimisticScheduledChange
+    : null;
+  const cancellationStatus = activeOptimisticChange?.kind === 'canceled';
 
   useEffect(() => {
     mounted.current = true;
@@ -129,6 +174,10 @@ export function PortalScreen({
       mounted.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (cancellationStatus) scheduledStatusRef.current?.focus();
+  }, [cancellationStatus]);
 
   async function launchPortal(action = portalAction) {
     if (pending.current) return;
@@ -156,7 +205,6 @@ export function PortalScreen({
     pending.current = true;
     setOpening(true);
     setActionError(false);
-    setCancellationStatus(false);
     try {
       const result = await planChangeAction(planChange);
       if (!mounted.current) return;
@@ -168,11 +216,14 @@ export function PortalScreen({
         openPortal(result.url);
         return;
       }
-      setLocalScheduledDowngrade({
-        plan: result.plan,
-        effectiveAt: result.effectiveAt,
+      setOptimisticScheduledChange({
+        kind: 'scheduled',
+        baselineProjectionKey: projectionKey,
+        downgrade: {
+          plan: result.plan,
+          effectiveAt: result.effectiveAt,
+        },
       });
-      setScheduledDowngradeCanceled(false);
       router.refresh();
     } catch {
       if (mounted.current) setActionError(true);
@@ -194,9 +245,10 @@ export function PortalScreen({
         setActionError(true);
         return;
       }
-      setScheduledDowngradeCanceled(true);
-      setLocalScheduledDowngrade(null);
-      setCancellationStatus(true);
+      setOptimisticScheduledChange({
+        kind: 'canceled',
+        baselineProjectionKey: projectionKey,
+      });
       router.refresh();
     } catch {
       if (mounted.current) setActionError(true);
@@ -230,13 +282,12 @@ export function PortalScreen({
   }
 
   const teamExplanationId = 'billing-team-seats-unavailable';
-  const projectedDowngrade =
-    subscription.scheduledChange?.kind === 'downgrade'
-      ? subscription.scheduledChange
-      : null;
-  const scheduledDowngrade = scheduledDowngradeCanceled
-    ? null
-    : (localScheduledDowngrade ?? projectedDowngrade);
+  const scheduledDowngrade =
+    activeOptimisticChange?.kind === 'scheduled'
+      ? activeOptimisticChange.downgrade
+      : cancellationStatus
+        ? null
+        : projectedDowngrade;
   const scheduledPlan =
     scheduledDowngrade === null
       ? null
@@ -264,7 +315,12 @@ export function PortalScreen({
         </p>
       )}
       {(cancellationStatus || scheduledStatus !== null) && (
-        <div className="billing-scheduled-state" role="status">
+        <div
+          className="billing-scheduled-state"
+          role="status"
+          tabIndex={-1}
+          ref={scheduledStatusRef}
+        >
           <BillingIcon name="plan" />
           <span>
             {cancellationStatus

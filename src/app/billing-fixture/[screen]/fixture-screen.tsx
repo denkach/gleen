@@ -104,7 +104,8 @@ export function BillingFixtureScreen({
       : undefined;
   const cancelScheduledDowngradeAction =
     testBoundary === 'portal-cancel'
-      ? async () => {
+      ? async (...args: readonly unknown[]) => {
+          setPayload(args.length === 0 ? '[]' : '[redacted]');
           setPortalCount((count) => count + 1);
           await new Promise((resolve) => window.setTimeout(resolve, 80));
           return { ok: true } as const;

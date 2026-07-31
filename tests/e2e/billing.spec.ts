@@ -310,7 +310,7 @@ test('splits Portal upgrade, downgrade, cancellation, concurrency, and retry bou
     .getByRole('button', { name: 'Cancel scheduled downgrade' })
     .dblclick();
   await expect(page.getByTestId('billing-boundary-count')).toHaveText('1');
-  await expect(page.getByTestId('billing-boundary-payload')).toHaveText('');
+  await expect(page.getByTestId('billing-boundary-payload')).toHaveText('[]');
   await expect(page.getByTestId('billing-boundary-opened')).toHaveText('');
   await expect(
     page.getByRole('region', { name: 'Billing portal' }).getByRole('status'),
@@ -430,18 +430,24 @@ test('keeps a deterministic keyboard focus order through billing controls', asyn
 });
 
 test('keeps scheduled plan controls keyboard operable', async ({ page }) => {
-  await openFixture(page, 'portal', 'active', 'portal-downgrade');
-  const confirm = page.getByRole('button', { name: 'Confirm plan change' });
-  await confirm.focus();
-  await page.keyboard.press('Enter');
-  await expect(
-    page.getByRole('region', { name: 'Billing portal' }).getByRole('status'),
-  ).toBeVisible();
+  await openFixture(page, 'portal', 'active', 'portal-cancel');
   const cancel = page.getByRole('button', {
     name: 'Cancel scheduled downgrade',
   });
   await cancel.focus();
   await expect(cancel).toBeFocused();
+  await page.keyboard.press('Space');
+  const status = page
+    .getByRole('region', { name: 'Billing portal' })
+    .getByRole('status');
+  await expect(status).toHaveText(
+    'Scheduled downgrade canceled. Your current plan remains active.',
+  );
+  await expect(status).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(
+    page.getByRole('button', { name: 'Update payment method' }),
+  ).toBeFocused();
 });
 
 test('durable mobile billing sheet traps focus, closes with Escape, and restores the More trigger', async ({
