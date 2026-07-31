@@ -22,6 +22,7 @@ function routeDependencies() {
       repository: {
         claimWebhookEvent: vi.fn().mockResolvedValue('claimed'),
         applySubscription: vi.fn(),
+        applyScheduledChange: vi.fn(),
         applyInvoice: vi.fn(),
         markWebhookProcessed: vi.fn().mockResolvedValue(undefined),
         markWebhookFailed: vi.fn(),

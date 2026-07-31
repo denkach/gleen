@@ -153,6 +153,72 @@ describe('Supabase billing projection repository', () => {
     );
   });
 
+  it('validates and passes an independent scheduled change to its atomic RPC', async () => {
+    const admin = {
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn(),
+    };
+    const repository = createSupabaseBillingProjectionRepository(
+      admin as unknown as SupabaseBillingAdminClient,
+    );
+
+    await repository.applyScheduledChange({
+      eventId: 'evt_schedule',
+      eventCreatedAt: '2026-07-31T10:00:00.000Z',
+      userId: '5c5583a7-131b-4c05-b76a-7a4835dba8df',
+      externalSubscriptionId: 'sub_1',
+      externalScheduleId: 'sub_sched_1',
+      scheduledPlanSlug: 'starter',
+      scheduledChangeAt: '2026-08-01T00:00:00.000Z',
+    });
+
+    expect(admin.rpc).toHaveBeenCalledWith(
+      'apply_billing_schedule_projection_service_role',
+      {
+        target_event_id: 'evt_schedule',
+        target_event_created_at: '2026-07-31T10:00:00.000Z',
+        target_user_id: '5c5583a7-131b-4c05-b76a-7a4835dba8df',
+        target_external_subscription_id: 'sub_1',
+        target_external_schedule_id: 'sub_sched_1',
+        target_scheduled_plan_slug: 'starter',
+        target_scheduled_change_at: '2026-08-01T00:00:00.000Z',
+      },
+    );
+  });
+
+  it('rejects partial or malformed scheduled change projections before RPC', async () => {
+    const admin = {
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn(),
+    };
+    const repository = createSupabaseBillingProjectionRepository(
+      admin as unknown as SupabaseBillingAdminClient,
+    );
+    const valid = {
+      eventId: 'evt_schedule',
+      eventCreatedAt: '2026-07-31T10:00:00.000Z',
+      userId: '5c5583a7-131b-4c05-b76a-7a4835dba8df',
+      externalSubscriptionId: 'sub_1',
+      externalScheduleId: 'sub_sched_1',
+      scheduledPlanSlug: 'starter' as const,
+      scheduledChangeAt: '2026-08-01T00:00:00.000Z',
+    };
+
+    await expect(
+      repository.applyScheduledChange({
+        ...valid,
+        scheduledChangeAt: null,
+      }),
+    ).rejects.toThrow();
+    await expect(
+      repository.applyScheduledChange({
+        ...valid,
+        externalScheduleId: 'sched_bad',
+      }),
+    ).rejects.toThrow();
+    expect(admin.rpc).not.toHaveBeenCalled();
+  });
+
   it('passes an explicit paid-through advance flag to the atomic invoice RPC', async () => {
     const admin = {
       rpc: vi.fn().mockResolvedValue({ data: null, error: null }),

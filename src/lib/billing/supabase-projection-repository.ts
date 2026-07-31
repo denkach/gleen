@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
   billingWebhookEventSchema,
   invoiceProjectionSchema,
+  scheduledChangeProjectionSchema,
   subscriptionProjectionSchema,
   webhookPriceMappingSchema,
   type BillingProjectionRepository,
@@ -138,6 +139,24 @@ export function createSupabaseBillingProjectionRepository(
             target_scheduled_plan_slug: projection.scheduledPlanSlug,
             target_scheduled_change_at: projection.scheduledChangeAt,
             target_paid_through: projection.paidThrough,
+          },
+        ),
+      );
+    },
+
+    async applyScheduledChange(input) {
+      const projection = parseValue(scheduledChangeProjectionSchema, input);
+      rpcSuccess(
+        await adminClient.rpc(
+          'apply_billing_schedule_projection_service_role',
+          {
+            target_event_id: projection.eventId,
+            target_event_created_at: projection.eventCreatedAt,
+            target_user_id: projection.userId,
+            target_external_subscription_id: projection.externalSubscriptionId,
+            target_external_schedule_id: projection.externalScheduleId,
+            target_scheduled_plan_slug: projection.scheduledPlanSlug,
+            target_scheduled_change_at: projection.scheduledChangeAt,
           },
         ),
       );

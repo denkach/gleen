@@ -177,6 +177,19 @@ const serializedInvoiceLinkSql =
         join(migrationsDirectory, serializedInvoiceLinkMigrationName),
         'utf8',
       );
+const scheduledPlanChangeProjectionMigrationNames = migrationNames.filter(
+  (name) => name.endsWith('_den_20_scheduled_plan_change_projection.sql'),
+);
+const scheduledPlanChangeProjectionSql =
+  scheduledPlanChangeProjectionMigrationNames.length === 1
+    ? readFileSync(
+        join(
+          migrationsDirectory,
+          scheduledPlanChangeProjectionMigrationNames[0]!,
+        ),
+        'utf8',
+      )
+    : '';
 const invoicePaidForwardChainSql = migrationNames
   .filter((name) => name > invoicePaidMigrationName)
   .sort()
@@ -531,6 +544,104 @@ describe('DEN-20 resilient subscription invoice projection', () => {
     );
     expect(serializedInvoiceLinkSql).not.toContain(
       'create or replace function public.apply_billing_',
+    );
+  });
+});
+
+describe('DEN-20 scheduled plan change projection', () => {
+  it('defines one independently ordered schedule projection', () => {
+    expect(scheduledPlanChangeProjectionMigrationNames).toHaveLength(1);
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'stripe_subscription_schedule_id text',
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      "stripe_subscription_schedule_id ~ '^sub_sched_[A-Za-z0-9]+$'",
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'scheduled_change_event_created_at timestamptz',
+    );
+    expect(scheduledPlanChangeProjectionSql).toMatch(
+      /create unique index billing_subscriptions_schedule_id_idx[\s\S]*where stripe_subscription_schedule_id is not null;/,
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'create function private.preserve_billing_schedule_projection()',
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'create trigger billing_subscriptions_preserve_schedule_projection',
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'before update on public.billing_subscriptions',
+    );
+  });
+
+  it('preserves a pending schedule from ordinary subscription projections until its boundary', () => {
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'new.scheduled_change_event_created_at is not distinct from old.scheduled_change_event_created_at',
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'new.current_period_start >= old.scheduled_change_at',
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'new.plan_id = old.scheduled_plan_id',
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'new.stripe_subscription_schedule_id := old.stripe_subscription_schedule_id',
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'new.scheduled_plan_id := old.scheduled_plan_id',
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'new.scheduled_change_at := old.scheduled_change_at',
+    );
+  });
+
+  it('requires a claimed event and orders schedule events independently', () => {
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'create function public.apply_billing_schedule_projection(',
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'create function public.apply_billing_schedule_projection_service_role(',
+    );
+    expect(scheduledPlanChangeProjectionSql).toMatch(
+      /webhook\.stripe_event_id = target_event_id[\s\S]*webhook\.stripe_created_at = target_event_created_at[\s\S]*webhook\.processing_status = 'processing'/,
+    );
+    expect(scheduledPlanChangeProjectionSql).toMatch(
+      /scheduled_change_event_created_at is null[\s\S]*scheduled_change_event_created_at <= target_event_created_at/,
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'stripe_subscription_schedule_id = target_external_schedule_id',
+    );
+    expect(scheduledPlanChangeProjectionSql).not.toMatch(
+      /latest_stripe_event_created_at\s*=/,
+    );
+  });
+
+  it('keeps schedule projection RPCs service-role-only without public security definers', () => {
+    expect(scheduledPlanChangeProjectionSql).toContain("set search_path = ''");
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      "is distinct from 'service_role'",
+    );
+    expect(scheduledPlanChangeProjectionSql).toMatch(
+      /set_config\(\s*'request\.jwt\.claim\.role',\s*'service_role',\s*true\s*\)/,
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'revoke all on function public.apply_billing_schedule_projection(',
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'revoke all on function public.apply_billing_schedule_projection_service_role(',
+    );
+    expect(scheduledPlanChangeProjectionSql).toMatch(
+      /from public, anon, authenticated, service_role;/,
+    );
+    expect(scheduledPlanChangeProjectionSql).toContain(
+      'grant execute on function public.apply_billing_schedule_projection_service_role(',
+    );
+    expect(scheduledPlanChangeProjectionSql).not.toMatch(
+      /grant\s+(?:select|insert|update|delete|all)[\s\S]*to\s+(?:anon|authenticated)/i,
+    );
+    expect(scheduledPlanChangeProjectionSql).not.toContain('user_metadata');
+    expect(scheduledPlanChangeProjectionSql).not.toMatch(
+      /create(?: or replace)? function public\.[\s\S]*security definer/i,
     );
   });
 });

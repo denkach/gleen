@@ -99,6 +99,34 @@ export type SubscriptionProjection = z.infer<
   typeof subscriptionProjectionSchema
 >;
 
+export const scheduledChangeProjectionSchema = z
+  .object({
+    eventId: z.string().trim().min(1),
+    eventCreatedAt: z.iso.datetime({ offset: true }),
+    userId: z.string().trim().min(1),
+    externalSubscriptionId: z.string().regex(/^sub_[A-Za-z0-9]+$/),
+    externalScheduleId: z.string().regex(/^sub_sched_[A-Za-z0-9]+$/),
+    scheduledPlanSlug: billingPlanSlugSchema.nullable(),
+    scheduledChangeAt: z.iso.datetime({ offset: true }).nullable(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      (value.scheduledPlanSlug === null) !==
+      (value.scheduledChangeAt === null)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Scheduled target and date must change together',
+      });
+    }
+  })
+  .readonly();
+
+export type ScheduledChangeProjection = z.infer<
+  typeof scheduledChangeProjectionSchema
+>;
+
 export const invoiceProjectionSchema = z
   .object({
     eventId: z.string().trim().min(1),
@@ -143,6 +171,7 @@ export type BillingProjectionRepository = Readonly<{
     event: BillingWebhookEvent,
   ): Promise<'claimed' | 'duplicate'>;
   applySubscription(input: SubscriptionProjection): Promise<void>;
+  applyScheduledChange(input: ScheduledChangeProjection): Promise<void>;
   applyInvoice(input: InvoiceProjection): Promise<void>;
   markWebhookProcessed(eventId: string): Promise<void>;
   markWebhookFailed(eventId: string, code: string): Promise<void>;
