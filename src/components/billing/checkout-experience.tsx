@@ -95,9 +95,13 @@ function CheckoutElements({
       if (mounted.current && confirmation.type === 'error') {
         setConfirmationError(confirmation.error.message);
       }
-    } catch {
+    } catch (error) {
       if (mounted.current) {
-        setConfirmationError('Checkout could not be loaded.');
+        setConfirmationError(
+          error instanceof Error && error.message.trim().length > 0
+            ? error.message
+            : 'Checkout could not be loaded.',
+        );
       }
     } finally {
       if (mounted.current) setSubmitting(false);

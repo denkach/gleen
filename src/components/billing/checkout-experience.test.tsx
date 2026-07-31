@@ -124,8 +124,12 @@ describe('CheckoutExperience rejection and cleanup', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('resets submitting and renders a retryable state when Stripe confirm rejects', async () => {
-    const confirm = vi.fn().mockRejectedValue(new Error('stripe unavailable'));
+  it('resets submitting and shows the Stripe error when confirm rejects', async () => {
+    const confirm = vi
+      .fn()
+      .mockRejectedValue(
+        new Error('Complete the required Stripe checkout fields.'),
+      );
     useCheckoutElements.mockReturnValue(readyCheckout(confirm));
     render(
       <CheckoutExperience
@@ -146,7 +150,7 @@ describe('CheckoutExperience rejection and cleanup', () => {
     fireEvent.click(submit);
     await waitFor(() =>
       expect(
-        screen.getByText('Checkout could not be loaded.'),
+        screen.getByText('Complete the required Stripe checkout fields.'),
       ).toBeInTheDocument(),
     );
     expect(screen.getByRole('button', { name: 'Start Starter' })).toBeEnabled();
