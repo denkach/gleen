@@ -200,9 +200,13 @@ async function subscriptionProjection(
   }
   const currentPeriodStart = timestamp(item.current_period_start);
   const currentPeriodEnd = timestamp(item.current_period_end);
-  const cancelAtPeriodEnd = booleanValue(subscription.cancel_at_period_end);
-  const cancellationEffectiveAt = cancelAtPeriodEnd
-    ? (nullableTimestamp(subscription.cancel_at) ?? currentPeriodEnd)
+  const explicitCancelAt = nullableTimestamp(subscription.cancel_at);
+  const scheduledCancellation =
+    status.data !== 'canceled' &&
+    (booleanValue(subscription.cancel_at_period_end) ||
+      explicitCancelAt !== null);
+  const cancellationEffectiveAt = scheduledCancellation
+    ? (explicitCancelAt ?? currentPeriodEnd)
     : status.data === 'canceled'
       ? (nullableTimestamp(subscription.ended_at) ??
         nullableTimestamp(subscription.canceled_at) ??
@@ -224,7 +228,7 @@ async function subscriptionProjection(
     currentPeriodStart,
     currentPeriodEnd,
     trialEndsAt: nullableTimestamp(subscription.trial_end),
-    cancelAtPeriodEnd,
+    cancelAtPeriodEnd: scheduledCancellation,
     cancellationEffectiveAt,
     scheduledPlanSlug: null,
     scheduledChangeAt: null,

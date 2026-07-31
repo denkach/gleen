@@ -157,6 +157,16 @@ const invoicePaidGreatestFixSql =
         join(migrationsDirectory, invoicePaidGreatestFixMigrationName),
         'utf8',
       );
+const resilientInvoiceMigrationName = migrationNames.find((name) =>
+  name.endsWith('_den_20_resilient_subscription_invoice_projection.sql'),
+);
+const resilientInvoiceSql =
+  resilientInvoiceMigrationName === undefined
+    ? ''
+    : readFileSync(
+        join(migrationsDirectory, resilientInvoiceMigrationName),
+        'utf8',
+      );
 const invoicePaidForwardChainSql = migrationNames
   .filter((name) => name > invoicePaidMigrationName)
   .sort()
@@ -457,6 +467,28 @@ describe('DEN-20 invoice paid projection SQL correction', () => {
 
   it('does not schema-qualify parser-level COALESCE or GREATEST in DEN-20 forward migrations', () => {
     expect(den20QualifiedSpecialFormViolations).toEqual([]);
+  });
+});
+
+describe('DEN-20 resilient subscription invoice projection', () => {
+  it('stores invoice subscription identity and links invoice-first projections later', () => {
+    expect(resilientInvoiceMigrationName).toBeDefined();
+    expect(resilientInvoiceSql).toContain(
+      'add column if not exists stripe_subscription_id text',
+    );
+    expect(resilientInvoiceSql).not.toContain('into strict subscription');
+    expect(resilientInvoiceSql).toContain(
+      'new.stripe_subscription_id = subscription.stripe_subscription_id',
+    );
+    expect(resilientInvoiceSql).toContain(
+      'after insert or update of stripe_subscription_id',
+    );
+    expect(resilientInvoiceSql).toContain(
+      'revoke all on function public.apply_billing_invoice_projection',
+    );
+    expect(resilientInvoiceSql).toContain(
+      'grant execute on function public.apply_billing_invoice_projection',
+    );
   });
 });
 

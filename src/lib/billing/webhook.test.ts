@@ -226,6 +226,70 @@ describe('processStripeWebhook', () => {
     );
   });
 
+  describe('subscription cancellation projection', () => {
+    it('keeps an active subscription without cancellation unscheduled', async () => {
+      const deps = dependencies(
+        event('customer.subscription.updated', subscription()),
+      );
+
+      await processStripeWebhook('{}', 'sig_1', deps);
+
+      expect(deps.repository.applySubscription).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cancelAtPeriodEnd: false,
+          cancellationEffectiveAt: null,
+        }),
+      );
+    });
+
+    it('projects Stripe explicit future cancel_at as a scheduled cancellation', async () => {
+      const deps = dependencies(
+        event(
+          'customer.subscription.updated',
+          subscription({
+            cancel_at_period_end: false,
+            cancel_at: eventCreated + 2_678_400,
+          }),
+        ),
+      );
+
+      await processStripeWebhook('{}', 'sig_1', deps);
+
+      expect(deps.repository.applySubscription).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cancelAtPeriodEnd: true,
+          cancellationEffectiveAt: new Date(
+            (eventCreated + 2_678_400) * 1_000,
+          ).toISOString(),
+        }),
+      );
+    });
+
+    it('projects completed cancellation without marking it as scheduled', async () => {
+      const deps = dependencies(
+        event(
+          'customer.subscription.deleted',
+          subscription({
+            status: 'canceled',
+            ended_at: eventCreated + 60,
+            canceled_at: eventCreated + 30,
+          }),
+        ),
+      );
+
+      await processStripeWebhook('{}', 'sig_1', deps);
+
+      expect(deps.repository.applySubscription).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cancelAtPeriodEnd: false,
+          cancellationEffectiveAt: new Date(
+            (eventCreated + 60) * 1_000,
+          ).toISOString(),
+        }),
+      );
+    });
+  });
+
   it('classifies a verified malformed envelope separately from signature failure', async () => {
     const deps = dependencies({
       id: 'evt_1',
