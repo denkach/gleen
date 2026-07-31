@@ -35,9 +35,11 @@ const confirmationIntervalMs = 1_500;
 function CheckoutElements({
   presentation,
   prices,
+  customerEmail,
 }: Readonly<{
   presentation: CheckoutPresentation;
   prices: readonly PricePresentation[];
+  customerEmail: string;
 }>) {
   const result = useCheckoutElements();
   const [submitting, setSubmitting] = useState(false);
@@ -91,7 +93,7 @@ function CheckoutElements({
     setSubmitting(true);
     setConfirmationError(null);
     try {
-      const confirmation = await checkout.confirm();
+      const confirmation = await checkout.confirm({ email: customerEmail });
       if (mounted.current && confirmation.type === 'error') {
         setConfirmationError(confirmation.error.message);
       }
@@ -138,6 +140,7 @@ export function CheckoutExperience({
   presentation,
   prices,
   publishableKey,
+  customerEmail,
   sessionId,
   createCheckout,
   getConfirmation,
@@ -145,6 +148,7 @@ export function CheckoutExperience({
   presentation: CheckoutPresentation;
   prices: readonly PricePresentation[];
   publishableKey: string;
+  customerEmail: string;
   sessionId: string | null;
   createCheckout: (input: {
     plan: CheckoutPresentation['plan']['slug'];
@@ -299,7 +303,11 @@ export function CheckoutExperience({
         },
       }}
     >
-      <CheckoutElements presentation={presentation} prices={prices} />
+      <CheckoutElements
+        presentation={presentation}
+        prices={prices}
+        customerEmail={customerEmail}
+      />
     </CheckoutElementsProvider>
   );
 }
