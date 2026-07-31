@@ -219,6 +219,7 @@ export type BillingStripeClient = SubscriptionScheduleStripeClient &
                 >[];
               }>;
             }>)[];
+          has_more: boolean;
         }>
       >;
     }>;
@@ -253,7 +254,8 @@ type BillingActionsDependencies = Readonly<{
   stripe: BillingStripeClient;
   repository: BillingRepository;
   adminRepository: BillingActionAdminRepository;
-  appUrl: string;
+  appUrl: string | null;
+  resolvePlanChangeAppUrl?: () => Promise<string>;
   portalConfigurationId: string;
 }>;
 
@@ -303,12 +305,13 @@ const terminalSubscriptionStatuses = new Set<Stripe.Subscription.Status>([
 async function listNonTerminalSubscriptions(
   stripe: BillingStripeClient,
   customerId: string,
-): Promise<readonly OwnedSingleItemSubscription[]> {
+): Promise<readonly OwnedSingleItemSubscription[] | null> {
   const result = await stripe.subscriptions.list({
     customer: customerId,
     status: 'all',
     limit: 10,
   });
+  if (result.has_more) return null;
   return result.data
     .filter(
       (subscription) => !terminalSubscriptionStatuses.has(subscription.status),
@@ -320,19 +323,48 @@ async function listNonTerminalSubscriptions(
     }));
 }
 
+async function rejectExplicitlyExternalSchedule(
+  stripe: BillingStripeClient,
+  subscription: OwnedSingleItemSubscription,
+): Promise<void> {
+  if (subscription.schedule === null) return;
+  const scheduleId =
+    typeof subscription.schedule === 'string'
+      ? subscription.schedule
+      : subscription.schedule.id;
+  const schedule = await stripe.subscriptionSchedules.retrieve(scheduleId);
+  if (
+    schedule.metadata?.gleen_owner !== undefined &&
+    schedule.metadata.gleen_owner !== 'den-20'
+  ) {
+    throw new BillingActionPersistenceError();
+  }
+}
+
 export function createBillingActions(dependencies: BillingActionsDependencies) {
-  const checkoutReturnUrl = `${fixedAppUrl(
-    dependencies.appUrl,
-    '/app/subscription/checkout',
-  )}?session_id={CHECKOUT_SESSION_ID}`;
-  const portalReturnUrl = fixedAppUrl(
-    dependencies.appUrl,
-    '/app/subscription/portal',
-  );
-  const planChangeReturnUrl = fixedAppUrl(
-    dependencies.appUrl,
-    '/app/subscription',
-  );
+  function configuredAppUrl(): string {
+    if (dependencies.appUrl === null) throw new BillingActionPersistenceError();
+    return dependencies.appUrl;
+  }
+
+  function checkoutReturnUrl(): string {
+    return `${fixedAppUrl(
+      configuredAppUrl(),
+      '/app/subscription/checkout',
+    )}?session_id={CHECKOUT_SESSION_ID}`;
+  }
+
+  function portalReturnUrl(): string {
+    return fixedAppUrl(configuredAppUrl(), '/app/subscription/portal');
+  }
+
+  async function planChangeReturnUrl(): Promise<string> {
+    const appUrl =
+      dependencies.resolvePlanChangeAppUrl === undefined
+        ? configuredAppUrl()
+        : await dependencies.resolvePlanChangeAppUrl();
+    return fixedAppUrl(appUrl, '/app/subscription');
+  }
 
   return {
     async getPaymentMethodForUser(
@@ -439,6 +471,9 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
           dependencies.stripe,
           ownedCustomerId,
         );
+        if (subscriptions === null) {
+          return actionFailure('billing_unavailable');
+        }
         if (subscriptions.length > 0) {
           return actionFailure('subscription_already_exists');
         }
@@ -457,7 +492,7 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
           subscription_data: {
             metadata: { gleen_user_id: parsed.data.userId },
           },
-          return_url: checkoutReturnUrl,
+          return_url: checkoutReturnUrl(),
         });
         return {
           ok: true,
@@ -505,7 +540,10 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
       }
     },
 
-    async changePlanForUser(input: unknown): Promise<PlanChangeResult> {
+    async changePlanForUser(
+      input: unknown,
+      scope: 'all' | 'upgrade-only' = 'all',
+    ): Promise<PlanChangeResult> {
       const parsed = planChangeInputSchema.safeParse(input);
       if (!parsed.success) return actionFailure('invalid_request');
 
@@ -520,6 +558,12 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
           parsed.data.userId,
         );
 
+        const direction = classifyPlanChange(snapshot, parsed.data);
+        if (direction === 'unchanged') return actionFailure('invalid_request');
+        if (scope === 'upgrade-only' && direction !== 'upgrade') {
+          return actionFailure('invalid_request');
+        }
+
         const priceId =
           await dependencies.adminRepository.resolvePurchasablePrice(
             parsed.data.plan,
@@ -532,7 +576,7 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
           dependencies.stripe,
           ownedCustomerId,
         );
-        if (subscriptions.length !== 1) {
+        if (subscriptions === null || subscriptions.length !== 1) {
           return actionFailure('billing_unavailable');
         }
         const [subscription] = subscriptions;
@@ -544,10 +588,11 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
         }
         const [item] = subscription.items.data;
 
-        const direction = classifyPlanChange(snapshot, parsed.data);
-        if (direction === 'unchanged') return actionFailure('invalid_request');
-
         if (direction === 'downgrade') {
+          await rejectExplicitlyExternalSchedule(
+            dependencies.stripe,
+            subscription,
+          );
           const scheduled = await scheduleOwnedDowngrade({
             stripe: dependencies.stripe,
             subscription,
@@ -581,11 +626,12 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
           return actionFailure('billing_unavailable');
         }
 
+        const returnUrl = await planChangeReturnUrl();
         const session = await dependencies.stripe.billingPortal.sessions.create(
           {
             configuration: dependencies.portalConfigurationId,
             customer: ownedCustomerId,
-            return_url: planChangeReturnUrl,
+            return_url: returnUrl,
             flow_data: {
               type: 'subscription_update_confirm',
               subscription_update_confirm: {
@@ -594,7 +640,7 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
               },
               after_completion: {
                 type: 'redirect',
-                redirect: { return_url: planChangeReturnUrl },
+                redirect: { return_url: returnUrl },
               },
             },
           },
@@ -628,7 +674,7 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
           dependencies.stripe,
           ownedCustomerId,
         );
-        if (subscriptions.length !== 1) {
+        if (subscriptions === null || subscriptions.length !== 1) {
           return actionFailure('billing_unavailable');
         }
         const [subscription] = subscriptions;
@@ -661,7 +707,7 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
         const session = await dependencies.stripe.billingPortal.sessions.create(
           {
             customer: stripeCustomerIdSchema.parse(customerId),
-            return_url: portalReturnUrl,
+            return_url: portalReturnUrl(),
           },
         );
         return { ok: true, url: portalUrlSchema.parse(session.url) };
@@ -921,7 +967,8 @@ async function authenticatedContext() {
 
 function productionBillingActions(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
-  appUrl = validatePublicEnv(process.env).NEXT_PUBLIC_APP_URL,
+  appUrl: string | null = null,
+  resolvePlanChangeAppUrl?: () => Promise<string>,
 ) {
   return createBillingActions({
     stripe: createStripeClient(),
@@ -932,6 +979,7 @@ function productionBillingActions(
       createAdminSupabaseClient(),
     ),
     appUrl,
+    resolvePlanChangeAppUrl,
     portalConfigurationId: validateStripePortalEnv(process.env)
       .STRIPE_PORTAL_CONFIGURATION_ID,
   });
@@ -999,7 +1047,8 @@ export async function changePlan(
   if (!parsed.success) return actionFailure('invalid_request');
   return productionBillingActions(
     context.supabase,
-    await requestBillingAppUrl(),
+    null,
+    requestBillingAppUrl,
   ).changePlanForUser({
     userId: context.userId,
     ...parsed.data,
@@ -1023,7 +1072,19 @@ export async function cancelScheduledDowngrade(): Promise<CancelScheduledDowngra
 export async function createPlanChangePortalSession(
   input: CheckoutActionInput,
 ): Promise<PortalResult> {
-  const result = await changePlan(input);
+  'use server';
+  const context = await authenticatedContext();
+  if (context === null) return actionFailure('session_expired');
+  const parsed = checkoutActionInputSchema.safeParse(input);
+  if (!parsed.success) return actionFailure('invalid_request');
+  const result = await productionBillingActions(
+    context.supabase,
+    null,
+    requestBillingAppUrl,
+  ).changePlanForUser(
+    { userId: context.userId, ...parsed.data },
+    'upgrade-only',
+  );
   if (!result.ok) return result;
   return result.kind === 'upgrade'
     ? { ok: true, url: result.url }

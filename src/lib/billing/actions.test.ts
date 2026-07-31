@@ -5,6 +5,8 @@ import type { BillingSnapshot } from './domain';
 import type { BillingRepository } from './repository';
 
 const getUser = vi.hoisted(() => vi.fn());
+const productionStripe = vi.hoisted(() => vi.fn());
+const productionRepository = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(async () => ({
@@ -12,8 +14,19 @@ vi.mock('@/lib/supabase/server', () => ({
   })),
 }));
 
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminSupabaseClient: vi.fn(() => ({})),
+}));
+
+vi.mock('./stripe', () => ({ createStripeClient: productionStripe }));
+
+vi.mock('./supabase-repository', () => ({
+  createSupabaseBillingRepository: productionRepository,
+}));
+
 import {
   createBillingActions,
+  createPlanChangePortalSession,
   cancelScheduledDowngrade,
   changePlan,
   createCheckoutSession,
@@ -179,6 +192,55 @@ function subscriptionSchedule(
   } as unknown as Stripe.SubscriptionSchedule;
 }
 
+function scheduledDowngrade(): Stripe.SubscriptionSchedule {
+  return subscriptionSchedule({
+    metadata: {
+      gleen_owner: 'den-20',
+      gleen_subscription_id: 'sub_active',
+      gleen_target_plan: 'starter',
+      gleen_target_interval: 'month',
+      gleen_effective_at: '2026-08-01T00:00:00.000Z',
+      gleen_change_key:
+        'gleen-den20-update:sub_sched_owned:price_starter_month:1785542400',
+    },
+    phases: [
+      (subscriptionSchedule().phases[0] as Stripe.SubscriptionSchedule.Phase)!,
+      {
+        add_invoice_items: [],
+        application_fee_percent: null,
+        automatic_tax: undefined,
+        billing_cycle_anchor: null,
+        billing_thresholds: null,
+        collection_method: null,
+        currency: 'usd',
+        default_payment_method: null,
+        default_tax_rates: null,
+        description: null,
+        discounts: [],
+        end_date: periodEnd + 2678400,
+        invoice_settings: null,
+        items: [
+          {
+            billing_thresholds: null,
+            discounts: [],
+            metadata: null,
+            plan: 'price_starter_month',
+            price: { id: 'price_starter_month' },
+            quantity: 1,
+            tax_rates: null,
+          },
+        ],
+        metadata: null,
+        on_behalf_of: null,
+        proration_behavior: 'none',
+        start_date: periodEnd,
+        transfer_data: null,
+        trial_end: null,
+      },
+    ],
+  });
+}
+
 const nativeCustomCheckoutPayload = {
   mode: 'subscription',
   ui_mode: 'custom',
@@ -307,6 +369,7 @@ function createActions(
     repository?: BillingRepository;
     adminRepository?: BillingActionAdminRepository;
     stripe?: BillingStripeClient;
+    resolvePlanChangeAppUrl?: () => Promise<string>;
   } = {},
 ) {
   const stripe = overrides.stripe ?? createStripe();
@@ -321,6 +384,7 @@ function createActions(
       repository,
       adminRepository,
       appUrl: 'https://gleen.example/',
+      resolvePlanChangeAppUrl: overrides.resolvePlanChangeAppUrl,
       portalConfigurationId: 'bpc_test_prorated',
     }),
   };
@@ -494,6 +558,28 @@ describe('billing checkout actions', () => {
       { ok: false, code: 'session_expired' },
       { ok: false, code: 'session_expired' },
     ]);
+  });
+
+  it('rejects a compatibility-action downgrade before any Schedule mutation', async () => {
+    const stripe = createStripe();
+    getUser.mockResolvedValue({
+      data: { user: { id: 'u1', email: 'owner@example.test' } },
+    });
+    productionStripe.mockReturnValue(stripe);
+    productionRepository.mockReturnValue(
+      createRepository({
+        getOwnedSnapshot: vi.fn(async () => snapshot('prism-pro')),
+      }),
+    );
+    vi.stubEnv('STRIPE_PORTAL_CONFIGURATION_ID', 'bpc_test_prorated');
+
+    await expect(
+      createPlanChangePortalSession({ plan: 'starter', interval: 'month' }),
+    ).resolves.toEqual({ ok: false, code: 'invalid_request' });
+    expect(stripe.subscriptionSchedules.create).not.toHaveBeenCalled();
+    expect(stripe.subscriptionSchedules.update).not.toHaveBeenCalled();
+    expect(stripe.subscriptionSchedules.release).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
   });
 
   it('rejects an authenticated client attempt to substitute the resolved user ID', async () => {
@@ -758,9 +844,27 @@ describe('billing portal and CSV actions', () => {
 
   it('schedules a downgrade with only server-owned subscription and Price data', async () => {
     const stripe = createStripe();
-    vi.mocked(stripe.subscriptions.list).mockResolvedValue({
-      data: [activeSubscription()],
-    } as never);
+    const managedSchedule = scheduledDowngrade();
+    let isAttached = false;
+    vi.mocked(stripe.subscriptions.list).mockImplementation(
+      async () =>
+        ({
+          data: [
+            activeSubscription({
+              schedule: isAttached ? 'sub_sched_owned' : null,
+            }),
+          ],
+        }) as never,
+    );
+    vi.mocked(stripe.subscriptionSchedules.update).mockImplementation(
+      async () => {
+        isAttached = true;
+        return managedSchedule;
+      },
+    );
+    vi.mocked(stripe.subscriptionSchedules.retrieve).mockResolvedValue(
+      managedSchedule,
+    );
     const adminRepository = createAdminRepository({
       resolvePurchasablePrice: vi.fn(async () => 'price_starter_month'),
     });
@@ -811,6 +915,112 @@ describe('billing portal and CSV actions', () => {
           'gleen-den20-update:sub_sched_owned:price_starter_month:1785542400',
       }),
     );
+    expect(stripe.subscriptionSchedules.update).toHaveBeenCalledOnce();
+  });
+
+  it('schedules a downgrade without resolving a Portal return URL', async () => {
+    const stripe = createStripe();
+    vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+      data: [activeSubscription()],
+    } as never);
+    const resolvePlanChangeAppUrl = vi.fn(async () => {
+      throw new Error('return URL must not be read for a downgrade');
+    });
+    const { actions } = createActions({
+      stripe,
+      resolvePlanChangeAppUrl,
+      adminRepository: createAdminRepository({
+        resolvePurchasablePrice: vi.fn(async () => 'price_starter_month'),
+      }),
+      repository: createRepository({
+        getOwnedSnapshot: vi.fn(async () => snapshot('prism-pro')),
+      }),
+    });
+
+    await expect(
+      actions.changePlanForUser({
+        userId: 'u1',
+        plan: 'starter',
+        interval: 'month',
+      }),
+    ).resolves.toMatchObject({ ok: true, kind: 'downgrade' });
+    expect(resolvePlanChangeAppUrl).not.toHaveBeenCalled();
+  });
+
+  it('maps an upgrade return URL resolver failure to a closed error', async () => {
+    const stripe = createStripe();
+    vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+      data: [activeSubscription()],
+    } as never);
+    const { actions } = createActions({
+      stripe,
+      resolvePlanChangeAppUrl: async () => {
+        throw new Error('request headers unavailable');
+      },
+      repository: createRepository({
+        getOwnedSnapshot: vi.fn(async () => snapshot('starter')),
+      }),
+    });
+
+    await expect(
+      actions.changePlanForUser({
+        userId: 'u1',
+        plan: 'prism-pro',
+        interval: 'month',
+      }),
+    ).resolves.toEqual({ ok: false, code: 'billing_unavailable' });
+    expect(stripe.billingPortal.sessions.create).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when more subscription pages may contain another active subscription', async () => {
+    const stripe = createStripe();
+    vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+      data: [activeSubscription()],
+      has_more: true,
+    } as never);
+    const { actions } = createActions({
+      stripe,
+      repository: createRepository({
+        getOwnedSnapshot: vi.fn(async () => snapshot('starter')),
+      }),
+    });
+
+    await expect(
+      actions.changePlanForUser({
+        userId: 'u1',
+        plan: 'prism-pro',
+        interval: 'month',
+      }),
+    ).resolves.toEqual({ ok: false, code: 'billing_unavailable' });
+    expect(stripe.billingPortal.sessions.create).not.toHaveBeenCalled();
+    expect(stripe.subscriptionSchedules.create).not.toHaveBeenCalled();
+    expect(stripe.subscriptionSchedules.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a downgrade in the upgrade-only compatibility path before scheduling', async () => {
+    const stripe = createStripe();
+    vi.mocked(stripe.subscriptions.list).mockResolvedValue({
+      data: [activeSubscription()],
+    } as never);
+    const { actions } = createActions({
+      stripe,
+      adminRepository: createAdminRepository({
+        resolvePurchasablePrice: vi.fn(async () => 'price_starter_month'),
+      }),
+      repository: createRepository({
+        getOwnedSnapshot: vi.fn(async () => snapshot('prism-pro')),
+      }),
+    });
+
+    await expect(
+      actions.changePlanForUser(
+        { userId: 'u1', plan: 'starter', interval: 'month' },
+        'upgrade-only',
+      ),
+    ).resolves.toEqual({ ok: false, code: 'invalid_request' });
+    expect(stripe.subscriptionSchedules.create).not.toHaveBeenCalled();
+    expect(stripe.subscriptionSchedules.update).not.toHaveBeenCalled();
+    expect(stripe.subscriptionSchedules.release).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -1026,7 +1236,10 @@ describe('billing portal and CSV actions', () => {
           data: [activeSubscription({ schedule: 'sub_sched_external' })],
         } as never);
         vi.mocked(stripe.subscriptionSchedules.retrieve).mockResolvedValue(
-          subscriptionSchedule({ id: 'sub_sched_external' }),
+          subscriptionSchedule({
+            id: 'sub_sched_external',
+            metadata: { gleen_owner: 'another-service' },
+          }),
         );
         return createActions({
           stripe,
@@ -1048,6 +1261,7 @@ describe('billing portal and CSV actions', () => {
       }),
     ).resolves.toMatchObject({ ok: false });
     expect(stripe.billingPortal.sessions.create).not.toHaveBeenCalled();
+    expect(stripe.subscriptionSchedules.create).not.toHaveBeenCalled();
     expect(stripe.subscriptionSchedules.update).not.toHaveBeenCalled();
     expect(stripe.subscriptionSchedules.release).not.toHaveBeenCalled();
   });
