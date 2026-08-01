@@ -133,7 +133,7 @@ function dependencies(verifiedEvent: unknown): StripeWebhookDependencies & {
         retrieve: vi.fn(),
       },
       subscriptions: {
-        retrieve: vi.fn(),
+        retrieve: vi.fn().mockResolvedValue(subscription()),
       },
     },
     repository: {
@@ -317,6 +317,42 @@ describe('processStripeWebhook', () => {
       }),
     );
     expect(deps.repository.applyScheduledChange).not.toHaveBeenCalled();
+  });
+
+  it('refreshes the subscription before projecting a paid renewal invoice', async () => {
+    const boundary = eventCreated + 2_678_400;
+    const renewedSubscription = subscription({
+      items: {
+        data: [
+          {
+            price: { id: 'price_startermonth', object: 'price' },
+            current_period_start: boundary,
+            current_period_end: boundary + 2_678_400,
+          },
+        ],
+      },
+    });
+    const deps = dependencies(event('invoice.paid', invoice()));
+    vi.mocked(deps.stripe.subscriptions.retrieve).mockResolvedValue(
+      renewedSubscription,
+    );
+
+    await expect(processStripeWebhook('{}', 'sig_1', deps)).resolves.toEqual({
+      ok: true,
+      status: 'processed',
+    });
+    expect(deps.stripe.subscriptions.retrieve).toHaveBeenCalledWith('sub_1');
+    expect(deps.repository.applySubscription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'evt_1',
+        planSlug: 'starter',
+        currentPeriodStart: new Date(boundary * 1_000).toISOString(),
+      }),
+    );
+    expect(deps.repository.applyInvoice).toHaveBeenCalledOnce();
+    expect(
+      deps.repository.applySubscription.mock.invocationCallOrder[0],
+    ).toBeLessThan(deps.repository.applyInvoice.mock.invocationCallOrder[0]!);
   });
 
   it.each([
@@ -764,6 +800,19 @@ describe('processStripeWebhook', () => {
             interval: 'month',
           }
         : null,
+    );
+    vi.mocked(deps.stripe.subscriptions.retrieve).mockResolvedValue(
+      subscription({
+        items: {
+          data: [
+            {
+              price: { id: 'price_prismmonth', object: 'price' },
+              current_period_start: eventCreated,
+              current_period_end: eventCreated + 2_678_400,
+            },
+          ],
+        },
+      }),
     );
 
     await expect(processStripeWebhook('{}', 'sig_1', deps)).resolves.toEqual({

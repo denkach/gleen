@@ -555,6 +555,25 @@ async function refundedInvoiceProjection(
   });
 }
 
+async function refreshedSubscriptionProjection(
+  event: StripeWebhookEvent,
+  externalSubscriptionId: string,
+  dependencies: StripeWebhookDependencies,
+): Promise<SubscriptionProjection> {
+  let subscription: unknown;
+  try {
+    subscription = await dependencies.stripe.subscriptions.retrieve(
+      externalSubscriptionId,
+    );
+  } catch {
+    throw new StripeLookupFailure();
+  }
+  return subscriptionProjection(
+    { ...event, data: { object: subscription } },
+    dependencies.repository,
+  );
+}
+
 async function recordFailure(
   repository: BillingProjectionRepository,
   eventId: string,
@@ -629,18 +648,11 @@ export async function processStripeWebhook(
           break;
         }
         if (scheduleResult.kind === 'subscription-transition') {
-          let subscription: unknown;
-          try {
-            subscription = await dependencies.stripe.subscriptions.retrieve(
-              scheduleResult.externalSubscriptionId,
-            );
-          } catch {
-            throw new StripeLookupFailure();
-          }
           await dependencies.repository.applySubscription(
-            await subscriptionProjection(
-              { ...event, data: { object: subscription } },
-              dependencies.repository,
+            await refreshedSubscriptionProjection(
+              event,
+              scheduleResult.externalSubscriptionId,
+              dependencies,
             ),
           );
           break;
@@ -652,11 +664,26 @@ export async function processStripeWebhook(
       }
       case 'invoice.paid':
       case 'invoice.payment_failed':
-      case 'invoice.updated':
-        await dependencies.repository.applyInvoice(
-          await invoiceProjection(event, dependencies.repository),
+      case 'invoice.updated': {
+        const projection = await invoiceProjection(
+          event,
+          dependencies.repository,
         );
+        if (
+          event.type !== 'invoice.updated' &&
+          projection.externalSubscriptionId !== null
+        ) {
+          await dependencies.repository.applySubscription(
+            await refreshedSubscriptionProjection(
+              event,
+              projection.externalSubscriptionId,
+              dependencies,
+            ),
+          );
+        }
+        await dependencies.repository.applyInvoice(projection);
         break;
+      }
       case 'charge.refunded':
         await dependencies.repository.applyInvoice(
           await refundedInvoiceProjection(event, dependencies),
