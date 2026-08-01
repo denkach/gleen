@@ -18,6 +18,7 @@ function routeDependencies() {
         webhooks: { constructEvent },
         invoicePayments: { list: vi.fn() },
         invoices: { retrieve: vi.fn() },
+        subscriptions: { retrieve: vi.fn() },
       },
       repository: {
         claimWebhookEvent: vi.fn().mockResolvedValue('claimed'),

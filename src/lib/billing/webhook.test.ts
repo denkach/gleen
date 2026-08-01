@@ -132,6 +132,9 @@ function dependencies(verifiedEvent: unknown): StripeWebhookDependencies & {
       invoices: {
         retrieve: vi.fn(),
       },
+      subscriptions: {
+        retrieve: vi.fn(),
+      },
     },
     repository: {
       claimWebhookEvent: vi.fn().mockResolvedValue('claimed'),
@@ -269,6 +272,51 @@ describe('processStripeWebhook', () => {
       ).toISOString(),
     });
     expect(deps.repository.applySubscription).not.toHaveBeenCalled();
+  });
+
+  it('refreshes the subscription when an owned schedule enters its final phase', async () => {
+    const boundary = eventCreated + 2_678_400;
+    const transitionedSubscription = subscription({
+      items: {
+        data: [
+          {
+            price: { id: 'price_startermonth', object: 'price' },
+            current_period_start: boundary,
+            current_period_end: boundary + 2_678_400,
+          },
+        ],
+      },
+    });
+    const deps = dependencies(
+      event(
+        'subscription_schedule.updated',
+        schedule({
+          current_phase: {
+            start_date: boundary,
+            end_date: boundary + 2_678_400,
+          },
+        }),
+      ),
+    );
+    vi.mocked(deps.stripe.subscriptions.retrieve).mockResolvedValue(
+      transitionedSubscription,
+    );
+
+    await expect(processStripeWebhook('{}', 'sig_1', deps)).resolves.toEqual({
+      ok: true,
+      status: 'processed',
+    });
+    expect(deps.stripe.subscriptions.retrieve).toHaveBeenCalledWith('sub_1');
+    expect(deps.repository.applySubscription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'evt_1',
+        eventCreatedAt,
+        externalSubscriptionId: 'sub_1',
+        planSlug: 'starter',
+        currentPeriodStart: new Date(boundary * 1_000).toISOString(),
+      }),
+    );
+    expect(deps.repository.applyScheduledChange).not.toHaveBeenCalled();
   });
 
   it.each([

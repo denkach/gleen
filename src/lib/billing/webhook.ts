@@ -32,6 +32,9 @@ export type StripeWebhookClient = Readonly<{
   invoices: Readonly<{
     retrieve(invoiceId: string): PromiseLike<unknown>;
   }>;
+  subscriptions: Readonly<{
+    retrieve(subscriptionId: string): PromiseLike<unknown>;
+  }>;
 }>;
 
 export type StripeWebhookDependencies = Readonly<{
@@ -282,7 +285,7 @@ function scheduleSubscriptionId(
 
 function futureSchedulePhase(
   schedule: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+): Readonly<Record<string, unknown>> | null {
   if (!Array.isArray(schedule.phases) || schedule.phases.length !== 2) {
     throw new ControlledWebhookFailure('malformed_event');
   }
@@ -302,6 +305,7 @@ function futureSchedulePhase(
     if (matchingCurrentPhases.length !== 1) {
       throw new ControlledWebhookFailure('malformed_event');
     }
+    currentPhase = matchingCurrentPhases[0]!;
   } else if (status === 'not_started') {
     currentPhase = phases[0]!;
     boundary = integerValue(currentPhase.end_date);
@@ -312,16 +316,29 @@ function futureSchedulePhase(
   const futurePhases = phases.filter(
     (phase) => integerValue(phase.start_date) === boundary,
   );
+  if (futurePhases.length === 0 && currentPhase === phases.at(-1)) {
+    return null;
+  }
   if (futurePhases.length !== 1 || futurePhases[0] === currentPhase) {
     throw new ControlledWebhookFailure('malformed_event');
   }
   return futurePhases[0]!;
 }
 
+type ScheduleProjectionResult =
+  | Readonly<{
+      kind: 'scheduled-change';
+      projection: ScheduledChangeProjection;
+    }>
+  | Readonly<{
+      kind: 'subscription-transition';
+      externalSubscriptionId: string;
+    }>;
+
 async function scheduleProjection(
   event: StripeWebhookEvent,
   repository: BillingProjectionRepository,
-): Promise<ScheduledChangeProjection | null> {
+): Promise<ScheduleProjectionResult | null> {
   const schedule = objectValue(event.data.object);
   if (schedule.object !== 'subscription_schedule') {
     throw new ControlledWebhookFailure('malformed_event');
@@ -346,13 +363,16 @@ async function scheduleProjection(
       throw new ControlledWebhookFailure('malformed_event');
     }
     return {
-      eventId: event.id,
-      eventCreatedAt: eventTime(event),
-      userId,
-      externalSubscriptionId,
-      externalScheduleId,
-      scheduledPlanSlug: null,
-      scheduledChangeAt: null,
+      kind: 'scheduled-change',
+      projection: {
+        eventId: event.id,
+        eventCreatedAt: eventTime(event),
+        userId,
+        externalSubscriptionId,
+        externalScheduleId,
+        scheduledPlanSlug: null,
+        scheduledChangeAt: null,
+      },
     };
   }
   if (terminalScheduleEvents.has(event.type)) {
@@ -360,6 +380,9 @@ async function scheduleProjection(
   }
 
   const futurePhase = futureSchedulePhase(schedule);
+  if (futurePhase === null) {
+    return { kind: 'subscription-transition', externalSubscriptionId };
+  }
   if (!Array.isArray(futurePhase.items) || futurePhase.items.length !== 1) {
     throw new ControlledWebhookFailure('malformed_event');
   }
@@ -371,13 +394,16 @@ async function scheduleProjection(
   }
 
   return {
-    eventId: event.id,
-    eventCreatedAt: eventTime(event),
-    userId,
-    externalSubscriptionId,
-    externalScheduleId,
-    scheduledPlanSlug: price.planSlug,
-    scheduledChangeAt: timestamp(futurePhase.start_date),
+    kind: 'scheduled-change',
+    projection: {
+      eventId: event.id,
+      eventCreatedAt: eventTime(event),
+      userId,
+      externalSubscriptionId,
+      externalScheduleId,
+      scheduledPlanSlug: price.planSlug,
+      scheduledChangeAt: timestamp(futurePhase.start_date),
+    },
   };
 }
 
@@ -387,9 +413,7 @@ function invoicePriceId(invoice: Readonly<Record<string, unknown>>): string {
     throw new ControlledWebhookFailure('malformed_event');
   }
   const priceIds = new Set<string>();
-  const pricedLines: Array<
-    Readonly<{ priceId: string; amount: unknown }>
-  > = [];
+  const pricedLines: Array<Readonly<{ priceId: string; amount: unknown }>> = [];
   for (const value of lineData) {
     const line = objectValue(value);
     const pricingValue = line.pricing;
@@ -596,15 +620,34 @@ export async function processStripeWebhook(
       case 'subscription_schedule.completed':
       case 'subscription_schedule.released':
       case 'subscription_schedule.canceled': {
-        const projection = await scheduleProjection(
+        const scheduleResult = await scheduleProjection(
           event,
           dependencies.repository,
         );
-        if (projection === null) {
+        if (scheduleResult === null) {
           status = 'unsupported';
           break;
         }
-        await dependencies.repository.applyScheduledChange(projection);
+        if (scheduleResult.kind === 'subscription-transition') {
+          let subscription: unknown;
+          try {
+            subscription = await dependencies.stripe.subscriptions.retrieve(
+              scheduleResult.externalSubscriptionId,
+            );
+          } catch {
+            throw new StripeLookupFailure();
+          }
+          await dependencies.repository.applySubscription(
+            await subscriptionProjection(
+              { ...event, data: { object: subscription } },
+              dependencies.repository,
+            ),
+          );
+          break;
+        }
+        await dependencies.repository.applyScheduledChange(
+          scheduleResult.projection,
+        );
         break;
       }
       case 'invoice.paid':
