@@ -5,6 +5,38 @@ alter table public.billing_subscriptions
   ),
   add column scheduled_change_event_created_at timestamptz;
 
+alter table public.billing_subscriptions
+  add column scheduled_change_revision text
+  generated always as (
+    pg_catalog.md5(stripe_subscription_schedule_id)
+  ) stored;
+
+revoke all on table public.billing_subscriptions from anon;
+revoke select on table public.billing_subscriptions from authenticated;
+grant select (
+  id,
+  user_id,
+  customer_id,
+  plan_id,
+  stripe_subscription_id,
+  stripe_price_id,
+  billing_interval,
+  status,
+  current_period_start,
+  current_period_end,
+  trial_end,
+  cancel_at_period_end,
+  cancellation_effective_at,
+  scheduled_plan_id,
+  scheduled_change_at,
+  latest_stripe_event_created_at,
+  paid_through,
+  created_at,
+  updated_at,
+  scheduled_change_event_created_at,
+  scheduled_change_revision
+) on table public.billing_subscriptions to authenticated;
+
 create unique index billing_subscriptions_schedule_id_idx
   on public.billing_subscriptions(stripe_subscription_schedule_id)
   where stripe_subscription_schedule_id is not null;
@@ -254,9 +286,7 @@ select
   scheduled_plan.slug as scheduled_plan_slug,
   subscription.scheduled_change_at,
   subscription.paid_through,
-  pg_catalog.md5(
-    subscription.stripe_subscription_schedule_id
-  ) as scheduled_change_revision
+  subscription.scheduled_change_revision
 from public.billing_entitlement_periods as entitlement
 join public.billing_plans as plan on plan.id = entitlement.plan_id
 left join public.billing_subscriptions as subscription

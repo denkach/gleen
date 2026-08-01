@@ -190,6 +190,13 @@ const scheduledPlanChangeProjectionSql =
         'utf8',
       )
     : '';
+const scheduledPlanChangeProjectionMigrationName =
+  scheduledPlanChangeProjectionMigrationNames[0] ?? '';
+const scheduledPlanChangeForwardChainSql = migrationNames
+  .filter((name) => name >= scheduledPlanChangeProjectionMigrationName)
+  .sort()
+  .map((name) => readFileSync(join(migrationsDirectory, name), 'utf8'))
+  .join('\n');
 const invoicePaidForwardChainSql = migrationNames
   .filter((name) => name > invoicePaidMigrationName)
   .sort()
@@ -574,23 +581,83 @@ describe('DEN-20 scheduled plan change projection', () => {
     );
   });
 
-  it('exposes only an opaque schedule revision through the owner-scoped security-invoker overview', () => {
+  it('stores the opaque schedule revision and exposes it without reading the raw schedule id through the view', () => {
     const replacementStart = scheduledPlanChangeProjectionSql.indexOf(
       'create or replace view public.billing_subscription_overview',
     );
     const overview = scheduledPlanChangeProjectionSql.slice(replacementStart);
 
+    expect(scheduledPlanChangeProjectionSql).toMatch(
+      /add column scheduled_change_revision text\s+generated always as \(\s*pg_catalog\.md5\(stripe_subscription_schedule_id\)\s*\) stored;/,
+    );
     expect(replacementStart).toBeGreaterThanOrEqual(0);
     expect(overview).toMatch(
       /create or replace view public\.billing_subscription_overview\s+with \(security_invoker = true\)/,
     );
     expect(overview).toMatch(
-      /subscription\.scheduled_change_at,\s+subscription\.paid_through,\s+pg_catalog\.md5\(\s*subscription\.stripe_subscription_schedule_id\s*\) as scheduled_change_revision/,
+      /subscription\.scheduled_change_at,\s+subscription\.paid_through,\s+subscription\.scheduled_change_revision/,
     );
-    expect(overview).not.toMatch(
-      /subscription\.stripe_subscription_schedule_id\s*(?:,|as\s+stripe_subscription_schedule_id)/,
+    expect(overview).not.toContain('stripe_subscription_schedule_id');
+  });
+
+  it('replaces authenticated table select with an exact safe-column grant', () => {
+    const normalizedSql = normalizeSqlForAclContract(
+      scheduledPlanChangeProjectionSql,
     );
-    expect(overview).not.toMatch(/as\s+stripe_subscription_schedule_id/);
+    const expectedSafeColumns = [
+      'id',
+      'user_id',
+      'customer_id',
+      'plan_id',
+      'stripe_subscription_id',
+      'stripe_price_id',
+      'billing_interval',
+      'status',
+      'current_period_start',
+      'current_period_end',
+      'trial_end',
+      'cancel_at_period_end',
+      'cancellation_effective_at',
+      'scheduled_plan_id',
+      'scheduled_change_at',
+      'latest_stripe_event_created_at',
+      'paid_through',
+      'created_at',
+      'updated_at',
+      'scheduled_change_event_created_at',
+      'scheduled_change_revision',
+    ];
+    const columnGrant = normalizedSql.match(
+      /grant select \(([^)]+)\) on table public\.billing_subscriptions to authenticated;/,
+    );
+    const grantedColumns =
+      columnGrant?.[1]?.split(',').map((column) => column.trim()) ?? [];
+
+    expect(normalizedSql).toContain(
+      'revoke all on table public.billing_subscriptions from anon;',
+    );
+    expect(normalizedSql).toContain(
+      'revoke select on table public.billing_subscriptions from authenticated;',
+    );
+    expect(grantedColumns).toEqual(expectedSafeColumns);
+    expect(grantedColumns).not.toContain('stripe_subscription_schedule_id');
+    expect(normalizedSql).not.toContain(
+      'revoke all on table public.billing_subscriptions from service_role;',
+    );
+  });
+
+  it('does not restore authenticated table-level select after the safe-column grant', () => {
+    const normalizedForwardChain = normalizeSqlForAclContract(
+      scheduledPlanChangeForwardChainSql,
+    );
+    const revokeIndex = normalizedForwardChain.indexOf(
+      'revoke select on table public.billing_subscriptions from authenticated;',
+    );
+
+    expect(revokeIndex).toBeGreaterThanOrEqual(0);
+    expect(normalizedForwardChain.slice(revokeIndex)).not.toMatch(
+      /grant select on (?:table )?public\.billing_subscriptions to authenticated;/,
+    );
   });
 
   it('preserves a pending schedule from ordinary subscription projections until its boundary', () => {
@@ -708,7 +775,10 @@ describe('DEN-20 scheduled plan change projection', () => {
       'grant execute on function public.apply_billing_schedule_projection_service_role(',
     );
     expect(scheduledPlanChangeProjectionSql).not.toMatch(
-      /grant\s+(?:select|insert|update|delete|all)[\s\S]*to\s+(?:anon|authenticated)/i,
+      /grant\s+(?:insert|update|delete|all)[\s\S]*to\s+(?:anon|authenticated)/i,
+    );
+    expect(scheduledPlanChangeProjectionSql).not.toMatch(
+      /grant\s+select(?:\s*\([^;]+\))?\s+on\s+table\s+public\.billing_subscriptions\s+to\s+anon/i,
     );
     expect(scheduledPlanChangeProjectionSql).not.toContain('user_metadata');
     expect(scheduledPlanChangeProjectionSql).not.toMatch(
