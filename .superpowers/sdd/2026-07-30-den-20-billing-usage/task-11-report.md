@@ -301,3 +301,49 @@ passed 3 of 3.
 Repository-wide `npm run format:check` still reports only the same three
 pre-existing untouched prototype/spec/plan files documented above. They remain
 outside the Task 11 review-fix diff.
+
+## Staging Acceptance Addendum — 2026-08-01
+
+The exact DEN-20 staging alias was verified at
+`https://gleen-staging-denkach-denisito-projects.vercel.app` against Stripe
+Sandbox and staging Supabase. Acceptance used separate accounts for ordinary
+downgrade/cancellation, Starter-to-Pro upgrade, and Test Clock renewal.
+
+Live acceptance found and fixed three integration defects:
+
+- Portal configuration products were returned as expandable Stripe IDs, so
+  the server now retrieves `features.subscription_update.products` expanded.
+- A prorated upgrade invoice contains the old-plan credit and new-plan charge.
+  Projection now selects the single positive Price line while still rejecting
+  ambiguous multi-price invoices.
+- Stripe renewal and final schedule events are authoritative transition
+  boundaries. The webhook now refreshes the Subscription for a final schedule
+  phase and before projecting paid or failed renewal invoices.
+
+Observed staging outcomes:
+
+- Prism Pro to Starter remained Pro until the effective date, exposed the
+  scheduled state, and could be canceled without an immediate invoice.
+- Starter to Prism Pro charged only the prorated difference (`$29.99`) and
+  projected separate paid Starter (`$19.00`) and Pro-difference invoices.
+- The isolated Test Clock moved the Subscription to Starter, cleared the
+  schedule, processed every transition webhook once, and projected two
+  consecutive paid Starter renewals (`$19.00` each). The subscription row is
+  active Starter for the simulated October-to-November period.
+- The Test Clock UI overview intentionally remains on the real-time August Pro
+  entitlement because PostgreSQL `now()` does not advance with Stripe's clock.
+  Direct subscription, webhook, and invoice projections were used for this
+  artificial boundary assertion; production wall-clock time has no mismatch.
+
+Final verification after the fixes:
+
+- ESLint: pass.
+- TypeScript: pass.
+- Vitest: 146 files and 1,338 tests passed.
+- Production build: pass with non-secret public placeholder variables.
+- Playwright: 185 tests passed, including billing desktop, 412 px Pixel 7,
+  320 px overflow, keyboard, mobile focus containment, and reduced motion.
+- `git diff --check`: pass.
+
+Repository-wide Prettier remains red only for four pre-existing untouched
+files: the approved billing prototype and three DEN-20 plan/spec documents.
