@@ -2,15 +2,24 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+const migrationDirectory = join(process.cwd(), 'supabase', 'migrations');
+const uniqueMigrationName = (suffix: string) => {
+  const matches = readdirSync(migrationDirectory).filter((name) =>
+    name.endsWith(suffix),
+  );
+  if (matches.length !== 1) {
+    throw new Error(
+      `Expected exactly one migration ending with ${suffix}, found ${matches.length}`,
+    );
+  }
+  return matches[0]!;
+};
 const migrationPath = join(
-  process.cwd(),
-  'supabase',
-  'migrations',
-  '20260724123008_den_19_history_search.sql',
+  migrationDirectory,
+  uniqueMigrationName('_den_19_history_search.sql'),
 );
 const sql = readFileSync(migrationPath, 'utf8');
 const normalizedSql = sql.replace(/\s+/g, ' ').trim();
-const migrationDirectory = join(process.cwd(), 'supabase', 'migrations');
 
 describe('DEN-19 History database contract', () => {
   it('defines the secure indexed History read model', () => {
@@ -61,11 +70,7 @@ describe('DEN-19 History database contract', () => {
   });
 
   it('appends the persisted summary preset in a forward-compatible view migration', () => {
-    const forwardMigration = readdirSync(migrationDirectory).find((name) =>
-      name.endsWith('_den_19_history_preset.sql'),
-    );
-    expect(forwardMigration).toBeDefined();
-    if (!forwardMigration) return;
+    const forwardMigration = uniqueMigrationName('_den_19_history_preset.sql');
 
     const forwardSql = readFileSync(
       join(migrationDirectory, forwardMigration),

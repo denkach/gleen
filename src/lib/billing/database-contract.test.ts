@@ -4,54 +4,56 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = join(
-  process.cwd(),
-  'supabase',
-  'migrations',
-  '20260729234541_den_20_billing_usage.sql',
-);
+const migrationsDirectory = join(process.cwd(), 'supabase', 'migrations');
+const migrationNames = readdirSync(migrationsDirectory);
+const uniqueMigrationName = (suffix: string) => {
+  const matches = migrationNames.filter((name) => name.endsWith(suffix));
+  if (matches.length !== 1) {
+    throw new Error(
+      `Expected exactly one migration ending with ${suffix}, found ${matches.length}`,
+    );
+  }
+  return matches[0]!;
+};
+const migrationName = uniqueMigrationName('_den_20_billing_usage.sql');
+const migrationPath = join(migrationsDirectory, migrationName);
 
 const sql = readFileSync(migrationPath, 'utf8');
 
-const runtimeFixMigrationName =
-  '20260730004621_den_20_reservation_conflict_runtime_fix.sql';
+const runtimeFixMigrationName = uniqueMigrationName(
+  '_den_20_reservation_conflict_runtime_fix.sql',
+);
 const runtimeFixMigrationPath = join(
-  process.cwd(),
-  'supabase',
-  'migrations',
+  migrationsDirectory,
   runtimeFixMigrationName,
 );
 const runtimeFixSql = readFileSync(runtimeFixMigrationPath, 'utf8');
+const repositoryBoundaryMigrationName = uniqueMigrationName(
+  '_den_20_billing_repository_boundaries.sql',
+);
 const repositoryBoundaryMigrationPath = join(
-  process.cwd(),
-  'supabase',
-  'migrations',
-  '20260730015211_den_20_billing_repository_boundaries.sql',
+  migrationsDirectory,
+  repositoryBoundaryMigrationName,
 );
 const repositoryBoundarySql = readFileSync(
   repositoryBoundaryMigrationPath,
   'utf8',
 );
-const viewPrivilegeMigrationName =
-  '20260730022802_den_20_billing_view_privilege_hardening.sql';
+const viewPrivilegeMigrationName = uniqueMigrationName(
+  '_den_20_billing_view_privilege_hardening.sql',
+);
 const viewPrivilegeMigrationPath = join(
-  process.cwd(),
-  'supabase',
-  'migrations',
+  migrationsDirectory,
   viewPrivilegeMigrationName,
 );
 const viewPrivilegeSql = readFileSync(viewPrivilegeMigrationPath, 'utf8');
+const usageLabelsMigrationName = uniqueMigrationName(
+  '_den_20_billing_usage_labels.sql',
+);
 const usageLabelsSql = readFileSync(
-  join(
-    process.cwd(),
-    'supabase',
-    'migrations',
-    '20260730041101_den_20_billing_usage_labels.sql',
-  ),
+  join(migrationsDirectory, usageLabelsMigrationName),
   'utf8',
 );
-const migrationsDirectory = join(process.cwd(), 'supabase', 'migrations');
-const migrationNames = readdirSync(migrationsDirectory);
 const usageViewAclCorrectionMigrationName = migrationNames.find((name) =>
   name.endsWith('_den_20_fix_billing_usage_view_privileges.sql'),
 );
@@ -141,8 +143,9 @@ const secretKeyRpcCompatibilitySql =
         join(migrationsDirectory, secretKeyRpcCompatibilityMigrationName),
         'utf8',
       );
-const invoicePaidMigrationName =
-  '20260730031822_den_20_invoice_paid_projection.sql';
+const invoicePaidMigrationName = uniqueMigrationName(
+  '_den_20_invoice_paid_projection.sql',
+);
 const invoicePaidSql = readFileSync(
   join(migrationsDirectory, invoicePaidMigrationName),
   'utf8',
@@ -332,9 +335,7 @@ describe('DEN-20 billing and usage migration', () => {
       'the applied DEN-20 migration must remain byte-for-byte immutable',
     ).toBe('5c97039a521468227f1480a40f3e41f443784e4de0bb1985260eeff4b286d40b');
     expect(
-      runtimeFixMigrationName.localeCompare(
-        '20260729234541_den_20_billing_usage.sql',
-      ),
+      runtimeFixMigrationName.localeCompare(migrationName),
     ).toBeGreaterThan(0);
   });
 
@@ -366,9 +367,7 @@ describe('DEN-20 billing repository database boundaries', () => {
       'the staged Task 4 migration must remain byte-for-byte immutable',
     ).toBe('40522551b0158c68c0a8166f1e58b6a9cc27bb8922d73c250702c48653c8a1c2');
     expect(
-      viewPrivilegeMigrationName.localeCompare(
-        '20260730015211_den_20_billing_repository_boundaries.sql',
-      ),
+      viewPrivilegeMigrationName.localeCompare(repositoryBoundaryMigrationName),
     ).toBeGreaterThan(0);
   });
 
@@ -873,8 +872,8 @@ describe('DEN-20 billing view privilege hardening', () => {
       'the applied usage-label migration must remain byte-for-byte immutable',
     ).toBe('6b19284c6f028d67b83ffc13ad97a08a6ef38c9a4344d8f1c867319c4cb07a01');
     expect(replacementAclViolations).toEqual([
-      '20260730041101_den_20_billing_usage_labels.sql:billing_usage_summary',
-      '20260730041101_den_20_billing_usage_labels.sql:billing_usage_activity',
+      `${usageLabelsMigrationName}:billing_usage_summary`,
+      `${usageLabelsMigrationName}:billing_usage_activity`,
     ]);
   });
 
@@ -882,7 +881,7 @@ describe('DEN-20 billing view privilege hardening', () => {
     expect(usageViewAclCorrectionMigrationName).toBeDefined();
     expect(
       usageViewAclCorrectionMigrationName?.localeCompare(
-        '20260730041101_den_20_billing_usage_labels.sql',
+        usageLabelsMigrationName,
       ),
     ).toBeGreaterThan(0);
 
