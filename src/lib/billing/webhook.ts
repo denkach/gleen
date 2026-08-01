@@ -98,6 +98,13 @@ function integerValue(value: unknown): number {
   return value as number;
 }
 
+function signedIntegerValue(value: unknown): number {
+  if (!Number.isSafeInteger(value)) {
+    throw new ControlledWebhookFailure('malformed_event');
+  }
+  return value as number;
+}
+
 function nullableInteger(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   return integerValue(value);
@@ -380,18 +387,30 @@ function invoicePriceId(invoice: Readonly<Record<string, unknown>>): string {
     throw new ControlledWebhookFailure('malformed_event');
   }
   const priceIds = new Set<string>();
+  const pricedLines: Array<
+    Readonly<{ priceId: string; amount: unknown }>
+  > = [];
   for (const value of lineData) {
-    const pricingValue = objectValue(value).pricing;
+    const line = objectValue(value);
+    const pricingValue = line.pricing;
     if (pricingValue === null || pricingValue === undefined) continue;
     const pricing = objectValue(pricingValue);
     if (pricing.type !== 'price_details') continue;
     const details = objectValue(pricing.price_details);
-    priceIds.add(stripeId(details.price, 'price_', 'price'));
+    const priceId = stripeId(details.price, 'price_', 'price');
+    priceIds.add(priceId);
+    pricedLines.push({ priceId, amount: line.amount });
   }
-  if (priceIds.size !== 1) {
-    throw new ControlledWebhookFailure('malformed_event');
-  }
-  return [...priceIds][0]!;
+  if (priceIds.size === 1) return [...priceIds][0]!;
+
+  const positivePriceIds = new Set(
+    pricedLines
+      .filter(({ amount }) => signedIntegerValue(amount) > 0)
+      .map(({ priceId }) => priceId),
+  );
+  if (positivePriceIds.size === 1) return [...positivePriceIds][0]!;
+
+  throw new ControlledWebhookFailure('malformed_event');
 }
 
 function invoiceSubscriptionId(

@@ -680,6 +680,60 @@ describe('processStripeWebhook', () => {
     expect(deps.repository.applyInvoice).toHaveBeenCalledOnce();
   });
 
+  it('projects a prorated upgrade from its single positive Price line', async () => {
+    const deps = dependencies(
+      event(
+        'invoice.paid',
+        invoice({
+          amount_due: 2_999,
+          amount_paid: 2_999,
+          lines: {
+            data: [
+              {
+                amount: -1_900,
+                pricing: {
+                  type: 'price_details',
+                  price_details: { price: 'price_startermonth' },
+                },
+              },
+              {
+                amount: 4_899,
+                pricing: {
+                  type: 'price_details',
+                  price_details: { price: 'price_prismmonth' },
+                },
+              },
+            ],
+          },
+        }),
+      ),
+    );
+    deps.repository.resolveWebhookPrice.mockImplementation(async (priceId) =>
+      priceId === 'price_prismmonth'
+        ? {
+            stripePriceId: priceId,
+            planSlug: 'prism-pro',
+            interval: 'month',
+          }
+        : null,
+    );
+
+    await expect(processStripeWebhook('{}', 'sig_1', deps)).resolves.toEqual({
+      ok: true,
+      status: 'processed',
+    });
+    expect(deps.repository.resolveWebhookPrice).toHaveBeenCalledWith(
+      'price_prismmonth',
+    );
+    expect(deps.repository.applyInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        planSlug: 'prism-pro',
+        amountDueMinor: 2_999,
+        amountPaidMinor: 2_999,
+      }),
+    );
+  });
+
   it('resolves a Clover charge refund through Invoice Payments and maps only controlled invoice fields', async () => {
     const deps = dependencies(
       event('charge.refunded', {
