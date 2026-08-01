@@ -821,6 +821,7 @@ describe('billing portal and CSV actions', () => {
     });
     expect(stripe.billingPortal.configurations.retrieve).toHaveBeenCalledWith(
       'bpc_test_prorated',
+      { expand: ['features.subscription_update.products'] },
     );
     expect(stripe.billingPortal.sessions.create).toHaveBeenCalledWith({
       configuration: 'bpc_test_prorated',

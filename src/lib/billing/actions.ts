@@ -187,6 +187,7 @@ export type BillingStripeClient = SubscriptionScheduleStripeClient &
       configurations: Readonly<{
         retrieve(
           configurationId: string,
+          params: Stripe.BillingPortal.ConfigurationRetrieveParams,
         ): PromiseLike<Pick<Stripe.BillingPortal.Configuration, 'features'>>;
       }>;
       sessions: Readonly<{
@@ -614,6 +615,7 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
         const configuration =
           await dependencies.stripe.billingPortal.configurations.retrieve(
             dependencies.portalConfigurationId,
+            { expand: ['features.subscription_update.products'] },
           );
         const update = configuration.features.subscription_update;
         const allowedPrices =
