@@ -54,6 +54,11 @@ function invoice(overrides = {}) {
     lines: {
       data: [
         {
+          amount: 1_900,
+          period: {
+            start: eventCreated,
+            end: eventCreated + 2_678_400,
+          },
           pricing: {
             type: 'price_details',
             price_details: { price: 'price_startermonth' },
@@ -67,6 +72,8 @@ function invoice(overrides = {}) {
     currency: 'usd',
     status: 'paid',
     created: eventCreated,
+    period_start: eventCreated,
+    period_end: eventCreated + 2_678_400,
     due_date: null,
     status_transitions: { paid_at: eventCreated + 60 },
     hosted_invoice_url: 'https://invoice.stripe.test/in_1',
@@ -205,7 +212,7 @@ describe('processStripeWebhook', () => {
     const deps = dependencies(
       event('subscription_schedule.updated', schedule()),
     );
-    deps.repository.claimWebhookEvent.mockResolvedValue('duplicate');
+    deps.repository.claimWebhookEvent.mockResolvedValue('processed');
 
     await expect(processStripeWebhook('{}', 'sig_1', deps)).resolves.toEqual({
       ok: true,
@@ -215,6 +222,22 @@ describe('processStripeWebhook', () => {
     expect(deps.repository.applyScheduledChange).not.toHaveBeenCalled();
     expect(deps.repository.applyInvoice).not.toHaveBeenCalled();
     expect(deps.repository.markWebhookProcessed).not.toHaveBeenCalled();
+  });
+
+  it('asks Stripe to retry while another worker still owns the webhook lease', async () => {
+    const deps = dependencies(
+      event('subscription_schedule.updated', schedule()),
+    );
+    deps.repository.claimWebhookEvent.mockResolvedValue('in_progress');
+
+    await expect(processStripeWebhook('{}', 'sig_1', deps)).resolves.toEqual({
+      ok: false,
+      code: 'repository_failure',
+      retryable: true,
+    });
+    expect(deps.repository.applySubscription).not.toHaveBeenCalled();
+    expect(deps.repository.markWebhookProcessed).not.toHaveBeenCalled();
+    expect(deps.repository.markWebhookFailed).not.toHaveBeenCalled();
   });
 
   it('passes event creation time so an older subscription update cannot overwrite a newer projection', async () => {
@@ -312,6 +335,7 @@ describe('processStripeWebhook', () => {
         eventId: 'evt_1',
         eventCreatedAt,
         externalSubscriptionId: 'sub_1',
+        externalPriceId: 'price_startermonth',
         planSlug: 'starter',
         currentPeriodStart: new Date(boundary * 1_000).toISOString(),
       }),
@@ -332,7 +356,28 @@ describe('processStripeWebhook', () => {
         ],
       },
     });
-    const deps = dependencies(event('invoice.paid', invoice()));
+    const deps = dependencies(
+      event(
+        'invoice.paid',
+        invoice({
+          lines: {
+            data: [
+              {
+                amount: 1_900,
+                period: {
+                  start: boundary,
+                  end: boundary + 2_678_400,
+                },
+                pricing: {
+                  type: 'price_details',
+                  price_details: { price: 'price_startermonth' },
+                },
+              },
+            ],
+          },
+        }),
+      ),
+    );
     vi.mocked(deps.stripe.subscriptions.retrieve).mockResolvedValue(
       renewedSubscription,
     );
@@ -353,6 +398,38 @@ describe('processStripeWebhook', () => {
     expect(
       deps.repository.applySubscription.mock.invocationCallOrder[0],
     ).toBeLessThan(deps.repository.applyInvoice.mock.invocationCallOrder[0]!);
+  });
+
+  it('records a delayed paid invoice without advancing the current entitlement', async () => {
+    const nextPeriodStart = eventCreated + 2_678_400;
+    const deps = dependencies(event('invoice.paid', invoice()));
+    vi.mocked(deps.stripe.subscriptions.retrieve).mockResolvedValue(
+      subscription({
+        items: {
+          data: [
+            {
+              price: { id: 'price_startermonth', object: 'price' },
+              current_period_start: nextPeriodStart,
+              current_period_end: nextPeriodStart + 2_678_400,
+            },
+          ],
+        },
+      }),
+    );
+
+    await expect(processStripeWebhook('{}', 'sig_1', deps)).resolves.toEqual({
+      ok: true,
+      status: 'processed',
+    });
+    expect(deps.repository.applySubscription).not.toHaveBeenCalled();
+    expect(deps.repository.applyInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        periodStart: eventCreatedAt,
+        periodEnd: '2026-08-30T00:00:00.000Z',
+        status: 'paid',
+        advancePaidThrough: false,
+      }),
+    );
   });
 
   it.each([
@@ -565,6 +642,21 @@ describe('processStripeWebhook', () => {
     );
   });
 
+  it('does not grant paid-through access from active subscription state alone', async () => {
+    const deps = dependencies(
+      event(
+        'customer.subscription.updated',
+        subscription({ status: 'active' }),
+      ),
+    );
+
+    await processStripeWebhook('{}', 'sig_1', deps);
+
+    expect(deps.repository.applySubscription).toHaveBeenCalledWith(
+      expect.objectContaining({ paidThrough: null }),
+    );
+  });
+
   describe('subscription cancellation projection', () => {
     it('keeps an active subscription without cancellation unscheduled', async () => {
       const deps = dependencies(
@@ -712,6 +804,7 @@ describe('processStripeWebhook', () => {
         userId,
         externalInvoiceId: 'in_1',
         externalSubscriptionId: 'sub_1',
+        externalPriceId: 'price_startermonth',
         number: 'INV-1',
         planSlug: 'starter',
         interval: 'month',
@@ -722,6 +815,8 @@ describe('processStripeWebhook', () => {
         createdAt: eventCreatedAt,
         dueAt: null,
         paidAt: paidAt === null ? null : new Date(paidAt * 1_000).toISOString(),
+        periodStart: eventCreatedAt,
+        periodEnd: '2026-08-30T00:00:00.000Z',
         hostedUrl: 'https://invoice.stripe.test/in_1',
         pdfUrl: 'https://invoice.stripe.test/in_1.pdf',
         refundStatus: 'none',
@@ -746,6 +841,11 @@ describe('processStripeWebhook', () => {
             data: [
               { pricing: null },
               {
+                amount: 1_900,
+                period: {
+                  start: eventCreated,
+                  end: eventCreated + 2_678_400,
+                },
                 pricing: {
                   type: 'price_details',
                   price_details: { price: 'price_startermonth' },
@@ -775,6 +875,10 @@ describe('processStripeWebhook', () => {
             data: [
               {
                 amount: -1_900,
+                period: {
+                  start: eventCreated,
+                  end: eventCreated + 2_678_400,
+                },
                 pricing: {
                   type: 'price_details',
                   price_details: { price: 'price_startermonth' },
@@ -782,6 +886,10 @@ describe('processStripeWebhook', () => {
               },
               {
                 amount: 4_899,
+                period: {
+                  start: eventCreated,
+                  end: eventCreated + 2_678_400,
+                },
                 pricing: {
                   type: 'price_details',
                   price_details: { price: 'price_prismmonth' },

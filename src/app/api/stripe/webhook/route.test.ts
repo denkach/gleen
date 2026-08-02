@@ -56,6 +56,27 @@ describe('Stripe webhook route', () => {
     );
   });
 
+  it('returns 503 while another worker owns the webhook lease', async () => {
+    const { dependencies } = routeDependencies();
+    dependencies.repository.claimWebhookEvent.mockResolvedValue('in_progress');
+    const POST = createStripeWebhookPost(() => dependencies);
+
+    const response = await POST(
+      new Request('http://localhost/api/stripe/webhook', {
+        method: 'POST',
+        headers: { 'stripe-signature': 'sig' },
+        body: '{}',
+      }),
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      code: 'repository_failure',
+    });
+    expect(dependencies.repository.markWebhookFailed).not.toHaveBeenCalled();
+  });
+
   it.each([
     [null, false, 400],
     ['sig', true, 400],

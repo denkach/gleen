@@ -223,9 +223,9 @@ async function subscriptionProjection(
         nullableTimestamp(subscription.canceled_at) ??
         currentPeriodEnd)
       : null;
-  const paidThrough = ['trialing', 'active', 'past_due'].includes(status.data)
-    ? currentPeriodEnd
-    : null;
+  // Paid invoices, not optimistic subscription state, grant paid access.
+  // Trials are the only subscription state that creates access directly.
+  const paidThrough = status.data === 'trialing' ? currentPeriodEnd : null;
 
   return {
     eventId: event.id,
@@ -407,13 +407,22 @@ async function scheduleProjection(
   };
 }
 
-function invoicePriceId(invoice: Readonly<Record<string, unknown>>): string {
+function invoiceServiceLine(
+  invoice: Readonly<Record<string, unknown>>,
+): Readonly<{ priceId: string; periodStart: string; periodEnd: string }> {
   const lineData = objectValue(invoice.lines).data;
   if (!Array.isArray(lineData)) {
     throw new ControlledWebhookFailure('malformed_event');
   }
   const priceIds = new Set<string>();
-  const pricedLines: Array<Readonly<{ priceId: string; amount: unknown }>> = [];
+  const pricedLines: Array<
+    Readonly<{
+      priceId: string;
+      amount: number;
+      periodStart: string;
+      periodEnd: string;
+    }>
+  > = [];
   for (const value of lineData) {
     const line = objectValue(value);
     const pricingValue = line.pricing;
@@ -422,19 +431,46 @@ function invoicePriceId(invoice: Readonly<Record<string, unknown>>): string {
     if (pricing.type !== 'price_details') continue;
     const details = objectValue(pricing.price_details);
     const priceId = stripeId(details.price, 'price_', 'price');
+    const period = objectValue(line.period);
     priceIds.add(priceId);
-    pricedLines.push({ priceId, amount: line.amount });
+    pricedLines.push({
+      priceId,
+      amount: signedIntegerValue(line.amount),
+      periodStart: timestamp(period.start),
+      periodEnd: timestamp(period.end),
+    });
   }
-  if (priceIds.size === 1) return [...priceIds][0]!;
 
   const positivePriceIds = new Set(
     pricedLines
-      .filter(({ amount }) => signedIntegerValue(amount) > 0)
+      .filter(({ amount }) => amount > 0)
       .map(({ priceId }) => priceId),
   );
-  if (positivePriceIds.size === 1) return [...positivePriceIds][0]!;
-
-  throw new ControlledWebhookFailure('malformed_event');
+  const selectedPriceId =
+    positivePriceIds.size === 1
+      ? [...positivePriceIds][0]!
+      : positivePriceIds.size === 0 && priceIds.size === 1
+        ? [...priceIds][0]!
+        : null;
+  if (selectedPriceId === null) {
+    throw new ControlledWebhookFailure('malformed_event');
+  }
+  const selectedLines = pricedLines.filter(
+    ({ priceId, amount }) =>
+      priceId === selectedPriceId &&
+      (positivePriceIds.size === 0 || amount > 0),
+  );
+  const periods = new Map(
+    selectedLines.map((line) => [
+      `${line.periodStart}:${line.periodEnd}`,
+      { periodStart: line.periodStart, periodEnd: line.periodEnd },
+    ]),
+  );
+  if (periods.size !== 1) {
+    throw new ControlledWebhookFailure('malformed_event');
+  }
+  const period = [...periods.values()][0]!;
+  return { priceId: selectedPriceId, ...period };
 }
 
 function invoiceSubscriptionId(
@@ -470,9 +506,10 @@ async function invoiceProjection(
     throw new ControlledWebhookFailure('malformed_event');
   }
   const externalInvoiceId = stringStripeId(invoice.id, 'in_');
+  const serviceLine = invoiceServiceLine(invoice);
   const ownership = await resolveOwnership(
     invoice,
-    invoicePriceId(invoice),
+    serviceLine.priceId,
     repository,
   );
   const currency = stringValue(invoice.currency);
@@ -487,6 +524,7 @@ async function invoiceProjection(
     userId: ownership.userId,
     externalInvoiceId,
     externalSubscriptionId: invoiceSubscriptionId(invoice),
+    externalPriceId: ownership.stripePriceId,
     number: nullableString(invoice.number),
     planSlug: ownership.planSlug,
     interval: ownership.interval,
@@ -497,6 +535,8 @@ async function invoiceProjection(
     createdAt: timestamp(invoice.created),
     dueAt: nullableTimestamp(invoice.due_date),
     paidAt: nullableTimestamp(paidAt),
+    periodStart: serviceLine.periodStart,
+    periodEnd: serviceLine.periodEnd,
     hostedUrl: nullableString(invoice.hosted_invoice_url),
     pdfUrl: nullableString(invoice.invoice_pdf),
     refundStatus: refund.status,
@@ -619,7 +659,10 @@ export async function processStripeWebhook(
       type: event.type,
       createdAt: eventTime(event),
     });
-    if (claim === 'duplicate') return { ok: true, status: 'duplicate' };
+    if (claim === 'processed') return { ok: true, status: 'duplicate' };
+    if (claim === 'in_progress') {
+      return { ok: false, code: 'repository_failure', retryable: true };
+    }
   } catch {
     return { ok: false, code: 'repository_failure', retryable: true };
   }
@@ -665,7 +708,7 @@ export async function processStripeWebhook(
       case 'invoice.paid':
       case 'invoice.payment_failed':
       case 'invoice.updated': {
-        const projection = await invoiceProjection(
+        let projection = await invoiceProjection(
           event,
           dependencies.repository,
         );
@@ -673,13 +716,24 @@ export async function processStripeWebhook(
           event.type !== 'invoice.updated' &&
           projection.externalSubscriptionId !== null
         ) {
-          await dependencies.repository.applySubscription(
-            await refreshedSubscriptionProjection(
-              event,
-              projection.externalSubscriptionId,
-              dependencies,
-            ),
+          const refreshed = await refreshedSubscriptionProjection(
+            event,
+            projection.externalSubscriptionId,
+            dependencies,
           );
+          const differsFromCurrentServicePeriod =
+            refreshed.externalPriceId !== projection.externalPriceId ||
+            refreshed.currentPeriodEnd !== projection.periodEnd;
+          if (!differsFromCurrentServicePeriod) {
+            await dependencies.repository.applySubscription(refreshed);
+            projection = {
+              ...projection,
+              periodStart: refreshed.currentPeriodStart,
+              periodEnd: refreshed.currentPeriodEnd,
+            };
+          } else {
+            projection = { ...projection, advancePaidThrough: false };
+          }
         }
         await dependencies.repository.applyInvoice(projection);
         break;

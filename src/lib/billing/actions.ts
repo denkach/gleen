@@ -172,7 +172,11 @@ export type BillingStripeClient = SubscriptionScheduleStripeClient &
       sessions: Readonly<{
         create(
           input: Stripe.Checkout.SessionCreateParams,
-        ): PromiseLike<Pick<Stripe.Checkout.Session, 'client_secret'>>;
+          options?: Stripe.RequestOptions,
+        ): PromiseLike<Pick<Stripe.Checkout.Session, 'id' | 'client_secret'>>;
+        expire(
+          sessionId: string,
+        ): PromiseLike<Pick<Stripe.Checkout.Session, 'id' | 'status'>>;
         retrieve(
           sessionId: string,
         ): PromiseLike<
@@ -249,6 +253,25 @@ export type BillingActionAdminRepository = Readonly<{
     interval: z.infer<typeof billingIntervalSchema>,
   ): Promise<string | null>;
   persistOwnedCustomerId(userId: string, customerId: string): Promise<string>;
+  claimCheckoutAttempt(
+    userId: string,
+    plan: BillingPlanSlug,
+    interval: BillingInterval,
+    replaceSessionId?: string,
+  ): Promise<{
+    idempotencyKey: string;
+    plan: BillingPlanSlug;
+    interval: BillingInterval;
+    sessionId: string | null;
+    clientSecret: string | null;
+  }>;
+  persistCheckoutAttempt(
+    userId: string,
+    idempotencyKey: string,
+    sessionId: string,
+    clientSecret: string,
+  ): Promise<void>;
+  clearCheckoutAttempt(userId: string, sessionId: string): Promise<void>;
 }>;
 
 type BillingActionsDependencies = Readonly<{
@@ -479,25 +502,91 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
           return actionFailure('subscription_already_exists');
         }
 
-        const session = await dependencies.stripe.checkout.sessions.create({
-          mode: 'subscription',
-          ui_mode: 'custom',
-          customer: ownedCustomerId,
-          line_items: [{ price: ownedPriceId, quantity: 1 }],
-          client_reference_id: parsed.data.userId,
-          metadata: {
-            gleen_user_id: parsed.data.userId,
-            plan_slug: parsed.data.plan,
-            interval: parsed.data.interval,
+        let attempt = await dependencies.adminRepository.claimCheckoutAttempt(
+          parsed.data.userId,
+          parsed.data.plan,
+          parsed.data.interval,
+        );
+        if (attempt.sessionId !== null) {
+          const storedSession =
+            await dependencies.stripe.checkout.sessions.retrieve(
+              attempt.sessionId,
+            );
+          if (storedSession.client_reference_id !== parsed.data.userId) {
+            return actionFailure('billing_unavailable');
+          }
+          if (storedSession.status === 'complete') {
+            return actionFailure('subscription_already_exists');
+          }
+          if (storedSession.status === 'expired') {
+            await dependencies.adminRepository.clearCheckoutAttempt(
+              parsed.data.userId,
+              attempt.sessionId,
+            );
+            attempt = await dependencies.adminRepository.claimCheckoutAttempt(
+              parsed.data.userId,
+              parsed.data.plan,
+              parsed.data.interval,
+            );
+          }
+        }
+        if (
+          attempt.plan !== parsed.data.plan ||
+          attempt.interval !== parsed.data.interval
+        ) {
+          if (attempt.sessionId === null)
+            return actionFailure('billing_unavailable');
+          await dependencies.stripe.checkout.sessions.expire(attempt.sessionId);
+          attempt = await dependencies.adminRepository.claimCheckoutAttempt(
+            parsed.data.userId,
+            parsed.data.plan,
+            parsed.data.interval,
+            attempt.sessionId,
+          );
+        }
+        if (
+          attempt.plan !== parsed.data.plan ||
+          attempt.interval !== parsed.data.interval
+        ) {
+          return actionFailure('billing_unavailable');
+        }
+        if (attempt.clientSecret !== null) {
+          return { ok: true, clientSecret: attempt.clientSecret };
+        }
+
+        const session = await dependencies.stripe.checkout.sessions.create(
+          {
+            mode: 'subscription',
+            ui_mode: 'custom',
+            customer: ownedCustomerId,
+            line_items: [{ price: ownedPriceId, quantity: 1 }],
+            client_reference_id: parsed.data.userId,
+            metadata: {
+              gleen_user_id: parsed.data.userId,
+              plan_slug: parsed.data.plan,
+              interval: parsed.data.interval,
+            },
+            subscription_data: {
+              metadata: { gleen_user_id: parsed.data.userId },
+            },
+            return_url: checkoutReturnUrl(),
           },
-          subscription_data: {
-            metadata: { gleen_user_id: parsed.data.userId },
+          {
+            idempotencyKey: attempt.idempotencyKey,
           },
-          return_url: checkoutReturnUrl(),
-        });
+        );
+        const clientSecret = stripeClientSecretSchema.parse(
+          session.client_secret,
+        );
+        await dependencies.adminRepository.persistCheckoutAttempt(
+          parsed.data.userId,
+          attempt.idempotencyKey,
+          session.id,
+          clientSecret,
+        );
         return {
           ok: true,
-          clientSecret: stripeClientSecretSchema.parse(session.client_secret),
+          clientSecret,
         };
       } catch {
         return actionFailure('billing_unavailable');
@@ -516,8 +605,18 @@ export function createBillingActions(dependencies: BillingActionsDependencies) {
         );
         if (session.client_reference_id !== parsed.data.userId)
           return { state: 'invalid-request' };
-        if (session.status === 'expired') return { state: 'canceled' };
+        if (session.status === 'expired') {
+          await dependencies.adminRepository.clearCheckoutAttempt(
+            parsed.data.userId,
+            session.id,
+          );
+          return { state: 'canceled' };
+        }
         if (session.status !== 'complete') return { state: 'pending' };
+        await dependencies.adminRepository.clearCheckoutAttempt(
+          parsed.data.userId,
+          session.id,
+        );
         const plan = billingPlanSlugSchema.safeParse(
           session.metadata?.plan_slug,
         );
@@ -801,6 +900,65 @@ export function createSupabaseBillingActionAdminRepository(
         .object({ stripe_customer_id: stripeCustomerIdSchema })
         .strict()
         .parse(existingResult.data).stripe_customer_id;
+    },
+
+    async claimCheckoutAttempt(userId, plan, interval, replaceSessionId) {
+      const result = await client.rpc(
+        'claim_billing_checkout_attempt_service_role',
+        {
+          target_user_id: z.string().uuid().parse(userId),
+          target_plan_slug: plan,
+          target_interval: interval,
+          target_replace_session_id: replaceSessionId ?? null,
+        },
+      );
+      if (result.error !== null) throw new BillingActionPersistenceError();
+      const row = z
+        .object({
+          idempotency_key: z.string().min(1),
+          plan_slug: billingPlanSlugSchema,
+          billing_interval: billingIntervalSchema,
+          stripe_session_id: z.string().nullable(),
+          client_secret: z.string().nullable(),
+        })
+        .strict()
+        .parse(Array.isArray(result.data) ? result.data[0] : result.data);
+      return {
+        idempotencyKey: row.idempotency_key,
+        plan: row.plan_slug,
+        interval: row.billing_interval,
+        sessionId: row.stripe_session_id,
+        clientSecret: row.client_secret,
+      };
+    },
+
+    async persistCheckoutAttempt(
+      userId,
+      idempotencyKey,
+      sessionId,
+      clientSecret,
+    ) {
+      const result = await client.rpc(
+        'persist_billing_checkout_attempt_service_role',
+        {
+          target_user_id: z.string().uuid().parse(userId),
+          target_idempotency_key: idempotencyKey,
+          target_session_id: sessionId,
+          target_client_secret: clientSecret,
+        },
+      );
+      if (result.error !== null) throw new BillingActionPersistenceError();
+    },
+
+    async clearCheckoutAttempt(userId, sessionId) {
+      const result = await client.rpc(
+        'clear_billing_checkout_attempt_service_role',
+        {
+          target_user_id: z.string().uuid().parse(userId),
+          target_session_id: sessionId,
+        },
+      );
+      if (result.error !== null) throw new BillingActionPersistenceError();
     },
   };
 }

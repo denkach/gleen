@@ -24,7 +24,7 @@ describe('Supabase billing projection repository', () => {
     const admin = {
       rpc: vi
         .fn()
-        .mockResolvedValueOnce({ data: true, error: null })
+        .mockResolvedValueOnce({ data: 'claimed', error: null })
         .mockResolvedValue({ data: null, error: null }),
     };
     const repository = createSupabaseBillingProjectionRepository(
@@ -42,7 +42,7 @@ describe('Supabase billing projection repository', () => {
 
     expect(admin.rpc).toHaveBeenNthCalledWith(
       1,
-      'claim_billing_webhook_event_service_role',
+      'claim_billing_webhook_event_state_service_role',
       {
         target_event_id: 'evt_1',
         target_event_type: 'invoice.paid',
@@ -234,6 +234,7 @@ describe('Supabase billing projection repository', () => {
       userId: '5c5583a7-131b-4c05-b76a-7a4835dba8df',
       externalInvoiceId: 'in_1',
       externalSubscriptionId: 'sub_1',
+      externalPriceId: 'price_startermonth',
       number: 'INV-1',
       planSlug: 'starter',
       interval: 'month',
@@ -244,6 +245,8 @@ describe('Supabase billing projection repository', () => {
       createdAt: '2026-07-30T00:00:00.000Z',
       dueAt: null,
       paidAt: '2026-07-30T00:01:00.000Z',
+      periodStart: '2026-07-30T00:00:00.000Z',
+      periodEnd: '2026-08-30T00:00:00.000Z',
       hostedUrl: null,
       pdfUrl: null,
       refundStatus: 'none',
@@ -252,7 +255,7 @@ describe('Supabase billing projection repository', () => {
     });
 
     expect(admin.rpc).toHaveBeenCalledWith(
-      'apply_billing_invoice_projection_service_role',
+      'apply_billing_invoice_paid_period_service_role',
       expect.objectContaining({ target_advance_paid_through: true }),
     );
   });

@@ -299,6 +299,15 @@ function createAdminRepository(
   return {
     resolvePurchasablePrice: vi.fn(async () => 'price_server_owned'),
     persistOwnedCustomerId: vi.fn(async (_userId, customerId) => customerId),
+    claimCheckoutAttempt: vi.fn(async (_userId, plan, interval) => ({
+      idempotencyKey: 'checkout-attempt-u1',
+      plan,
+      interval,
+      sessionId: null,
+      clientSecret: null,
+    })),
+    persistCheckoutAttempt: vi.fn(async () => undefined),
+    clearCheckoutAttempt: vi.fn(async () => undefined),
     ...overrides,
   };
 }
@@ -308,8 +317,10 @@ function createStripe(): TestStripeClient {
     checkout: {
       sessions: {
         create: vi.fn(async () => ({
+          id: 'cs_test_owned',
           client_secret: 'cs_test_client_secret',
         })),
+        expire: vi.fn(async (id) => ({ id, status: 'expired' as const })),
         retrieve: vi.fn(async () => ({
           id: 'cs_test_owned',
           client_reference_id: 'u1',
@@ -431,10 +442,173 @@ describe('billing checkout actions', () => {
     });
     expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
       nativeCustomCheckoutPayload,
+      { idempotencyKey: 'checkout-attempt-u1' },
     );
     expect(stripe.customers.update).toHaveBeenCalledWith('cus_owned', {
       email: 'owner@example.test',
     });
+  });
+
+  it('uses one Stripe idempotency scope for concurrent Checkout requests', async () => {
+    const { actions, stripe } = createActions();
+    const input = {
+      userId: 'u1',
+      email: 'owner@example.test',
+      plan: 'starter' as const,
+      interval: 'month' as const,
+    };
+
+    await expect(
+      Promise.all([
+        actions.createCheckoutForUser(input),
+        actions.createCheckoutForUser(input),
+      ]),
+    ).resolves.toEqual([
+      { ok: true, clientSecret: 'cs_test_client_secret' },
+      { ok: true, clientSecret: 'cs_test_client_secret' },
+    ]);
+    expect(stripe.checkout.sessions.create).toHaveBeenCalledTimes(2);
+    for (const call of vi.mocked(stripe.checkout.sessions.create).mock.calls) {
+      expect(call[1]).toEqual({
+        idempotencyKey: 'checkout-attempt-u1',
+      });
+    }
+  });
+
+  it('expires and durably rotates an open Checkout attempt when the target changes', async () => {
+    const adminRepository = createAdminRepository();
+    vi.mocked(adminRepository.claimCheckoutAttempt)
+      .mockResolvedValueOnce({
+        idempotencyKey: 'attempt-old',
+        plan: 'starter',
+        interval: 'month',
+        sessionId: 'cs_old',
+        clientSecret: 'secret_old',
+      })
+      .mockResolvedValueOnce({
+        idempotencyKey: 'attempt-new',
+        plan: 'prism-pro',
+        interval: 'year',
+        sessionId: null,
+        clientSecret: null,
+      });
+    const { actions, stripe } = createActions({ adminRepository });
+    vi.mocked(stripe.checkout.sessions.retrieve).mockResolvedValueOnce({
+      id: 'cs_old',
+      client_reference_id: 'u1',
+      status: 'open',
+      metadata: { plan_slug: 'starter', interval: 'month' },
+    });
+
+    await expect(
+      actions.createCheckoutForUser({
+        userId: 'u1',
+        email: 'owner@example.test',
+        plan: 'prism-pro',
+        interval: 'year',
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      clientSecret: 'cs_test_client_secret',
+    });
+
+    expect(stripe.checkout.sessions.expire).toHaveBeenCalledWith('cs_old');
+    expect(adminRepository.claimCheckoutAttempt).toHaveBeenLastCalledWith(
+      'u1',
+      'prism-pro',
+      'year',
+      'cs_old',
+    );
+    expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
+      nativeCustomCheckoutPayload,
+      { idempotencyKey: 'attempt-new' },
+    );
+  });
+
+  it('clears an expired stored Checkout attempt before creating a fresh session', async () => {
+    const adminRepository = createAdminRepository();
+    vi.mocked(adminRepository.claimCheckoutAttempt)
+      .mockResolvedValueOnce({
+        idempotencyKey: 'attempt-expired',
+        plan: 'prism-pro',
+        interval: 'year',
+        sessionId: 'cs_expired',
+        clientSecret: 'secret_expired',
+      })
+      .mockResolvedValueOnce({
+        idempotencyKey: 'attempt-fresh',
+        plan: 'prism-pro',
+        interval: 'year',
+        sessionId: null,
+        clientSecret: null,
+      });
+    const { actions, stripe } = createActions({ adminRepository });
+    vi.mocked(stripe.checkout.sessions.retrieve).mockResolvedValueOnce({
+      id: 'cs_expired',
+      client_reference_id: 'u1',
+      status: 'expired',
+      metadata: { plan_slug: 'prism-pro', interval: 'year' },
+    });
+
+    await expect(
+      actions.createCheckoutForUser({
+        userId: 'u1',
+        email: 'owner@example.test',
+        plan: 'prism-pro',
+        interval: 'year',
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      clientSecret: 'cs_test_client_secret',
+    });
+
+    expect(adminRepository.clearCheckoutAttempt).toHaveBeenCalledWith(
+      'u1',
+      'cs_expired',
+    );
+    expect(stripe.checkout.sessions.expire).not.toHaveBeenCalled();
+    expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
+      nativeCustomCheckoutPayload,
+      { idempotencyKey: 'attempt-fresh' },
+    );
+  });
+
+  it('fails closed when another request wins target replacement', async () => {
+    const adminRepository = createAdminRepository();
+    vi.mocked(adminRepository.claimCheckoutAttempt)
+      .mockResolvedValueOnce({
+        idempotencyKey: 'attempt-old',
+        plan: 'starter',
+        interval: 'month',
+        sessionId: 'cs_old',
+        clientSecret: 'secret_old',
+      })
+      .mockResolvedValueOnce({
+        idempotencyKey: 'attempt-winner',
+        plan: 'starter',
+        interval: 'year',
+        sessionId: null,
+        clientSecret: null,
+      });
+    const { actions, stripe } = createActions({ adminRepository });
+    vi.mocked(stripe.checkout.sessions.retrieve).mockResolvedValueOnce({
+      id: 'cs_old',
+      client_reference_id: 'u1',
+      status: 'open',
+      metadata: { plan_slug: 'starter', interval: 'month' },
+    });
+
+    await expect(
+      actions.createCheckoutForUser({
+        userId: 'u1',
+        email: 'owner@example.test',
+        plan: 'prism-pro',
+        interval: 'year',
+      }),
+    ).resolves.toEqual({ ok: false, code: 'billing_unavailable' });
+
+    expect(stripe.checkout.sessions.expire).toHaveBeenCalledWith('cs_old');
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
   });
 
   it('blocks Checkout when an active subscription already exists', async () => {
@@ -535,6 +709,7 @@ describe('billing checkout actions', () => {
     expect(stripe.customers.update).not.toHaveBeenCalled();
     expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
       expect.objectContaining({ customer: 'cus_created' }),
+      { idempotencyKey: 'checkout-attempt-u1' },
     );
   });
 

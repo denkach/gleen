@@ -134,6 +134,7 @@ export const invoiceProjectionSchema = z
     userId: z.string().trim().min(1),
     externalInvoiceId: z.string().trim().min(1),
     externalSubscriptionId: z.string().trim().min(1).nullable(),
+    externalPriceId: z.string().regex(/^price_[A-Za-z0-9]+$/),
     number: z.string().trim().min(1).nullable(),
     planSlug: billingPlanSlugSchema,
     interval: billingIntervalSchema,
@@ -144,6 +145,8 @@ export const invoiceProjectionSchema = z
     createdAt: z.iso.datetime({ offset: true }),
     dueAt: z.iso.datetime({ offset: true }).nullable(),
     paidAt: z.iso.datetime({ offset: true }).nullable(),
+    periodStart: z.iso.datetime({ offset: true }),
+    periodEnd: z.iso.datetime({ offset: true }),
     hostedUrl: z.url().nullable(),
     pdfUrl: z.url().nullable(),
     refundStatus: z.enum(['none', 'partial', 'full']),
@@ -169,7 +172,7 @@ export type BillingProjectionRepository = Readonly<{
   resolveWebhookPrice(priceId: string): Promise<WebhookPriceMapping | null>;
   claimWebhookEvent(
     event: BillingWebhookEvent,
-  ): Promise<'claimed' | 'duplicate'>;
+  ): Promise<'claimed' | 'processed' | 'in_progress'>;
   applySubscription(input: SubscriptionProjection): Promise<void>;
   applyScheduledChange(input: ScheduledChangeProjection): Promise<void>;
   applyInvoice(input: InvoiceProjection): Promise<void>;

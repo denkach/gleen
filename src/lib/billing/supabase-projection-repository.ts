@@ -106,14 +106,16 @@ export function createSupabaseBillingProjectionRepository(
     async claimWebhookEvent(input) {
       const event = parseValue(billingWebhookEventSchema, input);
       const data = rpcSuccess(
-        await adminClient.rpc('claim_billing_webhook_event_service_role', {
-          target_event_id: event.eventId,
-          target_event_type: event.type,
-          target_created_at: event.createdAt,
-        }),
+        await adminClient.rpc(
+          'claim_billing_webhook_event_state_service_role',
+          {
+            target_event_id: event.eventId,
+            target_event_type: event.type,
+            target_created_at: event.createdAt,
+          },
+        ),
       );
-      if (typeof data !== 'boolean') throw new BillingRepositoryError();
-      return data ? 'claimed' : 'duplicate';
+      return parseValue(z.enum(['claimed', 'processed', 'in_progress']), data);
     },
 
     async applySubscription(input) {
@@ -165,28 +167,33 @@ export function createSupabaseBillingProjectionRepository(
     async applyInvoice(input) {
       const projection = parseValue(invoiceProjectionSchema, input);
       rpcSuccess(
-        await adminClient.rpc('apply_billing_invoice_projection_service_role', {
-          target_event_id: projection.eventId,
-          target_event_created_at: projection.eventCreatedAt,
-          target_user_id: projection.userId,
-          target_external_invoice_id: projection.externalInvoiceId,
-          target_external_subscription_id: projection.externalSubscriptionId,
-          target_number: projection.number,
-          target_plan_slug: projection.planSlug,
-          target_interval: projection.interval,
-          target_amount_due_minor: projection.amountDueMinor,
-          target_amount_paid_minor: projection.amountPaidMinor,
-          target_currency: projection.currency,
-          target_status: projection.status,
-          target_created_at: projection.createdAt,
-          target_due_at: projection.dueAt,
-          target_paid_at: projection.paidAt,
-          target_hosted_url: projection.hostedUrl,
-          target_pdf_url: projection.pdfUrl,
-          target_refund_status: projection.refundStatus,
-          target_refunded_amount_minor: projection.refundedAmountMinor,
-          target_advance_paid_through: projection.advancePaidThrough,
-        }),
+        await adminClient.rpc(
+          'apply_billing_invoice_paid_period_service_role',
+          {
+            target_event_id: projection.eventId,
+            target_event_created_at: projection.eventCreatedAt,
+            target_user_id: projection.userId,
+            target_external_invoice_id: projection.externalInvoiceId,
+            target_external_subscription_id: projection.externalSubscriptionId,
+            target_number: projection.number,
+            target_plan_slug: projection.planSlug,
+            target_interval: projection.interval,
+            target_amount_due_minor: projection.amountDueMinor,
+            target_amount_paid_minor: projection.amountPaidMinor,
+            target_currency: projection.currency,
+            target_status: projection.status,
+            target_created_at: projection.createdAt,
+            target_due_at: projection.dueAt,
+            target_paid_at: projection.paidAt,
+            target_period_start: projection.periodStart,
+            target_period_end: projection.periodEnd,
+            target_hosted_url: projection.hostedUrl,
+            target_pdf_url: projection.pdfUrl,
+            target_refund_status: projection.refundStatus,
+            target_refunded_amount_minor: projection.refundedAmountMinor,
+            target_advance_paid_through: projection.advancePaidThrough,
+          },
+        ),
       );
     },
 
