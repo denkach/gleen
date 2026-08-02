@@ -112,10 +112,13 @@ describe('Supabase analysis repository', () => {
       client as unknown as SupabaseAnalysisClient,
     ).transitionReservation('job-1', 'settled');
 
-    expect(client.rpc).toHaveBeenCalledWith('transition_analysis_usage', {
-      target_job_id: 'job-1',
-      target_status: 'settled',
-    });
+    expect(client.rpc).toHaveBeenCalledWith(
+      'transition_analysis_usage_service_role',
+      {
+        target_job_id: 'job-1',
+        target_status: 'settled',
+      },
+    );
   });
 
   it('selects the newest owned queued or running analysis', async () => {
@@ -222,6 +225,109 @@ describe('Supabase analysis repository', () => {
         client as unknown as SupabaseAnalysisClient,
       ).findMostRecentOwnedActive(userId),
     ).resolves.toBeNull();
+  });
+
+  it('restores an active analysis after billing extends reservation rows', async () => {
+    const analysisId = '22222222-2222-4222-8222-222222222222';
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const jobId = '33333333-3333-4333-8333-333333333333';
+    const active = chainReturning({
+      data: {
+        analysis_id: analysisId,
+        analysis_intakes: {
+          id: analysisId,
+          user_id: userId,
+          youtube_video_id: 'dQw4w9WgXcQ',
+          canonical_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          title: 'Active analysis',
+          channel_title: 'Channel',
+          duration_seconds: 213,
+          thumbnail_url: 'https://i.ytimg.com/example.jpg',
+          transcript_language: 'en',
+          transcript_segments: [],
+          output_locale: 'en',
+          summary_preset: 'balanced',
+          flashcard_preset: null,
+          selected_artifacts: ['summary'],
+          analysis_contract_version: 1,
+          duplicate_key: 'a'.repeat(64),
+          attempt: 1,
+          status: 'ready',
+          reanalysis_of: null,
+          created_at: '2026-08-02T10:00:00.000Z',
+          updated_at: '2026-08-02T10:00:00.000Z',
+        },
+      },
+      error: null,
+    });
+    const job = chainReturning({
+      data: {
+        id: jobId,
+        analysis_id: analysisId,
+        user_id: userId,
+        workflow_run_id: null,
+        status: 'queued',
+        stage: 'validating',
+        attempt: 1,
+        revision: 1,
+        error_code: null,
+        started_at: null,
+        completed_at: null,
+        created_at: '2026-08-02T10:00:00.000Z',
+        updated_at: '2026-08-02T10:00:00.000Z',
+      },
+      error: null,
+    });
+    const events = chainReturning({ data: [], error: null });
+    const artifacts = chainReturning({ data: [], error: null });
+    const reservationRow = {
+      id: '44444444-4444-4444-8444-444444444444',
+      job_id: jobId,
+      user_id: userId,
+      status: 'reserved',
+      updated_at: '2026-08-02T10:00:00.000Z',
+    };
+    let reservationResult: unknown;
+    const reservation = {
+      select: vi.fn((columns = '*') => {
+        reservationResult = {
+          data:
+            columns === '*'
+              ? {
+                  ...reservationRow,
+                  analysis_id: analysisId,
+                  entitlement_period_id: '55555555-5555-4555-8555-555555555555',
+                  quantity: 1,
+                  reserved_at: '2026-08-02T10:00:00.000Z',
+                  settled_at: null,
+                  released_at: null,
+                }
+              : reservationRow,
+          error: null,
+        };
+        return reservation;
+      }),
+      eq: vi.fn(),
+      single: vi.fn(() => Promise.resolve(reservationResult)),
+    };
+    reservation.eq.mockReturnValue(reservation);
+    const client = {
+      from: vi.fn((table: string) => {
+        if (table === 'analysis_jobs')
+          return client.from.mock.calls.length === 1 ? active : job;
+        if (table === 'analysis_job_events') return events;
+        if (table === 'analysis_artifacts') return artifacts;
+        return reservation;
+      }),
+      rpc: vi.fn(),
+    };
+
+    const restored = await createSupabaseAnalysisRepository(
+      client as unknown as SupabaseAnalysisClient,
+    ).findMostRecentOwnedActive(userId);
+
+    expect(restored?.intake.id).toBe(analysisId);
+    expect(restored?.snapshot.usageReservation.status).toBe('reserved');
   });
 
   it('lists only owned history newest first and caps the request at 50', async () => {

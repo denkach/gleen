@@ -55,7 +55,7 @@ export type SupabaseAnalysisClient = Readonly<{
     functionName:
       | 'create_analysis_pipeline'
       | 'retry_analysis_pipeline'
-      | 'transition_analysis_usage',
+      | 'transition_analysis_usage_service_role',
     arguments_:
       | Readonly<{ analysis_id: string }>
       | Readonly<{
@@ -166,7 +166,7 @@ export function createSupabaseAnalysisRepository(
           .order('kind', { ascending: true }),
         client
           .from('analysis_usage_reservations')
-          .select('*')
+          .select('id,job_id,user_id,status,updated_at')
           .eq('job_id', jobId)
           .eq('user_id', userId ?? jobRow.user_id)
           .single(),
@@ -417,7 +417,7 @@ export function createSupabaseAnalysisRepository(
 
     async transitionReservation(jobId, status) {
       ensureRequired(
-        await client.rpc('transition_analysis_usage', {
+        await client.rpc('transition_analysis_usage_service_role', {
           target_job_id: jobId,
           target_status: status,
         }),
