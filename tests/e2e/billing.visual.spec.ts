@@ -29,6 +29,15 @@ async function capture(
     page.getByRole('heading', { level: 1, name: heading }),
   ).toBeVisible();
   await expect(page.getByTestId('billing-fixture-hydrated')).toHaveText('true');
+  if (viewport.width <= 760) {
+    const activeNavigationItem =
+      screen === 'subscription'
+        ? page.getByRole('link', { name: 'Plan', exact: true })
+        : screen === 'usage'
+          ? page.getByRole('link', { name: 'Usage', exact: true })
+          : page.getByRole('button', { name: 'More billing screens' });
+    await expect(activeNavigationItem).toHaveAttribute('aria-current', 'page');
+  }
   const experience = page.locator('.billing-experience');
   await expect(experience).toBeVisible();
   await expect

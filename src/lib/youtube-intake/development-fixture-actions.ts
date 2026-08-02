@@ -24,6 +24,8 @@ async function submit(
 ) {
   if (scenario === 'ready')
     await new Promise((resolve) => setTimeout(resolve, 1_800));
+  if (scenario === 'provider-outage')
+    await new Promise((resolve) => setTimeout(resolve, 200));
   const result = await actions(scenario).submit(previous, formData);
   if (scenario === 'ready' && result.redirectTo) {
     const params = new URLSearchParams({
