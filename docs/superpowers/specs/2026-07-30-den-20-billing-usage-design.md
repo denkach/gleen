@@ -98,12 +98,12 @@ Price ID. The browser receives only the presentation fields it needs.
 The initial sandbox catalog includes the required Free entitlement and follows
 the approved Subscription screen for the three paid comparison cards:
 
-| Plan | Monthly | Annual monthly equivalent | Included analyses |
-| --- | ---: | ---: | ---: |
-| Free | USD 0 | Not applicable | 3 |
-| Starter | USD 19 | USD 15 | 10 |
-| Prism Pro | USD 49 | USD 39 | 25 |
-| Team | USD 129 | USD 103 | 100 |
+| Plan      | Monthly | Annual monthly equivalent | Included analyses |
+| --------- | ------: | ------------------------: | ----------------: |
+| Free      |   USD 0 |            Not applicable |                 3 |
+| Starter   |  USD 19 |                    USD 15 |                10 |
+| Prism Pro |  USD 49 |                    USD 39 |                25 |
+| Team      | USD 129 |                   USD 103 |               100 |
 
 Annual subscriptions are billed for twelve months. Savings labels and amounts
 are catalog data, not UI constants. Free is the default non-purchasable

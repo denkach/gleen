@@ -322,8 +322,9 @@ Assert:
 ```ts
 expect(billingIntervalSchema.parse('year')).toBe('year');
 expect(() => billingIntervalSchema.parse('weekly')).toThrow();
-expect(formatMoney({ amountMinor: 4900, currency: 'usd', locale: 'en' }))
-  .toBe('$49.00');
+expect(formatMoney({ amountMinor: 4900, currency: 'usd', locale: 'en' })).toBe(
+  '$49.00',
+);
 expect(
   toEntitlementStatus({
     status: 'past_due',
@@ -359,8 +360,14 @@ Define:
 ```ts
 export const billingIntervalSchema = z.enum(['month', 'year']);
 export const billingSubscriptionStatusSchema = z.enum([
-  'trialing', 'active', 'past_due', 'unpaid', 'incomplete',
-  'incomplete_expired', 'canceled', 'paused',
+  'trialing',
+  'active',
+  'past_due',
+  'unpaid',
+  'incomplete',
+  'incomplete_expired',
+  'canceled',
+  'paused',
 ]);
 export type BillingPlan = Readonly<{
   id: string;
@@ -395,7 +402,9 @@ export type BillingRepository = Readonly<{
 }>;
 
 export type BillingProjectionRepository = Readonly<{
-  claimWebhookEvent(event: BillingWebhookEvent): Promise<'claimed' | 'duplicate'>;
+  claimWebhookEvent(
+    event: BillingWebhookEvent,
+  ): Promise<'claimed' | 'duplicate'>;
   applySubscription(input: SubscriptionProjection): Promise<void>;
   applyInvoice(input: InvoiceProjection): Promise<void>;
   markWebhookProcessed(eventId: string): Promise<void>;
@@ -453,7 +462,9 @@ Assert:
 await ledger.settle('job-1');
 await ledger.release('job-2');
 expect(repository.transitionReservation).toHaveBeenNthCalledWith(
-  1, 'job-1', 'settled',
+  1,
+  'job-1',
+  'settled',
 );
 ```
 
@@ -519,14 +530,16 @@ git commit -m "feat(den-20): enforce real analysis usage"
 Tests must prove:
 
 ```ts
-await expect(actions.createCheckoutForUser({
-  userId: 'u1',
-  plan: 'free',
-  interval: 'month',
-}))
-  .resolves.toEqual({ ok: false, code: 'plan_unavailable' });
-await expect(createCheckoutSession({ plan: 'prism-pro', interval: 'year' }))
-  .resolves.toEqual({ ok: false, code: 'session_expired' });
+await expect(
+  actions.createCheckoutForUser({
+    userId: 'u1',
+    plan: 'free',
+    interval: 'month',
+  }),
+).resolves.toEqual({ ok: false, code: 'plan_unavailable' });
+await expect(
+  createCheckoutSession({ plan: 'prism-pro', interval: 'year' }),
+).resolves.toEqual({ ok: false, code: 'session_expired' });
 expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
   expect.objectContaining({
     mode: 'subscription',
@@ -768,7 +781,9 @@ CSS contract must assert:
 
 ```ts
 expect(css).toContain('--bg:#080a0f');
-expect(css).toMatch(/\.billing-plan-overview\s*{[^}]*grid-template-columns:\s*1\.65fr repeat\(3,.72fr\)/s);
+expect(css).toMatch(
+  /\.billing-plan-overview\s*{[^}]*grid-template-columns:\s*1\.65fr repeat\(3,.72fr\)/s,
+);
 expect(css).toMatch(/@media\s*\(max-width:\s*1120px\)/);
 expect(css).toMatch(/@media\s*\(max-width:\s*760px\)/);
 expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)/);
@@ -915,10 +930,13 @@ Assert real values:
 expect(screen.getByText('25 of 25 analyses used')).toBeVisible();
 expect(screen.getByText('100%')).toBeVisible();
 expect(screen.getByText(/Saved results remain available/)).toBeVisible();
-expect(screen.getByRole('link', { name: /Open usage ledger/ }))
-  .toHaveAttribute('href', '/app/subscription/usage');
-expect(screen.getByRole('button', { name: /Buy extra credits/ }))
-  .toBeDisabled();
+expect(screen.getByRole('link', { name: /Open usage ledger/ })).toHaveAttribute(
+  'href',
+  '/app/subscription/usage',
+);
+expect(
+  screen.getByRole('button', { name: /Buy extra credits/ }),
+).toBeDisabled();
 ```
 
 Fixtures must cover `free`, `active`, `past-due`, `scheduled-cancel`, `empty-usage`, `failed-invoice`, and `limit-reached` without importing production secrets.

@@ -25,12 +25,14 @@
 ### Task 1: Close Checkout and Portal action boundaries
 
 **Files:**
+
 - Modify: `src/env.ts`
 - Modify: `src/env.test.ts`
 - Modify: `src/lib/billing/actions.ts`
 - Modify: `src/lib/billing/actions.test.ts`
 
 **Interfaces:**
+
 - Consumes: `BillingActionAdminRepository.resolvePurchasablePrice(plan, interval): Promise<string | null>` and `BillingRepository.getOwnedCustomerId(userId): Promise<string | null>`.
 - Produces: `createPlanChangePortalSession(input: CheckoutActionInput): Promise<PortalResult>`.
 - Produces: `ActionErrorCode` member `subscription_already_exists`.
@@ -79,15 +81,12 @@ export type StripePortalEnv = Readonly<{
 export function validateStripePortalEnv(
   input: Readonly<Partial<NodeJS.ProcessEnv>>,
 ): StripePortalEnv {
-  const configurationId =
-    input.STRIPE_PORTAL_CONFIGURATION_ID?.trim();
+  const configurationId = input.STRIPE_PORTAL_CONFIGURATION_ID?.trim();
   if (!configurationId) {
     throw new Error('STRIPE_PORTAL_CONFIGURATION_ID is required');
   }
   if (!configurationId.startsWith('bpc_')) {
-    throw new Error(
-      'STRIPE_PORTAL_CONFIGURATION_ID must start with bpc_',
-    );
+    throw new Error('STRIPE_PORTAL_CONFIGURATION_ID must start with bpc_');
   }
   return Object.freeze({
     STRIPE_PORTAL_CONFIGURATION_ID: configurationId,
@@ -250,9 +249,10 @@ Expected: FAIL because subscription listing, configuration validation, the contr
 In `src/lib/billing/actions.ts`, add the closed status set and resolver:
 
 ```ts
-const terminalSubscriptionStatuses = new Set<
-  Stripe.Subscription.Status
->(['canceled', 'incomplete_expired']);
+const terminalSubscriptionStatuses = new Set<Stripe.Subscription.Status>([
+  'canceled',
+  'incomplete_expired',
+]);
 
 async function listNonTerminalSubscriptions(
   stripe: BillingStripeClient,
@@ -264,8 +264,7 @@ async function listNonTerminalSubscriptions(
     limit: 10,
   });
   return result.data.filter(
-    (subscription) =>
-      !terminalSubscriptionStatuses.has(subscription.status),
+    (subscription) => !terminalSubscriptionStatuses.has(subscription.status),
   );
 }
 ```
@@ -308,7 +307,7 @@ Create `subscription_update_confirm` with the owned subscription ID, owned item 
 ```ts
 export async function createPlanChangePortalSession(
   input: CheckoutActionInput,
-): Promise<PortalResult>
+): Promise<PortalResult>;
 ```
 
 Authenticate internally and close the public action input:
@@ -357,6 +356,7 @@ git commit -m "fix(billing): prevent duplicate subscriptions"
 ### Task 2: Route paid plan choices to prorated Portal confirmation
 
 **Files:**
+
 - Modify: `src/components/billing/subscription-screen.tsx`
 - Modify: `src/components/billing/subscription-screen.test.tsx`
 - Modify: `src/app/app/subscription/portal/page.tsx`
@@ -366,6 +366,7 @@ git commit -m "fix(billing): prevent duplicate subscriptions"
 - Modify: `tests/e2e/billing.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `createPlanChangePortalSession({ plan, interval })`.
 - Consumes: `SubscriptionPresentation.currentPrice` and `SubscriptionPresentation.entitlement.key`.
 - Produces: plan-change query contract `/app/subscription/portal?plan=<slug>&interval=<month|year>`.
@@ -376,9 +377,7 @@ git commit -m "fix(billing): prevent duplicate subscriptions"
 In `src/components/billing/subscription-screen.test.tsx`, assert an active paid presentation links a non-current purchasable plan to Portal:
 
 ```ts
-expect(
-  screen.getByRole('link', { name: 'Change to Starter' }),
-).toHaveAttribute(
+expect(screen.getByRole('link', { name: 'Change to Starter' })).toHaveAttribute(
   'href',
   '/app/subscription/portal?plan=starter&interval=month',
 );
@@ -387,9 +386,7 @@ expect(
 Render a Free presentation with `currentPrice: null` and assert its paid plan link remains:
 
 ```ts
-expect(
-  screen.getByRole('link', { name: 'Choose Starter' }),
-).toHaveAttribute(
+expect(screen.getByRole('link', { name: 'Choose Starter' })).toHaveAttribute(
   'href',
   '/app/subscription/checkout?plan=starter&interval=month',
 );
@@ -462,7 +459,7 @@ In `src/app/app/subscription/portal/page.tsx`, accept `searchParams` as a promis
 When `planChange` is non-null, render one accessible status/description above Plan management and change the primary label to `Review plan change in Stripe`. Its click calls:
 
 ```ts
-await planChangeAction(planChange)
+await planChangeAction(planChange);
 ```
 
 All other Portal controls continue to call the generic zero-argument action. Reuse the existing `opening`, error live region, concurrency guard, and `window.location.assign` path.
@@ -472,7 +469,7 @@ All other Portal controls continue to call the generic zero-argument action. Reu
 Update the fixture boundary so a specific plan-change action records exactly:
 
 ```json
-{"plan":"prism-pro","interval":"year"}
+{ "plan": "prism-pro", "interval": "year" }
 ```
 
 Change the active Subscription E2E expectation from Checkout to:
@@ -511,12 +508,14 @@ git commit -m "feat(billing): route plan changes through Stripe Portal"
 ### Task 3: Project scheduled cancellation and out-of-order invoices
 
 **Files:**
+
 - Create: `supabase/migrations/20260731020000_den_20_resilient_subscription_invoice_projection.sql`
 - Modify: `src/lib/billing/webhook.ts`
 - Modify: `src/lib/billing/webhook.test.ts`
 - Modify: `src/lib/billing/database-contract.test.ts`
 
 **Interfaces:**
+
 - Consumes: existing `SubscriptionProjection.cancelAtPeriodEnd` and `cancellationEffectiveAt`.
 - Consumes: existing `apply_billing_invoice_projection(...)` signature.
 - Produces: `billing_invoices.stripe_subscription_id text`.
@@ -530,7 +529,7 @@ In `src/lib/billing/webhook.test.ts`, process:
 subscription({
   cancel_at_period_end: false,
   cancel_at: eventCreated + 2_678_400,
-})
+});
 ```
 
 Assert `applySubscription` receives:
@@ -541,7 +540,7 @@ expect.objectContaining({
   cancellationEffectiveAt: new Date(
     (eventCreated + 2_678_400) * 1_000,
   ).toISOString(),
-})
+});
 ```
 
 Retain and run the existing no-cancellation and completed-cancellation
@@ -673,10 +672,12 @@ git commit -m "fix(billing): project scheduled changes reliably"
 ### Task 4: Configure Stripe Sandbox for controlled prorated changes
 
 **Files:**
+
 - Modify: `docs/superpowers/specs/2026-07-30-den-20-billing-usage-design.md` only if the verified Stripe limitation differs from the approved design.
 - No secrets or environment files are committed.
 
 **Interfaces:**
+
 - Consumes: all active purchasable Stripe Product and Price IDs from the staging catalog.
 - Produces: one Sandbox Portal configuration ID stored as `STRIPE_PORTAL_CONFIGURATION_ID` in Vercel Preview.
 
@@ -727,9 +728,11 @@ Confirm in Sandbox that Stripe's confirmation page displays:
 ### Task 5: Full verification and sandbox acceptance
 
 **Files:**
+
 - Modify: `.superpowers/sdd/2026-07-30-den-20-billing-usage/task-11-report.md`
 
 **Interfaces:**
+
 - Consumes: the completed server boundary, UI routing, webhook migration, Stripe configuration, and deployed Preview.
 - Produces: evidence-backed Task 11 acceptance report.
 
