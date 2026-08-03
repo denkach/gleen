@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+
 import { ReferenceFacets } from '@/components/marketing/reference-facets';
 import { ReferenceHeaderBehavior } from '@/components/marketing/reference-header';
 import { LandingAnalysisForm } from '@/components/marketing/landing-analysis-form';
@@ -6,6 +8,15 @@ import {
   ReferenceFooter,
   ReferencePricing,
 } from '@/components/marketing/reference-pricing-footer';
+import { LocaleSwitcher } from '@/components/i18n/locale-switcher';
+import { getMarketingContent } from '@/data/marketing';
+import {
+  selectMessages,
+  type MissingTranslationEvent,
+} from '@/lib/i18n/catalog';
+import { marketingMessages } from '@/lib/i18n/messages/marketing';
+import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
 const Arrow = () => (
   <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
@@ -13,46 +24,80 @@ const Arrow = () => (
     <path d="m13 6 6 6-6 6" />
   </svg>
 );
-export default function HomePage() {
+function reportMissingMarketingTranslation(event: MissingTranslationEvent) {
+  console.error(event);
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    marketingMessages,
+    locale,
+    'marketing',
+    reportMissingMarketingTranslation,
+  );
+
+  return {
+    title: copy.metadata.title,
+    description: copy.metadata.description,
+  };
+}
+
+export default async function HomePage() {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    marketingMessages,
+    locale,
+    'marketing',
+    reportMissingMarketingTranslation,
+  );
+  const sharedCopy = selectMessages(
+    sharedMessages,
+    locale,
+    'shared',
+    reportMissingMarketingTranslation,
+  );
+  const content = getMarketingContent(copy);
+
   return (
     <div className="landing-reference">
       <header className="site-header">
         <div className="container header-inner">
-          <a className="brand" href="#product" aria-label="Gleen home">
+          <a
+            className="brand"
+            href="#product"
+            aria-label={copy.header.homeLabel}
+          >
             <span className="brand-mark" />
             <span>Gleen</span>
           </a>
           <nav
             className="header-nav desktop-only"
-            aria-label="Primary navigation"
+            aria-label={copy.header.navigationLabel}
           >
-            <a href="#product">Product</a>
-            <a href="#how">How it works</a>
-            <a href="#facets">Examples</a>
-            <a href="#pricing">Pricing</a>
+            {content.navigation.map((link) => (
+              <a href={link.href} key={link.href}>
+                {link.label}
+              </a>
+            ))}
           </nav>
           <div className="header-actions">
-            <button className="btn btn-ghost btn-sm language-btn" type="button">
-              EN{' '}
-              <svg
-                className="icon icon-sm"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path d="m9 18 6-6-6-6" />
-              </svg>
-            </button>
+            <LocaleSwitcher
+              locale={locale}
+              copy={sharedCopy}
+              variant="landing"
+            />
             <a className="btn btn-ghost btn-sm desktop-only" href="/sign-in">
-              <span>Sign in</span>
+              <span>{copy.header.signIn}</span>
             </a>
             <a className="btn btn-primary btn-sm" href="#product">
-              <span>Start free</span>
+              <span>{copy.header.startFree}</span>
               <Arrow />
             </a>
             <button
               className="btn btn-icon btn-ghost mobile-only"
               type="button"
-              aria-label="Open menu"
+              aria-label={copy.header.openMenu}
             >
               <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 7h16M4 12h16M4 17h16" />
@@ -66,23 +111,17 @@ export default function HomePage() {
         <section className="hero" id="product">
           <div className="container hero-grid">
             <div className="hero-copy">
-              <span className="eyebrow">One video / four useful outputs</span>
+              <span className="eyebrow">{copy.hero.eyebrow}</span>
               <h1 className="display-xl">
-                Watch less.
+                {copy.hero.titleStart}
                 <br />
-                Understand more.
+                {copy.hero.titleEnd}
               </h1>
-              <p className="body-lg">
-                Turn any YouTube video into a structured summary, smart
-                flashcards, precise timestamps, and export-ready knowledge.
-              </p>
-              <LandingAnalysisForm />
+              <p className="body-lg">{copy.hero.description}</p>
+              <LandingAnalysisForm copy={copy.hero} />
               <div className="hero-caption">
                 <span className="ray" />
-                <span>
-                  No card required · Try an example · Your first analysis is
-                  free
-                </span>
+                <span>{copy.hero.caption}</span>
               </div>
             </div>
             <div className="prism-stage" aria-hidden="true">
@@ -150,7 +189,7 @@ export default function HomePage() {
                 <div className="artifact-float summary">
                   <div className="label">
                     <span className="dot" />
-                    Summary
+                    {copy.hero.summaryFloat}
                   </div>
                   <div className="mini-line" />
                   <div className="mini-line short" />
@@ -158,7 +197,7 @@ export default function HomePage() {
                 <div className="artifact-float flash">
                   <div className="label">
                     <span className="dot" />
-                    Flashcards
+                    {copy.hero.flashcardsFloat}
                   </div>
                   <div className="mini-line short" />
                   <div className="mini-line" />
@@ -174,74 +213,56 @@ export default function HomePage() {
                 <div className="artifact-float export">
                   <div className="label">
                     <span className="dot" />
-                    Export ready
+                    {copy.hero.exportFloat}
                   </div>
                   <div className="mini-line short" />
                 </div>
               </div>
             </div>
           </div>
-          <div className="scroll-cue">Move through the spectrum</div>
+          <div className="scroll-cue">{copy.hero.scrollCue}</div>
         </section>
         <section className="section" id="how">
           <div className="container">
             <div className="section-heading">
               <div>
-                <span className="eyebrow">The prism workflow</span>
+                <span className="eyebrow">{copy.workflow.eyebrow}</span>
                 <h2 className="title-lg">
-                  One link enters.
+                  {copy.workflow.titleStart}
                   <br />
-                  Knowledge comes out.
+                  {copy.workflow.titleEnd}
                 </h2>
               </div>
-              <p className="body-lg">
-                Gleen follows the signal from source to structure. Each stage
-                stays visible, precise, and recoverable—without hiding behind a
-                fake progress bar.
-              </p>
+              <p className="body-lg">{copy.workflow.description}</p>
             </div>
             <div className="process-scene">
               <div className="process-track" />
               <div className="process-prism" />
               <div className="process-steps">
-                <article className="process-step active">
-                  <span className="num">01 / INPUT</span>
-                  <h3>Paste a link</h3>
-                  <p>
-                    Gleen validates the source and checks your saved analyses
-                    first.
-                  </p>
-                </article>
-                <article className="process-step active">
-                  <span className="num">02 / SIGNAL</span>
-                  <h3>Read the video</h3>
-                  <p>
-                    Transcript, metadata, chapters, and source language are
-                    mapped.
-                  </p>
-                </article>
-                <article className="process-step active">
-                  <span className="num">03 / REFRACTION</span>
-                  <h3>Separate ideas</h3>
-                  <p>
-                    Key arguments become structured, source-linked knowledge.
-                  </p>
-                </article>
-                <article className="process-step">
-                  <span className="num">04 / OUTPUT</span>
-                  <h3>Use the result</h3>
-                  <p>
-                    Study, revisit, export, and continue without paying twice.
-                  </p>
-                </article>
+                {content.workflow.map((step, index) => (
+                  <article
+                    className={`process-step${index < 3 ? ' active' : ''}`}
+                    key={step.number}
+                  >
+                    <span className="num">
+                      {step.number} / {step.phase}
+                    </span>
+                    <h3>{step.title}</h3>
+                    <p>{step.body}</p>
+                  </article>
+                ))}
               </div>
             </div>
           </div>
         </section>
-        <ReferenceFacets />
-        <ReferencePricing />
+        <ReferenceFacets copy={copy.facets} />
+        <ReferencePricing content={content} copy={copy.pricing} />
       </main>
-      <ReferenceFooter />
+      <ReferenceFooter
+        content={content}
+        copy={copy.footer}
+        homeLabel={copy.header.homeLabel}
+      />
       <ReferenceMotion />
     </div>
   );

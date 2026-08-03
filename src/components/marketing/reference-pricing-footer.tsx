@@ -1,64 +1,24 @@
-const plans = [
-  {
-    label: 'Free',
-    name: 'Explore',
-    description: 'For trying Gleen on a few important videos.',
-    price: '€0',
-    features: [
-      '3 video analyses',
-      'All four artifact types',
-      'Markdown export',
-      'Saved history',
-    ],
-    cta: 'Start free',
-    recommended: false,
-  },
-  {
-    label: 'Prism · Best fit',
-    name: 'Build a habit',
-    description: 'For students, researchers, and continuous learners.',
-    price: '€12',
-    features: [
-      '25 video analyses',
-      'Longer videos',
-      'Notion and Obsidian export',
-      'Priority processing',
-    ],
-    cta: 'Choose Prism',
-    recommended: true,
-  },
-  {
-    label: 'Spectrum',
-    name: 'Go deeper',
-    description: 'For intensive knowledge work and larger libraries.',
-    price: '€29',
-    features: [
-      '100 video analyses',
-      'Advanced exports',
-      'Highest processing priority',
-      'Extended history controls',
-    ],
-    cta: 'Choose Spectrum',
-    recommended: false,
-  },
-] as const;
+import type { MarketingContent } from '@/data/marketing';
+import type { MarketingMessages } from '@/lib/i18n/messages/marketing';
 
-export function ReferencePricing() {
+type ReferencePricingProps = Readonly<{
+  content: MarketingContent;
+  copy: MarketingMessages['pricing'];
+}>;
+
+export function ReferencePricing({ content, copy }: ReferencePricingProps) {
   return (
     <section className="section" id="pricing">
       <div className="container narrow">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">Simple plans</span>
-            <h2 className="title-lg">Choose how much light you need.</h2>
+            <span className="eyebrow">{copy.eyebrow}</span>
+            <h2 className="title-lg">{copy.title}</h2>
           </div>
-          <p className="body-lg">
-            Start free, keep every result in history, and upgrade only when your
-            workflow demands more capacity.
-          </p>
+          <p className="body-lg">{copy.description}</p>
         </div>
         <div className="pricing-grid">
-          {plans.map((plan) => (
+          {content.pricing.map((plan) => (
             <article
               className={`plan-card${plan.recommended ? ' recommended' : ''}`}
               key={plan.name}
@@ -68,10 +28,10 @@ export function ReferencePricing() {
               <p className="body-md">{plan.description}</p>
               <div className="plan-price">
                 <strong>{plan.price}</strong>
-                <span>/ month</span>
+                <span>{plan.period}</span>
               </div>
               <div className="plan-features">
-                {plan.features.map((feature) => (
+                {Object.values(plan.features).map((feature) => (
                   <div className="plan-feature" key={feature}>
                     {feature}
                   </div>
@@ -79,7 +39,7 @@ export function ReferencePricing() {
               </div>
               <a
                 className={`btn ${plan.recommended ? 'btn-primary' : 'btn-ghost'}`}
-                href="#product"
+                href={plan.ctaHref}
               >
                 <span>{plan.cta}</span>
                 {plan.recommended && (
@@ -101,54 +61,44 @@ export function ReferencePricing() {
   );
 }
 
-export function ReferenceFooter() {
+type ReferenceFooterProps = Readonly<{
+  content: MarketingContent;
+  copy: MarketingMessages['footer'];
+  homeLabel: string;
+}>;
+
+export function ReferenceFooter({
+  content,
+  copy,
+  homeLabel,
+}: ReferenceFooterProps) {
   return (
     <footer className="site-footer">
       <div className="container">
         <div className="footer-grid">
           <div>
-            <a className="brand" href="#product" aria-label="Gleen home">
+            <a className="brand" href="#product" aria-label={homeLabel}>
               <span className="brand-mark" />
               <span>Gleen</span>
             </a>
-            <p className="body-md footer-copy">
-              One video enters. A spectrum of usable knowledge comes out.
-            </p>
+            <p className="body-md footer-copy">{copy.intro}</p>
           </div>
-          <div>
-            <div className="footer-title">Product</div>
-            <div className="footer-links">
-              <a href="#facets">Artifacts</a>
-              <a href="#how">How it works</a>
-              <a href="#pricing">Pricing</a>
-              <a href="#product">Open app</a>
+          {content.footerGroups.map((group) => (
+            <div key={group.title}>
+              <div className="footer-title">{group.title}</div>
+              <div className="footer-links">
+                {group.links.map((link) => (
+                  <a href={link.href} key={link.label}>
+                    {link.label}
+                  </a>
+                ))}
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="footer-title">Company</div>
-            <div className="footer-links">
-              <a href="#product">Privacy</a>
-              <a href="#product">Terms</a>
-              <a href="#product">Cookies</a>
-              <a href="#product">Contact</a>
-            </div>
-          </div>
-          <div>
-            <div className="footer-title">Language</div>
-            <div className="footer-links">
-              <a href="#product">English</a>
-              <a href="#product">Українська</a>
-              <a href="#product">Русский</a>
-              <a href="#product">Español</a>
-              <a href="#product">Deutsch</a>
-            </div>
-          </div>
+          ))}
         </div>
         <div className="footer-bottom">
-          <span>© 2026 Gleen. All rights reserved.</span>
-          <span>
-            AI-generated content should be checked against the original source.
-          </span>
+          <span>{copy.rightsReserved}</span>
+          <span>{copy.legalWarning}</span>
         </div>
       </div>
     </footer>

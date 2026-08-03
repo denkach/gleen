@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { marketingContent } from './marketing';
+import { marketingMessages } from '@/lib/i18n/messages/marketing';
+
+import { getMarketingContent } from './marketing';
 
 describe('marketingContent', () => {
   it('preserves the approved navigation order', () => {
+    const marketingContent = getMarketingContent(marketingMessages.de);
+
     expect(marketingContent.navigation.map(({ href }) => href)).toEqual([
       '#product',
       '#how',
@@ -13,6 +17,8 @@ describe('marketingContent', () => {
   });
 
   it('preserves the approved artifact order and identity', () => {
+    const marketingContent = getMarketingContent(marketingMessages.de);
+
     expect(marketingContent.facets.map(({ id }) => id)).toEqual([
       'summary',
       'flashcards',
@@ -22,11 +28,13 @@ describe('marketingContent', () => {
   });
 
   it('preserves the four workflow phases', () => {
+    const marketingContent = getMarketingContent(marketingMessages.de);
+
     expect(marketingContent.workflow.map(({ phase }) => phase)).toEqual([
-      'INPUT',
+      'EINGABE',
       'SIGNAL',
-      'REFRACTION',
-      'OUTPUT',
+      'BRECHUNG',
+      'ERGEBNIS',
     ]);
   });
 });

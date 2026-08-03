@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { marketingMessages } from '@/lib/i18n/messages/marketing';
+
 const push = vi.fn();
 
 vi.mock('next/navigation', () => ({
@@ -15,7 +17,7 @@ describe('LandingAnalysisForm', () => {
 
   it('navigates through sign in with one normalized continuation on submit', async () => {
     const user = userEvent.setup();
-    render(<LandingAnalysisForm />);
+    render(<LandingAnalysisForm copy={marketingMessages.en.hero} />);
 
     await user.clear(screen.getByLabelText('YouTube URL'));
     await user.type(
@@ -34,16 +36,16 @@ describe('LandingAnalysisForm', () => {
 
   it('supports keyboard submission and reports an invalid YouTube URL', async () => {
     const user = userEvent.setup();
-    render(<LandingAnalysisForm />);
+    render(<LandingAnalysisForm copy={marketingMessages.de.hero} />);
 
-    const input = screen.getByLabelText('YouTube URL');
+    const input = screen.getByLabelText('YouTube-URL');
     await user.clear(input);
     await user.type(input, 'https://example.com/video');
     fireEvent.submit(input.closest('form')!);
 
     expect(push).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Enter a supported YouTube URL.',
+      'Gib eine unterstützte YouTube-URL ein.',
     );
   });
 });

@@ -4,12 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
+vi.mock('@/lib/i18n/request-locale', () => ({
+  getRequestLocale: () => Promise.resolve('en'),
+}));
 
 import HomePage from './page';
 
 describe('approved landing hero', () => {
-  it('preserves the reference hierarchy and prism geometry', () => {
-    render(<HomePage />);
+  it('preserves the reference hierarchy and prism geometry', async () => {
+    render(await HomePage());
     expect(screen.getByRole('banner')).toBeVisible();
     expect(
       screen.getByRole('heading', {
@@ -30,8 +33,8 @@ describe('approved landing hero', () => {
     expect(document.querySelectorAll('.artifact-float')).toHaveLength(4);
   });
 
-  it('preserves the approved Prism Workflow structure', () => {
-    render(<HomePage />);
+  it('preserves the approved Prism Workflow structure', async () => {
+    render(await HomePage());
     const section = document.querySelector('#how');
     expect(section).not.toBeNull();
     expect(
@@ -53,8 +56,8 @@ describe('approved landing hero', () => {
     ]);
   });
 
-  it('preserves four distinct approved facet demos', () => {
-    render(<HomePage />);
+  it('preserves four distinct approved facet demos', async () => {
+    render(await HomePage());
     const facets = document.querySelectorAll('#facets .facet-panel');
     expect(facets).toHaveLength(4);
     expect(facets[0]?.querySelector('.summary-demo')).not.toBeNull();
@@ -72,8 +75,8 @@ describe('approved landing hero', () => {
     ).toHaveLength(4);
   });
 
-  it('preserves the approved pricing and footer composition', () => {
-    render(<HomePage />);
+  it('preserves the approved pricing and footer composition', async () => {
+    render(await HomePage());
     expect(document.querySelectorAll('#pricing .plan-card')).toHaveLength(3);
     expect(
       document.querySelectorAll('#pricing .plan-card.recommended'),

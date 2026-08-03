@@ -1,3 +1,7 @@
+import type { MarketingMessages } from '@/lib/i18n/messages/marketing';
+
+import { pricingPlans } from './pricing';
+
 export type ArtifactId = 'summary' | 'flashcards' | 'timestamps' | 'export';
 
 export type MarketingLink = Readonly<{ label: string; href: string }>;
@@ -22,105 +26,88 @@ export type FooterGroup = Readonly<{
   links: readonly MarketingLink[];
 }>;
 
-const navigation = [
-  { label: 'Product', href: '#product' },
-  { label: 'How it works', href: '#how' },
-  { label: 'Artifacts', href: '#facets' },
-  { label: 'Pricing', href: '#pricing' },
-] as const satisfies readonly MarketingLink[];
+export type MarketingPricingCard = Readonly<{
+  label: string;
+  name: string;
+  description: string;
+  features: Readonly<Record<string, string>>;
+  cta: string;
+  price: string;
+  period: string;
+  recommended: boolean;
+  ctaHref: string;
+}>;
 
-const workflow = [
-  {
-    number: '01',
-    phase: 'INPUT',
-    title: 'Paste a link',
-    body: 'Gleen validates the source and checks your saved analyses first.',
-  },
-  {
-    number: '02',
-    phase: 'SIGNAL',
-    title: 'Read the video',
-    body: 'Transcript, metadata, chapters, and source language are mapped.',
-  },
-  {
-    number: '03',
-    phase: 'REFRACTION',
-    title: 'Separate ideas',
-    body: 'Key arguments become structured, source-linked knowledge.',
-  },
-  {
-    number: '04',
-    phase: 'OUTPUT',
-    title: 'Use the result',
-    body: 'Study, revisit, export, and continue without paying twice.',
-  },
-] as const satisfies readonly WorkflowStep[];
+export type MarketingContent = Readonly<{
+  navigation: readonly MarketingLink[];
+  workflow: readonly WorkflowStep[];
+  facets: readonly ArtifactFacet[];
+  footerGroups: readonly FooterGroup[];
+  pricing: readonly MarketingPricingCard[];
+}>;
 
-const facets = [
-  {
-    id: 'summary',
-    kicker: 'Structured summary',
-    title: 'See the shape of the argument.',
-    body: 'Expandable chapters, highlighted key ideas, actionable conclusions, and direct links back to the exact moment in the video.',
-    cta: 'Explore the summary',
-  },
-  {
-    id: 'flashcards',
-    kicker: 'Interactive flashcards',
-    title: 'Turn insight into memory.',
-    body: 'Study the video’s most important concepts in a focused deck. Flip, rate, edit, and jump directly to the source.',
-    cta: 'Open study mode',
-  },
-  {
-    id: 'timestamps',
-    kicker: 'Clickable timestamps',
-    title: 'Move through meaning, not minutes.',
-    body: 'A source-linked timeline lets you revisit the right passage instantly instead of scrubbing through the entire video.',
-    cta: 'See the timeline',
-  },
-  {
-    id: 'export',
-    kicker: 'Export-ready knowledge',
-    title: 'Let the result flow into your system.',
-    body: 'Choose the destination and keep the structure. Export transparently to Notion, Obsidian, NotebookLM, or clean Markdown.',
-    cta: 'Preview exports',
-  },
-] as const satisfies readonly ArtifactFacet[];
+export function getMarketingContent(copy: MarketingMessages): MarketingContent {
+  const pricing = [
+    copy.pricing.free,
+    copy.pricing.prism,
+    copy.pricing.spectrum,
+  ].map((card, index) => ({
+    ...card,
+    price: pricingPlans[index]!.price,
+    period: copy.pricing.period,
+    recommended: pricingPlans[index]!.recommended,
+    ctaHref: pricingPlans[index]!.ctaHref,
+  }));
 
-const footerGroups = [
-  {
-    title: 'Product',
-    links: [
-      { label: 'Artifacts', href: '#facets' },
-      { label: 'How it works', href: '#how' },
-      { label: 'Pricing', href: '#pricing' },
-      { label: 'Open app', href: '#product' },
+  return Object.freeze({
+    navigation: [
+      { label: copy.header.product, href: '#product' },
+      { label: copy.header.howItWorks, href: '#how' },
+      { label: copy.header.examples, href: '#facets' },
+      { label: copy.header.pricing, href: '#pricing' },
     ],
-  },
-  {
-    title: 'Company',
-    links: [
-      { label: 'Privacy', href: '#product' },
-      { label: 'Terms', href: '#product' },
-      { label: 'Cookies', href: '#product' },
-      { label: 'Contact', href: '#product' },
+    workflow: [
+      { number: '01', ...copy.workflow.input },
+      { number: '02', ...copy.workflow.signal },
+      { number: '03', ...copy.workflow.refraction },
+      { number: '04', ...copy.workflow.output },
     ],
-  },
-  {
-    title: 'Language',
-    links: [
-      { label: 'English', href: '#product' },
-      { label: 'Українська', href: '#product' },
-      { label: 'Русский', href: '#product' },
-      { label: 'Español', href: '#product' },
-      { label: 'Deutsch', href: '#product' },
+    facets: [
+      { id: 'summary', ...copy.facets.summary },
+      { id: 'flashcards', ...copy.facets.flashcards },
+      { id: 'timestamps', ...copy.facets.timestamps },
+      { id: 'export', ...copy.facets.export },
     ],
-  },
-] as const satisfies readonly FooterGroup[];
-
-export const marketingContent = Object.freeze({
-  navigation,
-  workflow,
-  facets,
-  footerGroups,
-});
+    footerGroups: [
+      {
+        title: copy.footer.product,
+        links: [
+          { label: copy.footer.artifacts, href: '#facets' },
+          { label: copy.footer.howItWorks, href: '#how' },
+          { label: copy.footer.pricing, href: '#pricing' },
+          { label: copy.footer.openApp, href: '#product' },
+        ],
+      },
+      {
+        title: copy.footer.company,
+        links: [
+          { label: copy.footer.privacy, href: '#product' },
+          { label: copy.footer.terms, href: '#product' },
+          { label: copy.footer.cookies, href: '#product' },
+          { label: copy.footer.contact, href: '#product' },
+        ],
+      },
+      {
+        title: copy.footer.language,
+        links: [
+          { label: 'English', href: '#product' },
+          { label: 'Українська', href: '#product' },
+          { label: 'Русский', href: '#product' },
+          { label: 'Español', href: '#product' },
+          { label: 'Deutsch', href: '#product' },
+        ],
+      },
+    ],
+    pricing,
+  });
+}

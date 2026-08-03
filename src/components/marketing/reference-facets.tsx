@@ -1,3 +1,5 @@
+import type { MarketingMessages } from '@/lib/i18n/messages/marketing';
+
 const WindowDots = () => (
   <div className="window-dots">
     <i />
@@ -12,35 +14,33 @@ const FacetArrow = () => (
   </svg>
 );
 
-export function ReferenceFacets() {
+type ReferenceFacetsProps = Readonly<{
+  copy: MarketingMessages['facets'];
+}>;
+
+export function ReferenceFacets({ copy }: ReferenceFacetsProps) {
   return (
     <section className="section" id="facets">
       <div className="container">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">Four facets</span>
+            <span className="eyebrow">{copy.eyebrow}</span>
             <h2 className="title-lg">
-              Not a transcript dump.
-              <br />A usable workspace.
+              {copy.titleStart}
+              <br />
+              {copy.titleEnd}
             </h2>
           </div>
-          <p className="body-lg">
-            Every artifact has its own interaction model and spectral identity,
-            while the whole experience remains restrained and consistent.
-          </p>
+          <p className="body-lg">{copy.description}</p>
         </div>
         <div className="facets">
           <article className="facet-panel amber">
             <div className="facet-copy">
-              <div className="facet-kicker">Structured summary</div>
-              <h3 className="title-lg">See the shape of the argument.</h3>
-              <p>
-                Expandable chapters, highlighted key ideas, actionable
-                conclusions, and direct links back to the exact moment in the
-                video.
-              </p>
+              <div className="facet-kicker">{copy.summary.kicker}</div>
+              <h3 className="title-lg">{copy.summary.title}</h3>
+              <p>{copy.summary.body}</p>
               <a className="btn btn-ghost" href="#product">
-                <span>Explore the summary</span>
+                <span>{copy.summary.cta}</span>
                 <FacetArrow />
               </a>
             </div>
@@ -48,32 +48,28 @@ export function ReferenceFacets() {
               <div className="demo-window">
                 <div className="demo-topbar">
                   <WindowDots />
-                  <span>SUMMARY / AUTO-SAVED</span>
+                  <span>{copy.summary.demoTopbar}</span>
                 </div>
                 <div className="summary-demo">
                   <div className="demo-heading">
-                    <h4>The central idea</h4>
+                    <h4>{copy.summary.demoTitle}</h4>
                     <span className="timestamp-link">00:03:18</span>
                   </div>
-                  <p className="body-md">
-                    The speaker argues that durable learning depends on active
-                    retrieval rather than passive exposure.
-                  </p>
+                  <p className="body-md">{copy.summary.demoBody}</p>
                   <div className="summary-line" />
                   <div className="summary-line" />
                   <div className="summary-line line-78" />
                   <div className="summary-section-card">
                     <div className="section-row">
-                      <strong>Why retrieval works</strong>
+                      <strong>{copy.summary.demoSectionTitle}</strong>
                       <span>−</span>
                     </div>
                     <p className="body-md">
-                      A{' '}
+                      {copy.summary.demoBefore}{' '}
                       <span className="highlight-text">
-                        desirable difficulty
+                        {copy.summary.demoHighlight}
                       </span>{' '}
-                      strengthens access pathways and makes future recall more
-                      reliable.
+                      {copy.summary.demoAfter}
                     </p>
                   </div>
                 </div>
@@ -82,27 +78,22 @@ export function ReferenceFacets() {
           </article>
           <article className="facet-panel purple">
             <div className="facet-copy">
-              <div className="facet-kicker">Interactive flashcards</div>
-              <h3 className="title-lg">Turn insight into memory.</h3>
-              <p>
-                Study the video’s most important concepts in a focused deck.
-                Flip, rate, edit, and jump directly to the source.
-              </p>
+              <div className="facet-kicker">{copy.flashcards.kicker}</div>
+              <h3 className="title-lg">{copy.flashcards.title}</h3>
+              <p>{copy.flashcards.body}</p>
               <a className="btn btn-ghost" href="#product">
-                <span>Open study mode</span>
+                <span>{copy.flashcards.cta}</span>
                 <FacetArrow />
               </a>
             </div>
             <div className="facet-demo">
               <div className="flashcard-stack">
                 <article className="flashcard">
-                  <span className="card-meta">Card 04 / 18</span>
-                  <div className="question">
-                    What makes retrieval practice more effective than rereading?
-                  </div>
+                  <span className="card-meta">{copy.flashcards.demoMeta}</span>
+                  <div className="question">{copy.flashcards.demoQuestion}</div>
                   <div className="card-footer">
-                    <span>Tap to reveal</span>
-                    <span>Source 00:14:32</span>
+                    <span>{copy.flashcards.demoReveal}</span>
+                    <span>{copy.flashcards.demoSource}</span>
                   </div>
                 </article>
                 <article className="flashcard" />
@@ -112,14 +103,11 @@ export function ReferenceFacets() {
           </article>
           <article className="facet-panel cyan">
             <div className="facet-copy">
-              <div className="facet-kicker">Clickable timestamps</div>
-              <h3 className="title-lg">Move through meaning, not minutes.</h3>
-              <p>
-                A source-linked timeline lets you revisit the right passage
-                instantly instead of scrubbing through the entire video.
-              </p>
+              <div className="facet-kicker">{copy.timestamps.kicker}</div>
+              <h3 className="title-lg">{copy.timestamps.title}</h3>
+              <p>{copy.timestamps.body}</p>
               <a className="btn btn-ghost" href="#product">
-                <span>See the timeline</span>
+                <span>{copy.timestamps.cta}</span>
                 <FacetArrow />
               </a>
             </div>
@@ -127,23 +115,23 @@ export function ReferenceFacets() {
               <div className="demo-window">
                 <div className="demo-topbar">
                   <WindowDots />
-                  <span>TIMELINE / 12 CHAPTERS</span>
+                  <span>{copy.timestamps.demoTopbar}</span>
                 </div>
                 <div className="timeline-demo">
                   <div className="timeline-item">
                     <span className="time">00:02:10</span>
                     <span className="timeline-axis" />
                     <div>
-                      <strong>Passive exposure</strong>
-                      <p>Why familiarity can be mistaken for understanding.</p>
+                      <strong>{copy.timestamps.firstTitle}</strong>
+                      <p>{copy.timestamps.firstBody}</p>
                     </div>
                   </div>
                   <div className="timeline-item">
                     <span className="time">00:14:32</span>
                     <span className="timeline-axis" />
                     <div>
-                      <strong>Desirable difficulty</strong>
-                      <p>How effort changes the strength of memory.</p>
+                      <strong>{copy.timestamps.secondTitle}</strong>
+                      <p>{copy.timestamps.secondBody}</p>
                       <div className="timeline-preview" />
                     </div>
                   </div>
@@ -151,8 +139,8 @@ export function ReferenceFacets() {
                     <span className="time">00:28:06</span>
                     <span className="timeline-axis" />
                     <div>
-                      <strong>A practical routine</strong>
-                      <p>A three-step learning loop for everyday use.</p>
+                      <strong>{copy.timestamps.thirdTitle}</strong>
+                      <p>{copy.timestamps.thirdBody}</p>
                     </div>
                   </div>
                 </div>
@@ -161,17 +149,11 @@ export function ReferenceFacets() {
           </article>
           <article className="facet-panel lime">
             <div className="facet-copy">
-              <div className="facet-kicker">Export-ready knowledge</div>
-              <h3 className="title-lg">
-                Let the result flow into your system.
-              </h3>
-              <p>
-                Choose the destination and keep the structure. Export
-                transparently to Notion, Obsidian, NotebookLM, or clean
-                Markdown.
-              </p>
+              <div className="facet-kicker">{copy.export.kicker}</div>
+              <h3 className="title-lg">{copy.export.title}</h3>
+              <p>{copy.export.body}</p>
               <a className="btn btn-ghost" href="#product">
-                <span>Preview exports</span>
+                <span>{copy.export.cta}</span>
                 <FacetArrow />
               </a>
             </div>
@@ -179,11 +161,11 @@ export function ReferenceFacets() {
               <div className="demo-window">
                 <div className="demo-topbar">
                   <WindowDots />
-                  <span>EXPORT / READY</span>
+                  <span>{copy.export.demoTopbar}</span>
                 </div>
                 <div className="export-demo">
                   <div className="export-doc">
-                    <h4>Learning through retrieval</h4>
+                    <h4>{copy.export.demoTitle}</h4>
                     <div className="mini-line" />
                     <div className="mini-line line-84" />
                     <div className="mini-line line-94" />

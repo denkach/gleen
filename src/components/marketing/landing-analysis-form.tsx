@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 
 import { buildAnalysisContinuation } from '@/lib/youtube-intake/continuation';
+import type { MarketingMessages } from '@/lib/i18n/messages/marketing';
 
 const Arrow = () => (
   <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
@@ -19,7 +20,11 @@ const LinkIcon = () => (
   </svg>
 );
 
-export function LandingAnalysisForm() {
+type LandingAnalysisFormProps = Readonly<{
+  copy: MarketingMessages['hero'];
+}>;
+
+export function LandingAnalysisForm({ copy }: LandingAnalysisFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string>();
 
@@ -30,7 +35,7 @@ export function LandingAnalysisForm() {
       typeof rawUrl === 'string' ? buildAnalysisContinuation(rawUrl) : null;
 
     if (!nextPath) {
-      setError('Enter a supported YouTube URL.');
+      setError(copy.invalidUrl);
       return;
     }
 
@@ -42,25 +47,25 @@ export function LandingAnalysisForm() {
     <>
       <form
         className="beam-form"
-        aria-label="Analyze a YouTube video"
+        aria-label={copy.formLabel}
         onSubmit={handleSubmit}
         noValidate
       >
         <label className="sr-only" htmlFor="youtube-url">
-          YouTube URL
+          {copy.inputLabel}
         </label>
         <LinkIcon />
         <input
           id="youtube-url"
           name="youtubeUrl"
           type="url"
-          placeholder="Paste a YouTube link"
+          placeholder={copy.placeholder}
           defaultValue="https://youtube.com/watch?v=knowledge"
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? 'youtube-url-error' : undefined}
         />
         <button className="btn btn-primary" type="submit">
-          <span>Transform video</span>
+          <span>{copy.submit}</span>
           <Arrow />
         </button>
       </form>
