@@ -7,6 +7,7 @@ import { unavailableUsage } from '@/lib/app-shell';
 import { localeSchema } from '@/lib/i18n/locales';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import {
   reanalyzeFixture,
@@ -56,7 +57,9 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
     locale: localeInput,
   } = await searchParams;
   const parsedLocale = localeSchema.safeParse(localeInput);
-  const locale = parsedLocale.success ? parsedLocale.data : 'en';
+  const locale = parsedLocale.success
+    ? parsedLocale.data
+    : await getRequestLocale();
   const resolvedJourney = journey ?? (analysis ? 'recover' : undefined);
   if (
     intake &&

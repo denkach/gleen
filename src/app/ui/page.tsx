@@ -1,16 +1,35 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
+import {
+  selectMessages,
+  type MissingTranslationEvent,
+} from '@/lib/i18n/catalog';
+import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 
 import { UiPreview } from './ui-preview';
 
-export const metadata: Metadata = {
-  title: 'Gleen UI primitives',
-  robots: { index: false, follow: false },
-};
+function reportMissingSharedTranslation(event: MissingTranslationEvent) {
+  console.error(event);
+}
 
-export default function UiPreviewPage() {
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    sharedMessages,
+    locale,
+    'shared',
+    reportMissingSharedTranslation,
+  );
+  return {
+    title: copy.uiPreview.metadataTitle,
+    robots: { index: false, follow: false },
+  };
+}
+
+export default async function UiPreviewPage() {
   if (
     !isUiPreviewEnabled({
       NODE_ENV: process.env.NODE_ENV,
@@ -20,5 +39,12 @@ export default function UiPreviewPage() {
     notFound();
   }
 
-  return <UiPreview />;
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    sharedMessages,
+    locale,
+    'shared',
+    reportMissingSharedTranslation,
+  );
+  return <UiPreview copy={copy.uiPreview} />;
 }

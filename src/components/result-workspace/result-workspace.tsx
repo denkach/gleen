@@ -383,6 +383,7 @@ function ResultArtifacts({
                 }
                 revision={model.revisions.title}
                 saveTitle={saveTitle}
+                copy={copy}
               />
             )
           }
@@ -436,7 +437,7 @@ function ResultArtifacts({
                 readOnly={publicMode}
               />
             ) : (
-              <ArtifactState state={model.tabs.summary} />
+              <ArtifactState state={model.tabs.summary} copy={copy} />
             )}
           </TabsContent>
           <TabsContent
@@ -476,7 +477,7 @@ function ResultArtifacts({
                 readOnly={publicMode}
               />
             ) : (
-              <ArtifactState state={model.tabs.flashcards} />
+              <ArtifactState state={model.tabs.flashcards} copy={copy} />
             )}
           </TabsContent>
           <TabsContent
@@ -512,7 +513,7 @@ function ResultArtifacts({
                 readOnly={publicMode}
               />
             ) : (
-              <ArtifactState state={model.tabs.timestamps} />
+              <ArtifactState state={model.tabs.timestamps} copy={copy} />
             )}
           </TabsContent>
           <TabsContent value="transcript">
@@ -525,7 +526,7 @@ function ResultArtifacts({
                 onUiStateChange={onTranscriptUiStateChange}
               />
             ) : (
-              <ArtifactState state={model.tabs.transcript} />
+              <ArtifactState state={model.tabs.transcript} copy={copy} />
             )}
           </TabsContent>
           <TabsContent value="export">

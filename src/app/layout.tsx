@@ -6,7 +6,12 @@ import '@fontsource-variable/jetbrains-mono';
 import '@fontsource-variable/space-grotesk';
 
 import { validatePublicEnv } from '@/env';
+import {
+  selectMessages,
+  type MissingTranslationEvent,
+} from '@/lib/i18n/catalog';
 import { toBcp47 } from '@/lib/i18n/locales';
+import { marketingMessages } from '@/lib/i18n/messages/marketing';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 
 import './globals.css';
@@ -18,27 +23,39 @@ import '../styles/history-reference.css';
 import '../styles/result-workspace-reference.css';
 
 const { NEXT_PUBLIC_APP_URL } = validatePublicEnv(process.env);
-const landingDescription =
-  'Turn any YouTube video into a structured summary, smart flashcards, precise timestamps, and export-ready knowledge.';
 
-export const metadata: Metadata = {
-  metadataBase: new URL(NEXT_PUBLIC_APP_URL),
-  title: 'Gleen — Watch less. Understand more.',
-  description: landingDescription,
-  alternates: { canonical: '/' },
-  openGraph: {
-    type: 'website',
-    url: '/',
-    title: 'Gleen — Watch less. Understand more.',
-    description: landingDescription,
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Gleen — Watch less. Understand more.',
-    description: landingDescription,
-  },
-  robots: { index: true, follow: true },
-};
+function reportMissingMarketingTranslation(event: MissingTranslationEvent) {
+  console.error(event);
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    marketingMessages,
+    locale,
+    'marketing',
+    reportMissingMarketingTranslation,
+  );
+
+  return {
+    metadataBase: new URL(NEXT_PUBLIC_APP_URL),
+    title: copy.metadata.title,
+    description: copy.metadata.description,
+    alternates: { canonical: '/' },
+    openGraph: {
+      type: 'website',
+      url: '/',
+      title: copy.metadata.title,
+      description: copy.metadata.description,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: copy.metadata.title,
+      description: copy.metadata.description,
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 export default async function RootLayout({
   children,

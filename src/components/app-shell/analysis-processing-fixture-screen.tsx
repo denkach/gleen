@@ -34,7 +34,7 @@ export function AnalysisProcessingFixtureScreen({
             )
           }
         >
-          View available results
+          {copy.processing.viewAvailable}
         </button>
       ) : null}
       <AnalysisProcessingScreen

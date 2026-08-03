@@ -163,9 +163,9 @@ export function AnalysisHandoffFixture({
 
   if (startedAt === null)
     return (
-      <form aria-label="Fixture analysis" onSubmit={start}>
+      <form aria-label={copy.processing.fixture.analysisLabel} onSubmit={start}>
         <button className="btn btn-primary" type="submit">
-          Start fixture analysis
+          {copy.processing.fixture.startAnalysis}
         </button>
       </form>
     );
@@ -212,7 +212,9 @@ export function AnalysisHandoffFixture({
         data-settled={settled ? 'true' : 'false'}
       />
       {journey === 'recover' ? (
-        <Link href="/app-shell-fixture/history">History</Link>
+        <Link href="/app-shell-fixture/history">
+          {copy.shell.navigation.history.label}
+        </Link>
       ) : null}
     </>
   );

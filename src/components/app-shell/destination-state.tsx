@@ -1,12 +1,16 @@
 import Link from 'next/link';
 
+import type { AppMessages } from '@/lib/i18n/messages/app';
+
 interface DestinationStateProps {
+  copy: AppMessages['destination'];
   eyebrow: string;
   title: string;
   description: string;
 }
 
 export function DestinationState({
+  copy,
   eyebrow,
   title,
   description,
@@ -22,9 +26,9 @@ export function DestinationState({
       </div>
 
       <div className="panel destination-panel">
-        <p>This workspace is ready for the next product stage.</p>
+        <p>{copy.ready}</p>
         <Link className="ui-button" href="/app">
-          New analysis
+          {copy.newAnalysis}
         </Link>
       </div>
     </section>

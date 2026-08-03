@@ -1,18 +1,24 @@
 import { render, screen as testingScreen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { isUiPreviewEnabled, notFound, renderFixture, renderShell } = vi.hoisted(
-  () => ({
-    isUiPreviewEnabled: vi.fn(),
-    notFound: vi.fn((): never => {
-      throw new Error('NEXT_NOT_FOUND');
-    }),
-    renderFixture: vi.fn(),
-    renderShell: vi.fn(),
+const {
+  isUiPreviewEnabled,
+  notFound,
+  renderFixture,
+  renderShell,
+  usePathname,
+} = vi.hoisted(() => ({
+  isUiPreviewEnabled: vi.fn(),
+  notFound: vi.fn((): never => {
+    throw new Error('NEXT_NOT_FOUND');
   }),
-);
+  renderFixture: vi.fn(),
+  renderShell: vi.fn(),
+  usePathname: vi.fn(() => '/billing-fixture/checkout'),
+}));
 
-vi.mock('next/navigation', () => ({ notFound }));
+vi.mock('next/navigation', () => ({ notFound, usePathname }));
 vi.mock('@/lib/ui-preview', () => ({ isUiPreviewEnabled }));
 vi.mock('./fixture-screen', () => ({
   BillingFixtureScreen: (props: unknown) => {
@@ -33,6 +39,7 @@ vi.mock('@/components/app-shell/app-shell', () => ({
 }));
 
 import BillingFixturePage from './page';
+import { getBillingFixture } from '@/lib/billing/fixtures';
 
 describe('BillingFixturePage guard', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -157,4 +164,53 @@ describe('BillingFixturePage guard', () => {
       );
     },
   );
+
+  it('keeps localized checkout fixture controls inside fixture routes', async () => {
+    const user = userEvent.setup();
+    const { BillingFixtureScreen } =
+      await vi.importActual<typeof import('./fixture-screen')>(
+        './fixture-screen',
+      );
+
+    render(
+      <BillingFixtureScreen
+        fixture={getBillingFixture('checkout', 'active', 'de')}
+        locale="de"
+        testBoundary={null}
+        routeQuery={{
+          search: '',
+          eventType: null,
+          range: 'current',
+          status: null,
+          year: null,
+          cursor: null,
+        }}
+      />,
+    );
+
+    expect(
+      testingScreen.getByRole('group', {
+        name: 'Sichere Stripe-Zahlungsvorschau',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      testingScreen.getByText('◇ Hast du einen Aktionscode?'),
+    ).toBeInTheDocument();
+    expect(testingScreen.getByRole('link', { name: 'Tarif' })).toHaveAttribute(
+      'href',
+      '/billing-fixture/subscription',
+    );
+    expect(
+      testingScreen.getByRole('link', { name: 'Nutzung' }),
+    ).toHaveAttribute('href', '/billing-fixture/usage');
+
+    await user.click(
+      testingScreen.getByRole('button', {
+        name: 'Weitere Abrechnungsseiten',
+      }),
+    );
+    expect(
+      testingScreen.getByRole('link', { name: '04 · Abrechnungsportal' }),
+    ).toHaveAttribute('href', '/billing-fixture/portal');
+  });
 });

@@ -222,7 +222,7 @@ export function BillingFixtureScreen({
               <div
                 className="billing-stripe-preview"
                 role="group"
-                aria-label="Secure Stripe payment preview"
+                aria-label={fixtureCopy.checkout.fixture.securePaymentPreview}
               >
                 <div className="billing-stripe-preview-field billing-stripe-preview-wide">
                   <span>Email</span>
@@ -260,7 +260,7 @@ export function BillingFixtureScreen({
             canSubmit={testBoundary === 'checkout-action'}
             promotionPreview={
               <div className="billing-promotion-preview">
-                <span>◇ Have a promo code?</span>
+                <span>{fixtureCopy.checkout.fixture.promotionCode}</span>
                 <span aria-hidden="true">›</span>
               </div>
             }

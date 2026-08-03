@@ -10,8 +10,10 @@ import {
   type HistoryVisualCase,
 } from '@/components/app-shell/fixture-history-contract';
 import { unavailableUsage } from '@/lib/app-shell';
+import { localeSchema } from '@/lib/i18n/locales';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 
 export const metadata: Metadata = {
@@ -61,6 +63,7 @@ export default async function FixtureHistoryPage({
     visualCase = 'default',
     fixtureAction = 'success',
     fixtureDuplicate,
+    locale: localeInput,
   } = resolvedSearchParams;
   if (!isHistoryVisualCase(visualCase)) {
     notFound();
@@ -71,13 +74,17 @@ export default async function FixtureHistoryPage({
   if (fixtureDuplicate !== undefined && fixtureDuplicate !== 'true') {
     notFound();
   }
+  const parsedLocale = localeSchema.safeParse(localeInput);
+  const locale = parsedLocale.success
+    ? parsedLocale.data
+    : await getRequestLocale();
 
   return (
     <AppShell
-      copy={appMessages.en}
+      copy={appMessages[locale]}
       identity={fixtureIdentity}
-      locale="en"
-      localeSwitcherCopy={sharedMessages.en}
+      locale={locale}
+      localeSwitcherCopy={sharedMessages[locale]}
       usage={unavailableUsage}
       pathnameOverride="/app/history"
     >
@@ -86,6 +93,7 @@ export default async function FixtureHistoryPage({
         fixtureAction={fixtureAction}
         fixtureDuplicate={fixtureDuplicate === 'true'}
         queryInput={resolvedSearchParams}
+        locale={locale}
       />
     </AppShell>
   );

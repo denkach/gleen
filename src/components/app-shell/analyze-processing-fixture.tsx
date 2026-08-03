@@ -58,10 +58,8 @@ export function AnalyzeProcessingFixture({
       aria-labelledby="analyze-processing-fixture-title"
     >
       <header>
-        <p>Development-only deterministic demo</p>
-        <h1 id="analyze-processing-fixture-title">
-          Analyze processing motion fixture
-        </h1>
+        <p>{copy.fixture.developmentOnly}</p>
+        <h1 id="analyze-processing-fixture-title">{copy.fixture.title}</h1>
       </header>
 
       <div className="analyze-processing-fixture-actions">
@@ -73,13 +71,13 @@ export function AnalyzeProcessingFixture({
           }}
           disabled={isRunning}
         >
-          Analyze video
+          {copy.fixture.analyze}
         </button>
         <button type="button" onClick={replay}>
-          Replay sequence
+          {copy.fixture.replay}
         </button>
         <button type="button" onClick={previewError}>
-          Preview error
+          {copy.fixture.previewError}
         </button>
       </div>
 
@@ -87,11 +85,7 @@ export function AnalyzeProcessingFixture({
         copy={copy}
         state={state}
         submittedUrl={fixtureUrl}
-        errorMessage={
-          state === 'error'
-            ? 'Fixture error: the demo video could not be accessed.'
-            : undefined
-        }
+        errorMessage={state === 'error' ? copy.fixture.error : undefined}
         onRetry={run}
       />
     </section>

@@ -10,6 +10,8 @@ import { createSessionRecoveryRepositories } from '@/lib/analysis-pipeline/sessi
 import { parseHistoryQuery } from '@/lib/history/query';
 import type { HistoryItem } from '@/lib/history/repository';
 import { historyMessages } from '@/lib/i18n/messages/history';
+import { appMessages } from '@/lib/i18n/messages/app';
+import type { Locale } from '@/lib/i18n/locales';
 
 import type {
   HistoryFixtureAction,
@@ -19,7 +21,7 @@ import type {
 export { historyVisualCases } from './fixture-history-contract';
 export type { HistoryVisualCase } from './fixture-history-contract';
 
-function ActiveAnalysisRecoveryLink() {
+function ActiveAnalysisRecoveryLink({ label }: Readonly<{ label: string }>) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,7 +39,7 @@ function ActiveAnalysisRecoveryLink() {
     { app: '/app-shell-fixture', result: '/app-shell-fixture/app/video' },
   );
 
-  return <Link href={presentation.href}>Resume active analysis</Link>;
+  return <Link href={presentation.href}>{label}</Link>;
 }
 
 const fixtureRows = [
@@ -172,7 +174,6 @@ function fixtureActions(
         ? {
             ok: false,
             code: 'failed',
-            message: 'Favorite could not be saved.',
           }
         : { ok: true, data: undefined };
     },
@@ -322,11 +323,13 @@ export function FixtureHistory({
   fixtureAction = 'success',
   fixtureDuplicate = false,
   queryInput = {},
+  locale = 'en',
 }: Readonly<{
   visualCase: HistoryVisualCase;
   fixtureAction?: HistoryFixtureAction;
   fixtureDuplicate?: boolean;
   queryInput?: Readonly<Record<string, string | readonly string[] | undefined>>;
+  locale?: Locale;
 }>) {
   const query = fixtureQuery(visualCase, queryInput);
   const navigationParameters = new URLSearchParams({
@@ -337,10 +340,12 @@ export function FixtureHistory({
 
   return (
     <>
-      <ActiveAnalysisRecoveryLink />
+      <ActiveAnalysisRecoveryLink
+        label={appMessages[locale].processing.fixture.resume}
+      />
       <HistoryWorkspace
-        locale="en"
-        copy={historyMessages.en}
+        locale={locale}
+        copy={historyMessages[locale]}
         initialPage={{
           items: itemsFor(visualCase, query),
           nextCursor:

@@ -2,6 +2,8 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { sharedMessages } from '@/lib/i18n/messages/shared';
+
 import { UiPreview } from './ui-preview';
 
 beforeEach(() => {
@@ -16,9 +18,33 @@ beforeEach(() => {
 });
 
 describe('UiPreview long-content fixtures', () => {
+  it('uses localized labels for controls, status, and accessibility text', async () => {
+    const user = userEvent.setup();
+    render(<UiPreview copy={sharedMessages.de.uiPreview} />);
+
+    expect(
+      screen.getByRole('heading', { name: 'Gleen-UI-Bausteine' }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('reduced-motion-indicator')).toHaveTextContent(
+      'Reduzierte Bewegung: aus',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Fehlerhinweis anzeigen' }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Beispieldialog öffnen' }),
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Beispieldialog' }),
+    ).toHaveAccessibleDescription(
+      'Eine neutrale Interaktion zur Prüfung der Bausteine.',
+    );
+  });
+
   it('renders labeled constrained fixtures and exposes interactive long content', async () => {
     const user = userEvent.setup();
-    render(<UiPreview />);
+    render(<UiPreview copy={sharedMessages.en.uiPreview} />);
 
     expect(
       screen.getByRole('textbox', {

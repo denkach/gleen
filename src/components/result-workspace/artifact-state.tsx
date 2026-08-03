@@ -1,33 +1,41 @@
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 import type { UnavailableTab } from '@/lib/result-workspace/presentation';
 
-const messages: Record<
-  UnavailableTab['reason'],
-  { title: string; body: string }
-> = {
-  not_requested: {
-    title: 'Artifact not requested',
-    body: 'This artifact was not selected for this analysis.',
-  },
-  missing: {
-    title: 'No artifact content',
-    body: 'This analysis did not produce usable content for this artifact.',
-  },
-  pending: {
-    title: 'Artifact still processing',
-    body: 'This artifact is not ready yet. Other available results remain usable.',
-  },
-  malformed: {
-    title: 'Artifact could not be read',
-    body: 'The saved content is corrupted or uses an unsupported format.',
-  },
-  failed: {
-    title: 'Artifact could not be generated',
-    body: 'Generation failed, but the rest of this result is still available.',
-  },
-};
+function messageFor(reason: UnavailableTab['reason'], copy: ResultMessages) {
+  switch (reason) {
+    case 'not_requested':
+      return {
+        title: copy.artifactNotRequestedTitle,
+        body: copy.artifactNotRequestedBody,
+      };
+    case 'missing':
+      return {
+        title: copy.artifactMissingTitle,
+        body: copy.artifactMissingBody,
+      };
+    case 'pending':
+      return {
+        title: copy.artifactPendingTitle,
+        body: copy.artifactPendingBody,
+      };
+    case 'malformed':
+      return {
+        title: copy.artifactMalformedTitle,
+        body: copy.artifactMalformedBody,
+      };
+    case 'failed':
+      return {
+        title: copy.artifactFailedTitle,
+        body: copy.artifactFailedBody,
+      };
+  }
+}
 
-export function ArtifactState({ state }: Readonly<{ state: UnavailableTab }>) {
-  const message = messages[state.reason];
+export function ArtifactState({
+  state,
+  copy,
+}: Readonly<{ state: UnavailableTab; copy: ResultMessages }>) {
+  const message = messageFor(state.reason, copy);
   return (
     <section
       className="grid min-h-56 place-content-center rounded-2xl border border-[var(--border-default)] bg-white/[0.015] px-6 py-10 text-center"

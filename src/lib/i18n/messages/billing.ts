@@ -159,6 +159,10 @@ export const billingMessages = defineMessages({
       included: (plan: string) => `What’s included in ${plan}`,
       paymentDetails: 'Payment details',
       transactionsSecure: 'All transactions are secure',
+      fixture: {
+        securePaymentPreview: 'Secure Stripe payment preview',
+        promotionCode: '◇ Have a promo code?',
+      },
       order: {
         title: 'Order summary',
         plan: 'Plan',
@@ -579,6 +583,10 @@ export const billingMessages = defineMessages({
       included: (plan: string) => `Що входить до ${plan}`,
       paymentDetails: 'Платіжні дані',
       transactionsSecure: 'Усі транзакції захищені',
+      fixture: {
+        securePaymentPreview: 'Безпечний попередній перегляд платежу Stripe',
+        promotionCode: '◇ Маєте промокод?',
+      },
       order: {
         title: 'Підсумок замовлення',
         plan: 'План',
@@ -1010,6 +1018,10 @@ export const billingMessages = defineMessages({
       included: (plan: string) => `Что входит в ${plan}`,
       paymentDetails: 'Платёжные данные',
       transactionsSecure: 'Все транзакции защищены',
+      fixture: {
+        securePaymentPreview: 'Безопасный предпросмотр платежа Stripe',
+        promotionCode: '◇ Есть промокод?',
+      },
       order: {
         title: 'Сводка заказа',
         plan: 'План',
@@ -1439,6 +1451,10 @@ export const billingMessages = defineMessages({
       included: (plan: string) => `Qué incluye ${plan}`,
       paymentDetails: 'Datos de pago',
       transactionsSecure: 'Todas las transacciones son seguras',
+      fixture: {
+        securePaymentPreview: 'Vista previa segura del pago con Stripe',
+        promotionCode: '◇ ¿Tienes un código promocional?',
+      },
       order: {
         title: 'Resumen del pedido',
         plan: 'Plan',
@@ -1869,6 +1885,10 @@ export const billingMessages = defineMessages({
       included: (plan: string) => `In ${plan} enthalten`,
       paymentDetails: 'Zahlungsdaten',
       transactionsSecure: 'Alle Transaktionen sind sicher',
+      fixture: {
+        securePaymentPreview: 'Sichere Stripe-Zahlungsvorschau',
+        promotionCode: '◇ Hast du einen Aktionscode?',
+      },
       order: {
         title: 'Bestellübersicht',
         plan: 'Tarif',

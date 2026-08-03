@@ -154,6 +154,18 @@ export interface ResultMessages {
   readonly sheetMoreTitle: string;
   readonly sheetChaptersTitle: string;
   readonly sheetClose: string;
+  readonly resultTitle: string;
+  readonly artifactNotRequestedTitle: string;
+  readonly artifactNotRequestedBody: string;
+  readonly artifactMissingTitle: string;
+  readonly artifactMissingBody: string;
+  readonly artifactPendingTitle: string;
+  readonly artifactPendingBody: string;
+  readonly artifactMalformedTitle: string;
+  readonly artifactMalformedBody: string;
+  readonly artifactFailedTitle: string;
+  readonly artifactFailedBody: string;
+  readonly autosaveConflict: string;
   readonly stateProcessing: string;
   readonly stateUnavailable: string;
   readonly stateNotRequested: string;
@@ -366,6 +378,24 @@ export const resultMessages = defineMessages({
     sheetMoreTitle: 'More artifacts',
     sheetChaptersTitle: 'Chapters',
     sheetClose: 'Close',
+    resultTitle: 'Result title',
+    artifactNotRequestedTitle: 'Artifact not requested',
+    artifactNotRequestedBody:
+      'This artifact was not selected for this analysis.',
+    artifactMissingTitle: 'No artifact content',
+    artifactMissingBody:
+      'This analysis did not produce usable content for this artifact.',
+    artifactPendingTitle: 'Artifact still processing',
+    artifactPendingBody:
+      'This artifact is not ready yet. Other available results remain usable.',
+    artifactMalformedTitle: 'Artifact could not be read',
+    artifactMalformedBody:
+      'The saved content is corrupted or uses an unsupported format.',
+    artifactFailedTitle: 'Artifact could not be generated',
+    artifactFailedBody:
+      'Generation failed, but the rest of this result is still available.',
+    autosaveConflict:
+      'A newer version is available. Your draft is still here; reload to reconcile before saving.',
     stateProcessing: 'Processing',
     stateUnavailable: 'Unavailable',
     stateNotRequested: 'This artifact was not requested',
@@ -555,6 +585,23 @@ export const resultMessages = defineMessages({
     sheetMoreTitle: 'Інші матеріали',
     sheetChaptersTitle: 'Розділи',
     sheetClose: 'Закрити',
+    resultTitle: 'Назва результату',
+    artifactNotRequestedTitle: 'Матеріал не запитано',
+    artifactNotRequestedBody: 'Цей матеріал не було вибрано для цього аналізу.',
+    artifactMissingTitle: 'Немає вмісту матеріалу',
+    artifactMissingBody:
+      'Цей аналіз не створив придатного вмісту для цього матеріалу.',
+    artifactPendingTitle: 'Матеріал ще обробляється',
+    artifactPendingBody:
+      'Цей матеріал ще не готовий. Інші доступні результати можна використовувати.',
+    artifactMalformedTitle: 'Не вдалося прочитати матеріал',
+    artifactMalformedBody:
+      'Збережений вміст пошкоджено або він має непідтримуваний формат.',
+    artifactFailedTitle: 'Не вдалося створити цей матеріал',
+    artifactFailedBody:
+      'Створення не вдалося, але решта результату все ще доступна.',
+    autosaveConflict:
+      'Доступна новіша версія. Ваша чернетка збережена; перезавантажте сторінку, щоб узгодити зміни перед збереженням.',
     stateProcessing: 'Обробка',
     stateUnavailable: 'Недоступно',
     stateNotRequested: 'Цей матеріал не було запитано',
@@ -745,6 +792,24 @@ export const resultMessages = defineMessages({
     sheetMoreTitle: 'Другие материалы',
     sheetChaptersTitle: 'Главы',
     sheetClose: 'Закрыть',
+    resultTitle: 'Название результата',
+    artifactNotRequestedTitle: 'Материал не запрошен',
+    artifactNotRequestedBody:
+      'Этот материал не был выбран для данного анализа.',
+    artifactMissingTitle: 'Нет содержимого материала',
+    artifactMissingBody:
+      'Этот анализ не создал пригодного содержимого для данного материала.',
+    artifactPendingTitle: 'Материал всё ещё обрабатывается',
+    artifactPendingBody:
+      'Этот материал ещё не готов. Другие доступные результаты можно использовать.',
+    artifactMalformedTitle: 'Не удалось прочитать материал',
+    artifactMalformedBody:
+      'Сохранённое содержимое повреждено или имеет неподдерживаемый формат.',
+    artifactFailedTitle: 'Не удалось создать этот материал',
+    artifactFailedBody:
+      'Создание не удалось, но остальная часть результата по-прежнему доступна.',
+    autosaveConflict:
+      'Доступна более новая версия. Ваш черновик сохранён; перезагрузите страницу, чтобы согласовать изменения перед сохранением.',
     stateProcessing: 'Обработка',
     stateUnavailable: 'Недоступно',
     stateNotRequested: 'Этот материал не был запрошен',
@@ -937,6 +1002,24 @@ export const resultMessages = defineMessages({
     sheetMoreTitle: 'Más materiales',
     sheetChaptersTitle: 'Capítulos',
     sheetClose: 'Cerrar',
+    resultTitle: 'Título del resultado',
+    artifactNotRequestedTitle: 'Material no solicitado',
+    artifactNotRequestedBody:
+      'Este material no se seleccionó para este análisis.',
+    artifactMissingTitle: 'No hay contenido del material',
+    artifactMissingBody:
+      'Este análisis no generó contenido utilizable para este material.',
+    artifactPendingTitle: 'El material aún se está procesando',
+    artifactPendingBody:
+      'Este material todavía no está listo. Los demás resultados disponibles siguen siendo utilizables.',
+    artifactMalformedTitle: 'No se pudo leer el material',
+    artifactMalformedBody:
+      'El contenido guardado está dañado o usa un formato no compatible.',
+    artifactFailedTitle: 'No se pudo generar este material',
+    artifactFailedBody:
+      'La generación falló, pero el resto del resultado sigue estando disponible.',
+    autosaveConflict:
+      'Hay una versión más reciente disponible. Tu borrador sigue aquí; recarga la página para conciliar los cambios antes de guardar.',
     stateProcessing: 'Procesando',
     stateUnavailable: 'No disponible',
     stateNotRequested: 'Este material no se solicitó',
@@ -1130,6 +1213,24 @@ export const resultMessages = defineMessages({
     sheetMoreTitle: 'Weitere Artefakte',
     sheetChaptersTitle: 'Kapitel',
     sheetClose: 'Schließen',
+    resultTitle: 'Ergebnistitel',
+    artifactNotRequestedTitle: 'Material nicht angefordert',
+    artifactNotRequestedBody:
+      'Dieses Material wurde für diese Analyse nicht ausgewählt.',
+    artifactMissingTitle: 'Kein Materialinhalt',
+    artifactMissingBody:
+      'Diese Analyse hat keinen verwendbaren Inhalt für dieses Material erzeugt.',
+    artifactPendingTitle: 'Material wird noch verarbeitet',
+    artifactPendingBody:
+      'Dieses Material ist noch nicht fertig. Andere verfügbare Ergebnisse können weiter genutzt werden.',
+    artifactMalformedTitle: 'Material konnte nicht gelesen werden',
+    artifactMalformedBody:
+      'Der gespeicherte Inhalt ist beschädigt oder verwendet ein nicht unterstütztes Format.',
+    artifactFailedTitle: 'Dieses Material konnte nicht erstellt werden',
+    artifactFailedBody:
+      'Die Erstellung ist fehlgeschlagen, aber der restliche Inhalt ist weiterhin verfügbar.',
+    autosaveConflict:
+      'Eine neuere Version ist verfügbar. Dein Entwurf ist noch vorhanden; lade die Seite neu, um die Änderungen vor dem Speichern abzugleichen.',
     stateProcessing: 'Wird verarbeitet',
     stateUnavailable: 'Nicht verfügbar',
     stateNotRequested: 'Dieses Artefakt wurde nicht angefordert',

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type RefObject } from 'react';
 
+import { resultMessages } from '@/lib/i18n/messages/results';
+
 import {
   loadingVideoPlayerSnapshot,
   type VideoPlayerController,
@@ -135,7 +137,7 @@ export function YouTubePlayer({
   videoId,
   lifecycleKey = videoId,
   title,
-  unavailableLabel = 'Player unavailable',
+  unavailableLabel = resultMessages.en.playerUnavailable,
   nativeControls = true,
   initialPositionMs = 0,
   fullscreenTargetRef,

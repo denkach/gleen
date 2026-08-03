@@ -24,6 +24,14 @@ export function BillingMobileNavigation({
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
+  const fixtureMode = pathname.startsWith('/billing-fixture/');
+  const planHref = fixtureMode
+    ? '/billing-fixture/subscription'
+    : '/app/subscription';
+  const usageHref = fixtureMode
+    ? '/billing-fixture/usage'
+    : '/app/subscription/usage';
+  const detailBase = fixtureMode ? '/billing-fixture' : '/app/subscription';
   const planActive =
     pathname === '/app/subscription' ||
     pathname === '/billing-fixture/subscription';
@@ -83,7 +91,7 @@ export function BillingMobileNavigation({
       <nav className="billing-mobile-navigation" aria-label={copy.mobileLabel}>
         <Link
           className={planActive ? 'active' : undefined}
-          href="/app/subscription"
+          href={planHref}
           aria-current={planActive ? 'page' : undefined}
         >
           <BillingIcon name="plan" />
@@ -91,7 +99,7 @@ export function BillingMobileNavigation({
         </Link>
         <Link
           className={usageActive ? 'active' : undefined}
-          href="/app/subscription/usage"
+          href={usageHref}
           aria-current={usageActive ? 'page' : undefined}
         >
           <BillingIcon name="chart" />
@@ -130,12 +138,10 @@ export function BillingMobileNavigation({
         >
           <div className="billing-mobile-sheet-handle" aria-hidden="true" />
           <h2>{copy.moreLabel}</h2>
-          <Link href="/app/subscription/checkout">{copy.checkout}</Link>
-          <Link href="/app/subscription/portal">{copy.portal}</Link>
-          <Link href="/app/subscription/invoices">{copy.invoices}</Link>
-          <Link href="/app/subscription/limit-reached">
-            {copy.limitReached}
-          </Link>
+          <Link href={`${detailBase}/checkout`}>{copy.checkout}</Link>
+          <Link href={`${detailBase}/portal`}>{copy.portal}</Link>
+          <Link href={`${detailBase}/invoices`}>{copy.invoices}</Link>
+          <Link href={`${detailBase}/limit-reached`}>{copy.limitReached}</Link>
           <button type="button" onClick={close}>
             {copy.close}
           </button>

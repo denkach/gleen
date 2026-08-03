@@ -32,6 +32,10 @@ export const appMessages = defineMessages({
       },
     },
     loading: { workspace: 'Loading workspace' },
+    destination: {
+      ready: 'This workspace is ready for the next product stage.',
+      newAnalysis: 'New analysis',
+    },
     newAnalysis: {
       eyebrow: 'New analysis',
       title: 'Turn a video into something useful.',
@@ -102,6 +106,17 @@ export const appMessages = defineMessages({
       },
     },
     processing: {
+      fixture: {
+        developmentOnly: 'Development-only deterministic demo',
+        title: 'Analyze processing motion fixture',
+        analysisLabel: 'Fixture analysis',
+        startAnalysis: 'Start fixture analysis',
+        analyze: 'Analyze video',
+        replay: 'Replay sequence',
+        previewError: 'Preview error',
+        error: 'Fixture error: the demo video could not be accessed.',
+        resume: 'Resume active analysis',
+      },
       kickerProgress: 'ANALYSIS IN PROGRESS',
       kickerInterrupted: 'ANALYSIS INTERRUPTED',
       artifactStatus: 'Artifact status',
@@ -246,6 +261,10 @@ export const appMessages = defineMessages({
       },
     },
     loading: { workspace: 'Завантаження робочого простору' },
+    destination: {
+      ready: 'Цей робочий простір готовий до наступного етапу продукту.',
+      newAnalysis: 'Новий аналіз',
+    },
     newAnalysis: {
       eyebrow: 'Новий аналіз',
       title: 'Перетворіть відео на щось корисне.',
@@ -315,6 +334,17 @@ export const appMessages = defineMessages({
       },
     },
     processing: {
+      fixture: {
+        developmentOnly: 'Детермінована демонстрація лише для розробки',
+        title: 'Тестовий екран руху обробки аналізу',
+        analysisLabel: 'Тестовий аналіз',
+        startAnalysis: 'Почати тестовий аналіз',
+        analyze: 'Аналізувати відео',
+        replay: 'Повторити послідовність',
+        previewError: 'Переглянути помилку',
+        error: 'Помилка тесту: не вдалося отримати доступ до демовідео.',
+        resume: 'Продовжити активний аналіз',
+      },
       kickerProgress: 'АНАЛІЗ ТРИВАЄ',
       kickerInterrupted: 'АНАЛІЗ ПЕРЕРВАНО',
       artifactStatus: 'Стан матеріалів',
@@ -459,6 +489,10 @@ export const appMessages = defineMessages({
       },
     },
     loading: { workspace: 'Загрузка рабочего пространства' },
+    destination: {
+      ready: 'Это рабочее пространство готово к следующему этапу продукта.',
+      newAnalysis: 'Новый анализ',
+    },
     newAnalysis: {
       eyebrow: 'Новый анализ',
       title: 'Превратите видео во что-то полезное.',
@@ -528,6 +562,17 @@ export const appMessages = defineMessages({
       },
     },
     processing: {
+      fixture: {
+        developmentOnly: 'Детерминированная демонстрация только для разработки',
+        title: 'Тестовый экран движения обработки анализа',
+        analysisLabel: 'Тестовый анализ',
+        startAnalysis: 'Начать тестовый анализ',
+        analyze: 'Анализировать видео',
+        replay: 'Повторить последовательность',
+        previewError: 'Показать ошибку',
+        error: 'Ошибка теста: не удалось получить доступ к демовидео.',
+        resume: 'Продолжить активный анализ',
+      },
       kickerProgress: 'АНАЛИЗ ВЫПОЛНЯЕТСЯ',
       kickerInterrupted: 'АНАЛИЗ ПРЕРВАН',
       artifactStatus: 'Состояние материалов',
@@ -675,6 +720,11 @@ export const appMessages = defineMessages({
       },
     },
     loading: { workspace: 'Cargando el espacio de trabajo' },
+    destination: {
+      ready:
+        'Este espacio de trabajo está listo para la siguiente fase del producto.',
+      newAnalysis: 'Nuevo análisis',
+    },
     newAnalysis: {
       eyebrow: 'Nuevo análisis',
       title: 'Convierte un vídeo en algo útil.',
@@ -749,6 +799,18 @@ export const appMessages = defineMessages({
       },
     },
     processing: {
+      fixture: {
+        developmentOnly: 'Demostración determinista solo para desarrollo',
+        title: 'Vista de prueba del procesamiento del análisis',
+        analysisLabel: 'Análisis de prueba',
+        startAnalysis: 'Iniciar análisis de prueba',
+        analyze: 'Analizar vídeo',
+        replay: 'Repetir secuencia',
+        previewError: 'Previsualizar error',
+        error:
+          'Error de la prueba: no se pudo acceder al vídeo de demostración.',
+        resume: 'Reanudar análisis activo',
+      },
       kickerProgress: 'ANÁLISIS EN CURSO',
       kickerInterrupted: 'ANÁLISIS INTERRUMPIDO',
       artifactStatus: 'Estado de los materiales',
@@ -897,6 +959,10 @@ export const appMessages = defineMessages({
       },
     },
     loading: { workspace: 'Arbeitsbereich wird geladen' },
+    destination: {
+      ready: 'Dieser Arbeitsbereich ist für die nächste Produktphase bereit.',
+      newAnalysis: 'Neue Analyse',
+    },
     newAnalysis: {
       eyebrow: 'Neue Analyse',
       title: 'Mach aus einem Video etwas Nützliches.',
@@ -972,6 +1038,17 @@ export const appMessages = defineMessages({
       },
     },
     processing: {
+      fixture: {
+        developmentOnly: 'Deterministische Demo nur für die Entwicklung',
+        title: 'Testansicht für die Analyseverarbeitung',
+        analysisLabel: 'Testanalyse',
+        startAnalysis: 'Testanalyse starten',
+        analyze: 'Video analysieren',
+        replay: 'Sequenz wiederholen',
+        previewError: 'Fehler anzeigen',
+        error: 'Testfehler: Auf das Demovideo konnte nicht zugegriffen werden.',
+        resume: 'Aktive Analyse fortsetzen',
+      },
       kickerProgress: 'ANALYSE LÄUFT',
       kickerInterrupted: 'ANALYSE UNTERBROCHEN',
       artifactStatus: 'Materialstatus',

@@ -366,6 +366,37 @@ describe('ResultWorkspace', () => {
     expect(
       screen.getByRole('tab', { name: resultMessages.de.tabTranscript }),
     ).toBeVisible();
+    expect(
+      screen.getByRole('textbox', { name: 'Ergebnistitel' }),
+    ).toBeVisible();
+  });
+
+  it('uses the supplied interface copy for unavailable artifact states', async () => {
+    const user = userEvent.setup();
+    render(
+      <PlayerProvider controller={controller}>
+        <ResultWorkspace
+          model={partialModel}
+          copy={resultMessages.de}
+          saveTitle={vi.fn()}
+          saveArtifact={vi.fn()}
+        />
+      </PlayerProvider>,
+    );
+
+    await user.click(
+      screen.getByRole('tab', { name: resultMessages.de.tabFlashcards }),
+    );
+    expect(
+      screen.getByRole('heading', {
+        name: 'Dieses Material konnte nicht erstellt werden',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'Die Erstellung ist fehlgeschlagen, aber der restliche Inhalt ist weiterhin verfügbar.',
+      ),
+    ).toBeVisible();
   });
 
   it('consumes the typed playback mutation for the active analysis', async () => {

@@ -44,7 +44,15 @@ const variantIcons: Record<ToastVariant, string> = {
   error: '!',
 };
 
-export function ToastProvider({ children }: { children: ReactNode }) {
+export function ToastProvider({
+  children,
+  labels,
+}: {
+  children: ReactNode;
+  labels?: Readonly<
+    Record<ToastVariant, string> & { dismiss: string; viewport: string }
+  >;
+}) {
   const nextId = useRef(0);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
@@ -76,12 +84,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           >
             <span
               className="ui-toast-state"
-              aria-label={variantLabels[item.variant]}
+              aria-label={labels?.[item.variant] ?? variantLabels[item.variant]}
             >
               <span className="ui-toast-icon" aria-hidden="true">
                 {variantIcons[item.variant]}
               </span>
-              <span>{variantLabels[item.variant]}</span>
+              <span>
+                {labels?.[item.variant] ?? variantLabels[item.variant]}
+              </span>
             </span>
             <div className="ui-toast-copy">
               <ToastPrimitive.Title className="ui-toast-title">
@@ -104,7 +114,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             ) : null}
             <ToastPrimitive.Close
               className="ui-toast-close"
-              aria-label="Dismiss notification"
+              aria-label={labels?.dismiss ?? 'Dismiss notification'}
             >
               <span aria-hidden="true">×</span>
             </ToastPrimitive.Close>
@@ -112,7 +122,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         ))}
         <ToastPrimitive.Viewport
           className="ui-toast-viewport"
-          aria-label="Notifications"
+          aria-label={labels?.viewport ?? 'Notifications'}
         />
       </ToastPrimitive.Provider>
     </ToastContext.Provider>

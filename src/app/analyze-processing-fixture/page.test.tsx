@@ -15,20 +15,31 @@ import AnalyzeProcessingFixturePage from './page';
 
 beforeEach(() => vi.clearAllMocks());
 
-it('renders the explicitly labelled fixture when UI preview is enabled', () => {
+it('renders localized fixture controls when UI preview is enabled', async () => {
   isUiPreviewEnabled.mockReturnValue(true);
 
-  render(<AnalyzeProcessingFixturePage />);
+  render(
+    await AnalyzeProcessingFixturePage({
+      searchParams: Promise.resolve({ locale: 'de' }),
+    }),
+  );
 
   expect(
-    screen.getByRole('heading', { name: 'Analyze processing motion fixture' }),
+    screen.getByRole('heading', {
+      name: 'Testansicht für die Analyseverarbeitung',
+    }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Sequenz wiederholen' }),
   ).toBeInTheDocument();
   expect(notFound).not.toHaveBeenCalled();
 });
 
-it('calls notFound before rendering whenever UI preview is disabled', () => {
+it('calls notFound before rendering whenever UI preview is disabled', async () => {
   isUiPreviewEnabled.mockReturnValue(false);
 
-  expect(() => AnalyzeProcessingFixturePage()).toThrow('NEXT_NOT_FOUND');
+  await expect(
+    AnalyzeProcessingFixturePage({ searchParams: Promise.resolve({}) }),
+  ).rejects.toThrow('NEXT_NOT_FOUND');
   expect(notFound).toHaveBeenCalledOnce();
 });

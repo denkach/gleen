@@ -4,13 +4,16 @@ import path from 'node:path';
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { isUiPreviewEnabled, notFound, push } = vi.hoisted(() => ({
-  isUiPreviewEnabled: vi.fn(),
-  notFound: vi.fn((): never => {
-    throw new Error('NEXT_NOT_FOUND');
+const { getRequestLocale, isUiPreviewEnabled, notFound, push } = vi.hoisted(
+  () => ({
+    getRequestLocale: vi.fn(async () => 'en'),
+    isUiPreviewEnabled: vi.fn(),
+    notFound: vi.fn((): never => {
+      throw new Error('NEXT_NOT_FOUND');
+    }),
+    push: vi.fn(),
   }),
-  push: vi.fn(),
-}));
+);
 
 vi.mock('next/navigation', () => ({
   notFound,
@@ -18,6 +21,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
 }));
 vi.mock('@/lib/ui-preview', () => ({ isUiPreviewEnabled }));
+vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
 
 import FixtureHistoryPage from '@/app/app-shell-fixture/history/page';
 import {
@@ -39,6 +43,7 @@ function stubDesktopViewport() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getRequestLocale.mockResolvedValue('en');
   stubDesktopViewport();
 });
 
@@ -254,6 +259,24 @@ describe('FixtureHistoryPage', () => {
     expect(screen.getByText('Alex Koval')).toBeInTheDocument();
     expect(screen.getByText('alex@gleen.space')).toBeInTheDocument();
     expect(notFound).not.toHaveBeenCalled();
+  });
+
+  it('uses the selected locale across the fixture shell and workspace', async () => {
+    isUiPreviewEnabled.mockReturnValue(true);
+
+    render(
+      await FixtureHistoryPage({
+        searchParams: Promise.resolve({
+          visualCase: 'default',
+          locale: 'de',
+        }),
+      }),
+    );
+
+    expect(screen.getByRole('heading', { name: 'Verlauf' })).toBeVisible();
+    for (const link of screen.getAllByRole('link', { name: 'Verlauf' })) {
+      expect(link).toHaveAttribute('aria-current', 'page');
+    }
   });
 
   it('returns not found before rendering when preview is disabled', async () => {

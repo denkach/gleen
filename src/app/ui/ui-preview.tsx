@@ -29,28 +29,31 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import type { UiPreviewCopy } from '@/lib/i18n/messages/shared';
 
-const tokenGroups = [
-  {
-    label: 'Surfaces',
-    tokens: [
-      ['Deep', 'background-deep'],
-      ['Elevated', 'background-elevated'],
-      ['Panel', 'surface-panel'],
-      ['Raised', 'surface-raised'],
-      ['Hover', 'surface-hover'],
-    ],
-  },
-  {
-    label: 'Artifact accents',
-    tokens: [
-      ['Summary', 'artifact-summary'],
-      ['Flashcards', 'artifact-flashcards'],
-      ['Timestamps', 'artifact-timestamps'],
-      ['Export', 'artifact-export'],
-    ],
-  },
-] as const;
+function tokenGroups(copy: UiPreviewCopy) {
+  return [
+    {
+      label: copy.surfaces,
+      tokens: [
+        [copy.deep, 'background-deep'],
+        [copy.elevated, 'background-elevated'],
+        [copy.panel, 'surface-panel'],
+        [copy.raised, 'surface-raised'],
+        [copy.hover, 'surface-hover'],
+      ],
+    },
+    {
+      label: copy.artifactAccents,
+      tokens: [
+        [copy.summary, 'artifact-summary'],
+        [copy.flashcards, 'artifact-flashcards'],
+        [copy.timestamps, 'artifact-timestamps'],
+        [copy.export, 'artifact-export'],
+      ],
+    },
+  ] as const;
+}
 
 const tabAccents = [
   'neutral',
@@ -77,7 +80,7 @@ function Section({
   );
 }
 
-function MotionPreference() {
+function MotionPreference({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
   const [reduced, setReduced] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -90,69 +93,73 @@ function MotionPreference() {
 
   return (
     <p className="ui-preview-motion" data-testid="reduced-motion-indicator">
-      Reduced motion:{' '}
-      <strong>{reduced === null ? 'detecting' : reduced ? 'on' : 'off'}</strong>
+      {copy.motionLabel}{' '}
+      <strong>
+        {reduced === null
+          ? copy.motionDetecting
+          : reduced
+            ? copy.motionOn
+            : copy.motionOff}
+      </strong>
     </p>
   );
 }
 
-function ToastExamples() {
+function ToastExamples({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
   const { toast } = useToast();
-  const [actionResult, setActionResult] = useState('No toast action invoked');
+  const [actionResult, setActionResult] = useState(copy.noToastAction);
 
   return (
     <div>
       <div className="ui-preview-row">
         <Button
           variant="soft"
-          onClick={() => toast({ title: 'Neutral notification' })}
+          onClick={() => toast({ title: copy.neutralNotification })}
         >
-          Show neutral toast
+          {copy.showNeutralToast}
         </Button>
         <Button
           variant="soft"
           onClick={() =>
             toast({
-              title: 'Successful notification',
-              description: 'The example action completed.',
+              title: copy.successfulNotification,
+              description: copy.successDescription,
               variant: 'success',
             })
           }
         >
-          Show success toast
+          {copy.showSuccessToast}
         </Button>
         <Button
           variant="soft"
           onClick={() =>
             toast({
-              title: 'Error notification',
-              description: 'The example action needs attention.',
+              title: copy.errorNotification,
+              description: copy.errorDescription,
               variant: 'error',
-              actionLabel: 'Retry',
-              onAction: () => setActionResult('Retry action invoked'),
+              actionLabel: copy.retry,
+              onAction: () => setActionResult(copy.retryAction),
             })
           }
         >
-          Show error toast
+          {copy.showErrorToast}
         </Button>
         <Button
           variant="soft"
           onClick={() =>
             toast({
-              title:
-                'Long toast title that verifies notification copy wrapping',
-              description:
-                'Long toast description remains readable when localized interface text expands across multiple lines.',
+              title: copy.longToastTitle,
+              description: copy.longToastDescription,
             })
           }
         >
-          Show long toast
+          {copy.showLongToast}
         </Button>
       </div>
       <p
         className="ui-preview-motion"
         role="status"
-        aria-label="Toast action result"
+        aria-label={copy.toastActionResult}
       >
         {actionResult}
       </p>
@@ -160,21 +167,21 @@ function ToastExamples() {
   );
 }
 
-function PreviewGallery() {
+function PreviewGallery({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
   const [checked, setChecked] = useState(true);
 
   return (
     <main className="ui-preview">
       <header className="ui-preview-header">
-        <p className="ui-preview-eyebrow">Environment-only reference</p>
-        <h1>Gleen UI primitives</h1>
-        <p>Interactive states and shared tokens for implementation review.</p>
-        <MotionPreference />
+        <p className="ui-preview-eyebrow">{copy.eyebrow}</p>
+        <h1>{copy.title}</h1>
+        <p>{copy.description}</p>
+        <MotionPreference copy={copy} />
       </header>
 
-      <Section title="Tokens">
+      <Section title={copy.tokens}>
         <div className="ui-preview-token-groups">
-          {tokenGroups.map((group) => (
+          {tokenGroups(copy).map((group) => (
             <div key={group.label}>
               <h3>{group.label}</h3>
               <div className="ui-preview-tokens">
@@ -193,185 +200,175 @@ function PreviewGallery() {
         </div>
       </Section>
 
-      <Section title="Buttons">
+      <Section title={copy.buttons}>
         <div className="ui-preview-row">
-          <Button>Primary</Button>
-          <Button variant="soft">Soft</Button>
-          <Button variant="ghost">Ghost</Button>
-          <Button variant="danger">Danger</Button>
-          <Button size="sm">Small</Button>
-          <Button size="icon" aria-label="Add example">
+          <Button>{copy.primary}</Button>
+          <Button variant="soft">{copy.soft}</Button>
+          <Button variant="ghost">{copy.ghost}</Button>
+          <Button variant="danger">{copy.danger}</Button>
+          <Button size="sm">{copy.small}</Button>
+          <Button size="icon" aria-label={copy.addExample}>
             +
           </Button>
-          <Button disabled>Disabled</Button>
-          <Button loading loadingLabel="Saving example">
-            Save
+          <Button disabled>{copy.disabled}</Button>
+          <Button loading loadingLabel={copy.savingExample}>
+            {copy.save}
           </Button>
         </div>
       </Section>
 
-      <Section title="Inputs">
+      <Section title={copy.inputs}>
         <div className="ui-preview-grid">
-          <Input label="Default input" placeholder="Example value" />
-          <Input label="Input with hint" hint="Supporting guidance." />
-          <Input label="Input with icon" leadingIcon="⌕" />
+          <Input label={copy.defaultInput} placeholder={copy.exampleValue} />
+          <Input label={copy.inputWithHint} hint={copy.supportingGuidance} />
+          <Input label={copy.inputWithIcon} leadingIcon="⌕" />
           <Input
-            label="Invalid input"
-            defaultValue="Invalid"
-            error="Review this value."
+            label={copy.invalidInput}
+            defaultValue={copy.invalid}
+            error={copy.reviewValue}
           />
-          <Input label="Disabled input" disabled defaultValue="Unavailable" />
           <Input
-            label="Translated long-label example that verifies control wrapping without horizontal overflow"
-            hint="Long supporting guidance remains associated with the field when translated copy needs several lines."
-            error="Long validation feedback remains announced and wraps without widening the page."
-            defaultValue="A deliberately extended example value for localization and overflow review"
+            label={copy.disabledInput}
+            disabled
+            defaultValue={copy.unavailable}
+          />
+          <Input
+            label={copy.longInputLabel}
+            hint={copy.longInputHint}
+            error={copy.longInputError}
+            defaultValue={copy.longInputValue}
           />
         </div>
       </Section>
 
-      <Section title="Panels">
+      <Section title={copy.panels}>
         <div className="ui-preview-grid">
-          <Panel padding="sm">Panel surface · small padding</Panel>
+          <Panel padding="sm">{copy.panelSmall}</Panel>
           <Panel padding="md" surface="raised">
-            Raised surface · medium padding
+            {copy.panelMedium}
           </Panel>
-          <Panel padding="lg">Panel surface · large padding</Panel>
+          <Panel padding="lg">{copy.panelLarge}</Panel>
           <Panel
             className="ui-preview-long-panel"
             padding="lg"
             role="region"
-            aria-label="Long panel content example"
+            aria-label={copy.longPanelLabel}
           >
-            <h3>Constrained paragraph</h3>
-            <p>
-              This constrained paragraph demonstrates how extended translated
-              prose wraps inside a panel while preserving readable line length
-              and preventing the reference gallery from widening beyond its
-              container.
-            </p>
+            <h3>{copy.constrainedParagraph}</h3>
+            <p>{copy.constrainedParagraphBody}</p>
           </Panel>
         </div>
       </Section>
 
-      <Section title="Overlays">
+      <Section title={copy.overlays}>
         <div className="ui-preview-row">
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="soft">Open example dialog</Button>
+              <Button variant="soft">{copy.openDialog}</Button>
             </DialogTrigger>
             <DialogContent
-              title="Example dialog"
-              description="A neutral interaction for primitive review."
+              title={copy.dialogTitle}
+              description={copy.dialogDescription}
+              closeLabel={copy.closeDialog}
             >
               <DialogClose asChild>
-                <Button>Confirm example</Button>
+                <Button>{copy.confirmExample}</Button>
               </DialogClose>
             </DialogContent>
           </Dialog>
 
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="soft">Open long dialog</Button>
+              <Button variant="soft">{copy.openLongDialog}</Button>
             </DialogTrigger>
             <DialogContent
-              title="Long dialog title that demonstrates wrapping in a constrained overlay"
-              description="Long dialog description stays readable and connected to the dialog when interface copy expands."
+              title={copy.longDialogTitle}
+              description={copy.longDialogDescription}
+              closeLabel={copy.closeDialog}
             >
-              <p>
-                Long dialog body copy provides a representative constrained
-                fixture for localization, zoom, and narrow viewport review.
-              </p>
+              <p>{copy.longDialogBody}</p>
             </DialogContent>
           </Dialog>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="soft">Open example menu</Button>
+              <Button variant="soft">{copy.openMenu}</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuLabel>Example options</DropdownMenuLabel>
-              <DropdownMenuItem>Available item</DropdownMenuItem>
-              <DropdownMenuItem disabled>Disabled item</DropdownMenuItem>
+              <DropdownMenuLabel>{copy.menuOptions}</DropdownMenuLabel>
+              <DropdownMenuItem>{copy.availableItem}</DropdownMenuItem>
+              <DropdownMenuItem disabled>{copy.disabledItem}</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuCheckboxItem
                 checked={checked}
                 onCheckedChange={(value) => setChecked(value === true)}
               >
-                Checked option
+                {copy.checkedOption}
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="soft">Open long-content menu</Button>
+              <Button variant="soft">{copy.openLongMenu}</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuLabel>Constrained long content</DropdownMenuLabel>
-              <DropdownMenuItem>
-                Long translated menu item that remains readable inside a
-                constrained menu
-              </DropdownMenuItem>
+              <DropdownMenuLabel>
+                {copy.constrainedLongContent}
+              </DropdownMenuLabel>
+              <DropdownMenuItem>{copy.longMenuItem}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost">Focus for tooltip</Button>
+              <Button variant="ghost">{copy.focusTooltip}</Button>
             </TooltipTrigger>
-            <TooltipContent>Keyboard and pointer guidance</TooltipContent>
+            <TooltipContent>{copy.tooltipGuidance}</TooltipContent>
           </Tooltip>
         </div>
       </Section>
 
-      <Section title="Tab accents">
+      <Section title={copy.tabAccents}>
         <div className="ui-preview-tabs">
           {tabAccents.map((accent) => (
             <Tabs defaultValue="one" key={accent}>
               <h3>{accent}</h3>
-              <TabsList accent={accent} aria-label={`${accent} example tabs`}>
-                <TabsTrigger value="one">First</TabsTrigger>
-                <TabsTrigger value="two">Second</TabsTrigger>
+              <TabsList accent={accent} aria-label={copy.exampleTabs(accent)}>
+                <TabsTrigger value="one">{copy.first}</TabsTrigger>
+                <TabsTrigger value="two">{copy.second}</TabsTrigger>
                 <TabsTrigger value="three" disabled>
-                  Disabled
+                  {copy.disabled}
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="one">First tab content</TabsContent>
-              <TabsContent value="two">Second tab content</TabsContent>
+              <TabsContent value="one">{copy.firstTabContent}</TabsContent>
+              <TabsContent value="two">{copy.secondTabContent}</TabsContent>
             </Tabs>
           ))}
           <Tabs className="ui-preview-long-tabs" defaultValue="short">
-            <h3>Constrained long content</h3>
-            <TabsList aria-label="Long-content constrained example tabs">
-              <TabsTrigger value="short">Short label</TabsTrigger>
-              <TabsTrigger value="long">
-                Long translated tab label that wraps safely
-              </TabsTrigger>
+            <h3>{copy.constrainedLongContent}</h3>
+            <TabsList aria-label={copy.longTabsLabel}>
+              <TabsTrigger value="short">{copy.shortLabel}</TabsTrigger>
+              <TabsTrigger value="long">{copy.longTabLabel}</TabsTrigger>
             </TabsList>
-            <TabsContent value="short">
-              Select the long label to inspect its content.
-            </TabsContent>
-            <TabsContent value="long">
-              Long tab content remains constrained and readable when interface
-              copy expands across multiple lines.
-            </TabsContent>
+            <TabsContent value="short">{copy.selectLongLabel}</TabsContent>
+            <TabsContent value="long">{copy.longTabContent}</TabsContent>
           </Tabs>
         </div>
       </Section>
 
-      <Section title="Toasts">
-        <ToastExamples />
+      <Section title={copy.toasts}>
+        <ToastExamples copy={copy} />
       </Section>
 
-      <Section title="Skeletons">
+      <Section title={copy.skeletons}>
         <div className="ui-preview-grid">
           <div>
-            <h3>Rectangle</h3>
+            <h3>{copy.rectangle}</h3>
             <Skeleton className="ui-preview-skeleton-rect" />
           </div>
           <div>
-            <h3>Text lines</h3>
+            <h3>{copy.textLines}</h3>
             <Skeleton shape="text" lines={4} />
           </div>
         </div>
@@ -380,11 +377,19 @@ function PreviewGallery() {
   );
 }
 
-export function UiPreview() {
+export function UiPreview({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
   return (
     <TooltipProvider>
-      <ToastProvider>
-        <PreviewGallery />
+      <ToastProvider
+        labels={{
+          neutral: copy.toastNoticeLabel,
+          success: copy.toastSuccessLabel,
+          error: copy.toastErrorLabel,
+          dismiss: copy.dismissNotification,
+          viewport: copy.notifications,
+        }}
+      >
+        <PreviewGallery copy={copy} />
       </ToastProvider>
     </TooltipProvider>
   );

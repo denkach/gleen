@@ -1,15 +1,21 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 
-const { fixtureResultWorkspace, isUiPreviewEnabled, notFound, push } =
-  vi.hoisted(() => ({
-    fixtureResultWorkspace: vi.fn(),
-    isUiPreviewEnabled: vi.fn(),
-    notFound: vi.fn((): never => {
-      throw new Error('NEXT_NOT_FOUND');
-    }),
-    push: vi.fn(),
-  }));
+const {
+  fixtureResultWorkspace,
+  getRequestLocale,
+  isUiPreviewEnabled,
+  notFound,
+  push,
+} = vi.hoisted(() => ({
+  fixtureResultWorkspace: vi.fn(),
+  getRequestLocale: vi.fn(async () => 'en'),
+  isUiPreviewEnabled: vi.fn(),
+  notFound: vi.fn((): never => {
+    throw new Error('NEXT_NOT_FOUND');
+  }),
+  push: vi.fn(),
+}));
 
 vi.mock('next/navigation', () => ({
   notFound,
@@ -17,6 +23,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
 }));
 vi.mock('@/lib/ui-preview', () => ({ isUiPreviewEnabled }));
+vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
 vi.mock('@/components/app-shell/analysis-processing-fixture-screen', () => ({
   AnalysisProcessingFixtureScreen: () => null,
 }));
@@ -32,7 +39,10 @@ import FixtureVideoPage from './app/video/[id]/page';
 import AppShellFixturePage from './page';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  getRequestLocale.mockResolvedValue('en');
+});
 
 it('defines every deterministic intake fixture case', () => {
   expect(fixtureCases).toEqual([
@@ -151,6 +161,22 @@ it('renders a localized fixture without changing its route shape', async () => {
       searchParams: Promise.resolve({ locale: 'de' }),
     }),
   );
+
+  expect(
+    screen.getByRole('heading', {
+      name: 'Mach aus einem Video etwas Nützliches.',
+    }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('link', { name: 'Zum Inhalt springen' }),
+  ).toHaveAttribute('href', '#app-content');
+});
+
+it('uses the request locale when no deterministic locale override is present', async () => {
+  isUiPreviewEnabled.mockReturnValue(true);
+  getRequestLocale.mockResolvedValue('de');
+
+  render(await AppShellFixturePage({ searchParams: Promise.resolve({}) }));
 
   expect(
     screen.getByRole('heading', {
