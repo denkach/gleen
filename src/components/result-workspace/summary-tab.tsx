@@ -3,7 +3,10 @@
 import { useCallback, useId, useMemo, useState } from 'react';
 import type { SummaryArtifact } from '@/lib/analysis-pipeline/artifact-schemas';
 import type { ResultSaveState } from '@/lib/result-workspace/actions';
-import { formatResultCopy, type ResultCopy } from '@/lib/result-workspace/copy';
+import {
+  formatResultMessage,
+  type ResultMessages,
+} from '@/lib/i18n/messages/results';
 import type { SummaryPresentation } from '@/lib/result-workspace/presentation';
 
 import { AutosaveStatus } from './autosave-status';
@@ -77,7 +80,7 @@ export function SummaryTab({
   revision: string;
   saveArtifact: (input: unknown) => Promise<ResultSaveState>;
   flashcardCount: number | null;
-  copy: ResultCopy;
+  copy: ResultMessages;
   readOnly?: boolean;
 }>) {
   const player = useVideoPlayer();
@@ -169,7 +172,7 @@ export function SummaryTab({
         </div>
         <div className="result-summary-stat">
           <dd>
-            {formatResultCopy(copy.summaryReadingMinutes, {
+            {formatResultMessage(copy.summaryReadingMinutes, {
               count: readingMinutes,
             })}
           </dd>
@@ -231,7 +234,7 @@ export function SummaryTab({
                 ) : null}
                 {!readOnly ? (
                   <textarea
-                    aria-label={formatResultCopy(copy.summaryPointField, {
+                    aria-label={formatResultMessage(copy.summaryPointField, {
                       count: index + 1,
                     })}
                     value={point?.text ?? section.summary}

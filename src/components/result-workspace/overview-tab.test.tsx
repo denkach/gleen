@@ -2,7 +2,10 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { resultCopy, type ResultCopy } from '@/lib/result-workspace/copy';
+import {
+  resultMessages,
+  type ResultMessages,
+} from '@/lib/i18n/messages/results';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
 import { OverviewTab } from './overview-tab';
@@ -165,7 +168,7 @@ const controller: VideoPlayerController = {
 function renderOverview(
   model: ResultWorkspaceModel = readyModel,
   openArtifact = vi.fn(),
-  copy: ResultCopy = resultCopy.en,
+  copy: ResultMessages = resultMessages.en,
 ) {
   return {
     openArtifact,
@@ -208,7 +211,7 @@ describe('OverviewTab', () => {
   it.each([
     [
       { status: 'unavailable' as const, reason: 'pending' as const },
-      resultCopy.en.stateProcessing,
+      resultMessages.en.stateProcessing,
     ],
     [
       {
@@ -216,15 +219,15 @@ describe('OverviewTab', () => {
         reason: 'failed' as const,
         errorCode: 'summary_failed',
       },
-      resultCopy.en.stateFailed,
+      resultMessages.en.stateFailed,
     ],
     [
       { status: 'unavailable' as const, reason: 'malformed' as const },
-      resultCopy.en.stateMalformed,
+      resultMessages.en.stateMalformed,
     ],
     [
       { status: 'unavailable' as const, reason: 'missing' as const },
-      resultCopy.en.stateMissing,
+      resultMessages.en.stateMissing,
     ],
   ])(
     'shows a truthful Summary state instead of labeling the intake title as a Result: %#',
@@ -240,15 +243,17 @@ describe('OverviewTab', () => {
       });
 
       const insight = screen.getByRole('region', {
-        name: resultCopy.en.tabSummary,
+        name: resultMessages.en.tabSummary,
       });
       expect(within(insight).getByText(explanation)).toHaveClass(
         'result-overview-outcome',
       );
-      expect(within(insight).getByText(resultCopy.en.tabSummary)).toBeVisible();
+      expect(
+        within(insight).getByText(resultMessages.en.tabSummary),
+      ).toBeVisible();
       expect(within(insight).queryByText(readyModel.source.title)).toBeNull();
       expect(
-        within(insight).queryByText(resultCopy.en.overviewOutcome),
+        within(insight).queryByText(resultMessages.en.overviewOutcome),
       ).toBeNull();
     },
   );
@@ -267,14 +272,14 @@ describe('OverviewTab', () => {
     });
 
     const metrics = screen.getByRole('list', {
-      name: resultCopy.en.overviewTitle,
+      name: resultMessages.en.overviewTitle,
     });
     expect(within(metrics).getByText('15:00')).toBeVisible();
     expect(within(metrics).getByText('0')).toBeVisible();
     expect(within(metrics).getAllByText('—')).toHaveLength(3);
     expect(
       within(metrics).getByLabelText(
-        `${resultCopy.en.overviewSummarySections}: ${resultCopy.en.stateUnavailable}`,
+        `${resultMessages.en.overviewSummarySections}: ${resultMessages.en.stateUnavailable}`,
       ),
     ).toBeVisible();
   });
@@ -299,7 +304,9 @@ describe('OverviewTab', () => {
       openArtifact,
     );
 
-    const links = screen.getByRole('list', { name: resultCopy.en.tabsLabel });
+    const links = screen.getByRole('list', {
+      name: resultMessages.en.tabsLabel,
+    });
     const cards = within(links).getAllByRole('button');
     expect(cards.map((card) => card.getAttribute('data-artifact'))).toEqual([
       'summary',
@@ -316,9 +323,9 @@ describe('OverviewTab', () => {
       'ready',
     ]);
     expect(cards[1]).toHaveAttribute('aria-disabled', 'true');
-    expect(cards[1]).toHaveTextContent(resultCopy.en.stateFailed);
-    expect(cards[2]).toHaveTextContent(resultCopy.en.stateNotRequested);
-    expect(cards[3]).toHaveTextContent(resultCopy.en.stateProcessing);
+    expect(cards[1]).toHaveTextContent(resultMessages.en.stateFailed);
+    expect(cards[2]).toHaveTextContent(resultMessages.en.stateNotRequested);
+    expect(cards[3]).toHaveTextContent(resultMessages.en.stateProcessing);
 
     cards[0]!.focus();
     expect(cards[0]).toHaveFocus();
@@ -353,7 +360,7 @@ describe('OverviewTab', () => {
 
     const card = screen.getByRole('button', {
       name: new RegExp(
-        `${resultCopy.en.overviewOpenArtifact}: ${resultCopy.en.tabFlashcards}.*${resultCopy.en.stateFailed}`,
+        `${resultMessages.en.overviewOpenArtifact}: ${resultMessages.en.tabFlashcards}.*${resultMessages.en.stateFailed}`,
         'i',
       ),
     });
@@ -382,7 +389,7 @@ describe('OverviewTab', () => {
       expect(
         screen.getByRole('button', {
           name: new RegExp(
-            `${resultCopy.en.overviewOpenArtifact}: ${resultCopy.en.tabExport}`,
+            `${resultMessages.en.overviewOpenArtifact}: ${resultMessages.en.tabExport}`,
             'i',
           ),
         }),
@@ -401,7 +408,7 @@ describe('OverviewTab', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: resultCopy.en.overviewContinueWatching,
+        name: resultMessages.en.overviewContinueWatching,
       }),
     );
 
@@ -443,11 +450,11 @@ describe('OverviewTab', () => {
     );
 
     const recommendation = screen.getByRole('region', {
-      name: resultCopy.en.overviewRecommended,
+      name: resultMessages.en.overviewRecommended,
     });
     await user.click(
       within(recommendation).getByRole('button', {
-        name: resultCopy.en.overviewStartFlashcards,
+        name: resultMessages.en.overviewStartFlashcards,
       }),
     );
 
@@ -465,15 +472,17 @@ describe('OverviewTab', () => {
   });
 
   it('renders the hub entirely from the selected locale copy', () => {
-    renderOverview(readyModel, vi.fn(), resultCopy.de);
+    renderOverview(readyModel, vi.fn(), resultMessages.de);
 
-    expect(screen.getByText(resultCopy.de.overviewOutcome)).toBeVisible();
+    expect(screen.getByText(resultMessages.de.overviewOutcome)).toBeVisible();
     expect(
-      screen.getByRole('list', { name: resultCopy.de.tabsLabel }),
+      screen.getByRole('list', { name: resultMessages.de.tabsLabel }),
     ).toBeVisible();
     expect(
-      screen.getByRole('region', { name: resultCopy.de.overviewRecommended }),
+      screen.getByRole('region', {
+        name: resultMessages.de.overviewRecommended,
+      }),
     ).toBeVisible();
-    expect(screen.queryByText(resultCopy.en.overviewOutcome)).toBeNull();
+    expect(screen.queryByText(resultMessages.en.overviewOutcome)).toBeNull();
   });
 });

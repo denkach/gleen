@@ -4,10 +4,10 @@ import { useCallback, useRef, useState, type RefObject } from 'react';
 import Image from 'next/image';
 
 import {
-  formatResultCopy,
-  resultCopy,
-  type ResultCopy,
-} from '@/lib/result-workspace/copy';
+  formatResultMessage,
+  resultMessages,
+  type ResultMessages,
+} from '@/lib/i18n/messages/results';
 import type { TimestampsPresentation } from '@/lib/result-workspace/presentation';
 
 import { ChapterRail } from './chapter-rail';
@@ -48,7 +48,7 @@ function SourceIcon({ name }: Readonly<{ name: 'heart' | 'share' }>) {
 
 export function SourcePanel({
   source,
-  copy = resultCopy.en,
+  copy = resultMessages.en,
   chapters = [],
   favorite = false,
   favoritePending = false,
@@ -63,7 +63,7 @@ export function SourcePanel({
   playerStageRef: suppliedPlayerStageRef,
 }: Readonly<{
   source: SourcePanelSource;
-  copy?: ResultCopy;
+  copy?: ResultMessages;
   chapters?: TimestampsPresentation['chapters'];
   favorite?: boolean;
   favoritePending?: boolean;
@@ -173,7 +173,7 @@ export function SourcePanel({
                 <Image
                   className="result-player-poster-image"
                   src={source.thumbnailUrl}
-                  alt={formatResultCopy(copy.sourceThumbnail, {
+                  alt={formatResultMessage(copy.sourceThumbnail, {
                     title: source.title,
                   })}
                   fill

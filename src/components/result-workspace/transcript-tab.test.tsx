@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultMessages } from '@/lib/i18n/messages/results';
 import type { TranscriptPresentation } from '@/lib/result-workspace/presentation';
 
 import { PlayerProvider } from './player-context';
@@ -82,11 +82,11 @@ function createController() {
 function renderTranscript({
   value = transcript,
   active = true,
-  copy = resultCopy.en,
+  copy = resultMessages.en,
 }: Readonly<{
   value?: TranscriptPresentation;
   active?: boolean;
-  copy?: (typeof resultCopy)[keyof typeof resultCopy];
+  copy?: (typeof resultMessages)[keyof typeof resultMessages];
 }> = {}) {
   const player = createController();
   function TranscriptHarness() {
@@ -141,7 +141,7 @@ describe('TranscriptTab', () => {
       'legacy',
     );
     expect(screen.getByRole('status')).toHaveTextContent(
-      resultCopy.en.transcriptNoMatches,
+      resultMessages.en.transcriptNoMatches,
     );
     expect(analytics).toContainEqual({
       name: 'result_transcript_control_changed',
@@ -181,7 +181,7 @@ describe('TranscriptTab', () => {
       screen.getByRole('switch', { name: 'Speaker labels' }),
     ).toBeDisabled();
     expect(
-      screen.getByText(resultCopy.en.transcriptSpeakerUnavailable),
+      screen.getByText(resultMessages.en.transcriptSpeakerUnavailable),
     ).toBeVisible();
   });
 
@@ -229,7 +229,7 @@ describe('TranscriptTab', () => {
       '00:06 A legacy segment stays readable.';
     expect(writeText).toHaveBeenCalledWith(fullTranscript);
     expect(screen.getByRole('status')).toHaveTextContent(
-      resultCopy.en.transcriptCopied,
+      resultMessages.en.transcriptCopied,
     );
 
     await user.click(
@@ -241,7 +241,7 @@ describe('TranscriptTab', () => {
     expect(anchorClick).toHaveBeenCalled();
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:transcript');
     expect(screen.getByRole('status')).toHaveTextContent(
-      resultCopy.en.transcriptDownloaded,
+      resultMessages.en.transcriptDownloaded,
     );
   });
 
@@ -257,19 +257,21 @@ describe('TranscriptTab', () => {
         throw new Error('blocked');
       }),
     });
-    renderTranscript({ copy: resultCopy.de });
+    renderTranscript({ copy: resultMessages.de });
 
     await user.click(
-      screen.getByRole('button', { name: resultCopy.de.transcriptCopy }),
+      screen.getByRole('button', { name: resultMessages.de.transcriptCopy }),
     );
     expect(screen.getByRole('status')).toHaveTextContent(
-      resultCopy.de.transcriptCopyFailed,
+      resultMessages.de.transcriptCopyFailed,
     );
     await user.click(
-      screen.getByRole('button', { name: resultCopy.de.transcriptDownload }),
+      screen.getByRole('button', {
+        name: resultMessages.de.transcriptDownload,
+      }),
     );
     expect(screen.getByRole('status')).toHaveTextContent(
-      resultCopy.de.transcriptDownloadFailed,
+      resultMessages.de.transcriptDownloadFailed,
     );
   });
 

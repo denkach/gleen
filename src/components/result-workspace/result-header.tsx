@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import type { ResultCopy } from '@/lib/result-workspace/copy';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 
 function HeaderIcon({ name }: Readonly<{ name: 'heart' | 'share' }>) {
   return (
@@ -31,7 +31,7 @@ export function ResultHeader({
   subtitle: string;
   favorite: boolean;
   favoritePending?: boolean;
-  copy: ResultCopy;
+  copy: ResultMessages;
   onFavorite?: () => void;
   onShare?: () => void;
   status?: ReactNode;

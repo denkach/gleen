@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 
-import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultMessages } from '@/lib/i18n/messages/results';
 
 import { SourcePanel } from './source-panel';
 
@@ -151,7 +151,7 @@ test('uses localized source, chapter, unavailable, and metadata wording', () => 
   render(
     <SourcePanel
       source={source}
-      copy={resultCopy.de}
+      copy={resultMessages.de}
       playerAvailable={false}
       chapters={[{ offsetMs: 0, title: 'Start', description: 'Einführung' }]}
     />,
@@ -184,7 +184,7 @@ test.each([
     render(
       <SourcePanel
         source={source}
-        copy={resultCopy[locale]}
+        copy={resultMessages[locale]}
         playerAvailable={false}
         chapters={Array.from({ length: count }, (_, index) => ({
           offsetMs: index * 10_000,

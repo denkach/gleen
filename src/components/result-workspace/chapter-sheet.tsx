@@ -1,7 +1,7 @@
 'use client';
 
 import { trackResultEvent } from '@/lib/analytics/result-events';
-import type { ResultCopy } from '@/lib/result-workspace/copy';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 import type { TimestampsPresentation } from '@/lib/result-workspace/presentation';
 import type { RefObject } from 'react';
 
@@ -34,7 +34,7 @@ export function ChapterSheet({
 }: Readonly<{
   analysisId: string;
   chapters: TimestampsPresentation['chapters'];
-  copy: ResultCopy;
+  copy: ResultMessages;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   responsiveFallbackRef: RefObject<HTMLElement | null>;

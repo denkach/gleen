@@ -1,7 +1,7 @@
 import { useId } from 'react';
 
 import { trackResultEvent } from '@/lib/analytics/result-events';
-import type { ResultCopy } from '@/lib/result-workspace/copy';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
 import { ArtifactLinkCard } from './artifact-link-card';
@@ -18,7 +18,7 @@ function Metric({
   label,
   value,
   copy,
-}: OverviewMetric & Readonly<{ copy: ResultCopy }>) {
+}: OverviewMetric & Readonly<{ copy: ResultMessages }>) {
   const unavailableLabel =
     value === null ? `${label}: ${copy.stateUnavailable}` : undefined;
   return (
@@ -37,7 +37,7 @@ export function OverviewTab({
 }: Readonly<{
   model: ResultWorkspaceModel;
   openTab: (tab: ArtifactDestination) => void;
-  copy: ResultCopy;
+  copy: ResultMessages;
   publicMode?: boolean;
 }>) {
   const controller = useVideoPlayer();

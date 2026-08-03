@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useEffect } from 'react';
 
 import { trackResultEvent } from '@/lib/analytics/result-events';
-import type { ResultCopy } from '@/lib/result-workspace/copy';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 import type { TimestampsPresentation } from '@/lib/result-workspace/presentation';
 
 import { useVideoPlayer, useVideoPlayerSnapshot } from './player-context';
@@ -52,7 +52,7 @@ export function MobileMiniPlayer({
 }: Readonly<{
   analysisId: string;
   chapters: TimestampsPresentation['chapters'];
-  copy: ResultCopy;
+  copy: ResultMessages;
   onChapters: () => void;
   onExpand: () => void;
   thumbnailUrl: string;

@@ -1,11 +1,15 @@
-import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultMessages } from '@/lib/i18n/messages/results';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
-export default function PublicResultNotFound() {
+export default async function PublicResultNotFound() {
+  const locale = await getRequestLocale();
+  const copy = resultMessages[locale];
+
   return (
     <main className="result-public-unavailable">
       <section>
-        <h1>{resultCopy.en.publicViewUnavailable}</h1>
-        <p>{resultCopy.en.publicViewExpired}</p>
+        <h1>{copy.publicViewUnavailable}</h1>
+        <p>{copy.publicViewExpired}</p>
       </section>
     </main>
   );

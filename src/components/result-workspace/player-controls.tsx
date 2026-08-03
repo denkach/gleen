@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from 'react';
 
-import { formatResultCopy, type ResultCopy } from '@/lib/result-workspace/copy';
+import {
+  formatResultMessage,
+  type ResultMessages,
+} from '@/lib/i18n/messages/results';
 
 import { useVideoPlayer, useVideoPlayerSnapshot } from './player-context';
 
@@ -73,7 +76,7 @@ function ControlIcon({ name }: Readonly<{ name: string }>) {
 
 export interface PlayerControlsProps {
   chapters: readonly PlayerChapter[];
-  copy: ResultCopy;
+  copy: ResultMessages;
   onMounted?: () => void;
 }
 
@@ -172,7 +175,7 @@ export function PlayerControls({
           className="result-progress-input"
           type="range"
           aria-label={copy.playerProgress}
-          aria-valuetext={formatResultCopy(copy.playerProgressValue, {
+          aria-valuetext={formatResultMessage(copy.playerProgressValue, {
             current: formatTime(current),
             duration: formatTime(maximum),
           })}
@@ -270,7 +273,7 @@ export function PlayerControls({
           className="result-volume-input"
           type="range"
           aria-label={copy.playerVolume}
-          aria-valuetext={formatResultCopy(copy.playerVolumeValue, {
+          aria-valuetext={formatResultMessage(copy.playerVolumeValue, {
             percent: displayedVolume,
           })}
           min={0}

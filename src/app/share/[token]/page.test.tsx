@@ -1,17 +1,24 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { adminClient, loadPublicResultProjection, notFound, resultWorkspace } =
-  vi.hoisted(() => ({
-    adminClient: { privileged: true },
-    loadPublicResultProjection: vi.fn(),
-    notFound: vi.fn((): never => {
-      throw new Error('NEXT_NOT_FOUND');
-    }),
-    resultWorkspace: vi.fn(),
-  }));
+const {
+  adminClient,
+  getRequestLocale,
+  loadPublicResultProjection,
+  notFound,
+  resultWorkspace,
+} = vi.hoisted(() => ({
+  adminClient: { privileged: true },
+  getRequestLocale: vi.fn(async () => 'en'),
+  loadPublicResultProjection: vi.fn(),
+  notFound: vi.fn((): never => {
+    throw new Error('NEXT_NOT_FOUND');
+  }),
+  resultWorkspace: vi.fn(),
+}));
 
 vi.mock('next/navigation', () => ({ notFound }));
+vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminSupabaseClient: vi.fn(() => adminClient),
 }));
@@ -28,48 +35,64 @@ vi.mock('@/components/result-workspace/result-workspace', () => ({
   },
 }));
 
-import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultMessages } from '@/lib/i18n/messages/results';
 import PublicResultNotFound from './not-found';
-import PublicResultPage, { dynamic, metadata } from './page';
+import PublicResultPage, { dynamic, generateMetadata } from './page';
 
 const token = 'A'.repeat(43);
 const projection = {
   source: { title: 'Safe public result' },
+  summary: { overview: 'Generated English summary' },
+  transcript: { segments: [{ text: 'Generated English transcript' }] },
   userState: null,
 };
 
 describe('public result page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getRequestLocale.mockResolvedValue('en');
     loadPublicResultProjection.mockResolvedValue(projection);
   });
 
-  it('is uncached, noindex, and uses owner-independent metadata', () => {
+  it('is uncached, noindex, and uses localized owner-independent metadata', async () => {
+    getRequestLocale.mockResolvedValue('de');
+
     expect(dynamic).toBe('force-dynamic');
-    expect(metadata).toEqual(
+    await expect(generateMetadata()).resolves.toEqual(
       expect.objectContaining({
-        title: resultCopy.en.publicViewTitle,
+        title: resultMessages.de.publicViewTitle,
+        description: resultMessages.de.publicViewShared,
         robots: expect.objectContaining({ index: false, follow: false }),
       }),
     );
-    expect(JSON.stringify(metadata)).not.toContain('Safe public result');
+    expect(JSON.stringify(await generateMetadata())).not.toContain(
+      'Safe public result',
+    );
   });
 
-  it('loads an exact bearer token through the admin boundary and renders public mode', async () => {
+  it('uses the public request locale without changing shared generated content', async () => {
+    getRequestLocale.mockResolvedValue('de');
+
     render(await PublicResultPage({ params: Promise.resolve({ token }) }));
     expect(loadPublicResultProjection).toHaveBeenCalledWith(adminClient, token);
     expect(resultWorkspace).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: projection,
         mode: 'public',
-        copy: resultCopy.en,
+        copy: resultMessages.de,
+        model: projection,
       }),
     );
     expect(resultWorkspace.mock.calls[0]?.[0]).not.toHaveProperty('saveTitle');
     expect(resultWorkspace.mock.calls[0]?.[0]).not.toHaveProperty(
       'saveArtifact',
     );
-    expect(screen.getByText(resultCopy.en.publicViewShared)).toBeVisible();
+    expect(screen.getByText(resultMessages.de.publicViewShared)).toBeVisible();
+    expect(resultWorkspace.mock.calls[0]?.[0].model.summary.overview).toBe(
+      'Generated English summary',
+    );
+    expect(
+      resultWorkspace.mock.calls[0]?.[0].model.transcript.segments[0].text,
+    ).toBe('Generated English transcript');
     expect(screen.queryByText(token)).not.toBeInTheDocument();
   });
 
@@ -83,14 +106,16 @@ describe('public result page', () => {
     expect(notFound).toHaveBeenCalledTimes(3);
   });
 
-  it('renders localized neutral unavailable copy without diagnostics', () => {
-    render(<PublicResultNotFound />);
+  it('renders localized neutral unavailable copy without diagnostics', async () => {
+    getRequestLocale.mockResolvedValue('de');
+
+    render(await PublicResultNotFound());
     expect(
       screen.getByRole('heading', {
-        name: resultCopy.en.publicViewUnavailable,
+        name: resultMessages.de.publicViewUnavailable,
       }),
     ).toBeVisible();
-    expect(screen.getByText(resultCopy.en.publicViewExpired)).toBeVisible();
+    expect(screen.getByText(resultMessages.de.publicViewExpired)).toBeVisible();
     expect(document.body.textContent).not.toMatch(/token|database|revoked_at/i);
   });
 });

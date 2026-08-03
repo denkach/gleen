@@ -6,6 +6,8 @@ import {
   createSupabaseAnalysisRepository,
   type SupabaseAnalysisClient,
 } from '@/lib/analysis-pipeline/supabase-repository';
+import { resultMessages } from '@/lib/i18n/messages/results';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import {
   createResultShare,
@@ -16,10 +18,6 @@ import {
   saveResultPreference,
   saveResultTitle,
 } from '@/lib/result-workspace/actions';
-import { defaultOnboardingState } from '@/lib/onboarding/preferences';
-import { getOnboardingState } from '@/lib/onboarding/repository';
-import { createSupabaseOnboardingStorage } from '@/lib/onboarding/supabase-storage';
-import { resultCopy } from '@/lib/result-workspace/copy';
 import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
 import {
   createSupabaseResultUserStateRepository,
@@ -69,7 +67,6 @@ export default async function VideoIntakePage(props: VideoIntakePageProps) {
 
   if (snapshot.job.status === 'complete' || snapshot.job.status === 'partial') {
     let userState = null;
-    let interfaceLocale = defaultOnboardingState.interfaceLocale;
     const userStateRepository = createSupabaseResultUserStateRepository(
       supabase as unknown as SupabaseResultUserStateClient,
     );
@@ -87,19 +84,11 @@ export default async function VideoIntakePage(props: VideoIntakePageProps) {
     } catch {
       // Recently-opened state must never hide an owned result workspace.
     }
-    try {
-      const profile = await getOnboardingState(
-        createSupabaseOnboardingStorage(supabase),
-        userId,
-      );
-      if (profile.ok) interfaceLocale = profile.data.interfaceLocale;
-    } catch {
-      // The safe English fallback keeps owned result data readable.
-    }
+    const locale = await getRequestLocale();
     return (
       <ResultWorkspace
         model={normalizeResultWorkspace(intake, snapshot, userState)}
-        copy={resultCopy[interfaceLocale]}
+        copy={resultMessages[locale]}
         saveTitle={saveResultTitle}
         saveArtifact={saveResultArtifact}
         savePreference={saveResultPreference}

@@ -9,10 +9,10 @@ import {
   type ExportSelection,
 } from '@/lib/result-workspace/markdown';
 import {
-  formatResultCopy,
-  resultCopy,
-  type ResultCopy,
-} from '@/lib/result-workspace/copy';
+  formatResultMessage,
+  resultMessages,
+  type ResultMessages,
+} from '@/lib/i18n/messages/results';
 import type {
   ResultTab,
   ResultWorkspaceModel,
@@ -42,7 +42,7 @@ export const initialExportUiState: ExportUiState = {
   },
 };
 
-function unavailableCopy(state: UnavailableTab, copy: ResultCopy): string {
+function unavailableCopy(state: UnavailableTab, copy: ResultMessages): string {
   switch (state.reason) {
     case 'pending':
       return copy.stateProcessing;
@@ -59,14 +59,14 @@ function unavailableCopy(state: UnavailableTab, copy: ResultCopy): string {
 
 function unavailableReason<T>(
   tab: ResultTab<T>,
-  copy: ResultCopy,
+  copy: ResultMessages,
 ): string | undefined {
   return tab.status === 'ready' ? undefined : unavailableCopy(tab, copy);
 }
 
 function transcriptUnavailableReason(
   model: ResultWorkspaceModel,
-  copy: ResultCopy,
+  copy: ResultMessages,
 ): string | undefined {
   const transcript = model.tabs.transcript;
   if (transcript.status !== 'ready') return unavailableCopy(transcript, copy);
@@ -92,12 +92,12 @@ function availableSelection(
 
 export function ExportTab({
   model,
-  copy = resultCopy.en,
+  copy = resultMessages.en,
   uiState,
   onUiStateChange,
 }: Readonly<{
   model: ResultWorkspaceModel;
-  copy?: ResultCopy;
+  copy?: ResultMessages;
   uiState: ExportUiState;
   onUiStateChange: (nextState: ExportUiState) => void;
 }>) {
@@ -180,10 +180,10 @@ export function ExportTab({
   const hasSelection = Object.values(selection).some(Boolean);
   const serialized = serializeExport(model, destination, selection);
   const filename = exportFilename(model, destination);
-  const actionLabel = formatResultCopy(copy.exportAction, {
+  const actionLabel = formatResultMessage(copy.exportAction, {
     destination: selectedDestination.label,
   });
-  const copyLabel = formatResultCopy(copy.exportCopy, {
+  const copyLabel = formatResultMessage(copy.exportCopy, {
     destination: selectedDestination.label,
   });
 
@@ -194,14 +194,14 @@ export function ExportTab({
       trackResultEvent({ name: 'result_export_requested', destination });
       setMessage({
         kind: 'status',
-        text: formatResultCopy(copy.exportCopied, {
+        text: formatResultMessage(copy.exportCopied, {
           destination: selectedDestination.label,
         }),
       });
     } catch {
       setMessage({
         kind: 'error',
-        text: formatResultCopy(copy.exportCopyFailed, {
+        text: formatResultMessage(copy.exportCopyFailed, {
           destination: selectedDestination.label,
         }),
       });
@@ -222,12 +222,12 @@ export function ExportTab({
       trackResultEvent({ name: 'result_export_requested', destination });
       setMessage({
         kind: 'status',
-        text: formatResultCopy(copy.exportDownloaded, { filename }),
+        text: formatResultMessage(copy.exportDownloaded, { filename }),
       });
     } catch {
       setMessage({
         kind: 'error',
-        text: formatResultCopy(copy.exportDownloadFailed, {
+        text: formatResultMessage(copy.exportDownloadFailed, {
           destination: selectedDestination.label,
         }),
       });

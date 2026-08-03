@@ -1,7 +1,7 @@
 import {
   formatKeyMomentsCount,
-  type ResultCopy,
-} from '@/lib/result-workspace/copy';
+  type ResultMessages,
+} from '@/lib/i18n/messages/results';
 import { isResultArtifactAddressable } from '@/lib/result-workspace/artifact-availability';
 import {
   recommendNextArtifact,
@@ -68,7 +68,7 @@ export function formatOverviewTime(seconds: number): string {
 
 function unavailableState(
   state: UnavailableTab,
-  copy: ResultCopy,
+  copy: ResultMessages,
 ): Readonly<{
   cardState: ArtifactLinkCardState;
   description: string;
@@ -95,7 +95,7 @@ function unavailableState(
 function cardState<T>(
   tab: ResultTab<T>,
   readyDescription: string,
-  copy: ResultCopy,
+  copy: ResultMessages,
 ): Readonly<{
   cardState: ArtifactLinkCardState;
   description: string;
@@ -110,7 +110,7 @@ function readyCountDescription(
   count: number | null,
   label: string,
   numberFormat: Intl.NumberFormat,
-  copy: ResultCopy,
+  copy: ResultMessages,
 ): string {
   return count === null
     ? copy.stateUnavailable
@@ -119,7 +119,7 @@ function readyCountDescription(
 
 function buildArtifactCards(
   model: ResultWorkspaceModel,
-  copy: ResultCopy,
+  copy: ResultMessages,
   numberFormat: Intl.NumberFormat,
 ): readonly OverviewArtifactCard[] {
   const summary = cardState(
@@ -220,7 +220,7 @@ function buildArtifactCards(
 
 function buildInsight(
   model: ResultWorkspaceModel,
-  copy: ResultCopy,
+  copy: ResultMessages,
 ): OverviewViewModel['insight'] {
   const summary = model.tabs.summary;
   if (summary.status === 'ready') {
@@ -244,7 +244,7 @@ function recommendationLabel(
     'summary' | 'flashcards' | 'transcript'
   >,
   model: ResultWorkspaceModel,
-  copy: ResultCopy,
+  copy: ResultMessages,
 ): string {
   if (recommendation === 'summary') return copy.overviewStartSummary;
   if (recommendation === 'transcript') return copy.overviewReturnTranscript;
@@ -255,7 +255,7 @@ function recommendationLabel(
 
 export function buildOverviewViewModel(
   model: ResultWorkspaceModel,
-  copy: ResultCopy,
+  copy: ResultMessages,
 ): OverviewViewModel {
   const numberFormat = new Intl.NumberFormat(copy.interfaceLocale);
   const cards = buildArtifactCards(model, copy, numberFormat);

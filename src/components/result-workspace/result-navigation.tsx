@@ -1,4 +1,4 @@
-import type { ResultCopy } from '@/lib/result-workspace/copy';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 import type { ResultArtifact } from '@/lib/result-workspace/navigation';
 import { TabsList, TabsTrigger, type TabsAccent } from '@/components/ui/tabs';
 
@@ -14,7 +14,7 @@ export function ResultNavigation({
   items,
 }: Readonly<{
   accent: TabsAccent;
-  copy: ResultCopy;
+  copy: ResultMessages;
   items: readonly ResultNavigationItem[];
 }>) {
   return (

@@ -1,4 +1,4 @@
-import type { ResultCopy } from '@/lib/result-workspace/copy';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 
 import type { AutosaveState } from './use-autosave';
 
@@ -20,7 +20,7 @@ export function AutosaveStatus({
   status: AutosaveState;
   retry: () => void;
   copy?: Pick<
-    ResultCopy,
+    ResultMessages,
     'stateNetworkError' | 'stateRetry' | 'stateSaved' | 'stateSaving'
   >;
 }>) {

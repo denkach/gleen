@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 
-import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultMessages } from '@/lib/i18n/messages/results';
 
 import { PlayerProvider } from './player-context';
 import type {
@@ -48,7 +48,7 @@ test('marks the current chapter and chapter selection seeks then plays', () => {
           language: 'English',
           thumbnailUrl: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
         }}
-        copy={resultCopy.en}
+        copy={resultMessages.en}
         chapters={[
           { offsetMs: 0, title: 'Opening', description: 'Set the premise' },
           {
@@ -105,7 +105,7 @@ test('keeps chapters busy until the player becomes ready', () => {
           language: 'English',
           thumbnailUrl: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
         }}
-        copy={resultCopy.en}
+        copy={resultMessages.en}
         chapters={[
           { offsetMs: 0, title: 'Opening', description: 'Set the premise' },
         ]}

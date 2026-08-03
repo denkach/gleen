@@ -10,7 +10,7 @@ import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
 import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
-import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultMessages } from '@/lib/i18n/messages/results';
 import type { ResultUserState } from '@/lib/result-workspace/user-state';
 import {
   outputLocaleSchema,
@@ -578,7 +578,9 @@ export default async function FixtureReadinessPage({
   if (id === 'result-den-25-public' && result) {
     return (
       <main className="result-public-page">
-        <p className="result-public-notice">{resultCopy.en.publicViewShared}</p>
+        <p className="result-public-notice">
+          {resultMessages.en.publicViewShared}
+        </p>
         <FixtureResultWorkspace
           mode="public"
           initialModel={normalizeResultWorkspace(intake, result, null)}

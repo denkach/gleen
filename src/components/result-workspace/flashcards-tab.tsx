@@ -6,7 +6,10 @@ import type {
   ResultMutationState,
   ResultSaveState,
 } from '@/lib/result-workspace/actions';
-import { formatResultCopy, type ResultCopy } from '@/lib/result-workspace/copy';
+import {
+  formatResultMessage,
+  type ResultMessages,
+} from '@/lib/i18n/messages/results';
 import type {
   FlashcardRating,
   ResultUserState,
@@ -71,8 +74,8 @@ const reviewButtons = [
 ] as const satisfies readonly {
   rating: FlashcardRating;
   className: string;
-  label: keyof ResultCopy;
-  hint: keyof ResultCopy;
+  label: keyof ResultMessages;
+  hint: keyof ResultMessages;
   symbol: string;
 }[];
 
@@ -98,7 +101,7 @@ export function FlashcardsTab({
   saveFlashcardReview?: ReviewAction;
   onReviewSaved?: (review: SavedReview) => void;
   reviews: ResultUserState['reviews'] | null;
-  copy: ResultCopy;
+  copy: ResultMessages;
   readOnly?: boolean;
 }>) {
   const value = artifact;
@@ -247,7 +250,7 @@ export function FlashcardsTab({
           </div>
         ) : null}
         <span className="result-small-stat">
-          {formatResultCopy(copy.flashcardsCardsCount, {
+          {formatResultMessage(copy.flashcardsCardsCount, {
             count: value.cards.length,
           })}
         </span>

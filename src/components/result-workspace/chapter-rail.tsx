@@ -4,8 +4,8 @@ import Image from 'next/image';
 
 import {
   formatKeyMomentsCount,
-  type ResultCopy,
-} from '@/lib/result-workspace/copy';
+  type ResultMessages,
+} from '@/lib/i18n/messages/results';
 import type { TimestampsPresentation } from '@/lib/result-workspace/presentation';
 
 import { useVideoPlayer, useVideoPlayerSnapshot } from './player-context';
@@ -28,7 +28,7 @@ export function ChapterRail({
 }: Readonly<{
   chapters: TimestampsPresentation['chapters'];
   thumbnailUrl: string;
-  copy: ResultCopy;
+  copy: ResultMessages;
 }>) {
   const controller = useVideoPlayer();
   const currentTimeMs = useVideoPlayerSnapshot(selectCurrentTime);

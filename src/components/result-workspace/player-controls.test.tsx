@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultMessages } from '@/lib/i18n/messages/results';
 
 import { PlayerProvider } from './player-context';
 import { PlayerControls } from './player-controls';
@@ -64,7 +64,7 @@ afterEach(() => {
 test('exposes the prototype player controls through native semantic inputs', () => {
   render(
     <PlayerProvider controller={controller}>
-      <SourcePanel source={source} copy={resultCopy.en} chapters={[]} />
+      <SourcePanel source={source} copy={resultMessages.en} chapters={[]} />
     </PlayerProvider>,
   );
 
@@ -113,7 +113,7 @@ test('exposes the prototype player controls through native semantic inputs', () 
 test('reflects reactive play, mute, and time state without inventing rates', () => {
   render(
     <PlayerProvider controller={controller}>
-      <SourcePanel source={source} copy={resultCopy.en} chapters={[]} />
+      <SourcePanel source={source} copy={resultMessages.en} chapters={[]} />
     </PlayerProvider>,
   );
 
@@ -147,7 +147,7 @@ test('keeps the poster until first playback, through pause, and resets it for a 
     <PlayerProvider controller={controller}>
       <SourcePanel
         source={source}
-        copy={resultCopy.en}
+        copy={resultMessages.en}
         chapters={[]}
         playerLifecycleKey="analysis-one"
       />
@@ -176,7 +176,7 @@ test('keeps the poster until first playback, through pause, and resets it for a 
     <PlayerProvider controller={controller}>
       <SourcePanel
         source={source}
-        copy={resultCopy.en}
+        copy={resultMessages.en}
         chapters={[]}
         playerLifecycleKey="analysis-two"
       />
@@ -193,7 +193,7 @@ test('does not treat a playing snapshot from the previous lifecycle as a start f
     <PlayerProvider controller={controller}>
       <SourcePanel
         source={source}
-        copy={resultCopy.en}
+        copy={resultMessages.en}
         chapters={[]}
         playerLifecycleKey="analysis-one"
       />
@@ -210,7 +210,7 @@ test('does not treat a playing snapshot from the previous lifecycle as a start f
     <PlayerProvider controller={controller}>
       <SourcePanel
         source={source}
-        copy={resultCopy.en}
+        copy={resultMessages.en}
         chapters={[]}
         playerLifecycleKey="analysis-two"
       />
@@ -236,7 +236,7 @@ test('does not treat a playing snapshot from the previous lifecycle as a start f
 test('keeps the poster removed when playing and pause snapshots are batched before render', () => {
   render(
     <PlayerProvider controller={controller}>
-      <SourcePanel source={source} copy={resultCopy.en} chapters={[]} />
+      <SourcePanel source={source} copy={resultMessages.en} chapters={[]} />
     </PlayerProvider>,
   );
 
@@ -260,7 +260,7 @@ test('unmutes before setting a positive volume', () => {
   snapshot = { ...snapshot, muted: true, volume: 64 };
   render(
     <PlayerProvider controller={controller}>
-      <SourcePanel source={source} copy={resultCopy.en} chapters={[]} />
+      <SourcePanel source={source} copy={resultMessages.en} chapters={[]} />
     </PlayerProvider>,
   );
 
@@ -290,7 +290,7 @@ test('tracks fullscreen state, swaps its label, and exits fullscreen', () => {
 
   render(
     <PlayerProvider controller={controller}>
-      <PlayerControls copy={resultCopy.en} chapters={[]} />
+      <PlayerControls copy={resultMessages.en} chapters={[]} />
     </PlayerProvider>,
   );
 
@@ -317,7 +317,7 @@ test('cleans up its fullscreenchange listener', () => {
   const removeEventListener = vi.spyOn(document, 'removeEventListener');
   const view = render(
     <PlayerProvider controller={controller}>
-      <PlayerControls copy={resultCopy.en} chapters={[]} />
+      <PlayerControls copy={resultMessages.en} chapters={[]} />
     </PlayerProvider>,
   );
   const fullscreenListener = addEventListener.mock.calls.find(

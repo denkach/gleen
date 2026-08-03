@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultMessages } from '@/lib/i18n/messages/results';
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
 import {
@@ -106,10 +106,10 @@ afterEach(() => {
 
 function ExportTabHarness({
   value,
-  copy = resultCopy.en,
+  copy = resultMessages.en,
 }: Readonly<{
   value: ResultWorkspaceModel;
-  copy?: (typeof resultCopy)[keyof typeof resultCopy];
+  copy?: (typeof resultMessages)[keyof typeof resultMessages];
 }>) {
   const [uiState, setUiState] = useState<ExportUiState>(initialExportUiState);
   return (
@@ -124,7 +124,7 @@ function ExportTabHarness({
 
 function renderExportTab(
   value: ResultWorkspaceModel = model,
-  copy: (typeof resultCopy)[keyof typeof resultCopy] = resultCopy.en,
+  copy: (typeof resultMessages)[keyof typeof resultMessages] = resultMessages.en,
 ) {
   return render(<ExportTabHarness value={value} copy={copy} />);
 }
@@ -134,7 +134,7 @@ describe('ExportTab', () => {
     renderExportTab();
 
     expect(
-      screen.getByRole('heading', { name: resultCopy.en.exportTitle }),
+      screen.getByRole('heading', { name: resultMessages.en.exportTitle }),
     ).toBeVisible();
     expect(screen.getByText('1')).toBeVisible();
     expect(screen.getByText('2')).toBeVisible();
@@ -184,13 +184,13 @@ describe('ExportTab', () => {
       screen.getByRole('checkbox', { name: /Full transcript/i }),
     ).toBeDisabled();
     expect(
-      screen.getAllByText(resultCopy.en.stateFailed).length,
+      screen.getAllByText(resultMessages.en.stateFailed).length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getAllByText(resultCopy.en.stateProcessing).length,
+      screen.getAllByText(resultMessages.en.stateProcessing).length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getAllByText(resultCopy.en.stateMissing).length,
+      screen.getAllByText(resultMessages.en.stateMissing).length,
     ).toBeGreaterThan(0);
     expect(screen.getByRole('checkbox', { name: /metadata/i })).toBeEnabled();
   });
@@ -206,7 +206,7 @@ describe('ExportTab', () => {
     }
 
     expect(screen.getByTestId('export-preview')).toHaveTextContent(
-      resultCopy.en.exportEmpty,
+      resultMessages.en.exportEmpty,
     );
     expect(
       screen.getByRole('button', { name: 'Export to Markdown' }),
@@ -253,21 +253,21 @@ describe('ExportTab', () => {
   });
 
   it('renders disconnected Notion and all surrounding copy in the selected locale', () => {
-    renderExportTab(model, resultCopy.de);
+    renderExportTab(model, resultMessages.de);
 
     const notion = screen.getByRole('button', {
       name: new RegExp(
-        `${resultCopy.de.exportNotion}.*${resultCopy.de.exportConnectionRequired}`,
+        `${resultMessages.de.exportNotion}.*${resultMessages.de.exportConnectionRequired}`,
         'i',
       ),
     });
     expect(notion).toBeDisabled();
     expect(
-      within(notion).getByText(resultCopy.de.exportConnectionRequired),
+      within(notion).getByText(resultMessages.de.exportConnectionRequired),
     ).toBeVisible();
     expect(screen.queryByText('Connection required')).toBeNull();
     expect(
-      screen.getByRole('heading', { name: resultCopy.de.exportTitle }),
+      screen.getByRole('heading', { name: resultMessages.de.exportTitle }),
     ).toBeVisible();
   });
 
@@ -292,6 +292,6 @@ describe('ExportTab', () => {
     });
     expect(transcript).toBeDisabled();
     expect(transcript).not.toBeChecked();
-    expect(screen.getByText(resultCopy.en.stateMissing)).toBeVisible();
+    expect(screen.getByText(resultMessages.en.stateMissing)).toBeVisible();
   });
 });

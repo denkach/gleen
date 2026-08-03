@@ -14,7 +14,7 @@ import type {
   SummaryPresentation,
 } from '@/lib/result-workspace/presentation';
 import { flashcardRatingSchema } from '@/lib/result-workspace/user-state';
-import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultMessages } from '@/lib/i18n/messages/results';
 
 const shareFixtureStorageKey = 'gleen:result-share-fixture';
 
@@ -314,8 +314,8 @@ export function FixtureResultWorkspace({
     return (
       <main className="result-public-unavailable">
         <section>
-          <h1>{resultCopy.en.publicViewUnavailable}</h1>
-          <p>{resultCopy.en.publicViewExpired}</p>
+          <h1>{resultMessages.en.publicViewUnavailable}</h1>
+          <p>{resultMessages.en.publicViewExpired}</p>
         </section>
       </main>
     );

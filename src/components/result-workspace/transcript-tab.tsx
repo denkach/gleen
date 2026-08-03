@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { trackResultEvent } from '@/lib/analytics/result-events';
-import type { ResultCopy } from '@/lib/result-workspace/copy';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 import type { TranscriptPresentation } from '@/lib/result-workspace/presentation';
 
 import { useVideoPlayer, useVideoPlayerSnapshot } from './player-context';
@@ -57,7 +57,7 @@ function serializeTranscript(transcript: TranscriptPresentation): string {
     .join('\n');
 }
 
-function filterLabel(filter: TranscriptFilter, copy: ResultCopy): string {
+function filterLabel(filter: TranscriptFilter, copy: ResultMessages): string {
   if (filter === 'insight') return copy.transcriptFilterInsight;
   if (filter === 'question') return copy.transcriptFilterQuestion;
   if (filter === 'example') return copy.transcriptFilterExample;
@@ -110,7 +110,7 @@ export function TranscriptTab({
   onUiStateChange,
 }: Readonly<{
   transcript: TranscriptPresentation;
-  copy: ResultCopy;
+  copy: ResultMessages;
   active: boolean;
   uiState: TranscriptUiState;
   onUiStateChange: (nextState: TranscriptUiState) => void;

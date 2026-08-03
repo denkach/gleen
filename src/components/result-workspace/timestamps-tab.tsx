@@ -6,9 +6,9 @@ import type { TimestampsArtifact } from '@/lib/analysis-pipeline/artifact-schema
 import type { ResultSaveState } from '@/lib/result-workspace/actions';
 import {
   formatKeyMomentsCount,
-  formatResultCopy,
-  type ResultCopy,
-} from '@/lib/result-workspace/copy';
+  formatResultMessage,
+  type ResultMessages,
+} from '@/lib/i18n/messages/results';
 
 import { AutosaveStatus } from './autosave-status';
 import { useVideoPlayer } from './player-context';
@@ -37,7 +37,7 @@ export function TimestampsTab({
   durationSeconds: number;
   thumbnailUrl: string;
   sourceTitle: string;
-  copy: ResultCopy;
+  copy: ResultMessages;
   readOnly?: boolean;
 }>) {
   const player = useVideoPlayer();
@@ -124,7 +124,7 @@ export function TimestampsTab({
               >
                 <Image
                   src={thumbnailUrl}
-                  alt={formatResultCopy(copy.sourceThumbnail, {
+                  alt={formatResultMessage(copy.sourceThumbnail, {
                     title: `${sourceTitle} — ${chapter.title}`,
                   })}
                   fill
@@ -145,7 +145,7 @@ export function TimestampsTab({
                   <strong>{chapter.title}</strong>
                 ) : (
                   <input
-                    aria-label={formatResultCopy(copy.timestampsTitleField, {
+                    aria-label={formatResultMessage(copy.timestampsTitleField, {
                       count: chapterIndex + 1,
                     })}
                     value={chapter.title}
@@ -166,7 +166,7 @@ export function TimestampsTab({
                   <p>{chapter.description}</p>
                 ) : (
                   <textarea
-                    aria-label={formatResultCopy(
+                    aria-label={formatResultMessage(
                       copy.timestampsDescriptionField,
                       { count: chapterIndex + 1 },
                     )}

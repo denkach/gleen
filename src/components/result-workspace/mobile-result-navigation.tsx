@@ -3,7 +3,7 @@
 import { useRef, useState, type RefObject } from 'react';
 
 import { trackResultEvent } from '@/lib/analytics/result-events';
-import type { ResultCopy } from '@/lib/result-workspace/copy';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 import type { ResultArtifact } from '@/lib/result-workspace/navigation';
 
 import type { ResultNavigationItem } from './result-navigation';
@@ -48,7 +48,7 @@ export function MobileResultNavigation({
   responsiveFallbackRef,
 }: Readonly<{
   activeArtifact: ResultArtifact;
-  copy: ResultCopy;
+  copy: ResultMessages;
   items: readonly ResultNavigationItem[];
   onSelect: (artifact: ResultArtifact) => void;
   responsiveFallbackRef: RefObject<HTMLElement | null>;

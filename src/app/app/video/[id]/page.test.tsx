@@ -7,7 +7,7 @@ const {
   findOwned,
   findOwnedState,
   findOwnedSnapshot,
-  getOnboardingState,
+  getRequestLocale,
   getUser,
   markOpened,
   normalizeResultWorkspace,
@@ -25,7 +25,7 @@ const {
   findOwned: vi.fn(),
   findOwnedState: vi.fn(),
   findOwnedSnapshot: vi.fn(),
-  getOnboardingState: vi.fn(),
+  getRequestLocale: vi.fn(),
   getUser: vi.fn(),
   markOpened: vi.fn(),
   normalizeResultWorkspace: vi.fn(),
@@ -61,10 +61,7 @@ vi.mock('@/lib/result-workspace/user-state-repository', () => ({
     markOpened,
   })),
 }));
-vi.mock('@/lib/onboarding/repository', () => ({ getOnboardingState }));
-vi.mock('@/lib/onboarding/supabase-storage', () => ({
-  createSupabaseOnboardingStorage: vi.fn(() => 'profile-storage'),
-}));
+vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
 vi.mock('@/components/app-shell/analysis-processing-screen', () => ({
   AnalysisProcessingScreen: ({ intake }: { intake: AnalysisIntake }) => (
     <h1>{intake.title}</h1>
@@ -89,7 +86,7 @@ vi.mock('@/lib/result-workspace/actions', () => ({
   saveFlashcardReview,
 }));
 
-import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultMessages } from '@/lib/i18n/messages/results';
 import VideoIntakePage, { generateMetadata } from './page';
 
 const intake = {
@@ -160,19 +157,11 @@ describe('owned intake readiness page', () => {
     findOwnedSnapshot.mockResolvedValue(snapshot);
     findOwnedState.mockResolvedValue(userState);
     markOpened.mockResolvedValue(undefined);
-    getOnboardingState.mockResolvedValue({
-      ok: true,
-      data: {
-        interfaceLocale: 'de',
-        outputLocale: 'en',
-        summaryPreset: 'balanced',
-        flashcardPreset: 18,
-        onboardingStep: 3,
-        onboardingCompletedAt: '2026-07-12T10:00:00.000Z',
-      },
-    });
+    getRequestLocale.mockResolvedValue('de');
     normalizeResultWorkspace.mockReturnValue({
       source: { title: intake.title },
+      summary: { overview: 'Generated English summary' },
+      transcript: { segments: [{ text: 'Generated English transcript' }] },
     });
   });
 
@@ -208,7 +197,7 @@ describe('owned intake readiness page', () => {
       );
       expect(resultWorkspace).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          copy: resultCopy.de,
+          copy: resultMessages.de,
           saveTitle: saveResultTitle,
           saveArtifact: saveResultArtifact,
           savePreference: saveResultPreference,
@@ -221,20 +210,29 @@ describe('owned intake readiness page', () => {
     },
   );
 
-  test('falls back to English copy when profile storage is unavailable', async () => {
+  test('uses the cached request interface locale without changing generated content', async () => {
     findOwnedSnapshot.mockResolvedValue({
       ...snapshot,
       job: { ...snapshot.job, status: 'complete', stage: 'complete' },
     });
-    getOnboardingState.mockResolvedValue({ ok: false, code: 'storage' });
+    getRequestLocale.mockResolvedValue('de');
 
     render(
       await VideoIntakePage({ params: Promise.resolve({ id: intake.id }) }),
     );
 
     expect(resultWorkspace).toHaveBeenLastCalledWith(
-      expect.objectContaining({ copy: resultCopy.en }),
+      expect.objectContaining({
+        copy: resultMessages.de,
+        model: expect.objectContaining({
+          summary: { overview: 'Generated English summary' },
+          transcript: {
+            segments: [{ text: 'Generated English transcript' }],
+          },
+        }),
+      }),
     );
+    expect(getRequestLocale).toHaveBeenCalledOnce();
   });
 
   test('renders with unavailable owner state without fabricating progress', async () => {

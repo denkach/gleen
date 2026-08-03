@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { resultArtifactEditSchema } from '@/lib/result-workspace/edit-schemas';
-import { resultCopy } from '@/lib/result-workspace/copy';
+import { resultMessages } from '@/lib/i18n/messages/results';
 import type {
   ResultMutationState,
   ResultSaveState,
@@ -275,7 +275,7 @@ function renderWorkspaceWithActions({
   saveFlashcardReview?: (
     input: unknown,
   ) => Promise<{ status: 'saved' | 'conflict' | 'error' }>;
-  copy?: (typeof resultCopy)[keyof typeof resultCopy];
+  copy?: (typeof resultMessages)[keyof typeof resultMessages];
   value?: ResultWorkspaceModel;
 }>) {
   return render(
@@ -299,7 +299,7 @@ describe('ResultWorkspace', () => {
         <ResultWorkspace
           mode="public"
           model={{ ...model, userState: null }}
-          copy={resultCopy.en}
+          copy={resultMessages.en}
         />
       </PlayerProvider>,
     );
@@ -350,7 +350,7 @@ describe('ResultWorkspace', () => {
       <PlayerProvider controller={controller}>
         <ResultWorkspace
           model={model}
-          copy={resultCopy.de}
+          copy={resultMessages.de}
           saveTitle={vi.fn()}
           saveArtifact={vi.fn()}
         />
@@ -358,13 +358,13 @@ describe('ResultWorkspace', () => {
     );
 
     expect(
-      screen.getByRole('tablist', { name: resultCopy.de.tabsLabel }),
+      screen.getByRole('tablist', { name: resultMessages.de.tabsLabel }),
     ).toBeVisible();
     expect(
-      screen.getByRole('tab', { name: resultCopy.de.tabOverview }),
+      screen.getByRole('tab', { name: resultMessages.de.tabOverview }),
     ).toBeVisible();
     expect(
-      screen.getByRole('tab', { name: resultCopy.de.tabTranscript }),
+      screen.getByRole('tab', { name: resultMessages.de.tabTranscript }),
     ).toBeVisible();
   });
 
@@ -598,7 +598,7 @@ describe('ResultWorkspace', () => {
     expect(screen.getAllByTestId('mobile-mini-player')).toHaveLength(1);
 
     await userEvent.click(
-      screen.getByRole('button', { name: resultCopy.en.playerExpand }),
+      screen.getByRole('button', { name: resultMessages.en.playerExpand }),
     );
     expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({
       block: 'start',
@@ -706,17 +706,19 @@ describe('ResultWorkspace', () => {
 
       const chapterTrigger = within(
         screen.getByTestId('mobile-mini-player'),
-      ).getByRole('button', { name: resultCopy.en.playerChapters });
+      ).getByRole('button', { name: resultMessages.en.playerChapters });
       await user.click(chapterTrigger);
       expect(
-        screen.getByRole('dialog', { name: resultCopy.en.sheetChaptersTitle }),
+        screen.getByRole('dialog', {
+          name: resultMessages.en.sheetChaptersTitle,
+        }),
       ).toBeVisible();
 
       act(() => viewport.setMatches(false));
       await waitFor(() =>
         expect(
           screen.queryByRole('dialog', {
-            name: resultCopy.en.sheetChaptersTitle,
+            name: resultMessages.en.sheetChaptersTitle,
           }),
         ).not.toBeInTheDocument(),
       );
@@ -772,17 +774,19 @@ describe('ResultWorkspace', () => {
 
     await user.click(
       within(navigation as HTMLElement).getByRole('button', {
-        name: resultCopy.en.tabMore,
+        name: resultMessages.en.tabMore,
       }),
     );
     expect(
-      screen.getByRole('dialog', { name: resultCopy.en.sheetMoreTitle }),
+      screen.getByRole('dialog', { name: resultMessages.en.sheetMoreTitle }),
     ).toBeVisible();
 
     act(() => viewport.setMatches(false));
     await waitFor(() =>
       expect(
-        screen.queryByRole('dialog', { name: resultCopy.en.sheetMoreTitle }),
+        screen.queryByRole('dialog', {
+          name: resultMessages.en.sheetMoreTitle,
+        }),
       ).not.toBeInTheDocument(),
     );
     await waitFor(() =>
@@ -817,12 +821,12 @@ describe('ResultWorkspace', () => {
     );
     const moreTrigger = within(mobileNavigation as HTMLElement).getByRole(
       'button',
-      { name: resultCopy.en.tabMore },
+      { name: resultMessages.en.tabMore },
     );
     const moreFocus = vi.spyOn(moreTrigger, 'focus');
     await user.click(moreTrigger);
     const moreSheet = screen.getByRole('dialog', {
-      name: resultCopy.en.sheetMoreTitle,
+      name: resultMessages.en.sheetMoreTitle,
     });
     expect(moreSheet.querySelector('.result-sheet-handle')).not.toBeNull();
     await user.keyboard('{Escape}');
@@ -832,14 +836,14 @@ describe('ResultWorkspace', () => {
     await user.click(moreTrigger);
     await user.click(
       within(
-        screen.getByRole('dialog', { name: resultCopy.en.sheetMoreTitle }),
+        screen.getByRole('dialog', { name: resultMessages.en.sheetMoreTitle }),
       ).getByRole('button', {
-        name: resultCopy.en.tabTranscript,
+        name: resultMessages.en.tabTranscript,
       }),
     );
     expect(window.location.hash).toBe('#transcript');
     expect(
-      screen.queryByRole('dialog', { name: resultCopy.en.sheetMoreTitle }),
+      screen.queryByRole('dialog', { name: resultMessages.en.sheetMoreTitle }),
     ).not.toBeInTheDocument();
 
     const chapterTrigger = document.querySelector(
@@ -849,7 +853,7 @@ describe('ResultWorkspace', () => {
     expect(chapterTrigger).not.toBeNull();
     await user.click(chapterTrigger);
     const chapterSheet = screen.getByRole('dialog', {
-      name: resultCopy.en.sheetChaptersTitle,
+      name: resultMessages.en.sheetChaptersTitle,
     });
     expect(
       within(chapterSheet).getByRole('button', { name: /00:00 Opening/ }),
@@ -863,13 +867,17 @@ describe('ResultWorkspace', () => {
       expect(chapterFocus).toHaveBeenCalledWith({ preventScroll: true }),
     );
     expect(
-      screen.queryByRole('dialog', { name: resultCopy.en.sheetChaptersTitle }),
+      screen.queryByRole('dialog', {
+        name: resultMessages.en.sheetChaptersTitle,
+      }),
     ).not.toBeInTheDocument();
 
     await user.click(chapterTrigger);
     await user.keyboard('{Escape}');
     expect(
-      screen.queryByRole('dialog', { name: resultCopy.en.sheetChaptersTitle }),
+      screen.queryByRole('dialog', {
+        name: resultMessages.en.sheetChaptersTitle,
+      }),
     ).not.toBeInTheDocument();
     expect(chapterTrigger).toHaveFocus();
   });
@@ -1011,7 +1019,7 @@ describe('ResultWorkspace', () => {
       await user.click(
         screen.getByRole('button', {
           name: new RegExp(
-            `${resultCopy.en.overviewOpenArtifact}: ${resultCopy.en.tabExport}`,
+            `${resultMessages.en.overviewOpenArtifact}: ${resultMessages.en.tabExport}`,
             'i',
           ),
         }),
@@ -1019,10 +1027,10 @@ describe('ResultWorkspace', () => {
 
       expect(window.location.hash).toBe('#export');
       expect(
-        screen.getByRole('tab', { name: resultCopy.en.tabExport }),
+        screen.getByRole('tab', { name: resultMessages.en.tabExport }),
       ).toHaveAttribute('aria-selected', 'true');
       expect(
-        screen.getByRole('heading', { name: resultCopy.en.exportTitle }),
+        screen.getByRole('heading', { name: resultMessages.en.exportTitle }),
       ).toBeVisible();
     },
   );
@@ -1531,7 +1539,7 @@ describe('ResultWorkspace', () => {
       expect(screen.queryByLabelText('Public link')).not.toBeInTheDocument(),
     );
     expect(screen.getByRole('status')).toHaveTextContent(
-      resultCopy.en.shareRevoked,
+      resultMessages.en.shareRevoked,
     );
     expect(JSON.stringify(analytics)).not.toContain('A'.repeat(43));
     expect(analytics).toEqual(
@@ -1915,7 +1923,7 @@ describe('ResultWorkspace', () => {
     }>();
     const saveArtifact = vi.fn(() => artifactSave.promise);
     const saveFlashcardReview = vi.fn().mockResolvedValue({ status: 'saved' });
-    const copy = resultCopy.ru;
+    const copy = resultMessages.ru;
     renderWorkspaceWithActions({
       copy,
       saveArtifact,

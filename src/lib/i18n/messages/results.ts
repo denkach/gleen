@@ -1,9 +1,9 @@
-import type { supportedLocales } from '@/lib/onboarding/preferences';
+import { defineMessages } from '@/lib/i18n/catalog';
+import { selectPlural } from '@/lib/i18n/format';
+import type { Locale } from '@/lib/i18n/locales';
 
-type InterfaceLocale = (typeof supportedLocales)[number];
-
-export interface ResultCopy {
-  readonly interfaceLocale: InterfaceLocale;
+export interface ResultMessages {
+  readonly interfaceLocale: Locale;
   readonly workspaceLabel: string;
   readonly playerLabel: string;
   readonly playerPlay: string;
@@ -187,7 +187,7 @@ export interface ResultCopy {
   readonly publicViewExpired: string;
 }
 
-export function formatResultCopy(
+export function formatResultMessage(
   template: string,
   values: Readonly<Record<string, string | number>>,
 ): string {
@@ -198,22 +198,20 @@ export function formatResultCopy(
 
 type KeyMomentPluralCategory = 'one' | 'few' | 'many' | 'other';
 
-export function formatKeyMomentsCount(copy: ResultCopy, count: number): string {
+export function formatKeyMomentsCount(
+  copy: ResultMessages,
+  count: number,
+): string {
   const variants: Readonly<Record<KeyMomentPluralCategory, string>> = {
     one: copy.keyMomentsCountOne,
     few: copy.keyMomentsCountFew,
     many: copy.keyMomentsCountMany,
     other: copy.keyMomentsCountOther,
   };
-  const selected = new Intl.PluralRules(copy.interfaceLocale).select(count);
-  const template =
-    selected === 'one' || selected === 'few' || selected === 'many'
-      ? variants[selected]
-      : variants.other;
-  return formatResultCopy(template, { count });
+  return selectPlural(copy.interfaceLocale, count, variants);
 }
 
-export const resultCopy = {
+export const resultMessages = defineMessages({
   en: {
     interfaceLocale: 'en',
     workspaceLabel: 'Analysis artifacts',
@@ -1165,4 +1163,6 @@ export const resultCopy = {
     publicViewUnavailable: 'Dieses geteilte Ergebnis ist nicht verfügbar',
     publicViewExpired: 'Dieser Link ist ungültig oder wurde widerrufen',
   },
-} satisfies Record<InterfaceLocale, ResultCopy>;
+} satisfies Record<Locale, ResultMessages>) as Readonly<
+  Record<Locale, ResultMessages>
+>;

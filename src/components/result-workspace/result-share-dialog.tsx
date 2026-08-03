@@ -8,7 +8,7 @@ import type {
   ResultMutationState,
   ResultShareState,
 } from '@/lib/result-workspace/actions';
-import type { ResultCopy } from '@/lib/result-workspace/copy';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 
 type CreateShareAction = (input: unknown) => Promise<ResultShareState>;
 type RevokeShareAction = (input: unknown) => Promise<ResultMutationState>;
@@ -22,7 +22,7 @@ export function ResultShareDialog({
   revokeShare,
 }: Readonly<{
   analysisId: string;
-  copy: ResultCopy;
+  copy: ResultMessages;
   createShare: CreateShareAction;
   onOpenChange: (open: boolean) => void;
   open: boolean;
