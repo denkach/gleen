@@ -28,9 +28,12 @@ describe('marketingMessages', () => {
   });
 
   it('keeps representative native marketing copy available', () => {
-    expect(marketingMessages.uk.hero.title).toBe(
-      'Дивіться менше. Розумійте більше.',
-    );
+    expect(marketingMessages.uk.hero.titleStart).toBe('Дивіться менше.');
+    expect(marketingMessages.uk.hero.titleEnd).toBe('Розумійте більше.');
+    expect(
+      `${marketingMessages.uk.hero.titleStart} ${marketingMessages.uk.hero.titleEnd}`,
+    ).toBe('Дивіться менше. Розумійте більше.');
+    expect(marketingMessages.uk.hero).not.toHaveProperty('title');
     expect(marketingMessages.ru.header.signIn).toBe('Войти');
     expect(marketingMessages.es.header.pricing).toBe('Precios');
     expect(marketingMessages.de.hero.submit).toBe('Video umwandeln');

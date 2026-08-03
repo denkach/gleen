@@ -2,8 +2,8 @@ export type PricingPlan = Readonly<{
   label: string;
   name: string;
   description: string;
-  price: string;
-  period: string;
+  amountMinor: number;
+  currency: string;
   features: readonly string[];
   cta: string;
   ctaHref: '#product';
@@ -15,8 +15,8 @@ export const pricingPlans = Object.freeze([
     label: 'Free',
     name: 'Explore',
     description: 'For trying Gleen on a few important videos.',
-    price: '€0',
-    period: '/ month',
+    amountMinor: 0,
+    currency: 'EUR',
     features: [
       '3 video analyses',
       'All four artifact types',
@@ -31,8 +31,8 @@ export const pricingPlans = Object.freeze([
     label: 'Prism · Best fit',
     name: 'Build a habit',
     description: 'For students, researchers, and continuous learners.',
-    price: '€12',
-    period: '/ month',
+    amountMinor: 1200,
+    currency: 'EUR',
     features: [
       '25 video analyses',
       'Longer videos',
@@ -47,8 +47,8 @@ export const pricingPlans = Object.freeze([
     label: 'Spectrum',
     name: 'Go deeper',
     description: 'For intensive knowledge work and larger libraries.',
-    price: '€29',
-    period: '/ month',
+    amountMinor: 2900,
+    currency: 'EUR',
     features: [
       '100 video analyses',
       'Advanced exports',

@@ -14,6 +14,20 @@ describe('pricingPlans', () => {
     );
   });
 
+  it('keeps prices as semantic minor amounts and ISO currencies', () => {
+    expect(
+      pricingPlans.map(({ amountMinor, currency }) => ({
+        amountMinor,
+        currency,
+      })),
+    ).toEqual([
+      { amountMinor: 0, currency: 'EUR' },
+      { amountMinor: 1200, currency: 'EUR' },
+      { amountMinor: 2900, currency: 'EUR' },
+    ]);
+    expect(pricingPlans.every((plan) => !('price' in plan))).toBe(true);
+  });
+
   it('marks exactly one plan as recommended', () => {
     expect(pricingPlans.filter(({ recommended }) => recommended)).toHaveLength(
       1,

@@ -2034,6 +2034,38 @@ body:has(.landing-reference)
     gap: 12px;
   }
 }
+@media (max-width: 420px) {
+  .landing-reference .site-header {
+    height: 118px;
+    align-items: flex-start;
+  }
+  .landing-reference .header-inner {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding-block: 12px;
+  }
+  .landing-reference .header-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-self: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+  .landing-reference .header-actions .locale-switcher {
+    min-width: 0;
+  }
+  .landing-reference .header-actions .locale-switcher__trigger {
+    width: 100%;
+  }
+  .landing-reference .header-actions .mobile-only {
+    position: absolute;
+    inset-inline-end: 0;
+    top: 12px;
+    width: 42px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .landing-reference *,
   .landing-reference *::before,

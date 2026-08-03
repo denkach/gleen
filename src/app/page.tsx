@@ -57,7 +57,7 @@ export default async function HomePage() {
     'shared',
     reportMissingMarketingTranslation,
   );
-  const content = getMarketingContent(copy);
+  const content = getMarketingContent(copy, locale);
 
   return (
     <div className="landing-reference">

@@ -20,7 +20,6 @@ export const marketingMessages = defineMessages({
     },
     hero: {
       eyebrow: 'One video / four useful outputs',
-      title: 'Watch less. Understand more.',
       titleStart: 'Watch less.',
       titleEnd: 'Understand more.',
       description:
@@ -198,7 +197,6 @@ export const marketingMessages = defineMessages({
     },
     hero: {
       eyebrow: 'Одне відео / чотири корисні результати',
-      title: 'Дивіться менше. Розумійте більше.',
       titleStart: 'Дивіться менше.',
       titleEnd: 'Розумійте більше.',
       description:
@@ -376,7 +374,6 @@ export const marketingMessages = defineMessages({
     },
     hero: {
       eyebrow: 'Одно видео / четыре полезных результата',
-      title: 'Смотрите меньше. Понимайте больше.',
       titleStart: 'Смотрите меньше.',
       titleEnd: 'Понимайте больше.',
       description:
@@ -553,7 +550,6 @@ export const marketingMessages = defineMessages({
     },
     hero: {
       eyebrow: 'Un vídeo / cuatro resultados útiles',
-      title: 'Mira menos. Entiende más.',
       titleStart: 'Mira menos.',
       titleEnd: 'Entiende más.',
       description:
@@ -733,7 +729,6 @@ export const marketingMessages = defineMessages({
     },
     hero: {
       eyebrow: 'Ein Video / vier nützliche Ergebnisse',
-      title: 'Weniger schauen. Mehr verstehen.',
       titleStart: 'Weniger schauen.',
       titleEnd: 'Mehr verstehen.',
       description:

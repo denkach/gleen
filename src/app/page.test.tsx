@@ -1,16 +1,22 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const requestLocale = vi.hoisted(() => ({ value: 'de' }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 vi.mock('@/lib/i18n/request-locale', () => ({
-  getRequestLocale: () => Promise.resolve('de'),
+  getRequestLocale: () => Promise.resolve(requestLocale.value),
 }));
 
 import HomePage, { generateMetadata } from './page';
 
 describe('HomePage', () => {
+  afterEach(() => {
+    requestLocale.value = 'de';
+  });
+
   it('renders the complete German marketing surface selected on the server', async () => {
     render(await HomePage());
 
@@ -26,6 +32,16 @@ describe('HomePage', () => {
     );
     expect(screen.getByRole('navigation')).toHaveTextContent('Beispiele');
     expect(screen.getByRole('navigation')).toHaveTextContent('Preise');
+    const header = screen.getByRole('banner');
+    expect(
+      within(header).getByRole('button', { name: 'Sprache: Deutsch' }),
+    ).toBeVisible();
+    expect(
+      within(header).getByRole('link', { name: 'Kostenlos starten' }),
+    ).toBeVisible();
+    expect(
+      within(header).getByRole('button', { name: 'Menü öffnen' }),
+    ).toHaveClass('btn-icon');
     expect(screen.getByText('Der Prisma-Workflow')).toBeVisible();
     expect(screen.getByText('Zusammenfassung mit Struktur')).toBeVisible();
     expect(screen.getByText('Interaktive Karteikarten')).toBeVisible();
@@ -45,5 +61,21 @@ describe('HomePage', () => {
     expect(metadata.description).toBe(
       'Verwandle jedes YouTube-Video in eine strukturierte Zusammenfassung, intelligente Karteikarten, präzise Zeitstempel und exportfertiges Wissen.',
     );
+  });
+
+  it('keeps the Ukrainian native language name, CTA, and menu available for the compact header layout', async () => {
+    requestLocale.value = 'uk';
+    render(await HomePage());
+
+    const header = screen.getByRole('banner');
+    expect(
+      within(header).getByRole('button', { name: 'Мова: Українська' }),
+    ).toBeVisible();
+    expect(
+      within(header).getByRole('link', { name: 'Почати безкоштовно' }),
+    ).toBeVisible();
+    expect(
+      within(header).getByRole('button', { name: 'Відкрити меню' }),
+    ).toHaveClass('btn-icon');
   });
 });

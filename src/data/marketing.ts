@@ -1,4 +1,6 @@
 import type { MarketingMessages } from '@/lib/i18n/messages/marketing';
+import { formatCurrency } from '@/lib/i18n/format';
+import type { Locale } from '@/lib/i18n/locales';
 
 import { pricingPlans } from './pricing';
 
@@ -46,14 +48,21 @@ export type MarketingContent = Readonly<{
   pricing: readonly MarketingPricingCard[];
 }>;
 
-export function getMarketingContent(copy: MarketingMessages): MarketingContent {
+export function getMarketingContent(
+  copy: MarketingMessages,
+  locale: Locale,
+): MarketingContent {
   const pricing = [
     copy.pricing.free,
     copy.pricing.prism,
     copy.pricing.spectrum,
   ].map((card, index) => ({
     ...card,
-    price: pricingPlans[index]!.price,
+    price: formatCurrency({
+      amountMinor: pricingPlans[index]!.amountMinor,
+      currency: pricingPlans[index]!.currency,
+      locale,
+    }),
     period: copy.pricing.period,
     recommended: pricingPlans[index]!.recommended,
     ctaHref: pricingPlans[index]!.ctaHref,
