@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { supportedLocales } from '@/lib/i18n/locales';
 
-import { historyMessages } from './history';
+import { historyMessages, historyResultCount } from './history';
 
 function messagePaths(value: unknown, path = ''): string[] {
   if (typeof value === 'string' || typeof value === 'function') return [path];
@@ -106,4 +106,37 @@ describe('historyMessages', () => {
       '2 weitere gespeicherte Analysen geladen.',
     );
   });
+
+  it.each([
+    ['uk', 2, '2 збережені аналізи'],
+    ['uk', 5, '5 збережених аналізів'],
+    ['uk', 21, '21 збережений аналіз'],
+    ['ru', 2, '2 сохранённых анализа'],
+    ['ru', 5, '5 сохранённых анализов'],
+    ['ru', 21, '21 сохранённый анализ'],
+  ] as const)(
+    'formats %s result-count announcements for %d items',
+    (locale, count, expected) => {
+      expect(historyResultCount(locale, historyMessages[locale], count)).toBe(
+        expected,
+      );
+    },
+  );
+
+  it.each([
+    ['en', 0, 'No saved analyses'],
+    ['en', 1, '1 saved analysis'],
+    ['en', 2, '2 saved analyses'],
+    ['es', 1, '1 análisis guardado'],
+    ['es', 2, '2 análisis guardados'],
+    ['de', 1, '1 gespeicherte Analyse'],
+    ['de', 2, '2 gespeicherte Analysen'],
+  ] as const)(
+    'preserves %s result-count copy for %d items',
+    (locale, count, expected) => {
+      expect(historyResultCount(locale, historyMessages[locale], count)).toBe(
+        expected,
+      );
+    },
+  );
 });

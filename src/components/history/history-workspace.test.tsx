@@ -15,6 +15,7 @@ import {
 import type { HistoryQuery } from '@/lib/history/query';
 import type { HistoryItem } from '@/lib/history/repository';
 import { historyMessages } from '@/lib/i18n/messages/history';
+import type { Locale } from '@/lib/i18n/locales';
 
 const query: HistoryQuery = {
   q: 'prisms',
@@ -68,6 +69,7 @@ const historyItem: HistoryItem = {
 function renderWorkspace(queryOverride: HistoryQuery = query) {
   return render(
     <HistoryWorkspace
+      locale="en"
       copy={historyMessages.en}
       initialPage={{ items: [], nextCursor: null }}
       query={queryOverride}
@@ -77,6 +79,38 @@ function renderWorkspace(queryOverride: HistoryQuery = query) {
     />,
   );
 }
+
+const localeRerenderCases = [
+  {
+    locale: 'de',
+    initialStatus: 'Bereit',
+    initialDate: '24.07.2026',
+    loadedStatus: 'Fehlgeschlagen',
+    loadedDate: '23.07.2026',
+  },
+  {
+    locale: 'uk',
+    initialStatus: 'Готово',
+    initialDate: '24 лип. 2026 р.',
+    loadedStatus: 'Помилка',
+    loadedDate: '23 лип. 2026 р.',
+  },
+] as const satisfies readonly Readonly<{
+  locale: Locale;
+  initialStatus: string;
+  initialDate: string;
+  loadedStatus: string;
+  loadedDate: string;
+}>[];
+
+const resultAnnouncementCases = [
+  ['uk', 2, '2 збережені аналізи'],
+  ['uk', 5, '5 збережених аналізів'],
+  ['uk', 21, '21 збережений аналіз'],
+  ['ru', 2, '2 сохранённых анализа'],
+  ['ru', 5, '5 сохранённых анализов'],
+  ['ru', 21, '21 сохранённый анализ'],
+] as const;
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -118,6 +152,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
+        locale="en"
         copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
@@ -180,6 +215,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
+        locale="en"
         copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
@@ -234,6 +270,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
+        locale="en"
         copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
@@ -287,6 +324,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
+        locale="en"
         copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
@@ -328,6 +366,7 @@ describe('HistoryWorkspace URL state', () => {
   it('omits unavailable duplicate metadata instead of inventing copy', () => {
     render(
       <HistoryWorkspace
+        locale="en"
         copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
@@ -350,6 +389,7 @@ describe('HistoryWorkspace URL state', () => {
   it('renders the safe load error under the same approved page heading', () => {
     render(
       <HistoryWorkspace
+        locale="en"
         copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
@@ -521,6 +561,7 @@ describe('HistoryWorkspace URL state', () => {
     };
     view.rerender(
       <HistoryWorkspace
+        locale="en"
         copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={restoredQuery}
@@ -560,6 +601,31 @@ describe('HistoryWorkspace URL state', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it.each(resultAnnouncementCases)(
+    'announces the %s plural category for %d initial results',
+    (locale, count, expected) => {
+      render(
+        <HistoryWorkspace
+          locale={locale}
+          copy={historyMessages[locale]}
+          initialPage={{
+            items: Array.from({ length: count }, (_, index) => ({
+              ...historyItem,
+              id: `history-item-${index}`,
+              sourceId: `video-${index}`,
+            })),
+            nextCursor: null,
+          }}
+          query={{ ...query, q: '', status: [], cursor: null }}
+          facets={{ languages: [], sources: [] }}
+          actions={actions}
+        />,
+      );
+
+      expect(screen.getByRole('status')).toHaveTextContent(expected);
+    },
+  );
+
   it('integrates the responsive list with real actions and shared announcements', async () => {
     const user = userEvent.setup();
     vi.mocked(actions.toggleHistoryFavorite).mockResolvedValue({
@@ -568,6 +634,7 @@ describe('HistoryWorkspace URL state', () => {
     });
     render(
       <HistoryWorkspace
+        locale="en"
         copy={historyMessages.en}
         initialPage={{ items: [historyItem], nextCursor: null }}
         query={{ ...query, q: '', status: [], cursor: null }}
@@ -592,10 +659,120 @@ describe('HistoryWorkspace URL state', () => {
     );
   });
 
+  it.each(localeRerenderCases)(
+    'replaces localized list state on an in-place en → $locale rerender and keeps load-more consistent',
+    async ({
+      locale,
+      initialStatus,
+      initialDate,
+      loadedStatus,
+      loadedDate,
+    }) => {
+      const user = userEvent.setup();
+      const targetCopy = historyMessages[locale];
+      const targetItem: HistoryItem = {
+        ...historyItem,
+        summaryPresetLabel: targetCopy.presentation.presets.detailed,
+        analyzedAtLabel: initialDate,
+        status: { key: 'ready', label: initialStatus },
+      };
+      const loadedItem: HistoryItem = {
+        ...targetItem,
+        id: '33333333-3333-4333-8333-333333333333',
+        sourceId: 'video-2',
+        title: 'Localized loaded item',
+        analyzedAtLabel: loadedDate,
+        status: { key: 'failed', label: loadedStatus },
+      };
+      vi.mocked(actions.loadMoreHistory).mockResolvedValue({
+        ok: true,
+        data: { items: [loadedItem], nextCursor: null },
+      });
+
+      const view = render(
+        <HistoryWorkspace
+          locale="en"
+          copy={historyMessages.en}
+          initialPage={{ items: [historyItem], nextCursor: 'en-cursor' }}
+          query={{ ...query, cursor: null }}
+          facets={{ languages: [], sources: [] }}
+          actions={actions}
+        />,
+      );
+
+      view.rerender(
+        <HistoryWorkspace
+          locale={locale}
+          copy={targetCopy}
+          initialPage={{ items: [targetItem], nextCursor: 'localized-cursor' }}
+          query={{ ...query, cursor: null }}
+          facets={{ languages: [], sources: [] }}
+          actions={actions}
+        />,
+      );
+
+      expect(screen.getByText(initialStatus)).toBeInTheDocument();
+      expect(screen.getByText(initialDate)).toBeInTheDocument();
+      expect(screen.queryByText('Ready')).not.toBeInTheDocument();
+      expect(screen.queryByText('Jul 24, 2026')).not.toBeInTheDocument();
+
+      await user.click(
+        screen.getByRole('button', { name: targetCopy.loadMore.action }),
+      );
+
+      expect(actions.loadMoreHistory).toHaveBeenCalledWith({
+        query:
+          'q=prisms&status=ready&language=en&source=YouTube&date=30d&favorite=true&sort=recent',
+        cursor: 'localized-cursor',
+      });
+      expect(screen.getByText(loadedStatus)).toBeInTheDocument();
+      expect(screen.getByText(loadedDate)).toBeInTheDocument();
+      expect(screen.queryByText('Ready')).not.toBeInTheDocument();
+      expect(screen.queryByText('Jul 24, 2026')).not.toBeInTheDocument();
+    },
+  );
+
+  it('preserves optimistic item state across same-locale refresh rerenders', async () => {
+    const user = userEvent.setup();
+    vi.mocked(actions.toggleHistoryFavorite).mockResolvedValue({
+      ok: true,
+      data: undefined,
+    });
+    const props = {
+      locale: 'en' as const,
+      copy: historyMessages.en,
+      initialPage: { items: [historyItem], nextCursor: null },
+      query: { ...query, q: '', status: [], cursor: null },
+      facets: { languages: [], sources: [] },
+      actions,
+    };
+    const view = render(<HistoryWorkspace {...props} />);
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Add Integrated history item to favorites',
+      }),
+    );
+    expect(
+      screen.getByRole('button', {
+        name: 'Remove Integrated history item from favorites',
+      }),
+    ).toBeInTheDocument();
+
+    view.rerender(<HistoryWorkspace {...props} />);
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Remove Integrated history item from favorites',
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('renders German workspace copy while preserving canonical query values', async () => {
     const user = userEvent.setup();
     render(
       <HistoryWorkspace
+        locale="de"
         copy={historyMessages.de}
         initialPage={{ items: [], nextCursor: null }}
         query={query}

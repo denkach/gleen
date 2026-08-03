@@ -106,6 +106,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   if (!historyData) {
     return (
       <HistoryWorkspace
+        locale={locale}
         copy={copy}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
@@ -119,6 +120,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   const [initialPage, facets, verifiedDuplicate] = historyData;
   return (
     <HistoryWorkspace
+      locale={locale}
       copy={copy}
       initialPage={initialPage}
       query={query}

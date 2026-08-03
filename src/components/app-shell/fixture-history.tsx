@@ -339,6 +339,7 @@ export function FixtureHistory({
     <>
       <ActiveAnalysisRecoveryLink />
       <HistoryWorkspace
+        locale="en"
         copy={historyMessages.en}
         initialPage={{
           items: itemsFor(visualCase, query),

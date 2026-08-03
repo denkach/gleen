@@ -1,4 +1,6 @@
 import { defineMessages } from '../catalog';
+import { selectPlural } from '../format';
+import type { Locale } from '../locales';
 
 export const historyMessages = defineMessages({
   en: {
@@ -22,12 +24,13 @@ export const historyMessages = defineMessages({
       title: 'History',
       description: 'Open a saved result without spending another analysis.',
       newAnalysis: 'New analysis',
-      resultCount: (count: number) =>
-        count === 0
-          ? 'No saved analyses'
-          : count === 1
-            ? '1 saved analysis'
-            : `${count} saved analyses`,
+      noResults: 'No saved analyses',
+      resultCount: {
+        one: '{count} saved analysis',
+        few: '{count} saved analyses',
+        many: '{count} saved analyses',
+        other: '{count} saved analyses',
+      },
     },
     toolbar: {
       searchLabel: 'Search history',
@@ -212,12 +215,13 @@ export const historyMessages = defineMessages({
       description:
         'Відкрийте збережений результат без витрати ще одного аналізу.',
       newAnalysis: 'Новий аналіз',
-      resultCount: (count: number) =>
-        count === 0
-          ? 'Немає збережених аналізів'
-          : count === 1
-            ? '1 збережений аналіз'
-            : `${count} збережених аналізів`,
+      noResults: 'Немає збережених аналізів',
+      resultCount: {
+        one: '{count} збережений аналіз',
+        few: '{count} збережені аналізи',
+        many: '{count} збережених аналізів',
+        other: '{count} збереженого аналізу',
+      },
     },
     toolbar: {
       searchLabel: 'Пошук в історії',
@@ -399,12 +403,13 @@ export const historyMessages = defineMessages({
       description:
         'Откройте сохранённый результат без расхода ещё одного анализа.',
       newAnalysis: 'Новый анализ',
-      resultCount: (count: number) =>
-        count === 0
-          ? 'Нет сохранённых анализов'
-          : count === 1
-            ? '1 сохранённый анализ'
-            : `${count} сохранённых анализов`,
+      noResults: 'Нет сохранённых анализов',
+      resultCount: {
+        one: '{count} сохранённый анализ',
+        few: '{count} сохранённых анализа',
+        many: '{count} сохранённых анализов',
+        other: '{count} сохранённого анализа',
+      },
     },
     toolbar: {
       searchLabel: 'Поиск в истории',
@@ -587,12 +592,13 @@ export const historyMessages = defineMessages({
       title: 'Historial',
       description: 'Abre un resultado guardado sin gastar otro análisis.',
       newAnalysis: 'Nuevo análisis',
-      resultCount: (count: number) =>
-        count === 0
-          ? 'No hay análisis guardados'
-          : count === 1
-            ? '1 análisis guardado'
-            : `${count} análisis guardados`,
+      noResults: 'No hay análisis guardados',
+      resultCount: {
+        one: '{count} análisis guardado',
+        few: '{count} análisis guardados',
+        many: '{count} análisis guardados',
+        other: '{count} análisis guardados',
+      },
     },
     toolbar: {
       searchLabel: 'Buscar en el historial',
@@ -780,12 +786,13 @@ export const historyMessages = defineMessages({
       description:
         'Öffne ein gespeichertes Ergebnis, ohne eine weitere Analyse zu verbrauchen.',
       newAnalysis: 'Neue Analyse',
-      resultCount: (count: number) =>
-        count === 0
-          ? 'Keine gespeicherten Analysen'
-          : count === 1
-            ? '1 gespeicherte Analyse'
-            : `${count} gespeicherte Analysen`,
+      noResults: 'Keine gespeicherten Analysen',
+      resultCount: {
+        one: '{count} gespeicherte Analyse',
+        few: '{count} gespeicherte Analysen',
+        many: '{count} gespeicherte Analysen',
+        other: '{count} gespeicherte Analysen',
+      },
     },
     toolbar: {
       searchLabel: 'Verlauf durchsuchen',
@@ -961,3 +968,13 @@ export const historyMessages = defineMessages({
 });
 
 export type HistoryMessages = (typeof historyMessages)['en'];
+
+export function historyResultCount(
+  locale: Locale,
+  copy: HistoryMessages,
+  count: number,
+): string {
+  return count === 0
+    ? copy.page.noResults
+    : selectPlural(locale, count, copy.page.resultCount);
+}

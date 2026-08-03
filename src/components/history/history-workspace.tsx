@@ -8,7 +8,11 @@ import { HistoryFilters } from '@/components/history/history-filters';
 import { HistoryList } from '@/components/history/history-list';
 import { HistoryToolbar } from '@/components/history/history-toolbar';
 import type { HistoryActionResult } from '@/lib/history/actions';
-import type { HistoryMessages } from '@/lib/i18n/messages/history';
+import {
+  historyResultCount,
+  type HistoryMessages,
+} from '@/lib/i18n/messages/history';
+import type { Locale } from '@/lib/i18n/locales';
 import {
   serializeHistoryQuery,
   type HistoryQuery,
@@ -38,6 +42,7 @@ export type HistoryWorkspaceActions = Readonly<{
 }>;
 
 export type HistoryWorkspaceProps = Readonly<{
+  locale: Locale;
   copy: HistoryMessages;
   initialPage: HistoryPage;
   query: HistoryQuery;
@@ -102,6 +107,7 @@ function serverHydrationSnapshot() {
 }
 
 export function HistoryWorkspace({
+  locale,
   copy,
   initialPage,
   query,
@@ -116,7 +122,8 @@ export function HistoryWorkspace({
 }: HistoryWorkspaceProps) {
   return (
     <HistoryWorkspaceState
-      key={serializeHistoryQuery(query).toString()}
+      key={`${locale}:${serializeHistoryQuery(query).toString()}`}
+      locale={locale}
       copy={copy}
       initialPage={initialPage}
       query={query}
@@ -135,6 +142,7 @@ export function HistoryWorkspace({
 type HistoryWorkspaceStateProps = Pick<
   HistoryWorkspaceProps,
   | 'initialPage'
+  | 'locale'
   | 'copy'
   | 'query'
   | 'facets'
@@ -148,6 +156,7 @@ type HistoryWorkspaceStateProps = Pick<
   Readonly<{ navigationPath: string }>;
 
 function HistoryWorkspaceState({
+  locale,
   copy,
   initialPage,
   query,
@@ -168,7 +177,7 @@ function HistoryWorkspaceState({
   const [reanalyzing, setReanalyzing] = useState(false);
   const reanalysisPendingRef = useRef(false);
   const [announcement, setAnnouncement] = useState(() =>
-    copy.page.resultCount(initialPage.items.length),
+    historyResultCount(locale, copy, initialPage.items.length),
   );
   const hydrated = useSyncExternalStore(
     subscribeToHydrationSignal,
