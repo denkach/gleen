@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -19,8 +20,19 @@ import type {
   InvoicePresentation,
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
+import { billingMessages } from '@/lib/i18n/messages/billing';
 
-import { PortalScreen } from './portal-screen';
+import { PortalScreen as ProductionPortalScreen } from './portal-screen';
+
+type PortalScreenProps = ComponentProps<typeof ProductionPortalScreen>;
+function PortalScreen({
+  locale = 'en',
+  copy = billingMessages.en,
+  ...props
+}: Omit<PortalScreenProps, 'locale' | 'copy'> &
+  Partial<Pick<PortalScreenProps, 'locale' | 'copy'>>) {
+  return <ProductionPortalScreen {...props} locale={locale} copy={copy} />;
+}
 
 const subscription = {
   currentPlan: {
@@ -158,6 +170,29 @@ const scheduleRevisionTwo = 'e4d909c290d0fb1ca068ffaddf22cbd0';
 describe('PortalScreen', () => {
   beforeEach(() => refresh.mockClear());
 
+  it('renders the complete English portal surface with localized navigation', () => {
+    render(
+      <PortalScreen
+        subscription={subscription}
+        activity={activity}
+        portalAction={vi.fn()}
+        locale="en"
+        copy={billingMessages.en}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Billing portal' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Update payment method' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Mobile billing navigation' }),
+    ).toBeInTheDocument();
+  });
+
   it('renders the owned plan, masked payment method, renewal, balance, and billing activity', () => {
     render(
       <PortalScreen
@@ -267,7 +302,7 @@ describe('PortalScreen', () => {
     );
 
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'Starter is scheduled for Aug 1, 2026. Your Prism Pro access remains active until then.',
+      'Starter is scheduled for 1 Aug 2026. Your Prism Pro access remains active until then.',
     );
     expect(openPortal).not.toHaveBeenCalled();
     expect(refresh).toHaveBeenCalledTimes(1);
@@ -301,7 +336,7 @@ describe('PortalScreen', () => {
       screen.getByRole('button', { name: 'Confirm plan change' }),
     );
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'Starter is scheduled for Aug 1, 2026.',
+      'Starter is scheduled for 1 Aug 2026.',
     );
 
     view.rerender(
@@ -319,7 +354,7 @@ describe('PortalScreen', () => {
       />,
     );
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Free is scheduled for Sep 1, 2026.',
+      'Free is scheduled for 1 Sept 2026.',
     );
 
     view.rerender(
@@ -350,7 +385,7 @@ describe('PortalScreen', () => {
     );
 
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Starter is scheduled for Aug 1, 2026. Your Prism Pro access remains active until then.',
+      'Starter is scheduled for 1 Aug 2026. Your Prism Pro access remains active until then.',
     );
     expect(
       screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),
@@ -466,7 +501,7 @@ describe('PortalScreen', () => {
       />,
     );
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Free is scheduled for Sep 1, 2026.',
+      'Free is scheduled for 1 Sept 2026.',
     );
     expect(
       screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),
@@ -517,7 +552,7 @@ describe('PortalScreen', () => {
     );
 
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Starter is scheduled for Aug 1, 2026.',
+      'Starter is scheduled for 1 Aug 2026.',
     );
     expect(
       screen.getByRole('button', { name: 'Cancel scheduled downgrade' }),

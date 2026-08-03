@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { billingMessages } from '@/lib/i18n/messages/billing';
+
 import type {
   BillingPlanCatalogRow,
   BillingPlanSlug,
@@ -44,7 +46,8 @@ const fixtureScreenSchema = z.enum(billingFixtureScreens);
 const fixtureStateSchema = z.enum(billingFixtureStates);
 const now = '2025-07-29T00:00:00.000Z';
 const presentationOptions = {
-  locale: 'en-US',
+  locale: 'en',
+  copy: billingMessages.en,
   timeZone: 'UTC',
   now,
 } as const;

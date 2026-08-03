@@ -7,6 +7,8 @@ import type {
   CheckoutPresentation,
   PricePresentation,
 } from '@/lib/billing/presentation';
+import type { Locale } from '@/lib/i18n/locales';
+import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
 import { BillingCard, BillingPage, BillingPrism } from './billing-page';
 
@@ -83,20 +85,26 @@ function cycleHref(
   return `/app/subscription/checkout?${query.toString()}`;
 }
 
-function cycleLabel(interval: PricePresentation['interval']) {
-  return interval === 'year' ? 'Yearly' : 'Monthly';
+function cycleLabel(
+  interval: PricePresentation['interval'],
+  copy: BillingMessages,
+): string {
+  return copy.presentation.interval[interval];
 }
 
-function stateMessage(state: CheckoutScreenState) {
+function stateMessage(state: CheckoutScreenState, copy: BillingMessages) {
   switch (state.kind) {
     case 'authentication-required':
-      return 'Your session has expired.';
+      return copy.checkout.states.authenticationRequired;
     case 'confirming':
-      return 'Confirming your subscription';
+      return copy.checkout.states.confirming;
     case 'canceled':
-      return 'Checkout was canceled.';
+      return copy.checkout.states.canceled;
     case 'retryable-error':
-      return state.message ?? 'Checkout could not be loaded.';
+      return state.message === undefined ||
+        state.message === copy.checkout.states.retryableError
+        ? copy.checkout.states.retryableError
+        : `${copy.checkout.states.retryableError} ${state.message}`;
     default:
       return null;
   }
@@ -112,6 +120,7 @@ export function CheckoutScreen({
   onSubmit,
   canSubmit = true,
   promotionPreview,
+  copy,
 }: Readonly<{
   presentation: CheckoutPresentation;
   prices: readonly PricePresentation[];
@@ -122,8 +131,10 @@ export function CheckoutScreen({
   onSubmit?: () => void;
   canSubmit?: boolean;
   promotionPreview?: ReactNode;
+  locale: Locale;
+  copy: BillingMessages;
 }>) {
-  const message = stateMessage(state);
+  const message = stateMessage(state, copy);
   const disabled =
     state.kind === 'loading' ||
     state.kind === 'submitting' ||
@@ -131,16 +142,17 @@ export function CheckoutScreen({
     state.kind === 'authentication-required';
   const submitLabel =
     state.kind === 'loading'
-      ? 'Loading secure checkout…'
+      ? copy.checkout.actions.loading
       : state.kind === 'submitting'
-        ? 'Processing…'
-        : `Start ${presentation.plan.displayName}`;
+        ? copy.checkout.actions.processing
+        : copy.checkout.actions.submit(presentation.plan.displayName);
 
   return (
     <BillingPage
-      eyebrow="Secure upgrade"
-      title="Checkout"
-      description="Upgrade your plan securely with a transparent order summary."
+      eyebrow={copy.checkout.eyebrow}
+      title={copy.checkout.title}
+      description={copy.checkout.description}
+      copy={copy}
     >
       {message !== null && (
         <BillingCard className="billing-checkout-state">
@@ -155,14 +167,11 @@ export function CheckoutScreen({
             {message}
           </p>
           {state.kind === 'confirming' && (
-            <small>
-              Access changes only after the verified payment update reaches
-              Gleen.
-            </small>
+            <small>{copy.checkout.states.confirmingDetail}</small>
           )}
           {state.kind === 'retryable-error' && onRetry !== undefined && (
             <button className="billing-button" type="button" onClick={onRetry}>
-              Try checkout again
+              {copy.checkout.actions.retry}
             </button>
           )}
         </BillingCard>
@@ -177,7 +186,9 @@ export function CheckoutScreen({
                 <span className="billing-plan-name">
                   {presentation.plan.displayName}
                 </span>
-                <span className="billing-tag">Selected plan</span>
+                <span className="billing-tag">
+                  {copy.checkout.selectedPlan}
+                </span>
               </div>
               <p className="billing-section-copy">
                 {presentation.plan.description}
@@ -205,14 +216,18 @@ export function CheckoutScreen({
                 }
               >
                 <span>
-                  {cycleLabel(price.interval)} billing
+                  {copy.checkout.billing(cycleLabel(price.interval, copy))}
                   {price.savingsPercent !== null && (
-                    <b>Save {price.savingsPercent}%</b>
+                    <b>{copy.checkout.save(price.savingsPercent)}</b>
                   )}
                 </span>
                 <small>
-                  {price.monthlyEquivalent.formattedAmount} / month
-                  {price.interval === 'year' ? ', billed yearly' : ''}
+                  {copy.checkout.monthlyEquivalent(
+                    price.monthlyEquivalent.formattedAmount,
+                  )}
+                  {price.interval === 'year'
+                    ? `, ${copy.checkout.billedYearly}`
+                    : ''}
                 </small>
               </Link>
             ))}
@@ -220,7 +235,7 @@ export function CheckoutScreen({
 
           <BillingCard className="billing-included-card">
             <h2 className="billing-section-title">
-              What’s included in {presentation.plan.displayName}
+              {copy.checkout.included(presentation.plan.displayName)}
             </h2>
             <div className="billing-product-features">
               {presentation.plan.features.map((feature) => (
@@ -231,9 +246,11 @@ export function CheckoutScreen({
 
           <BillingCard as="section" className="billing-payment-card">
             <div className="billing-payment-head">
-              <h2 className="billing-section-title">Payment details</h2>
+              <h2 className="billing-section-title">
+                {copy.checkout.paymentDetails}
+              </h2>
               <span className="billing-metric-note">
-                🔒 All transactions are secure
+                🔒 {copy.checkout.transactionsSecure}
               </span>
             </div>
             {stripeCheckout}
@@ -241,36 +258,37 @@ export function CheckoutScreen({
         </div>
 
         <BillingCard as="aside" className="billing-order-card">
-          <h2 className="billing-section-title">Order summary</h2>
+          <h2 className="billing-section-title">{copy.checkout.order.title}</h2>
           <div className="billing-order-line">
-            <span>Plan</span>
+            <span>{copy.checkout.order.plan}</span>
             <b>{presentation.plan.displayName}</b>
           </div>
           <div className="billing-order-line">
-            <span>Billing cycle</span>
-            <b>{cycleLabel(presentation.price.interval)}</b>
+            <span>{copy.checkout.order.billingCycle}</span>
+            <b>{cycleLabel(presentation.price.interval, copy)}</b>
           </div>
           <hr />
           <div className="billing-order-line">
-            <span>Subtotal</span>
-            <b>{totals?.subtotal ?? 'Calculated securely by Stripe'}</b>
+            <span>{copy.checkout.order.subtotal}</span>
+            <b>{totals?.subtotal ?? copy.checkout.order.calculatedByStripe}</b>
           </div>
           <div className="billing-order-line billing-order-discount">
-            <span>Discount</span>
+            <span>{copy.checkout.order.discount}</span>
             <b>{totals?.discount ?? '—'}</b>
           </div>
           <div className="billing-order-line">
-            <span>Tax</span>
-            <b>{totals?.tax ?? 'Calculated after billing address'}</b>
+            <span>{copy.checkout.order.tax}</span>
+            <b>{totals?.tax ?? copy.checkout.order.calculatedAfterAddress}</b>
           </div>
           <div className="billing-order-total">
-            <span>Total</span>
+            <span>{copy.checkout.order.total}</span>
             <div>
               <strong>{totals?.total ?? '—'}</strong>{' '}
               <small>{totals?.currency ?? ''}</small>
               <div className="billing-metric-note">
-                Billed{' '}
-                {presentation.price.interval === 'year' ? 'yearly' : 'monthly'}
+                {copy.checkout.order.billed(
+                  copy.presentation.intervalAdverb[presentation.price.interval],
+                )}
               </div>
             </div>
           </div>
@@ -283,11 +301,9 @@ export function CheckoutScreen({
           >
             {submitLabel}
           </button>
-          <div className="billing-secure">
-            Secure payments powered by Stripe.
-          </div>
+          <div className="billing-secure">{copy.checkout.securePayments}</div>
           <Link className="billing-button" href="/app/subscription">
-            ← Back to plans
+            {copy.checkout.actions.back}
           </Link>
         </BillingCard>
       </div>

@@ -4,13 +4,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
+import type { BillingMessages } from '@/lib/i18n/messages/billing';
+
 import { BillingIcon } from './billing-icons';
 
 const focusableSelector =
   'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const subscribeToHydration = () => () => {};
 
-export function BillingMobileNavigation() {
+export function BillingMobileNavigation({
+  copy,
+}: Readonly<{ copy: BillingMessages['navigation'] }>) {
   const pathname = usePathname() ?? '';
   const hydrated = useSyncExternalStore(
     subscribeToHydration,
@@ -76,17 +80,14 @@ export function BillingMobileNavigation() {
 
   return (
     <>
-      <nav
-        className="billing-mobile-navigation"
-        aria-label="Mobile billing navigation"
-      >
+      <nav className="billing-mobile-navigation" aria-label={copy.mobileLabel}>
         <Link
           className={planActive ? 'active' : undefined}
           href="/app/subscription"
           aria-current={planActive ? 'page' : undefined}
         >
           <BillingIcon name="plan" />
-          <span>Plan</span>
+          <span>{copy.plan}</span>
         </Link>
         <Link
           className={usageActive ? 'active' : undefined}
@@ -94,13 +95,13 @@ export function BillingMobileNavigation() {
           aria-current={usageActive ? 'page' : undefined}
         >
           <BillingIcon name="chart" />
-          <span>Usage</span>
+          <span>{copy.usage}</span>
         </Link>
         <button
           className={moreActive ? 'active' : undefined}
           ref={trigger}
           type="button"
-          aria-label="More billing screens"
+          aria-label={copy.moreLabel}
           aria-current={moreActive ? 'page' : undefined}
           aria-expanded={open}
           aria-controls="billing-more-sheet"
@@ -108,7 +109,7 @@ export function BillingMobileNavigation() {
           onClick={() => setOpen(true)}
         >
           <BillingIcon name="more" />
-          <span>More</span>
+          <span>{copy.more}</span>
         </button>
       </nav>
       <div
@@ -125,16 +126,18 @@ export function BillingMobileNavigation() {
           ref={dialog}
           role="dialog"
           aria-modal="true"
-          aria-label="More billing screens"
+          aria-label={copy.moreLabel}
         >
           <div className="billing-mobile-sheet-handle" aria-hidden="true" />
-          <h2>More billing screens</h2>
-          <Link href="/app/subscription/checkout">03 · Stripe Checkout</Link>
-          <Link href="/app/subscription/portal">04 · Billing portal</Link>
-          <Link href="/app/subscription/invoices">05 · Invoices</Link>
-          <Link href="/app/subscription/limit-reached">06 · Limit reached</Link>
+          <h2>{copy.moreLabel}</h2>
+          <Link href="/app/subscription/checkout">{copy.checkout}</Link>
+          <Link href="/app/subscription/portal">{copy.portal}</Link>
+          <Link href="/app/subscription/invoices">{copy.invoices}</Link>
+          <Link href="/app/subscription/limit-reached">
+            {copy.limitReached}
+          </Link>
           <button type="button" onClick={close}>
-            Close
+            {copy.close}
           </button>
         </div>
       </div>

@@ -14,6 +14,9 @@ import type {
   PlanChangeResult,
 } from '@/lib/billing/actions';
 import type { BillingPlanSlug } from '@/lib/billing/domain';
+import { formatDate } from '@/lib/i18n/format';
+import type { Locale } from '@/lib/i18n/locales';
+import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
 import { BillingIcon } from './billing-icons';
 import {
@@ -63,10 +66,6 @@ const unavailableCancelAction =
     code: 'billing_unavailable',
   });
 
-const scheduledDateFormatter = new Intl.DateTimeFormat('en-US', {
-  dateStyle: 'medium',
-  timeZone: 'UTC',
-});
 const emptyPlanCatalog: readonly PortalPlanCatalogEntry[] = [];
 
 type LocalScheduledDowngrade = Readonly<{
@@ -127,6 +126,8 @@ export function PortalScreen({
   planChange = null,
   planCatalog = emptyPlanCatalog,
   openPortal = defaultOpenPortal,
+  locale,
+  copy,
 }: Readonly<{
   subscription: PortalSubscription | null;
   activity: InvoicePresentation | null;
@@ -136,6 +137,8 @@ export function PortalScreen({
   planChange?: CheckoutActionInput | null;
   planCatalog?: readonly PortalPlanCatalogEntry[];
   openPortal?: (url: string) => void;
+  locale: Locale;
+  copy: BillingMessages;
 }>) {
   const router = useRouter();
   const [opening, setOpening] = useState(false);
@@ -257,20 +260,21 @@ export function PortalScreen({
   if (subscription === null || activity === null) {
     return (
       <BillingPage
-        eyebrow="Account billing"
-        title="Billing portal"
-        description="Manage payment methods, plan changes, seats, and billing information."
+        eyebrow={copy.portal.eyebrow}
+        title={copy.portal.title}
+        description={copy.portal.description}
+        copy={copy}
       >
         <BillingCard className="billing-state-card">
           <div className="billing-state-icon">
             <BillingIcon name="alert" />
           </div>
           <div role="alert">
-            <h2>Billing details are temporarily unavailable.</h2>
-            <p>Please try again. No billing settings have been changed.</p>
+            <h2>{copy.portal.error.title}</h2>
+            <p>{copy.portal.error.description}</p>
           </div>
           <Link className="billing-button" href="/app/subscription/portal">
-            Try billing again
+            {copy.portal.error.retry}
           </Link>
         </BillingCard>
       </BillingPage>
@@ -293,21 +297,29 @@ export function PortalScreen({
         : scheduledDowngrade.plan;
   const scheduledStatus =
     scheduledDowngrade !== null && scheduledPlan !== null
-      ? `${scheduledPlan.displayName} is scheduled for ${scheduledDateFormatter.format(
-          new Date(scheduledDowngrade.effectiveAt),
-        )}. Your ${subscription.currentPlan.displayName} access remains active until then.`
+      ? copy.portal.scheduled.downgrade(
+          scheduledPlan.displayName,
+          formatDate({
+            value: scheduledDowngrade.effectiveAt,
+            locale,
+            fallback: '—',
+            options: { dateStyle: 'medium', timeZone: 'UTC' },
+          }),
+          subscription.currentPlan.displayName,
+        )
       : null;
 
   return (
     <BillingPage
-      eyebrow="Account billing"
-      title="Billing portal"
-      description="Manage payment methods, plan changes, seats, and billing information."
+      eyebrow={copy.portal.eyebrow}
+      title={copy.portal.title}
+      description={copy.portal.description}
+      copy={copy}
       ariaBusy={opening}
     >
       {actionError && (
         <p className="billing-inline-error" role="alert">
-          We couldn’t update your billing settings. Please try again.
+          {copy.portal.error.action}
         </p>
       )}
       {(cancellationStatus || scheduledStatus !== null) && (
@@ -320,7 +332,7 @@ export function PortalScreen({
           <BillingIcon name="plan" />
           <span>
             {cancellationStatus
-              ? 'Scheduled downgrade canceled. Your current plan remains active.'
+              ? copy.portal.scheduled.canceled
               : scheduledStatus}
           </span>
         </div>
@@ -329,7 +341,9 @@ export function PortalScreen({
         <div className="billing-portal-plan">
           <BillingPrism />
           <div>
-            <div className="billing-metric-label">Current plan</div>
+            <div className="billing-metric-label">
+              {copy.portal.summary.currentPlan}
+            </div>
             <div className="billing-plan-name">
               {subscription.currentPlan.displayName}{' '}
               <BillingStatus variant={subscription.entitlement.variant}>
@@ -339,7 +353,9 @@ export function PortalScreen({
           </div>
         </div>
         <div>
-          <div className="billing-metric-label">Renewal</div>
+          <div className="billing-metric-label">
+            {copy.portal.summary.renewal}
+          </div>
           <div className="billing-metric-value billing-reset-value">
             <time dateTime={subscription.resetAt}>
               {subscription.resetAtLabel}
@@ -347,26 +363,36 @@ export function PortalScreen({
           </div>
           <div className="billing-metric-note">
             {subscription.currentPrice === null
-              ? 'No paid renewal'
-              : `${subscription.currentPrice.formattedAmount} / ${subscription.currentPrice.interval}`}
+              ? copy.portal.summary.noPaidRenewal
+              : `${subscription.currentPrice.formattedAmount} / ${
+                  copy.presentation.intervalUnit[
+                    subscription.currentPrice.interval
+                  ]
+                }`}
           </div>
         </div>
         <div>
-          <div className="billing-metric-label">Active seats</div>
-          <div className="billing-metric-value">Not available</div>
+          <div className="billing-metric-label">
+            {copy.portal.summary.activeSeats}
+          </div>
+          <div className="billing-metric-value">
+            {copy.portal.summary.notAvailable}
+          </div>
           <div className="billing-metric-note">
-            Team accounts are coming later
+            {copy.portal.summary.teamLater}
           </div>
         </div>
         <div>
-          <div className="billing-metric-label">Outstanding balance</div>
+          <div className="billing-metric-label">
+            {copy.portal.summary.outstanding}
+          </div>
           <div className="billing-metric-value">
             {subscription.outstandingBalance.formattedAmount}
           </div>
           <div className="billing-metric-note billing-positive">
             {subscription.outstandingBalance.amountMinor === 0
-              ? 'All caught up'
-              : 'Review in Stripe'}
+              ? copy.portal.summary.caughtUp
+              : copy.portal.summary.reviewStripe}
           </div>
         </div>
       </BillingCard>
@@ -378,8 +404,12 @@ export function PortalScreen({
               <BillingIcon name="card" />
             </div>
             <div>
-              <h2 className="billing-section-title">Payment methods</h2>
-              <p className="billing-section-copy">Manage saved cards.</p>
+              <h2 className="billing-section-title">
+                {copy.portal.cards.paymentTitle}
+              </h2>
+              <p className="billing-section-copy">
+                {copy.portal.cards.paymentDescription}
+              </p>
             </div>
           </div>
           <div className="billing-action-list">
@@ -387,7 +417,7 @@ export function PortalScreen({
               action={() => launchPortal()}
               disabled={opening}
             >
-              Update payment method
+              {copy.portal.actions.updatePayment}
             </PortalActionButton>
             <div className="billing-owned-payment">
               <b>{subscription.paymentMethod.label}</b>
@@ -397,7 +427,7 @@ export function PortalScreen({
             </div>
           </div>
           <div className="billing-foot-note">
-            🔒 Payment details are managed securely by Stripe.
+            🔒 {copy.portal.cards.paymentFootnote}
           </div>
         </BillingCard>
 
@@ -407,9 +437,11 @@ export function PortalScreen({
               <BillingIcon name="external" />
             </div>
             <div>
-              <h2 className="billing-section-title">Plan management</h2>
+              <h2 className="billing-section-title">
+                {copy.portal.cards.planTitle}
+              </h2>
               <p className="billing-section-copy">
-                Update your plan or billing preferences.
+                {copy.portal.cards.planDescription}
               </p>
             </div>
           </div>
@@ -420,21 +452,23 @@ export function PortalScreen({
               }
               disabled={opening}
             >
-              {planChange === null ? 'Manage plan' : 'Confirm plan change'}
+              {planChange === null
+                ? copy.portal.actions.managePlan
+                : copy.portal.actions.confirmPlanChange}
             </PortalActionButton>
             {scheduledDowngrade !== null && (
               <PortalActionButton
                 action={cancelScheduledDowngrade}
                 disabled={opening}
               >
-                Cancel scheduled downgrade
+                {copy.portal.actions.cancelDowngrade}
               </PortalActionButton>
             )}
             <PortalActionButton
               action={() => launchPortal()}
               disabled={opening}
             >
-              Manage cancellation
+              {copy.portal.actions.manageCancellation}
             </PortalActionButton>
           </div>
         </BillingCard>
@@ -445,9 +479,11 @@ export function PortalScreen({
               <BillingIcon name="document" />
             </div>
             <div>
-              <h2 className="billing-section-title">Billing details</h2>
+              <h2 className="billing-section-title">
+                {copy.portal.cards.detailsTitle}
+              </h2>
               <p className="billing-section-copy">
-                View and update billing information.
+                {copy.portal.cards.detailsDescription}
               </p>
             </div>
           </div>
@@ -456,11 +492,11 @@ export function PortalScreen({
               action={() => launchPortal()}
               disabled={opening}
             >
-              Edit billing details
+              {copy.portal.actions.editDetails}
             </PortalActionButton>
           </div>
           <div className="billing-foot-note">
-            Billing identity and tax details remain in Stripe.
+            {copy.portal.cards.detailsFootnote}
           </div>
         </BillingCard>
 
@@ -470,14 +506,16 @@ export function PortalScreen({
               <BillingIcon name="users" />
             </div>
             <div>
-              <h2 className="billing-section-title">Team seats</h2>
+              <h2 className="billing-section-title">
+                {copy.portal.cards.teamTitle}
+              </h2>
               <p className="billing-section-copy">
-                Invite members and manage seats.
+                {copy.portal.cards.teamDescription}
               </p>
             </div>
           </div>
           <p className="billing-team-explanation" id={teamExplanationId}>
-            Team seat management is not available yet.
+            {copy.portal.cards.teamUnavailable}
           </p>
           <div className="billing-team-actions">
             <button
@@ -486,7 +524,7 @@ export function PortalScreen({
               disabled
               aria-describedby={teamExplanationId}
             >
-              Invite member
+              {copy.portal.actions.inviteMember}
             </button>
             <button
               className="billing-button"
@@ -494,7 +532,7 @@ export function PortalScreen({
               disabled
               aria-describedby={teamExplanationId}
             >
-              Manage seats
+              {copy.portal.actions.manageSeats}
             </button>
           </div>
         </BillingCard>
@@ -505,15 +543,23 @@ export function PortalScreen({
               <BillingIcon name="history" />
             </div>
             <div>
-              <h2 className="billing-section-title">Billing activity</h2>
-              <p className="billing-section-copy">Recent account activity.</p>
+              <h2 className="billing-section-title">
+                {copy.portal.cards.activityTitle}
+              </h2>
+              <p className="billing-section-copy">
+                {copy.portal.cards.activityDescription}
+              </p>
             </div>
           </div>
           <div className="billing-action-list">
             {activity.items.slice(0, 3).map((invoice) => (
               <div className="billing-activity-item" key={invoice.id}>
                 <span>
-                  <b>Invoice {invoice.number ?? 'pending'}</b>
+                  <b>
+                    {copy.portal.cards.invoice(
+                      invoice.number ?? copy.portal.cards.pending,
+                    )}
+                  </b>
                   <small>{invoice.createdAtLabel}</small>
                 </span>
                 <BillingStatus variant={invoice.status.variant}>
@@ -526,7 +572,7 @@ export function PortalScreen({
             className="billing-button billing-portal-full-button"
             href="/app/subscription/invoices"
           >
-            View all activity
+            {copy.portal.actions.viewActivity}
           </Link>
         </BillingCard>
 
@@ -534,22 +580,22 @@ export function PortalScreen({
           <div className="billing-portal-card-head">
             <div className="billing-metric-icon billing-help-icon">?</div>
             <div>
-              <h2 className="billing-section-title">Need help?</h2>
+              <h2 className="billing-section-title">
+                {copy.portal.cards.helpTitle}
+              </h2>
               <p className="billing-section-copy">
-                We’re here for billing questions.
+                {copy.portal.cards.helpDescription}
               </p>
             </div>
           </div>
-          <p className="billing-foot-note">
-            Open the Stripe portal for payment and subscription support.
-          </p>
+          <p className="billing-foot-note">{copy.portal.cards.helpFootnote}</p>
           <button
             className="billing-button billing-portal-full-button"
             type="button"
             onClick={() => launchPortal()}
             disabled={opening}
           >
-            Open secure billing portal
+            {copy.portal.actions.openPortal}
           </button>
         </BillingCard>
       </div>

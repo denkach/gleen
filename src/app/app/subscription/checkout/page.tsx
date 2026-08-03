@@ -18,10 +18,13 @@ import {
 } from '@/lib/billing/supabase-repository';
 import { validateStripePublicEnv } from '@/env';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { billingMessages } from '@/lib/i18n/messages/billing';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
-export const metadata: Metadata = {
-  title: 'Checkout — Gleen',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return { title: billingMessages[locale].metadata.checkout };
+}
 
 const checkoutQuerySchema = z
   .object({
@@ -54,6 +57,8 @@ function parseCheckoutQuery(
 export default async function CheckoutPage({
   searchParams,
 }: CheckoutPageProps) {
+  const locale = await getRequestLocale();
+  const copy = billingMessages[locale];
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -78,9 +83,13 @@ export default async function CheckoutPage({
     null;
   if (selectedPrice === null) redirect('/app/subscription');
 
-  const presentation = toCheckoutPresentation(selected.plan, selectedPrice);
+  const presentation = toCheckoutPresentation(selected.plan, selectedPrice, {
+    locale,
+    copy,
+  });
   const prices = selected.prices.map(
-    (price) => toCheckoutPresentation(selected.plan, price).price,
+    (price) =>
+      toCheckoutPresentation(selected.plan, price, { locale, copy }).price,
   );
   const { NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY } = validateStripePublicEnv(
     process.env,
@@ -94,6 +103,8 @@ export default async function CheckoutPage({
       sessionId={query.sessionId}
       createCheckout={createCheckoutSession}
       getConfirmation={getCheckoutConfirmation}
+      locale={locale}
+      copy={copy}
     />
   );
 }

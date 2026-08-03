@@ -5,10 +5,11 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CheckoutPresentation } from '@/lib/billing/presentation';
+import { billingMessages } from '@/lib/i18n/messages/billing';
 
 const useCheckoutElements = vi.hoisted(() => vi.fn());
 
@@ -22,7 +23,21 @@ vi.mock('@stripe/stripe-js/pure', () => ({
   loadStripe: vi.fn(() => Promise.resolve(null)),
 }));
 
-import { CheckoutExperience } from './checkout-experience';
+import { CheckoutExperience as ProductionCheckoutExperience } from './checkout-experience';
+
+type CheckoutExperienceProps = ComponentProps<
+  typeof ProductionCheckoutExperience
+>;
+function CheckoutExperience({
+  locale = 'en',
+  copy = billingMessages.en,
+  ...props
+}: Omit<CheckoutExperienceProps, 'locale' | 'copy'> &
+  Partial<Pick<CheckoutExperienceProps, 'locale' | 'copy'>>) {
+  return (
+    <ProductionCheckoutExperience {...props} locale={locale} copy={copy} />
+  );
+}
 
 const presentation: CheckoutPresentation = {
   plan: {
@@ -150,7 +165,9 @@ describe('CheckoutExperience rejection and cleanup', () => {
     fireEvent.click(submit);
     await waitFor(() =>
       expect(
-        screen.getByText('Complete the required Stripe checkout fields.'),
+        screen.getByText(
+          'Checkout could not be loaded. Complete the required Stripe checkout fields.',
+        ),
       ).toBeInTheDocument(),
     );
     expect(screen.getByRole('button', { name: 'Start Starter' })).toBeEnabled();
@@ -185,7 +202,7 @@ describe('CheckoutExperience rejection and cleanup', () => {
 
     expect(
       await screen.findByText(
-        'Your payment could not be completed. Try again.',
+        'Checkout could not be loaded. Your payment could not be completed. Try again.',
       ),
     ).toHaveAttribute('role', 'alert');
   });

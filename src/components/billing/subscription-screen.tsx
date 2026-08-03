@@ -9,6 +9,9 @@ import type {
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
 import { cx } from '@/lib/cx';
+import { formatDate } from '@/lib/i18n/format';
+import type { Locale } from '@/lib/i18n/locales';
+import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
 import { BillingIcon } from './billing-icons';
 import {
@@ -27,36 +30,44 @@ function priceForInterval(
   return row.prices.find((price) => price.interval === interval) ?? null;
 }
 
-function intervalLabel(interval: BillingInterval) {
-  return interval === 'year' ? 'Yearly' : 'Monthly';
+function intervalLabel(
+  interval: BillingInterval,
+  copy: BillingMessages,
+): string {
+  return copy.presentation.interval[interval];
 }
 
 export function SubscriptionScreen({
   presentation,
   initialInterval,
+  locale,
+  copy,
 }: Readonly<{
   presentation: SubscriptionPresentation | null;
   initialInterval: BillingInterval;
+  locale: Locale;
+  copy: BillingMessages;
 }>) {
   const [interval, setInterval] = useState(initialInterval);
 
   if (presentation === null) {
     return (
       <BillingPage
-        eyebrow="Your plan"
-        title="Subscription"
-        description="Manage your plan, billing cycle, monthly capacity, and payment method."
+        eyebrow={copy.subscription.eyebrow}
+        title={copy.subscription.title}
+        description={copy.subscription.description}
+        copy={copy}
       >
         <BillingCard className="billing-state-card">
           <div className="billing-state-icon">
             <BillingIcon name="alert" />
           </div>
           <div role="alert">
-            <h2>Billing details are temporarily unavailable.</h2>
-            <p>Please try again. Your application access is not affected.</p>
+            <h2>{copy.subscription.error.title}</h2>
+            <p>{copy.subscription.error.description}</p>
           </div>
           <Link className="billing-button" href="/app/subscription">
-            Try subscription again
+            {copy.subscription.error.retry}
           </Link>
         </BillingCard>
       </BillingPage>
@@ -85,18 +96,23 @@ export function SubscriptionScreen({
 
   return (
     <BillingPage
-      eyebrow="Your plan"
-      title="Subscription"
-      description="Manage your plan, billing cycle, monthly capacity, and payment method."
+      eyebrow={copy.subscription.eyebrow}
+      title={copy.subscription.title}
+      description={copy.subscription.description}
+      copy={copy}
     >
       <BillingCard className="billing-plan-overview">
         <div className="billing-current-plan">
           <BillingPrism />
           <div>
-            <div className="billing-metric-label">Current plan</div>
+            <div className="billing-metric-label">
+              {copy.subscription.currentPlan}
+            </div>
             <div className="billing-plan-name">
               {presentation.currentPlan.displayName}{' '}
-              <span className="billing-tag">Current plan</span>
+              <span className="billing-tag">
+                {copy.subscription.currentPlan}
+              </span>
             </div>
             <p className="billing-section-copy">
               {presentation.currentPlan.description}
@@ -104,27 +120,34 @@ export function SubscriptionScreen({
           </div>
         </div>
         <div>
-          <div className="billing-metric-label">Included analyses</div>
+          <div className="billing-metric-label">
+            {copy.subscription.includedAnalyses}
+          </div>
           <div className="billing-metric-value">
-            {presentation.usage.limit} <small>/ billing period</small>
+            {presentation.usage.limit}{' '}
+            <small>{copy.subscription.perBillingPeriod}</small>
           </div>
         </div>
         <div>
-          <div className="billing-metric-label">Used analyses</div>
+          <div className="billing-metric-label">
+            {copy.subscription.usedAnalyses}
+          </div>
           <div className="billing-metric-value">{consumed}</div>
           <div className="billing-metric-note">
-            {usagePercent}% of the cycle
+            {copy.subscription.cyclePercent(usagePercent)}
           </div>
         </div>
         <div>
-          <div className="billing-metric-label">Resets on</div>
+          <div className="billing-metric-label">
+            {copy.subscription.resetsOn}
+          </div>
           <div className="billing-metric-value billing-reset-value">
             <time dateTime={presentation.resetAt}>
               {presentation.resetAtLabel}
             </time>
           </div>
           <div className="billing-metric-note">
-            {presentation.usage.remaining} analyses remaining
+            {copy.subscription.remaining(presentation.usage.remaining)}
           </div>
         </div>
       </BillingCard>
@@ -134,25 +157,35 @@ export function SubscriptionScreen({
           <BillingIcon name="plan" />
           <span>
             {presentation.scheduledChange.kind === 'cancellation'
-              ? 'Cancellation is scheduled'
-              : `${presentation.scheduledChange.plan?.displayName ?? 'A plan change'} is scheduled`}
-            . It takes effect on{' '}
-            <time dateTime={presentation.scheduledChange.effectiveAt}>
-              {presentation.scheduledChange.effectiveAt.slice(0, 10)}
-            </time>
-            .
+              ? copy.subscription.scheduled.cancellation
+              : copy.subscription.scheduled.planChange(
+                  presentation.scheduledChange.plan?.displayName ??
+                    copy.subscription.currentPlan,
+                )}
+            .{' '}
+            {copy.subscription.scheduled.effective(
+              formatDate({
+                value: presentation.scheduledChange.effectiveAt,
+                locale,
+                fallback: '—',
+                options: { dateStyle: 'medium', timeZone: 'UTC' },
+              }),
+            )}
           </span>
         </div>
       )}
 
-      <div className="billing-switch" aria-label="Billing period">
+      <div
+        className="billing-switch"
+        aria-label={copy.subscription.billingPeriod}
+      >
         <button
           type="button"
           className={cx(interval === 'month' && 'active')}
           aria-pressed={interval === 'month'}
           onClick={() => setInterval('month')}
         >
-          Monthly billing
+          {copy.subscription.monthlyBilling}
         </button>
         <button
           type="button"
@@ -160,7 +193,7 @@ export function SubscriptionScreen({
           aria-pressed={interval === 'year'}
           onClick={() => setInterval('year')}
         >
-          Yearly billing
+          {copy.subscription.yearlyBilling}
         </button>
       </div>
 
@@ -168,17 +201,17 @@ export function SubscriptionScreen({
         <div
           className="billing-plan-grid"
           role="list"
-          aria-label="Available paid plans"
+          aria-label={copy.subscription.availablePlans}
         >
           {paidPlans.map((row) => {
             const price = priceForInterval(row, interval);
             const current = row.plan.slug === presentation.currentPlan.slug;
             const available = row.action.enabled && price !== null;
             const actionLabel = current
-              ? 'Manage plan'
+              ? copy.subscription.actions.managePlan
               : hasPaidSubscription
-                ? `Change to ${row.plan.displayName}`
-                : `Choose ${row.plan.displayName}`;
+                ? copy.subscription.actions.changeTo(row.plan.displayName)
+                : copy.subscription.actions.choose(row.plan.displayName);
             const href = hasPaidSubscription
               ? `/app/subscription/portal?plan=${encodeURIComponent(
                   row.plan.slug,
@@ -197,8 +230,11 @@ export function SubscriptionScreen({
                   <h2>{row.plan.displayName}</h2>
                   <p className="billing-section-copy">{row.plan.description}</p>
                   <div className="billing-price">
-                    {price?.monthlyEquivalent.formattedAmount ?? 'Unavailable'}{' '}
-                    {price !== null && <small>/ month</small>}
+                    {price?.monthlyEquivalent.formattedAmount ??
+                      copy.subscription.unavailablePrice}{' '}
+                    {price !== null && (
+                      <small>{copy.subscription.perMonth}</small>
+                    )}
                   </div>
                   <div className="billing-feature-list">
                     {row.plan.features.map((feature) => (
@@ -222,10 +258,15 @@ export function SubscriptionScreen({
                     className="billing-button"
                     type="button"
                     disabled
-                    title={row.action.reason ?? 'This price is unavailable.'}
-                    aria-label={`${row.plan.displayName} unavailable`}
+                    title={
+                      row.action.reason ??
+                      copy.subscription.actions.priceUnavailable
+                    }
+                    aria-label={copy.subscription.actions.unavailableAria(
+                      row.plan.displayName,
+                    )}
                   >
-                    Unavailable
+                    {copy.subscription.actions.unavailable}
                   </button>
                 )}
               </BillingCard>
@@ -239,12 +280,16 @@ export function SubscriptionScreen({
               <BillingIcon name="card" />
             </div>
             <div>
-              <h2 className="billing-section-title">Billing summary</h2>
-              <p className="billing-section-copy">Current payment details</p>
+              <h2 className="billing-section-title">
+                {copy.subscription.summary.title}
+              </h2>
+              <p className="billing-section-copy">
+                {copy.subscription.summary.description}
+              </p>
             </div>
           </div>
           <div className="billing-summary-row">
-            <span>Payment method</span>
+            <span>{copy.subscription.summary.paymentMethod}</span>
             <span className="billing-payment-method">
               <b>{presentation.paymentMethod.label}</b>
               {presentation.paymentMethod.expiryLabel !== null && (
@@ -253,25 +298,25 @@ export function SubscriptionScreen({
             </span>
           </div>
           <div className="billing-summary-row">
-            <span>Next renewal</span>
+            <span>{copy.subscription.summary.nextRenewal}</span>
             <b>{presentation.resetAtLabel}</b>
           </div>
           <div className="billing-summary-row">
-            <span>Billing cycle</span>
-            <b>{intervalLabel(interval)}</b>
+            <span>{copy.subscription.summary.billingCycle}</span>
+            <b>{intervalLabel(interval, copy)}</b>
           </div>
           <div className="billing-summary-row">
-            <span>Amount</span>
+            <span>{copy.subscription.summary.amount}</span>
             <b>
               {comparisonPrice?.formattedAmount ??
                 presentation.currentPrice?.formattedAmount ??
-                'No paid renewal'}
+                copy.subscription.summary.noPaidRenewal}
               {comparisonPrice !== null &&
-                ` / ${comparisonPrice.interval === 'year' ? 'year' : 'month'}`}
+                ` / ${copy.presentation.intervalUnit[comparisonPrice.interval]}`}
             </b>
           </div>
           <div className="billing-summary-row">
-            <span>Status</span>
+            <span>{copy.subscription.summary.status}</span>
             <BillingStatus variant={presentation.entitlement.variant}>
               {presentation.entitlement.label}
             </BillingStatus>
@@ -281,12 +326,12 @@ export function SubscriptionScreen({
               className="billing-button billing-button-primary"
               href="/app/subscription/portal"
             >
-              Open billing portal
+              {copy.subscription.summary.openPortal}
               <BillingIcon name="external" />
             </Link>
           </div>
           <p className="billing-metric-note">
-            Secure payments are managed by Stripe.
+            {copy.subscription.summary.secure}
           </p>
         </BillingCard>
       </div>

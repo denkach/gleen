@@ -1,9 +1,24 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CheckoutPresentation } from '@/lib/billing/presentation';
+import { billingMessages } from '@/lib/i18n/messages/billing';
 
-import { CheckoutScreen, pollForCheckoutConfirmation } from './checkout-screen';
+import {
+  CheckoutScreen as ProductionCheckoutScreen,
+  pollForCheckoutConfirmation,
+} from './checkout-screen';
+
+type CheckoutScreenProps = ComponentProps<typeof ProductionCheckoutScreen>;
+function CheckoutScreen({
+  locale = 'en',
+  copy = billingMessages.en,
+  ...props
+}: Omit<CheckoutScreenProps, 'locale' | 'copy'> &
+  Partial<Pick<CheckoutScreenProps, 'locale' | 'copy'>>) {
+  return <ProductionCheckoutScreen {...props} locale={locale} copy={copy} />;
+}
 
 const presentation: CheckoutPresentation = {
   plan: {
@@ -54,6 +69,33 @@ const prices = [
 ];
 
 describe('CheckoutScreen', () => {
+  it('renders Spanish checkout headings, actions, payment states, and navigation', () => {
+    render(
+      <CheckoutScreen
+        presentation={presentation}
+        prices={prices}
+        state={{ kind: 'retryable-error' }}
+        stripeCheckout={null}
+        totals={null}
+        locale="es"
+        copy={billingMessages.es}
+        onRetry={() => undefined}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Pago' })).toBeInTheDocument();
+    expect(
+      screen.getByText('No se ha podido cargar el pago.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Volver a intentar el pago' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', {
+        name: 'Navegación móvil de facturación',
+      }),
+    ).toBeInTheDocument();
+  });
   it('renders the selected server model, cycle choices, Stripe mount, and authoritative totals without raw card fields', () => {
     render(
       <CheckoutScreen

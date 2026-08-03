@@ -16,6 +16,7 @@ import type {
   PlanChangeResult,
 } from '@/lib/billing/actions';
 import { useState, useSyncExternalStore } from 'react';
+import { billingMessages } from '@/lib/i18n/messages/billing';
 
 const disabledExport = async () =>
   ({ ok: false, code: 'fixture-disabled' }) as const;
@@ -39,6 +40,8 @@ const fixtureStarterPlan = billingFixtureCatalog.find(
 const fixturePrismProPlan = billingFixtureCatalog.find(
   ({ plan }) => plan.slug === 'prism-pro',
 )!.plan;
+const fixtureLocale = 'en' as const;
+const fixtureCopy = billingMessages.en;
 
 export function BillingFixtureScreen({
   fixture,
@@ -138,6 +141,8 @@ export function BillingFixtureScreen({
           <SubscriptionScreen
             presentation={fixture.presentation}
             initialInterval="month"
+            locale={fixtureLocale}
+            copy={fixtureCopy}
           />
           {boundaryEvidence}
         </>
@@ -198,6 +203,8 @@ export function BillingFixtureScreen({
                   }
                 : disabledExport
             }
+            locale={fixtureLocale}
+            copy={fixtureCopy}
           />
           {boundaryEvidence}
         </>
@@ -267,6 +274,8 @@ export function BillingFixtureScreen({
                     )
                 : undefined
             }
+            locale={fixtureLocale}
+            copy={fixtureCopy}
           />
           {boundaryEvidence}
         </>
@@ -312,6 +321,8 @@ export function BillingFixtureScreen({
                 ? (url) => setOpenedPortal(url)
                 : undefined
             }
+            locale={fixtureLocale}
+            copy={fixtureCopy}
           />
           {boundaryEvidence}
         </>
@@ -360,6 +371,8 @@ export function BillingFixtureScreen({
             }}
             pageSize={25}
             exportAction={disabledExport}
+            locale={fixtureLocale}
+            copy={fixtureCopy}
           />
           {boundaryEvidence}
         </>
@@ -371,6 +384,8 @@ export function BillingFixtureScreen({
           <LimitReachedScreen
             presentation={fixture.presentation}
             now={fixture.now}
+            locale={fixtureLocale}
+            copy={fixtureCopy}
           />
           {boundaryEvidence}
         </>

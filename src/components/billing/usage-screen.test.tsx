@@ -5,14 +5,26 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type {
   SubscriptionPresentation,
   UsagePresentation,
 } from '@/lib/billing/presentation';
+import { billingMessages } from '@/lib/i18n/messages/billing';
 
-import { UsageScreen } from './usage-screen';
+import { UsageScreen as ProductionUsageScreen } from './usage-screen';
+
+type UsageScreenProps = ComponentProps<typeof ProductionUsageScreen>;
+function UsageScreen({
+  locale = 'en',
+  copy = billingMessages.en,
+  ...props
+}: Omit<UsageScreenProps, 'locale' | 'copy'> &
+  Partial<Pick<UsageScreenProps, 'locale' | 'copy'>>) {
+  return <ProductionUsageScreen {...props} locale={locale} copy={copy} />;
+}
 
 const subscription: Pick<
   SubscriptionPresentation,
@@ -89,6 +101,47 @@ const usage: UsagePresentation = {
 };
 
 describe('UsageScreen', () => {
+  it('renders Russian usage headings, filters, event status, export, and mobile navigation', () => {
+    render(
+      <UsageScreen
+        subscription={subscription}
+        usage={{
+          ...usage,
+          items: [
+            {
+              ...usage.items[0]!,
+              event: {
+                ...usage.items[0]!.event,
+                label: 'Использовано',
+                title: 'Использовано — Systems thinking',
+              },
+              status: { ...usage.items[0]!.status, label: 'Учтено' },
+            },
+          ],
+        }}
+        query={{ search: '', eventType: null, cursor: null, range: 'current' }}
+        periodBounds={{ periodStart: null, periodEnd: null }}
+        pageSize={25}
+        exportAction={vi.fn()}
+        locale="ru"
+        copy={billingMessages.ru}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Журнал использования' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('searchbox', { name: 'Поиск событий использования' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Учтено')).toHaveLength(2);
+    expect(
+      screen.getByRole('button', { name: /Экспорт CSV/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Мобильная навигация платежей' }),
+    ).toBeInTheDocument();
+  });
   it('renders metrics, searchable and filterable desktop/mobile ledgers, chart summary, and pagination', () => {
     render(
       <UsageScreen

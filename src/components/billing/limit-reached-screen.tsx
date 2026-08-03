@@ -4,34 +4,49 @@ import type {
   LimitReachedPresentation,
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
+import { formatDate } from '@/lib/i18n/format';
+import type { Locale } from '@/lib/i18n/locales';
+import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
 import { BillingIcon } from './billing-icons';
 import { BillingCard, BillingPage } from './billing-page';
 
 const dayInMilliseconds = 24 * 60 * 60 * 1000;
 
-function resetCopy(resetAt: string, now: string) {
+function resetCopy(
+  resetAt: string,
+  now: string,
+  locale: Locale,
+  copy: BillingMessages,
+) {
   const days = Math.max(
     0,
     Math.ceil((Date.parse(resetAt) - Date.parse(now)) / dayInMilliseconds),
   );
-  const date = new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: '2-digit',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(resetAt));
+  const date = formatDate({
+    value: resetAt,
+    locale,
+    fallback: '—',
+    options: { dateStyle: 'long', timeZone: 'UTC' },
+  });
 
-  if (days === 0) return `Resets today on ${date}`;
-  return `Resets in ${days} ${days === 1 ? 'day' : 'days'} on ${date}`;
+  if (days === 0) return copy.limitReached.resetToday(date);
+  return copy.limitReached.resetIn(days, date);
 }
 
-function currentPriceLabel(price: SubscriptionPresentation['currentPrice']) {
-  if (price === null) return 'Free';
+function currentPriceLabel(
+  price: SubscriptionPresentation['currentPrice'],
+  copy: BillingMessages,
+) {
+  if (price === null) return copy.limitReached.free;
   return (
     <>
       {price.formattedAmount}{' '}
-      <small>/ {price.interval === 'month' ? 'month' : 'year'}</small>
+      <small>
+        {price.interval === 'month'
+          ? copy.limitReached.perMonth
+          : copy.limitReached.perYear}
+      </small>
     </>
   );
 }
@@ -82,9 +97,13 @@ function LimitMiniPrism() {
 export function LimitReachedScreen({
   presentation,
   now,
+  locale,
+  copy,
 }: Readonly<{
   presentation: LimitReachedPresentation;
   now: string;
+  locale: Locale;
+  copy: BillingMessages;
 }>) {
   const consumed = presentation.usage.used + presentation.usage.reserved;
   const usagePercent =
@@ -96,17 +115,18 @@ export function LimitReachedScreen({
 
   return (
     <BillingPage
-      eyebrow="Limit reached"
-      title="Analysis limit reached"
-      description="You have used all analyses included in your current plan."
+      eyebrow={copy.limitReached.eyebrow}
+      title={copy.limitReached.title}
+      description={copy.limitReached.description}
+      copy={copy}
     >
       <div className="billing-locked-input" aria-disabled="true">
         <BillingIcon name="lock" />
-        Ask anything or add a data source to analyze…
+        {copy.limitReached.lockedInput}
       </div>
       <div className="billing-locked-note">
         <BillingIcon name="lock" />
-        New analyses are paused until the limit resets or you upgrade your plan.
+        {copy.limitReached.lockedNote}
       </div>
 
       <BillingCard className="billing-limit-hero">
@@ -115,15 +135,13 @@ export function LimitReachedScreen({
         </div>
         <div className="billing-limit-copy">
           <div className="billing-limit-usage">
-            <b>
-              {consumed} of {presentation.usage.limit} analyses used
-            </b>
+            <b>{copy.limitReached.used(consumed, presentation.usage.limit)}</b>
             <b>{usagePercent}%</b>
           </div>
           <div
             className="billing-limit-progress"
             role="progressbar"
-            aria-label="Analysis usage"
+            aria-label={copy.limitReached.usageLabel}
             aria-valuemin={0}
             aria-valuemax={presentation.usage.limit}
             aria-valuenow={consumed}
@@ -131,12 +149,10 @@ export function LimitReachedScreen({
             <span style={{ width: `${usagePercent}%` }} />
           </div>
           <h2 className="billing-section-title billing-limit-reset">
-            {resetCopy(presentation.resetAt, now)}
+            {resetCopy(presentation.resetAt, now, locale, copy)}
           </h2>
           <p className="billing-section-copy billing-limit-description">
-            You’ve reached your plan’s monthly analysis limit. New analyses are
-            blocked until the reset date or until you upgrade. Saved results
-            remain available.
+            {copy.limitReached.detail}
           </p>
           <div className="billing-limit-actions">
             {upgrade !== null && (
@@ -144,7 +160,7 @@ export function LimitReachedScreen({
                 className="billing-button billing-button-primary"
                 href="/app/subscription"
               >
-                Upgrade to {upgrade.plan.displayName}
+                {copy.limitReached.actions.upgrade(upgrade.plan.displayName)}
               </Link>
             )}
             <button
@@ -153,56 +169,65 @@ export function LimitReachedScreen({
               disabled
               aria-describedby={extraCreditsExplanationId}
             >
-              Buy extra credits
+              {copy.limitReached.actions.buyCredits}
             </button>
             <Link
               className="billing-limit-ledger-link"
               href="/app/subscription/usage"
             >
-              Open usage ledger <span aria-hidden="true">→</span>
+              {copy.limitReached.actions.openLedger}{' '}
+              <span aria-hidden="true">→</span>
             </Link>
           </div>
           <p
             className="billing-limit-disabled-explanation"
             id={extraCreditsExplanationId}
           >
-            Extra-credit purchases are not available for the{' '}
-            {presentation.currentPlan.displayName} plan.
+            {copy.limitReached.creditsUnavailable(
+              presentation.currentPlan.displayName,
+            )}
           </p>
         </div>
       </BillingCard>
 
       <div className="billing-limit-lower">
         <BillingCard className="billing-plan-mini">
-          <h2 className="billing-section-title">Your plan</h2>
+          <h2 className="billing-section-title">
+            {copy.limitReached.yourPlan}
+          </h2>
           <div className="billing-plan-mini-inner">
             <LimitMiniPrism />
             <div>
               <div className="billing-plan-name billing-limit-plan-name">
                 {presentation.currentPlan.displayName}{' '}
-                <span className="billing-tag">Current plan</span>
+                <span className="billing-tag">
+                  {copy.limitReached.currentPlan}
+                </span>
               </div>
               <div className="billing-price billing-limit-price">
-                {currentPriceLabel(presentation.currentPrice)}
+                {currentPriceLabel(presentation.currentPrice, copy)}
               </div>
             </div>
             <div>
               <div className="billing-summary-row">
-                <span>Analyses</span>
+                <span>{copy.limitReached.analyses}</span>
                 <b>
-                  {consumed} of {presentation.usage.limit} used
+                  {copy.limitReached.usedShort(
+                    consumed,
+                    presentation.usage.limit,
+                  )}
                 </b>
               </div>
               <div className="billing-summary-row">
-                <span>Resets</span>
+                <span>{copy.limitReached.resets}</span>
                 <b>
                   <time dateTime={presentation.resetAt}>
-                    {new Intl.DateTimeFormat('en-US', {
-                      month: 'long',
-                      day: '2-digit',
-                      year: 'numeric',
-                      timeZone: 'UTC',
-                    }).format(new Date(presentation.resetAt))}
+                    {formatDate({
+                      value: presentation.resetAt,
+                      locale,
+                      fallback: '—',
+                      options: { dateStyle: 'long', timeZone: 'UTC' },
+                    })}
                   </time>
                 </b>
               </div>
@@ -212,8 +237,8 @@ export function LimitReachedScreen({
         <BillingCard className="billing-upgrade-mini">
           <h2 className="billing-section-title">
             {upgrade === null
-              ? 'Your plan includes'
-              : `What changes with ${upgrade.plan.displayName}`}
+              ? copy.limitReached.includes
+              : copy.limitReached.changes(upgrade.plan.displayName)}
           </h2>
           <div className="billing-compare-list">
             {upgrade === null

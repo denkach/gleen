@@ -27,10 +27,13 @@ import {
   type SupabaseBillingClient,
 } from '@/lib/billing/supabase-repository';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { billingMessages } from '@/lib/i18n/messages/billing';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
-export const metadata: Metadata = {
-  title: 'Billing portal — Gleen',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return { title: billingMessages[locale].metadata.portal };
+}
 
 const planChangeQuerySchema = z
   .object({
@@ -63,6 +66,8 @@ function parsePlanChange(
 }
 
 export default async function PortalPage({ searchParams }: PortalPageProps) {
+  const locale = await getRequestLocale();
+  const copy = billingMessages[locale];
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -95,6 +100,8 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
       }),
     ]);
     const subscription = toSubscriptionPresentation(snapshot, {
+      locale,
+      copy,
       paymentMethod: paymentMethod.ok
         ? paymentMethod.paymentMethod
         : { status: 'unavailable' },
@@ -113,6 +120,7 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
         formattedAmount: formatMoney({
           amountMinor: snapshot.paymentSummary.outstandingAmountMinor,
           currency: snapshot.paymentSummary.currency,
+          locale,
         }),
       },
     };
@@ -120,7 +128,7 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
       slug: plan.slug,
       displayName: plan.displayName,
     }));
-    activity = toInvoicePresentation(invoices);
+    activity = toInvoicePresentation(invoices, { locale, copy });
   } catch {
     // The screen preserves navigation and renders the explicit error state.
   }
@@ -133,6 +141,8 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
       cancelScheduledDowngradeAction={cancelScheduledDowngrade}
       planChange={planChange}
       planCatalog={portalPlanCatalog}
+      locale={locale}
+      copy={copy}
     />
   );
 }

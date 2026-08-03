@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -13,10 +14,21 @@ import type {
   InvoiceSummaryPresentation,
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
+import { billingMessages } from '@/lib/i18n/messages/billing';
 
 import { parseInvoiceRouteQuery } from '@/lib/billing/invoice-query';
 
-import { InvoicesScreen } from './invoices-screen';
+import { InvoicesScreen as ProductionInvoicesScreen } from './invoices-screen';
+
+type InvoicesScreenProps = ComponentProps<typeof ProductionInvoicesScreen>;
+function InvoicesScreen({
+  locale = 'en',
+  copy = billingMessages.en,
+  ...props
+}: Omit<InvoicesScreenProps, 'locale' | 'copy'> &
+  Partial<Pick<InvoicesScreenProps, 'locale' | 'copy'>>) {
+  return <ProductionInvoicesScreen {...props} locale={locale} copy={copy} />;
+}
 
 const invoices: InvoicePresentation = {
   items: [
@@ -159,6 +171,46 @@ const summary: InvoiceSummaryPresentation = {
 };
 
 describe('InvoicesScreen', () => {
+  it('renders Ukrainian invoice headings, filters, actions, status, and mobile navigation', () => {
+    render(
+      <InvoicesScreen
+        subscription={{
+          ...subscription,
+          entitlement: { ...subscription.entitlement, label: 'Активна' },
+        }}
+        invoices={{
+          ...invoices,
+          items: [
+            {
+              ...invoices.items[0]!,
+              number: 'GLEEN-1042',
+              status: { ...invoices.items[0]!.status, label: 'Сплачено' },
+            },
+          ],
+        }}
+        summary={summary}
+        query={{ search: '', status: null, year: null, cursor: null }}
+        pageSize={25}
+        exportAction={vi.fn()}
+        locale="uk"
+        copy={billingMessages.uk}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Рахунки' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('searchbox', { name: 'Пошук рахунків' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Сплачено').length).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getAllByRole('link', { name: 'Завантажити PDF GLEEN-1042' }),
+    ).toHaveLength(2);
+    expect(
+      screen.getByRole('navigation', { name: 'Мобільна навігація платежів' }),
+    ).toBeInTheDocument();
+  });
   it('renders summary, closed filters, desktop table, mobile cards, and all status variants', () => {
     render(
       <InvoicesScreen

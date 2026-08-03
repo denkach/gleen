@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { cx } from '@/lib/cx';
+import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
 import { BillingMobileNavigation } from './billing-mobile-navigation';
 
@@ -9,12 +10,14 @@ export function BillingPage({
   title,
   description,
   ariaBusy,
+  copy,
   children,
 }: Readonly<{
   eyebrow: string;
   title: string;
   description: string;
   ariaBusy?: boolean;
+  copy: BillingMessages;
   children: ReactNode;
 }>) {
   return (
@@ -33,7 +36,7 @@ export function BillingPage({
         </div>
       </header>
       {children}
-      <BillingMobileNavigation />
+      <BillingMobileNavigation copy={copy.navigation} />
     </section>
   );
 }

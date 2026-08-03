@@ -15,10 +15,13 @@ import {
   type SupabaseBillingClient,
 } from '@/lib/billing/supabase-repository';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { billingMessages } from '@/lib/i18n/messages/billing';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
-export const metadata: Metadata = {
-  title: 'Subscription — Gleen',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return { title: billingMessages[locale].metadata.subscription };
+}
 
 const subscriptionQuerySchema = z
   .object({
@@ -40,6 +43,8 @@ function parsePeriod(raw: Record<string, string | string[] | undefined>) {
 export default async function SubscriptionPage({
   searchParams,
 }: SubscriptionPageProps) {
+  const locale = await getRequestLocale();
+  const copy = billingMessages[locale];
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -61,7 +66,11 @@ export default async function SubscriptionPage({
       ? paymentResult.paymentMethod
       : { status: 'unavailable' };
 
-    presentation = toSubscriptionPresentation(snapshot, { paymentMethod });
+    presentation = toSubscriptionPresentation(snapshot, {
+      locale,
+      copy,
+      paymentMethod,
+    });
   } catch {
     // The screen keeps navigation available and renders its explicit error state.
   }
@@ -70,6 +79,8 @@ export default async function SubscriptionPage({
     <SubscriptionScreen
       presentation={presentation}
       initialInterval={interval}
+      locale={locale}
+      copy={copy}
     />
   );
 }

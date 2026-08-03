@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+import { formatCurrency, formatDate } from '@/lib/i18n/format';
+import type { Locale } from '@/lib/i18n/locales';
+import type { BillingMessages } from '@/lib/i18n/messages/billing';
+
 import {
   billingPlanSchema,
   billingPaymentMethodSchema,
@@ -24,12 +28,12 @@ import {
 export type SemanticVariant = 'neutral' | 'positive' | 'warning' | 'negative';
 
 export type PresentationOptions = Readonly<{
-  locale?: string;
+  locale: Locale;
+  copy: BillingMessages;
   timeZone?: string;
 }>;
 
 export const billingPresentationDefaults = Object.freeze({
-  locale: 'en-US',
   timeZone: 'UTC',
 } as const);
 
@@ -80,34 +84,23 @@ const moneyInputSchema = z
   .object({
     amountMinor: z.number().int().safe(),
     currency: z.string().regex(/^[a-z]{3}$/),
-    locale: z.string().min(1).optional(),
+    locale: z.enum(['uk', 'ru', 'en', 'es', 'de']),
   })
   .strict();
 
 export function formatMoney(input: {
   amountMinor: number;
   currency: string;
-  locale?: string;
+  locale: Locale;
 }): string {
   const parsed = moneyInputSchema.parse(input);
-  const formatter = new Intl.NumberFormat(
-    parsed.locale ?? billingPresentationDefaults.locale,
-    {
-      style: 'currency',
-      currency: parsed.currency.toUpperCase(),
-      currencyDisplay: 'narrowSymbol',
-    },
-  );
-  const minorUnitScale =
-    10 ** (formatter.resolvedOptions().maximumFractionDigits ?? 2);
-
-  return formatter.format(parsed.amountMinor / minorUnitScale);
+  return formatCurrency(parsed);
 }
 
 function toMoney(
   amountMinor: number,
   currency: string,
-  locale?: string,
+  locale: Locale,
 ): MoneyPresentation {
   return {
     amountMinor,
@@ -116,7 +109,7 @@ function toMoney(
   };
 }
 
-function toPrice(price: BillingPrice, locale?: string): PricePresentation {
+function toPrice(price: BillingPrice, locale: Locale): PricePresentation {
   return {
     ...toMoney(price.amountMinor, price.currency, locale),
     interval: price.interval,
@@ -129,39 +122,46 @@ function toPrice(price: BillingPrice, locale?: string): PricePresentation {
   };
 }
 
-function createDateFormatter(
+function formatBillingDate(
+  value: string,
   options: PresentationOptions,
   includeTime: boolean,
-): Intl.DateTimeFormat {
-  return new Intl.DateTimeFormat(
-    options.locale ?? billingPresentationDefaults.locale,
-    {
+): string {
+  return formatDate({
+    value,
+    locale: options.locale,
+    fallback: '—',
+    options: {
       dateStyle: 'medium',
       ...(includeTime ? { timeStyle: 'short' as const } : {}),
       timeZone: options.timeZone ?? billingPresentationDefaults.timeZone,
     },
-  );
+  });
 }
 
-const entitlementCopy = {
-  free: { label: 'Free', variant: 'neutral' },
-  trial: { label: 'Trial', variant: 'positive' },
-  active: { label: 'Active', variant: 'positive' },
-  past_due_with_access: {
-    label: 'Payment due — access remains active',
-    variant: 'warning',
-  },
-} as const satisfies Record<
-  EntitlementStatus,
-  Readonly<{ label: string; variant: SemanticVariant }>
->;
+const entitlementVariants = {
+  free: 'neutral',
+  trial: 'positive',
+  active: 'positive',
+  past_due_with_access: 'warning',
+} as const satisfies Record<EntitlementStatus, SemanticVariant>;
 
-function planAction(plan: BillingPlan) {
+function entitlementLabel(
+  entitlement: EntitlementStatus,
+  copy: BillingMessages,
+): string {
+  if (entitlement === 'past_due_with_access') {
+    return copy.presentation.entitlement.pastDue;
+  }
+  return copy.presentation.entitlement[entitlement];
+}
+
+function planAction(plan: BillingPlan, copy: BillingMessages) {
   return plan.purchasable
     ? ({ enabled: true, reason: null } as const)
     : ({
         enabled: false,
-        reason: 'This plan is not available for purchase.',
+        reason: copy.presentation.planUnavailable,
       } as const);
 }
 
@@ -177,7 +177,7 @@ export type CheckoutPresentation = Readonly<{
 export function toCheckoutPresentation(
   plan: BillingPlan,
   price: BillingPrice,
-  options: Pick<PresentationOptions, 'locale'> = {},
+  options: PresentationOptions,
 ): CheckoutPresentation {
   const parsedPlan = billingPlanSchema.parse(plan);
   const parsedPrice = billingPriceSchema.parse(price);
@@ -191,7 +191,7 @@ export function toCheckoutPresentation(
   return {
     plan: parsedPlan,
     price: toPrice(parsedPrice, options.locale),
-    action: planAction(parsedPlan),
+    action: planAction(parsedPlan, options.copy),
   };
 }
 
@@ -230,7 +230,7 @@ export function toSubscriptionPresentation(
   options: PresentationOptions & {
     now?: string;
     paymentMethod?: BillingPaymentMethod;
-  } = {},
+  },
 ): SubscriptionPresentation {
   const parsed = billingSnapshotSchema.parse(snapshot);
   const now = options.now ?? new Date().toISOString();
@@ -239,7 +239,6 @@ export function toSubscriptionPresentation(
     paidThrough: parsed.paymentSummary.paidThrough,
     now,
   });
-  const dateFormatter = createDateFormatter(options, false);
   const paymentMethod = billingPaymentMethodSchema.parse(
     options.paymentMethod ?? { status: 'unavailable' },
   );
@@ -252,11 +251,12 @@ export function toSubscriptionPresentation(
         : toPrice(parsed.currentPrice, options.locale),
     entitlement: {
       key: entitlement,
-      ...entitlementCopy[entitlement],
+      label: entitlementLabel(entitlement, options.copy),
+      variant: entitlementVariants[entitlement],
     },
     usage: parsed.usage,
     resetAt: parsed.period.endsAt,
-    resetAtLabel: dateFormatter.format(new Date(parsed.period.endsAt)),
+    resetAtLabel: formatBillingDate(parsed.period.endsAt, options, false),
     scheduledChange: parsed.scheduledChange,
     paymentMethod:
       paymentMethod.status === 'available'
@@ -265,20 +265,20 @@ export function toSubscriptionPresentation(
             label: `${paymentMethod.brand.replace(/(^|\s)\S/g, (character) =>
               character.toUpperCase(),
             )} •••• ${paymentMethod.last4}`,
-            expiryLabel: `Expires ${String(paymentMethod.expMonth).padStart(
-              2,
-              '0',
-            )}/${paymentMethod.expYear}`,
+            expiryLabel: options.copy.presentation.payment.expires(
+              String(paymentMethod.expMonth).padStart(2, '0'),
+              paymentMethod.expYear,
+            ),
           }
         : {
             status: 'unavailable',
-            label: 'Managed in billing portal',
+            label: options.copy.presentation.payment.managed,
             expiryLabel: null,
           },
     availablePlans: parsed.availablePlans.map(({ plan, prices }) => ({
       plan,
       prices: prices.map((price) => toPrice(price, options.locale)),
-      action: planAction(plan),
+      action: planAction(plan, options.copy),
     })),
   };
 }
@@ -300,7 +300,7 @@ export function toLimitReachedPresentation(
   options: PresentationOptions & {
     now?: string;
     paymentMethod?: BillingPaymentMethod;
-  } = {},
+  },
 ): LimitReachedPresentation {
   const presentation = toSubscriptionPresentation(snapshot, options);
   const upgrade =
@@ -321,9 +321,10 @@ export function toLimitReachedPresentation(
     id: `${presentation.currentPlan.slug}-to-${upgrade.plan.slug}-${index}`,
     baseline:
       presentation.currentPlan.features[index] ??
-      'Not included in the current plan',
+      options.copy.presentation.featureFallback.current,
     benefit:
-      upgrade.plan.features[index] ?? 'No additional catalog benefit listed',
+      upgrade.plan.features[index] ??
+      options.copy.presentation.featureFallback.upgrade,
   }));
 
   return {
@@ -332,36 +333,60 @@ export function toLimitReachedPresentation(
   };
 }
 
-const usageEventCopy = {
-  reservation: { label: 'Reserved', variant: 'warning' },
-  settlement: { label: 'Used', variant: 'neutral' },
-  release: { label: 'Released', variant: 'positive' },
-  period_renewal: { label: 'Period renewed', variant: 'positive' },
-  manual_adjustment: { label: 'Adjusted', variant: 'neutral' },
-  refund: { label: 'Refunded', variant: 'positive' },
-  technical_retry: { label: 'Technical retry', variant: 'neutral' },
+const usageEventVariants = {
+  reservation: 'warning',
+  settlement: 'neutral',
+  release: 'positive',
+  period_renewal: 'positive',
+  manual_adjustment: 'neutral',
+  refund: 'positive',
+  technical_retry: 'neutral',
 } as const satisfies Record<
   UsageLedgerPage['items'][number]['eventType'],
-  Readonly<{ label: string; variant: SemanticVariant }>
+  SemanticVariant
 >;
 
-const usageStatusCopy = {
-  reserved: { label: 'Reserved', variant: 'warning' },
-  settled: { label: 'Settled', variant: 'neutral' },
-  released: { label: 'Released', variant: 'positive' },
-  applied: { label: 'Applied', variant: 'positive' },
-  informational: { label: 'Informational', variant: 'neutral' },
+const usageStatusVariants = {
+  reserved: 'warning',
+  settled: 'neutral',
+  released: 'positive',
+  applied: 'positive',
+  informational: 'neutral',
 } as const satisfies Record<
   UsageLedgerPage['items'][number]['status'],
-  Readonly<{ label: string; variant: SemanticVariant }>
+  SemanticVariant
 >;
 
-const usageSourceCopy = {
-  analysis_pipeline: 'Analysis pipeline',
-  stripe_webhook: 'Stripe',
-  system: 'System',
-  manual: 'Manual adjustment',
-} as const satisfies Record<UsageLedgerPage['items'][number]['source'], string>;
+function usageEventLabel(
+  event: UsageLedgerPage['items'][number]['eventType'],
+  copy: BillingMessages,
+): string {
+  const labels = copy.presentation.usage.event;
+  const key = {
+    reservation: 'reservation',
+    settlement: 'settlement',
+    release: 'release',
+    period_renewal: 'periodRenewal',
+    manual_adjustment: 'manualAdjustment',
+    refund: 'refund',
+    technical_retry: 'technicalRetry',
+  } as const;
+  return labels[key[event]];
+}
+
+function usageSourceLabel(
+  source: UsageLedgerPage['items'][number]['source'],
+  copy: BillingMessages,
+): string {
+  const labels = copy.presentation.usage.source;
+  const key = {
+    analysis_pipeline: 'analysisPipeline',
+    stripe_webhook: 'stripe',
+    system: 'system',
+    manual: 'manual',
+  } as const;
+  return labels[key[source]];
+}
 
 export type UsagePresentation = Readonly<{
   items: readonly Readonly<{
@@ -396,54 +421,58 @@ export type UsagePresentation = Readonly<{
 
 export function toUsagePresentation(
   page: UsageLedgerPage,
-  options: PresentationOptions = {},
+  options: PresentationOptions,
 ): UsagePresentation {
   const parsed = usageLedgerPageSchema.parse(page);
-  const dateFormatter = createDateFormatter(options, true);
 
   return {
-    items: parsed.items.map((entry) => ({
-      id: entry.id,
-      planSlug: entry.planSlug,
-      quantity: entry.quantity,
-      remainingBalance: entry.remainingBalance,
-      occurredAt: entry.occurredAt,
-      occurredAtLabel: dateFormatter.format(new Date(entry.occurredAt)),
-      event: {
-        key: entry.eventType,
-        ...usageEventCopy[entry.eventType],
-        title:
-          entry.analysisTitle === null
-            ? usageEventCopy[entry.eventType].label
-            : `${usageEventCopy[entry.eventType].label} — ${entry.analysisTitle}`,
-      },
-      source: {
-        key: entry.source,
-        label: usageSourceCopy[entry.source],
-        detail: entry.channelTitle,
-      },
-      status: {
-        key: entry.status,
-        ...usageStatusCopy[entry.status],
-      },
-      jobId: entry.jobId,
-      analysisId: entry.analysisId,
-    })),
+    items: parsed.items.map((entry) => {
+      const eventLabel = usageEventLabel(entry.eventType, options.copy);
+      return {
+        id: entry.id,
+        planSlug: entry.planSlug,
+        quantity: entry.quantity,
+        remainingBalance: entry.remainingBalance,
+        occurredAt: entry.occurredAt,
+        occurredAtLabel: formatBillingDate(entry.occurredAt, options, true),
+        event: {
+          key: entry.eventType,
+          label: eventLabel,
+          variant: usageEventVariants[entry.eventType],
+          title:
+            entry.analysisTitle === null
+              ? eventLabel
+              : `${eventLabel} — ${entry.analysisTitle}`,
+        },
+        source: {
+          key: entry.source,
+          label: usageSourceLabel(entry.source, options.copy),
+          detail: entry.channelTitle,
+        },
+        status: {
+          key: entry.status,
+          label: options.copy.presentation.usage.status[entry.status],
+          variant: usageStatusVariants[entry.status],
+        },
+        jobId: entry.jobId,
+        analysisId: entry.analysisId,
+      };
+    }),
     nextCursor: parsed.nextCursor,
     totalCount: parsed.totalCount,
   };
 }
 
-const invoiceStatusCopy = {
-  draft: { label: 'Draft', variant: 'neutral' },
-  open: { label: 'Open', variant: 'warning' },
-  paid: { label: 'Paid', variant: 'positive' },
-  uncollectible: { label: 'Uncollectible', variant: 'negative' },
-  void: { label: 'Void', variant: 'neutral' },
-  failed: { label: 'Failed', variant: 'negative' },
+const invoiceStatusVariants = {
+  draft: 'neutral',
+  open: 'warning',
+  paid: 'positive',
+  uncollectible: 'negative',
+  void: 'neutral',
+  failed: 'negative',
 } as const satisfies Record<
   InvoicePage['items'][number]['status'],
-  Readonly<{ label: string; variant: SemanticVariant }>
+  SemanticVariant
 >;
 
 export type InvoicePresentation = Readonly<{
@@ -484,7 +513,7 @@ export type InvoiceSummaryPresentation = Readonly<{
 
 export function toInvoiceSummaryPresentation(
   summary: InvoiceSummary,
-  options: PresentationOptions = {},
+  options: PresentationOptions,
 ): InvoiceSummaryPresentation {
   const parsed = invoiceSummarySchema.parse(summary);
   const amounts = parsed.yearToDateAmounts;
@@ -493,10 +522,8 @@ export function toInvoiceSummaryPresentation(
     lastInvoiceAt: parsed.lastInvoiceAt,
     lastInvoiceAtLabel:
       parsed.lastInvoiceAt === null
-        ? 'No invoices'
-        : createDateFormatter(options, false).format(
-            new Date(parsed.lastInvoiceAt),
-          ),
+        ? options.copy.presentation.invoice.noInvoices
+        : formatBillingDate(parsed.lastInvoiceAt, options, false),
     yearToDateSpendLabel:
       amounts.length === 1
         ? formatMoney({
@@ -506,19 +533,18 @@ export function toInvoiceSummaryPresentation(
           })
         : amounts.length === 0
           ? '—'
-          : 'Multiple currencies',
+          : options.copy.presentation.invoice.multipleCurrencies,
     availableYears: parsed.availableYears,
   };
 }
 
 export function toInvoicePresentation(
   page: InvoicePage,
-  options: PresentationOptions = {},
+  options: PresentationOptions,
 ): InvoicePresentation {
   const parsed = invoicePageSchema.parse(page);
-  const dateFormatter = createDateFormatter(options, false);
   const formatNullableDate = (value: string | null) =>
-    value === null ? null : dateFormatter.format(new Date(value));
+    value === null ? null : formatBillingDate(value, options, false);
 
   return {
     items: parsed.items.map((invoice) => {
@@ -549,16 +575,17 @@ export function toInvoicePresentation(
               key: 'refunded',
               label:
                 invoice.refundStatus === 'full'
-                  ? 'Refunded'
-                  : 'Partially refunded',
+                  ? options.copy.presentation.invoice.status.refunded
+                  : options.copy.presentation.invoice.status.partiallyRefunded,
               variant: 'warning',
             } as const)
           : {
               key: invoice.status,
-              ...invoiceStatusCopy[invoice.status],
+              label: options.copy.presentation.invoice.status[invoice.status],
+              variant: invoiceStatusVariants[invoice.status],
             },
         createdAt: invoice.createdAt,
-        createdAtLabel: dateFormatter.format(new Date(invoice.createdAt)),
+        createdAtLabel: formatBillingDate(invoice.createdAt, options, false),
         dueAt: invoice.dueAt,
         dueAtLabel: formatNullableDate(invoice.dueAt),
         paidAt: invoice.paidAt,

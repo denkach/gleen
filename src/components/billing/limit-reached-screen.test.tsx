@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { BillingSnapshot } from '@/lib/billing/domain';
@@ -7,8 +8,23 @@ import {
   type LimitReachedPresentation,
 } from '@/lib/billing/presentation';
 import { billingFixtureCatalog } from '@/lib/billing/fixtures';
+import { billingMessages } from '@/lib/i18n/messages/billing';
 
-import { LimitReachedScreen } from './limit-reached-screen';
+import { LimitReachedScreen as ProductionLimitReachedScreen } from './limit-reached-screen';
+
+type LimitReachedScreenProps = ComponentProps<
+  typeof ProductionLimitReachedScreen
+>;
+function LimitReachedScreen({
+  locale = 'en',
+  copy = billingMessages.en,
+  ...props
+}: Omit<LimitReachedScreenProps, 'locale' | 'copy'> &
+  Partial<Pick<LimitReachedScreenProps, 'locale' | 'copy'>>) {
+  return (
+    <ProductionLimitReachedScreen {...props} locale={locale} copy={copy} />
+  );
+}
 
 const presentation = {
   currentPlan: {
@@ -145,6 +161,28 @@ const presentation = {
 } as const satisfies LimitReachedPresentation;
 
 describe('LimitReachedScreen', () => {
+  it('fully localizes the German limit-reached destination without translating catalog names', () => {
+    render(
+      <LimitReachedScreen
+        presentation={presentation}
+        now="2025-07-29T00:00:00.000Z"
+        locale="de"
+        copy={billingMessages.de}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Analyselimit erreicht' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('10 von 10 Analysen verbraucht')).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: /Nutzungsprotokoll öffnen/ }),
+    ).toHaveAttribute('href', '/app/subscription/usage');
+    expect(screen.getByText('Starter')).toBeVisible();
+    expect(
+      screen.getByRole('navigation', { name: 'Mobile Abrechnungsnavigation' }),
+    ).toBeInTheDocument();
+  });
   it('renders owner usage and catalog values with the approved blocked state', () => {
     render(
       <LimitReachedScreen
@@ -163,9 +201,7 @@ describe('LimitReachedScreen', () => {
       screen.getByRole('link', { name: 'Upgrade to Prism Pro' }),
     ).toHaveAttribute('href', '/app/subscription');
     expect(screen.getByText('25 analyses per month')).toBeVisible();
-    expect(
-      screen.getByText('Resets in 3 days on August 01, 2025'),
-    ).toBeVisible();
+    expect(screen.getByText('Resets in 3 days on 1 August 2025')).toBeVisible();
   });
 
   it('uses the two distinct locked Screen 06 prism geometries', () => {
@@ -283,7 +319,8 @@ describe('LimitReachedScreen', () => {
         <LimitReachedScreen
           presentation={toLimitReachedPresentation(freeLimitSnapshot, {
             now: '2025-07-29T00:00:00.000Z',
-            locale: 'en-US',
+            locale: 'en',
+            copy: billingMessages.en,
             timeZone: 'UTC',
           })}
           now="2025-07-29T00:00:00.000Z"

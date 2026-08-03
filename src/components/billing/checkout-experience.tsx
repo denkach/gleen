@@ -13,6 +13,8 @@ import type {
   CheckoutPresentation,
   PricePresentation,
 } from '@/lib/billing/presentation';
+import type { Locale } from '@/lib/i18n/locales';
+import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
 import {
   CheckoutScreen,
@@ -35,9 +37,13 @@ const confirmationIntervalMs = 1_500;
 function CheckoutElements({
   presentation,
   prices,
+  locale,
+  copy,
 }: Readonly<{
   presentation: CheckoutPresentation;
   prices: readonly PricePresentation[];
+  locale: Locale;
+  copy: BillingMessages;
 }>) {
   const result = useCheckoutElements();
   const [submitting, setSubmitting] = useState(false);
@@ -61,6 +67,8 @@ function CheckoutElements({
         state={{ kind: 'loading' }}
         stripeCheckout={<div className="billing-stripe-skeleton" />}
         totals={null}
+        locale={locale}
+        copy={copy}
       />
     );
   }
@@ -72,6 +80,8 @@ function CheckoutElements({
         state={{ kind: 'retryable-error' }}
         stripeCheckout={null}
         totals={null}
+        locale={locale}
+        copy={copy}
         onRetry={() => window.location.reload()}
       />
     );
@@ -100,7 +110,7 @@ function CheckoutElements({
         setConfirmationError(
           error instanceof Error && error.message.trim().length > 0
             ? error.message
-            : 'Checkout could not be loaded.',
+            : copy.checkout.states.retryableError,
         );
       }
     } finally {
@@ -126,6 +136,8 @@ function CheckoutElements({
         </div>
       }
       totals={totals}
+      locale={locale}
+      copy={copy}
       onSubmit={confirm}
       onRetry={() => {
         setConfirmationError(null);
@@ -141,6 +153,8 @@ export function CheckoutExperience({
   sessionId,
   createCheckout,
   getConfirmation,
+  locale,
+  copy,
 }: Readonly<{
   presentation: CheckoutPresentation;
   prices: readonly PricePresentation[];
@@ -151,6 +165,8 @@ export function CheckoutExperience({
     interval: PricePresentation['interval'];
   }) => Promise<CheckoutActionResult>;
   getConfirmation: (sessionId: string) => Promise<ConfirmationActionResult>;
+  locale: Locale;
+  copy: BillingMessages;
 }>) {
   const [confirmationState, setConfirmationState] =
     useState<CheckoutScreenState>(
@@ -243,6 +259,8 @@ export function CheckoutExperience({
         state={confirmationState}
         stripeCheckout={null}
         totals={null}
+        locale={locale}
+        copy={copy}
         onRetry={() => window.location.reload()}
       />
     );
@@ -259,6 +277,8 @@ export function CheckoutExperience({
         state={confirmationState}
         stripeCheckout={null}
         totals={null}
+        locale={locale}
+        copy={copy}
         onRetry={() => window.location.reload()}
       />
     );
@@ -272,6 +292,8 @@ export function CheckoutExperience({
         state={{ kind: 'loading' }}
         stripeCheckout={<div className="billing-stripe-skeleton" />}
         totals={null}
+        locale={locale}
+        copy={copy}
       />
     );
   }
@@ -299,7 +321,12 @@ export function CheckoutExperience({
         },
       }}
     >
-      <CheckoutElements presentation={presentation} prices={prices} />
+      <CheckoutElements
+        presentation={presentation}
+        prices={prices}
+        locale={locale}
+        copy={copy}
+      />
     </CheckoutElementsProvider>
   );
 }

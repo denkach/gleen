@@ -17,10 +17,13 @@ import {
   type SupabaseBillingClient,
 } from '@/lib/billing/supabase-repository';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { billingMessages } from '@/lib/i18n/messages/billing';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
-export const metadata: Metadata = {
-  title: 'Invoices — Gleen',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return { title: billingMessages[locale].metadata.invoices };
+}
 
 type InvoicesPageProps = Readonly<{
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -29,6 +32,8 @@ type InvoicesPageProps = Readonly<{
 export default async function InvoicesPage({
   searchParams,
 }: InvoicesPageProps) {
+  const locale = await getRequestLocale();
+  const copy = billingMessages[locale];
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -59,14 +64,17 @@ export default async function InvoicesPage({
       }),
       repository.getOwnedInvoiceSummary(user.id, currentYear),
     ]);
-    const presentedSubscription = toSubscriptionPresentation(snapshot);
+    const presentedSubscription = toSubscriptionPresentation(snapshot, {
+      locale,
+      copy,
+    });
     subscription = {
       resetAt: presentedSubscription.resetAt,
       resetAtLabel: presentedSubscription.resetAtLabel,
       entitlement: presentedSubscription.entitlement,
     };
-    invoices = toInvoicePresentation(page);
-    summary = toInvoiceSummaryPresentation(ownerSummary);
+    invoices = toInvoicePresentation(page, { locale, copy });
+    summary = toInvoiceSummaryPresentation(ownerSummary, { locale, copy });
   } catch {
     // The screen preserves filters and renders the explicit error state.
   }
@@ -78,6 +86,8 @@ export default async function InvoicesPage({
       query={query}
       pageSize={25}
       exportAction={exportInvoicesCsv}
+      locale={locale}
+      copy={copy}
     />
   );
 }

@@ -12,6 +12,8 @@ import type {
   InvoiceSummaryPresentation,
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
+import type { Locale } from '@/lib/i18n/locales';
+import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
 import { BillingIcon } from './billing-icons';
 import { BillingCard, BillingPage, BillingStatus } from './billing-page';
@@ -41,13 +43,20 @@ function httpsUrl(value: string | null) {
   }
 }
 
-function invoiceIdentifier(invoice: InvoicePresentation['items'][number]) {
-  return invoice.number ?? 'Pending number';
+function invoiceIdentifier(
+  invoice: InvoicePresentation['items'][number],
+  copy: BillingMessages,
+) {
+  return invoice.number ?? copy.invoices.table.pendingNumber;
 }
 
 function InvoiceActions({
   invoice,
-}: Readonly<{ invoice: InvoicePresentation['items'][number] }>) {
+  copy,
+}: Readonly<{
+  invoice: InvoicePresentation['items'][number];
+  copy: BillingMessages;
+}>) {
   const hostedUrl = httpsUrl(invoice.hostedUrl);
   const pdfUrl = httpsUrl(invoice.pdfUrl);
   if (hostedUrl === null && pdfUrl === null) return <span>—</span>;
@@ -55,12 +64,12 @@ function InvoiceActions({
     <div className="billing-invoice-actions">
       {hostedUrl !== null && (
         <a href={hostedUrl} target="_blank" rel="noreferrer">
-          View invoice {invoiceIdentifier(invoice)}
+          {copy.invoices.actions.view(invoiceIdentifier(invoice, copy))}
         </a>
       )}
       {pdfUrl !== null && (
         <a href={pdfUrl} target="_blank" rel="noreferrer">
-          Download PDF {invoiceIdentifier(invoice)}
+          {copy.invoices.actions.downloadPdf(invoiceIdentifier(invoice, copy))}
         </a>
       )}
     </div>
@@ -74,6 +83,8 @@ export function InvoicesScreen({
   query,
   pageSize,
   exportAction,
+  locale,
+  copy,
 }: Readonly<{
   subscription: Pick<
     SubscriptionPresentation,
@@ -84,7 +95,10 @@ export function InvoicesScreen({
   query: InvoiceRouteQuery;
   pageSize: number;
   exportAction: InvoiceExportAction;
+  locale: Locale;
+  copy: BillingMessages;
 }>) {
+  void locale;
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(false);
   const mounted = useRef(true);
@@ -99,20 +113,21 @@ export function InvoicesScreen({
   if (subscription === null || invoices === null || summary === null) {
     return (
       <BillingPage
-        eyebrow="Billing history"
-        title="Invoices"
-        description="View, download, and track the status of every invoice."
+        eyebrow={copy.invoices.eyebrow}
+        title={copy.invoices.title}
+        description={copy.invoices.description}
+        copy={copy}
       >
         <BillingCard className="billing-state-card">
           <div className="billing-state-icon">
             <BillingIcon name="alert" />
           </div>
           <div role="alert">
-            <h2>Invoice history is temporarily unavailable.</h2>
-            <p>Please try again. Your billing records have not been changed.</p>
+            <h2>{copy.invoices.error.title}</h2>
+            <p>{copy.invoices.error.description}</p>
           </div>
           <Link className="billing-button" href="/app/subscription/invoices">
-            Try invoices again
+            {copy.invoices.error.retry}
           </Link>
         </BillingCard>
       </BillingPage>
@@ -165,15 +180,18 @@ export function InvoicesScreen({
 
   return (
     <BillingPage
-      eyebrow="Billing history"
-      title="Invoices"
-      description="View, download, and track the status of every invoice."
+      eyebrow={copy.invoices.eyebrow}
+      title={copy.invoices.title}
+      description={copy.invoices.description}
+      copy={copy}
     >
       <BillingCard className="billing-invoice-summary">
         <div>
           <div className="billing-metric-icon">$</div>
           <div>
-            <div className="billing-metric-label">Year-to-date spend</div>
+            <div className="billing-metric-label">
+              {copy.invoices.metrics.yearToDate}
+            </div>
             <div className="billing-metric-value">
               {summary.yearToDateSpendLabel}
             </div>
@@ -184,12 +202,14 @@ export function InvoicesScreen({
             <BillingIcon name="plan" />
           </div>
           <div>
-            <div className="billing-metric-label">Last invoice</div>
+            <div className="billing-metric-label">
+              {copy.invoices.metrics.lastInvoice}
+            </div>
             <div className="billing-metric-value billing-reset-value">
               {summary.lastInvoiceAtLabel}
             </div>
             <div className="billing-metric-note">
-              {summary.totalCount} invoices
+              {copy.invoices.metrics.invoiceCount(summary.totalCount)}
             </div>
           </div>
         </div>
@@ -198,7 +218,9 @@ export function InvoicesScreen({
             <BillingIcon name="plan" />
           </div>
           <div>
-            <div className="billing-metric-label">Next renewal</div>
+            <div className="billing-metric-label">
+              {copy.invoices.metrics.nextRenewal}
+            </div>
             <div className="billing-metric-value billing-reset-value">
               <time dateTime={subscription.resetAt}>
                 {subscription.resetAtLabel}
@@ -209,10 +231,12 @@ export function InvoicesScreen({
         <div>
           <div className="billing-metric-icon billing-metric-positive">✓</div>
           <div>
-            <div className="billing-metric-label">Payment status</div>
+            <div className="billing-metric-label">
+              {copy.invoices.metrics.paymentStatus}
+            </div>
             <div className="billing-metric-value billing-reset-value billing-positive">
               {subscription.entitlement.variant === 'positive'
-                ? 'In good standing'
+                ? copy.invoices.metrics.goodStanding
                 : subscription.entitlement.label}
             </div>
           </div>
@@ -228,30 +252,38 @@ export function InvoicesScreen({
                 type="search"
                 name="search"
                 defaultValue={query.search}
-                placeholder="Search invoices…"
-                aria-label="Search invoices"
+                placeholder={copy.invoices.filters.searchPlaceholder}
+                aria-label={copy.invoices.filters.searchLabel}
               />
             </label>
             <select
               name="status"
-              aria-label="Invoice status"
+              aria-label={copy.invoices.filters.statusLabel}
               defaultValue={query.status ?? 'all'}
             >
-              <option value="all">Status · All</option>
-              <option value="paid">Paid</option>
-              <option value="open">Open</option>
-              <option value="refunded">Refunded</option>
-              <option value="failed">Failed</option>
+              <option value="all">{copy.invoices.filters.statusAll}</option>
+              <option value="paid">
+                {copy.presentation.invoice.status.paid}
+              </option>
+              <option value="open">
+                {copy.presentation.invoice.status.open}
+              </option>
+              <option value="refunded">
+                {copy.presentation.invoice.status.refunded}
+              </option>
+              <option value="failed">
+                {copy.presentation.invoice.status.failed}
+              </option>
             </select>
             <select
               name="year"
-              aria-label="Invoice year"
+              aria-label={copy.invoices.filters.yearLabel}
               defaultValue={query.year ?? 'all'}
             >
-              <option value="all">Year · All</option>
+              <option value="all">{copy.invoices.filters.yearAll}</option>
               {years.map((year) => (
                 <option value={year} key={year}>
-                  Year · {year}
+                  {copy.invoices.filters.year(year)}
                 </option>
               ))}
             </select>
@@ -259,7 +291,7 @@ export function InvoicesScreen({
               className="billing-button billing-button-small"
               type="submit"
             >
-              Apply
+              {copy.invoices.filters.apply}
             </button>
             <button
               className="billing-button billing-button-small"
@@ -268,12 +300,14 @@ export function InvoicesScreen({
               disabled={exporting}
             >
               <BillingIcon name="download" />
-              {exporting ? 'Preparing…' : 'Export CSV'}
+              {exporting
+                ? copy.invoices.export.preparing
+                : copy.invoices.export.action}
             </button>
           </form>
           {exportError && (
             <p className="billing-inline-error" role="alert">
-              The invoice export could not be prepared.
+              {copy.invoices.export.error}
             </p>
           )}
           {invoices.items.length === 0 ? (
@@ -281,33 +315,36 @@ export function InvoicesScreen({
               <BillingIcon name="document" />
               <h2>
                 {filtered
-                  ? 'No invoices match these filters.'
-                  : 'No invoices yet.'}
+                  ? copy.invoices.empty.filteredTitle
+                  : copy.invoices.empty.initialTitle}
               </h2>
               <p>
                 {filtered
-                  ? 'Try changing the search, status, or year.'
-                  : 'Invoices will appear here after billing activity.'}
+                  ? copy.invoices.empty.filteredDescription
+                  : copy.invoices.empty.initialDescription}
               </p>
             </div>
           ) : (
             <>
               <div className="billing-table-wrap">
-                <table className="billing-table" aria-label="Invoice history">
+                <table
+                  className="billing-table"
+                  aria-label={copy.invoices.table.label}
+                >
                   <thead>
                     <tr>
-                      <th>Invoice</th>
-                      <th>Date</th>
-                      <th>Plan</th>
-                      <th>Amount</th>
-                      <th>Status</th>
-                      <th>Actions</th>
+                      <th>{copy.invoices.table.invoice}</th>
+                      <th>{copy.invoices.table.date}</th>
+                      <th>{copy.invoices.table.plan}</th>
+                      <th>{copy.invoices.table.amount}</th>
+                      <th>{copy.invoices.table.status}</th>
+                      <th>{copy.invoices.table.actions}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {invoices.items.map((invoice) => (
                       <tr key={invoice.id}>
-                        <td>{invoiceIdentifier(invoice)}</td>
+                        <td>{invoiceIdentifier(invoice, copy)}</td>
                         <td>
                           <time dateTime={invoice.createdAt}>
                             {invoice.createdAtLabel}
@@ -321,7 +358,7 @@ export function InvoicesScreen({
                           </BillingStatus>
                         </td>
                         <td>
-                          <InvoiceActions invoice={invoice} />
+                          <InvoiceActions invoice={invoice} copy={copy} />
                         </td>
                       </tr>
                     ))}
@@ -330,7 +367,7 @@ export function InvoicesScreen({
               </div>
               <ul
                 className="billing-mobile-cards"
-                aria-label="Invoice history on mobile"
+                aria-label={copy.invoices.table.mobileLabel}
               >
                 {invoices.items.map((invoice) => (
                   <li
@@ -338,7 +375,7 @@ export function InvoicesScreen({
                     key={invoice.id}
                   >
                     <div className="billing-mobile-row-head">
-                      <b>{invoiceIdentifier(invoice)}</b>
+                      <b>{invoiceIdentifier(invoice, copy)}</b>
                       <BillingStatus variant={invoice.status.variant}>
                         {invoice.status.label}
                       </BillingStatus>
@@ -347,32 +384,38 @@ export function InvoicesScreen({
                       {invoice.createdAtLabel} · {invoice.planName}
                     </p>
                     <b>{invoice.amountDue.formattedAmount}</b>
-                    <InvoiceActions invoice={invoice} />
+                    <InvoiceActions invoice={invoice} copy={copy} />
                   </li>
                 ))}
               </ul>
-              <nav className="billing-pagination" aria-label="Invoice pages">
+              <nav
+                className="billing-pagination"
+                aria-label={copy.invoices.pagination.label}
+              >
                 <span>
-                  Showing {offset + 1}–{offset + invoices.items.length} of{' '}
-                  {invoices.totalCount}
+                  {copy.invoices.pagination.showing(
+                    offset + 1,
+                    offset + invoices.items.length,
+                    invoices.totalCount,
+                  )}
                 </span>
                 <div>
                   {offset > 0 && (
                     <Link
                       className="billing-button billing-button-small"
                       href={pageHref(Math.max(0, offset - pageSize))}
-                      aria-label="Previous page"
+                      aria-label={copy.invoices.pagination.previousLabel}
                     >
-                      Previous
+                      {copy.invoices.pagination.previous}
                     </Link>
                   )}
                   {invoices.nextCursor !== null && (
                     <Link
                       className="billing-button billing-button-small"
                       href={pageHref(Number(invoices.nextCursor))}
-                      aria-label="Next page"
+                      aria-label={copy.invoices.pagination.nextLabel}
                     >
-                      Next
+                      {copy.invoices.pagination.next}
                     </Link>
                   )}
                 </div>
@@ -383,16 +426,17 @@ export function InvoicesScreen({
 
         <aside className="billing-invoice-side">
           <BillingCard>
-            <h2 className="billing-section-title">Billing details</h2>
+            <h2 className="billing-section-title">
+              {copy.invoices.details.title}
+            </h2>
             <p className="billing-section-copy">
-              Billing identity, company, and tax details are securely managed in
-              Stripe.
+              {copy.invoices.details.description}
             </p>
             <Link
               className="billing-button billing-portal-full-button"
               href="/app/subscription/portal"
             >
-              Edit details
+              {copy.invoices.details.edit}
             </Link>
           </BillingCard>
           <BillingCard>
@@ -402,10 +446,10 @@ export function InvoicesScreen({
               </div>
               <div>
                 <h2 className="billing-section-title">
-                  Need a formal receipt?
+                  {copy.invoices.details.receiptTitle}
                 </h2>
                 <p className="billing-section-copy">
-                  Receipts include payment and tax details.
+                  {copy.invoices.details.receiptDescription}
                 </p>
               </div>
             </div>
@@ -413,7 +457,7 @@ export function InvoicesScreen({
               className="billing-button billing-portal-full-button"
               href="/app/subscription/portal"
             >
-              Open billing support
+              {copy.invoices.details.support}
             </Link>
           </BillingCard>
         </aside>

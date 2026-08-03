@@ -1,9 +1,26 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { describe, expect, it } from 'vitest';
+
+import { billingMessages } from '@/lib/i18n/messages/billing';
 
 import type { SubscriptionPresentation } from '@/lib/billing/presentation';
 
-import { SubscriptionScreen } from './subscription-screen';
+import { SubscriptionScreen as ProductionSubscriptionScreen } from './subscription-screen';
+
+type SubscriptionScreenProps = ComponentProps<
+  typeof ProductionSubscriptionScreen
+>;
+function SubscriptionScreen({
+  locale = 'en',
+  copy = billingMessages.en,
+  ...props
+}: Omit<SubscriptionScreenProps, 'locale' | 'copy'> &
+  Partial<Pick<SubscriptionScreenProps, 'locale' | 'copy'>>) {
+  return (
+    <ProductionSubscriptionScreen {...props} locale={locale} copy={copy} />
+  );
+}
 
 const presentation: SubscriptionPresentation = {
   currentPlan: {
@@ -223,6 +240,35 @@ const presentation: SubscriptionPresentation = {
 };
 
 describe('SubscriptionScreen', () => {
+  it('renders German subscription headings, actions, states, and mobile navigation', () => {
+    render(
+      <SubscriptionScreen
+        presentation={{
+          ...presentation,
+          entitlement: {
+            ...presentation.entitlement,
+            label: billingMessages.de.presentation.entitlement.active,
+          },
+        }}
+        initialInterval="month"
+        locale="de"
+        copy={billingMessages.de}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Abonnement' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Monatliche Abrechnung' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Aktiv')).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', {
+        name: 'Mobile Abrechnungsnavigation',
+      }),
+    ).toBeInTheDocument();
+  });
   it('renders the current plan, real usage, reset, scheduled state, and three paid cards', () => {
     render(
       <SubscriptionScreen

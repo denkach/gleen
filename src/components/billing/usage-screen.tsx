@@ -12,6 +12,9 @@ import type {
   UsagePeriodBounds,
   UsageRouteQuery,
 } from '@/lib/billing/usage-query';
+import { formatNumber } from '@/lib/i18n/format';
+import type { Locale } from '@/lib/i18n/locales';
+import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
 import { BillingIcon } from './billing-icons';
 import { BillingCard, BillingPage, BillingStatus } from './billing-page';
@@ -36,22 +39,26 @@ export type UsageScreenExportAction = (
   }>,
 ) => Promise<CsvActionResult>;
 
-const eventOptions: readonly Readonly<{
-  value: UsageEventType;
-  label: string;
-}>[] = [
-  { value: 'reservation', label: 'Reserved' },
-  { value: 'settlement', label: 'Used' },
-  { value: 'release', label: 'Released' },
-  { value: 'period_renewal', label: 'Period renewed' },
-  { value: 'manual_adjustment', label: 'Adjusted' },
-  { value: 'refund', label: 'Refunded' },
-  { value: 'technical_retry', label: 'Technical retry' },
-];
+function eventOptions(copy: BillingMessages) {
+  const event = copy.presentation.usage.event;
+  return [
+    { value: 'reservation', label: event.reservation },
+    { value: 'settlement', label: event.settlement },
+    { value: 'release', label: event.release },
+    { value: 'period_renewal', label: event.periodRenewal },
+    { value: 'manual_adjustment', label: event.manualAdjustment },
+    { value: 'refund', label: event.refund },
+    { value: 'technical_retry', label: event.technicalRetry },
+  ] as const satisfies readonly Readonly<{
+    value: UsageEventType;
+    label: string;
+  }>[];
+}
 
-function quantityLabel(quantity: number) {
+function quantityLabel(quantity: number, locale: Locale) {
   if (quantity === 0) return '—';
-  return quantity > 0 ? `+${quantity}` : String(quantity);
+  const formatted = formatNumber({ value: Math.abs(quantity), locale });
+  return quantity > 0 ? `+${formatted}` : `−${formatted}`;
 }
 
 function usageHref(query: UsageScreenQuery, cursor: string) {
@@ -70,6 +77,8 @@ export function UsageScreen({
   periodBounds,
   pageSize,
   exportAction,
+  locale,
+  copy,
 }: Readonly<{
   subscription: Pick<
     SubscriptionPresentation,
@@ -80,6 +89,8 @@ export function UsageScreen({
   periodBounds: UsagePeriodBounds;
   pageSize: number;
   exportAction: UsageScreenExportAction;
+  locale: Locale;
+  copy: BillingMessages;
 }>) {
   const [exportError, setExportError] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -87,20 +98,21 @@ export function UsageScreen({
   if (subscription === null || usage === null) {
     return (
       <BillingPage
-        eyebrow="Your usage"
-        title="Usage ledger"
-        description="Track every analysis, retry, credit, refund, and billing event over time."
+        eyebrow={copy.usage.eyebrow}
+        title={copy.usage.title}
+        description={copy.usage.description}
+        copy={copy}
       >
         <BillingCard className="billing-state-card">
           <div className="billing-state-icon">
             <BillingIcon name="alert" />
           </div>
           <div role="alert">
-            <h2>Usage details are temporarily unavailable.</h2>
-            <p>Please try again. No usage data has been changed.</p>
+            <h2>{copy.usage.error.title}</h2>
+            <p>{copy.usage.error.description}</p>
           </div>
           <Link className="billing-button" href="/app/subscription/usage">
-            Try usage again
+            {copy.usage.error.retry}
           </Link>
         </BillingCard>
       </BillingPage>
@@ -121,7 +133,7 @@ export function UsageScreen({
   ).length;
   const credits = usage.items.filter((item) => item.quantity > 0).length;
   const breakdownTotal = included + retries + credits;
-  const breakdownLabel = `Usage breakdown: ${included} included analyses, ${retries} retries, ${credits} credit events.`;
+  const breakdownLabel = copy.usage.breakdown.label(included, retries, credits);
   const maxQuantity = Math.max(
     1,
     ...usage.items.map((item) => Math.abs(item.quantity)),
@@ -153,9 +165,10 @@ export function UsageScreen({
 
   return (
     <BillingPage
-      eyebrow="Your usage"
-      title="Usage ledger"
-      description="Track every analysis, retry, credit, refund, and billing event over time."
+      eyebrow={copy.usage.eyebrow}
+      title={copy.usage.title}
+      description={copy.usage.description}
+      copy={copy}
     >
       <BillingCard className="billing-usage-metrics">
         <div>
@@ -163,9 +176,11 @@ export function UsageScreen({
             <BillingIcon name="chart" />
           </div>
           <div>
-            <div className="billing-metric-label">Current period usage</div>
+            <div className="billing-metric-label">
+              {copy.usage.metrics.current}
+            </div>
             <div className="billing-metric-value">
-              {consumed} of {subscription.usage.limit}
+              {copy.usage.metrics.of(consumed, subscription.usage.limit)}
             </div>
             <div className="billing-progress" aria-hidden="true">
               <span style={{ width: `${usagePercent}%` }} />
@@ -175,16 +190,20 @@ export function UsageScreen({
         <div>
           <div className="billing-metric-icon billing-metric-symbol">◌</div>
           <div>
-            <div className="billing-metric-label">Remaining</div>
+            <div className="billing-metric-label">
+              {copy.usage.metrics.remaining}
+            </div>
             <div className="billing-metric-value">
-              {subscription.usage.remaining} analyses
+              {copy.usage.metrics.analyses(subscription.usage.remaining)}
             </div>
           </div>
         </div>
         <div>
           <div className="billing-metric-icon billing-metric-positive">＋</div>
           <div>
-            <div className="billing-metric-label">Extra credits</div>
+            <div className="billing-metric-label">
+              {copy.usage.metrics.extraCredits}
+            </div>
             <div className="billing-metric-value">
               {subscription.usage.extraCredits}
             </div>
@@ -195,7 +214,9 @@ export function UsageScreen({
             <BillingIcon name="plan" />
           </div>
           <div>
-            <div className="billing-metric-label">Reset date</div>
+            <div className="billing-metric-label">
+              {copy.usage.metrics.resetDate}
+            </div>
             <div className="billing-metric-value billing-reset-value">
               <time dateTime={subscription.resetAt}>
                 {subscription.resetAtLabel}
@@ -214,26 +235,26 @@ export function UsageScreen({
                 type="search"
                 name="search"
                 defaultValue={query.search}
-                placeholder="Search events…"
-                aria-label="Search usage events"
+                placeholder={copy.usage.filters.searchPlaceholder}
+                aria-label={copy.usage.filters.searchLabel}
               />
             </label>
             <select
-              aria-label="Date range"
+              aria-label={copy.usage.filters.dateRange}
               name="range"
               defaultValue={query.range}
             >
-              <option value="current">Current billing period</option>
-              <option value="last90">Last 90 days</option>
-              <option value="all">All time</option>
+              <option value="current">{copy.usage.filters.current}</option>
+              <option value="last90">{copy.usage.filters.last90}</option>
+              <option value="all">{copy.usage.filters.allTime}</option>
             </select>
             <select
-              aria-label="Event type"
+              aria-label={copy.usage.filters.eventType}
               name="eventType"
               defaultValue={query.eventType ?? 'all'}
             >
-              <option value="all">All event types</option>
-              {eventOptions.map((option) => (
+              <option value="all">{copy.usage.filters.allEvents}</option>
+              {eventOptions(copy).map((option) => (
                 <option value={option.value} key={option.value}>
                   {option.label}
                 </option>
@@ -243,7 +264,7 @@ export function UsageScreen({
               className="billing-button billing-button-small"
               type="submit"
             >
-              Apply
+              {copy.usage.filters.apply}
             </button>
             <button
               className="billing-button billing-button-small"
@@ -252,33 +273,38 @@ export function UsageScreen({
               disabled={exporting}
             >
               <BillingIcon name="download" />
-              {exporting ? 'Preparing…' : 'Export CSV'}
+              {exporting
+                ? copy.usage.export.preparing
+                : copy.usage.export.action}
             </button>
           </form>
           {exportError && (
             <p className="billing-inline-error" role="alert">
-              The CSV export could not be prepared.
+              {copy.usage.export.error}
             </p>
           )}
 
           {usage.items.length === 0 ? (
             <div className="billing-empty-state">
               <BillingIcon name="chart" />
-              <h2>No usage events found.</h2>
-              <p>Try clearing the search or choosing another event type.</p>
+              <h2>{copy.usage.empty.title}</h2>
+              <p>{copy.usage.empty.description}</p>
             </div>
           ) : (
             <>
               <div className="billing-table-wrap">
-                <table className="billing-table" aria-label="Usage activity">
+                <table
+                  className="billing-table"
+                  aria-label={copy.usage.table.label}
+                >
                   <thead>
                     <tr>
-                      <th>Date</th>
-                      <th>Event</th>
-                      <th>Source</th>
-                      <th>Quantity</th>
-                      <th>Status</th>
-                      <th>Remaining</th>
+                      <th>{copy.usage.table.date}</th>
+                      <th>{copy.usage.table.event}</th>
+                      <th>{copy.usage.table.source}</th>
+                      <th>{copy.usage.table.quantity}</th>
+                      <th>{copy.usage.table.status}</th>
+                      <th>{copy.usage.table.remaining}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -309,7 +335,7 @@ export function UsageScreen({
                                 : undefined
                           }
                         >
-                          {quantityLabel(item.quantity)}
+                          {quantityLabel(item.quantity, locale)}
                         </td>
                         <td>
                           <BillingStatus variant={item.status.variant}>
@@ -325,7 +351,7 @@ export function UsageScreen({
               <div
                 className="billing-mobile-cards"
                 role="list"
-                aria-label="Usage activity on mobile"
+                aria-label={copy.usage.table.mobileLabel}
               >
                 {usage.items.map((item) => (
                   <BillingCard
@@ -336,7 +362,7 @@ export function UsageScreen({
                   >
                     <div className="billing-mobile-row-head">
                       <b>{item.event.title}</b>
-                      <span>{quantityLabel(item.quantity)}</span>
+                      <span>{quantityLabel(item.quantity, locale)}</span>
                     </div>
                     <p className="billing-section-copy">
                       <time dateTime={item.occurredAt}>
@@ -345,7 +371,9 @@ export function UsageScreen({
                     </p>
                     <div className="billing-summary-row">
                       <span>{item.source.label}</span>
-                      <b>{item.remainingBalance} remaining</b>
+                      <b>
+                        {copy.usage.table.remainingValue(item.remainingBalance)}
+                      </b>
                     </div>
                     <BillingStatus variant={item.status.variant}>
                       {item.status.label}
@@ -359,13 +387,14 @@ export function UsageScreen({
           {(currentOffset > 0 || usage.nextCursor !== null) && (
             <div className="billing-pagination">
               <span>
-                Showing{' '}
-                {usage.items.length === 0
-                  ? '0'
-                  : `${currentOffset + 1}–${
-                      currentOffset + usage.items.length
-                    }`}{' '}
-                of {usage.totalCount}
+                {copy.usage.pagination.showing(
+                  usage.items.length === 0
+                    ? '0'
+                    : `${currentOffset + 1}–${
+                        currentOffset + usage.items.length
+                      }`,
+                  usage.totalCount,
+                )}
               </span>
               <div>
                 {currentOffset > 0 && (
@@ -376,7 +405,7 @@ export function UsageScreen({
                       String(Math.max(0, currentOffset - pageSize)),
                     )}
                   >
-                    Previous page
+                    {copy.usage.pagination.previous}
                   </Link>
                 )}
                 {usage.nextCursor !== null && (
@@ -384,7 +413,7 @@ export function UsageScreen({
                     className="billing-button billing-button-small"
                     href={usageHref(query, usage.nextCursor)}
                   >
-                    Next page
+                    {copy.usage.pagination.next}
                   </Link>
                 )}
               </div>
@@ -396,10 +425,14 @@ export function UsageScreen({
           <BillingCard className="billing-chart-card">
             <div className="billing-card-heading">
               <div>
-                <h2 className="billing-section-title">Usage breakdown</h2>
-                <p className="billing-section-copy">Visible activity</p>
+                <h2 className="billing-section-title">
+                  {copy.usage.breakdown.title}
+                </h2>
+                <p className="billing-section-copy">
+                  {copy.usage.breakdown.visible}
+                </p>
               </div>
-              <span className="billing-tag">Live data</span>
+              <span className="billing-tag">{copy.usage.breakdown.live}</span>
             </div>
             <figure
               className="billing-chart-figure"
@@ -426,7 +459,7 @@ export function UsageScreen({
             </figure>
             <div className="billing-chart-legend">
               <div className="billing-legend-row">
-                <span>Included analyses</span>
+                <span>{copy.usage.breakdown.included}</span>
                 <b>
                   {included}
                   {breakdownTotal > 0
@@ -435,7 +468,7 @@ export function UsageScreen({
                 </b>
               </div>
               <div className="billing-legend-row">
-                <span>Retries</span>
+                <span>{copy.usage.breakdown.retries}</span>
                 <b>
                   {retries}
                   {breakdownTotal > 0
@@ -444,23 +477,21 @@ export function UsageScreen({
                 </b>
               </div>
               <div className="billing-legend-row">
-                <span>Credit events</span>
+                <span>{copy.usage.breakdown.credits}</span>
                 <b>{credits}</b>
               </div>
             </div>
           </BillingCard>
 
           <BillingCard className="billing-how-card">
-            <h2 className="billing-section-title">How usage works</h2>
+            <h2 className="billing-section-title">{copy.usage.help.title}</h2>
             <div className="billing-how-item">
               <div className="billing-metric-icon">
                 <BillingIcon name="chart" />
               </div>
               <div>
-                <b>Most analyses use one included credit.</b>
-                <p>
-                  Technical retries do not consume another included analysis.
-                </p>
+                <b>{copy.usage.help.includedTitle}</b>
+                <p>{copy.usage.help.includedDescription}</p>
               </div>
             </div>
             <div className="billing-how-item">
@@ -468,11 +499,8 @@ export function UsageScreen({
                 ＋
               </div>
               <div>
-                <b>Credits add to your balance.</b>
-                <p>
-                  Renewals, refunds, and support adjustments are recorded
-                  automatically.
-                </p>
+                <b>{copy.usage.help.creditsTitle}</b>
+                <p>{copy.usage.help.creditsDescription}</p>
               </div>
             </div>
           </BillingCard>

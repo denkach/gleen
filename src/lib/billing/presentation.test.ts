@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { billingMessages } from '@/lib/i18n/messages/billing';
+
 import type {
   BillingSnapshot,
   InvoicePage,
@@ -101,6 +103,11 @@ const snapshot: BillingSnapshot = {
   recentActivity: [],
   availablePlans: [{ plan: prismPlan, prices: prismCatalog.prices }],
 };
+const englishOptions = {
+  locale: 'en',
+  copy: billingMessages.en,
+  timeZone: 'UTC',
+} as const;
 
 describe('billing presentation', () => {
   it('pairs current catalog features with the next purchasable upgrade in stable order', () => {
@@ -122,22 +129,25 @@ describe('billing presentation', () => {
       features: ['Upgrade A', 'Upgrade B'],
       purchasable: true,
     } as const;
-    const result = toLimitReachedPresentation({
-      ...snapshot,
-      currentPlan: starter,
-      currentPrice: null,
-      usage: {
-        used: 10,
-        reserved: 0,
-        remaining: 0,
-        limit: 10,
-        extraCredits: 0,
+    const result = toLimitReachedPresentation(
+      {
+        ...snapshot,
+        currentPlan: starter,
+        currentPrice: null,
+        usage: {
+          used: 10,
+          reserved: 0,
+          remaining: 0,
+          limit: 10,
+          extraCredits: 0,
+        },
+        availablePlans: [
+          { plan: starter, prices: [] },
+          { plan: upgrade, prices: [] },
+        ],
       },
-      availablePlans: [
-        { plan: starter, prices: [] },
-        { plan: upgrade, prices: [] },
-      ],
-    });
+      englishOptions,
+    );
 
     expect(result.limitUpgrade).toEqual({
       plan: upgrade,
@@ -160,22 +170,25 @@ describe('billing presentation', () => {
       ],
     });
     expect(
-      toLimitReachedPresentation({
-        ...snapshot,
-        currentPlan: starter,
-        currentPrice: null,
-        usage: {
-          used: 10,
-          reserved: 0,
-          remaining: 0,
-          limit: 10,
-          extraCredits: 0,
+      toLimitReachedPresentation(
+        {
+          ...snapshot,
+          currentPlan: starter,
+          currentPrice: null,
+          usage: {
+            used: 10,
+            reserved: 0,
+            remaining: 0,
+            limit: 10,
+            extraCredits: 0,
+          },
+          availablePlans: [
+            { plan: starter, prices: [] },
+            { plan: upgrade, prices: [] },
+          ],
         },
-        availablePlans: [
-          { plan: starter, prices: [] },
-          { plan: upgrade, prices: [] },
-        ],
-      }).limitUpgrade?.rows.map((row) => row.id),
+        englishOptions,
+      ).limitUpgrade?.rows.map((row) => row.id),
     ).toEqual([
       'starter-to-prism-pro-0',
       'starter-to-prism-pro-1',
@@ -190,11 +203,37 @@ describe('billing presentation', () => {
     expect(
       formatMoney({ amountMinor: 4900, currency: 'jpy', locale: 'en' }),
     ).toBe('¥4,900');
-    expect(formatMoney({ amountMinor: 4900, currency: 'usd' })).toBe('$49.00');
+    expect(
+      formatMoney({ amountMinor: 4900, currency: 'eur', locale: 'de' }),
+    ).toBe('49,00 €');
+    expect(
+      formatMoney({ amountMinor: 4900, currency: 'jpy', locale: 'uk' }),
+    ).toBe('4 900 ¥');
     expect(billingPresentationDefaults).toEqual({
-      locale: 'en-US',
       timeZone: 'UTC',
     });
+  });
+
+  it('requires an explicit product locale and localizes semantic billing labels', () => {
+    expect(() =>
+      formatMoney({ amountMinor: 4900, currency: 'usd' } as never),
+    ).toThrow();
+
+    const presented = toSubscriptionPresentation(snapshot, {
+      locale: 'de',
+      copy: billingMessages.de,
+      now: '2026-07-30T00:00:00.000Z',
+      paymentMethod: { status: 'unavailable' },
+    } as never);
+
+    expect(presented.entitlement).toMatchObject({
+      key: 'active',
+      label: 'Aktiv',
+    });
+    expect(presented.paymentMethod.label).toBe(
+      'Wird im Abrechnungsportal verwaltet',
+    );
+    expect(presented.resetAtLabel).toBe('01.08.2026');
   });
 
   it('maps paid-through status deterministically', () => {
@@ -223,6 +262,7 @@ describe('billing presentation', () => {
 
   it('maps live catalog rows consistently while preserving historical invoice money', () => {
     const subscription = toSubscriptionPresentation(snapshot, {
+      ...englishOptions,
       now: '2026-07-30T00:00:00.000Z',
       paymentMethod: {
         status: 'available',
@@ -232,7 +272,11 @@ describe('billing presentation', () => {
         expYear: 2028,
       },
     });
-    const checkout = toCheckoutPresentation(prismPlan, prismPrice);
+    const checkout = toCheckoutPresentation(
+      prismPlan,
+      prismPrice,
+      englishOptions,
+    );
     const invoices: InvoicePage = {
       items: [
         {
@@ -257,7 +301,7 @@ describe('billing presentation', () => {
       nextCursor: null,
       totalCount: 1,
     };
-    const invoice = toInvoicePresentation(invoices).items[0];
+    const invoice = toInvoicePresentation(invoices, englishOptions).items[0];
 
     expect(subscription.currentPrice).toMatchObject({
       amountMinor: 4900,
@@ -279,7 +323,7 @@ describe('billing presentation', () => {
       },
       savingsPercent: 69,
     });
-    expect(subscription.resetAtLabel).toBe('Aug 1, 2026');
+    expect(subscription.resetAtLabel).toBe('1 Aug 2026');
     expect(subscription.paymentMethod).toEqual({
       status: 'available',
       label: 'Visa •••• 4242',
@@ -370,7 +414,7 @@ describe('billing presentation', () => {
       nextCursor: 'next',
       totalCount: 5,
     };
-    const presented = toUsagePresentation(usage);
+    const presented = toUsagePresentation(usage, englishOptions);
 
     expect(presented.items.map(({ status }) => status)).toEqual([
       { key: 'reserved', label: 'Reserved', variant: 'warning' },
@@ -390,13 +434,14 @@ describe('billing presentation', () => {
         label: 'Analysis pipeline',
         detail: 'Knowledge Channel',
       },
-      occurredAtLabel: 'Jul 30, 2026, 12:30 PM',
+      occurredAtLabel: '30 Jul 2026, 12:30',
     });
   });
 
   it('presents an explicit unavailable payment method without fixture details', () => {
     expect(
       toSubscriptionPresentation(snapshot, {
+        ...englishOptions,
         now: '2026-07-30T00:00:00.000Z',
         paymentMethod: { status: 'unavailable' },
       }).paymentMethod,
@@ -433,9 +478,11 @@ describe('billing presentation', () => {
       totalCount: 1,
     };
 
-    expect(toInvoicePresentation(invoicePage).items[0]).toMatchObject({
+    expect(
+      toInvoicePresentation(invoicePage, englishOptions).items[0],
+    ).toMatchObject({
       status: { label: 'Failed', variant: 'negative' },
-      createdAtLabel: 'Jul 30, 2026',
+      createdAtLabel: '30 Jul 2026',
     });
   });
 
@@ -444,12 +491,12 @@ describe('billing presentation', () => {
     const unavailable = toCheckoutPresentation(
       { ...team, purchasable: false },
       { ...prismPrice, planId: team.id },
-      { locale: 'en' },
+      englishOptions,
     );
     const available = toCheckoutPresentation(
       { ...team, purchasable: true },
       { ...prismPrice, planId: team.id },
-      { locale: 'en' },
+      englishOptions,
     );
 
     expect(unavailable.action).toEqual({
@@ -461,10 +508,14 @@ describe('billing presentation', () => {
 
   it('rejects a valid price slug owned by a different checkout plan', () => {
     expect(() =>
-      toCheckoutPresentation(prismPlan, {
-        ...prismPrice,
-        planId: 'starter',
-      }),
+      toCheckoutPresentation(
+        prismPlan,
+        {
+          ...prismPrice,
+          planId: 'starter',
+        },
+        englishOptions,
+      ),
     ).toThrow('Catalog price does not belong to the selected plan');
   });
 
@@ -477,10 +528,10 @@ describe('billing presentation', () => {
       availableYears: [2026, 2024],
     };
 
-    expect(toInvoiceSummaryPresentation(summary)).toEqual({
+    expect(toInvoiceSummaryPresentation(summary, englishOptions)).toEqual({
       totalCount: 87,
       lastInvoiceAt: '2026-07-18T00:00:00.000Z',
-      lastInvoiceAtLabel: 'Jul 18, 2026',
+      lastInvoiceAtLabel: '18 Jul 2026',
       yearToDateSpendLabel: '$294.00',
       availableYears: [2026, 2024],
     });

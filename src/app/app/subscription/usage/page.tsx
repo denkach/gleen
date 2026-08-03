@@ -19,16 +19,21 @@ import {
   type UsagePeriodBounds,
 } from '@/lib/billing/usage-query';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { billingMessages } from '@/lib/i18n/messages/billing';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
-export const metadata: Metadata = {
-  title: 'Usage ledger — Gleen',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return { title: billingMessages[locale].metadata.usage };
+}
 
 type UsagePageProps = Readonly<{
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }>;
 
 export default async function UsagePage({ searchParams }: UsagePageProps) {
+  const locale = await getRequestLocale();
+  const copy = billingMessages[locale];
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -63,13 +68,16 @@ export default async function UsagePage({ searchParams }: UsagePageProps) {
       limit: 25,
       ...periodBounds,
     });
-    const presentedSubscription = toSubscriptionPresentation(snapshot);
+    const presentedSubscription = toSubscriptionPresentation(snapshot, {
+      locale,
+      copy,
+    });
     subscription = {
       usage: presentedSubscription.usage,
       resetAt: presentedSubscription.resetAt,
       resetAtLabel: presentedSubscription.resetAtLabel,
     };
-    usage = toUsagePresentation(ledger);
+    usage = toUsagePresentation(ledger, { locale, copy });
   } catch {
     // The screen keeps filters available and renders its explicit error state.
   }
@@ -82,6 +90,8 @@ export default async function UsagePage({ searchParams }: UsagePageProps) {
       periodBounds={periodBounds}
       pageSize={25}
       exportAction={exportUsageCsv}
+      locale={locale}
+      copy={copy}
     />
   );
 }

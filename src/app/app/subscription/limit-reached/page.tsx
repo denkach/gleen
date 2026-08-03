@@ -8,12 +8,17 @@ import {
   type SupabaseBillingClient,
 } from '@/lib/billing/supabase-repository';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { billingMessages } from '@/lib/i18n/messages/billing';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
-export const metadata: Metadata = {
-  title: 'Analysis limit reached — Gleen',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return { title: billingMessages[locale].metadata.limitReached };
+}
 
 export default async function LimitReachedPage() {
+  const locale = await getRequestLocale();
+  const copy = billingMessages[locale];
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -24,7 +29,11 @@ export default async function LimitReachedPage() {
     supabase as unknown as SupabaseBillingClient,
   ).getOwnedSnapshot(user.id);
   const now = new Date().toISOString();
-  const presentation = toLimitReachedPresentation(snapshot, { now });
+  const presentation = toLimitReachedPresentation(snapshot, {
+    now,
+    locale,
+    copy,
+  });
   const consumed = presentation.usage.used + presentation.usage.reserved;
   if (
     presentation.usage.limit <= 0 ||
@@ -34,5 +43,12 @@ export default async function LimitReachedPage() {
     redirect('/app/subscription');
   }
 
-  return <LimitReachedScreen presentation={presentation} now={now} />;
+  return (
+    <LimitReachedScreen
+      presentation={presentation}
+      now={now}
+      locale={locale}
+      copy={copy}
+    />
+  );
 }

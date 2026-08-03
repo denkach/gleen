@@ -1,17 +1,25 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getOwnedInvoiceSummary, getOwnedSnapshot, getUser, listOwnedInvoices } =
-  vi.hoisted(() => ({
-    getOwnedInvoiceSummary: vi.fn(),
-    getOwnedSnapshot: vi.fn(),
-    getUser: vi.fn(),
-    listOwnedInvoices: vi.fn(),
-  }));
+const {
+  getOwnedInvoiceSummary,
+  getOwnedSnapshot,
+  getRequestLocale,
+  getUser,
+  listOwnedInvoices,
+} = vi.hoisted(() => ({
+  getOwnedInvoiceSummary: vi.fn(),
+  getOwnedSnapshot: vi.fn(),
+  getRequestLocale: vi.fn(),
+  getUser: vi.fn(),
+  listOwnedInvoices: vi.fn(),
+}));
 
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
 }));
+
+vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: async () => ({ auth: { getUser } }),
@@ -68,6 +76,7 @@ describe('InvoicesPage year ownership', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-12-31T23:30:00.000Z'));
     getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } } });
+    getRequestLocale.mockResolvedValue('en');
     getOwnedSnapshot.mockResolvedValue({});
     getOwnedInvoiceSummary.mockImplementation(
       async (_userId: string, year: number) => ({
