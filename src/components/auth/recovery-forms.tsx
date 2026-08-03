@@ -36,7 +36,7 @@ export function ForgotPasswordForm({ copy }: RecoveryFormProps) {
   const message = statusMessage(copy, state);
 
   return (
-    <form action={action}>
+    <form action={action} noValidate>
       <div className="form-group">
         <label className="form-label" htmlFor="recovery-email">
           {copy.screens.forgot.emailLabel}
@@ -77,7 +77,7 @@ export function ResetPasswordForm({ copy }: RecoveryFormProps) {
   }, [state.redirectTo]);
 
   return (
-    <form action={action}>
+    <form action={action} noValidate>
       <PasswordFields confirm copy={copy.password} />
       <button
         className="btn btn-primary auth-submit"

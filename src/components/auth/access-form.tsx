@@ -97,7 +97,7 @@ export function AccessForm({
         </button>
       </form>
       <div className="auth-divider">{copy.access.emailDivider}</div>
-      <form action={emailFormAction}>
+      <form action={emailFormAction} noValidate>
         <input type="hidden" name="intent" value={intent} />
         <input type="hidden" name="next" value={nextPath} />
         <div className="form-group">

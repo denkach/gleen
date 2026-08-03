@@ -26,6 +26,7 @@ import VerifyEmailPage from '@/app/(auth)/verify-email/page';
 import ForgotPasswordPage from '@/app/(auth)/forgot-password/page';
 import ResetPasswordPage from '@/app/(auth)/reset-password/page';
 import SessionExpiredPage from '@/app/(auth)/session-expired/page';
+import { ForgotPasswordForm, ResetPasswordForm } from './recovery-forms';
 
 describe('account access and recovery routes', () => {
   it('matches the approved sign-in hierarchy and offers both email modes', () => {
@@ -67,17 +68,94 @@ describe('account access and recovery routes', () => {
     });
     render(<AccessForm intent="sign-in" copy={authMessages.de} />);
 
-    await user.type(
-      screen.getByLabelText('E-Mail-Adresse'),
-      'alex@example.com',
-    );
-    await user.click(
-      screen.getByRole('button', { name: 'Sicheren Anmeldelink senden' }),
-    );
+    await user.type(screen.getByLabelText('E-Mail-Adresse'), 'keine-email');
+    const submit = screen.getByRole('button', {
+      name: 'Sicheren Anmeldelink senden',
+    });
+    expect(submit.closest('form')).toHaveProperty('noValidate', true);
+    await user.click(submit);
 
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(
         'Gib eine gültige E-Mail-Adresse ein.',
+      ),
+    );
+  });
+
+  it('submits a natively short password to the localized action path', async () => {
+    const user = userEvent.setup();
+    const { signInWithPassword } = await import('@/lib/auth/actions');
+    vi.mocked(signInWithPassword).mockResolvedValueOnce({
+      status: 'error',
+      code: 'password_too_short',
+      email: 'alex@example.com',
+    });
+    render(<AccessForm intent="sign-in" copy={authMessages.de} />);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Stattdessen Passwort verwenden' }),
+    );
+    await user.type(
+      screen.getByLabelText('E-Mail-Adresse'),
+      'alex@example.com',
+    );
+    await user.type(screen.getByLabelText('Passwort'), 'kurz');
+    const submit = screen.getByRole('button', {
+      name: 'Mit Passwort anmelden',
+    });
+    expect(submit.closest('form')).toHaveProperty('noValidate', true);
+    await user.click(submit);
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Verwende mindestens 8 Zeichen.',
+      ),
+    );
+  });
+
+  it('submits an invalid recovery email to the localized action path', async () => {
+    const user = userEvent.setup();
+    const { sendPasswordReset } = await import('@/lib/auth/actions');
+    vi.mocked(sendPasswordReset).mockResolvedValueOnce({
+      status: 'error',
+      code: 'email_invalid',
+    });
+    render(<ForgotPasswordForm copy={authMessages.de} />);
+
+    await user.type(screen.getByLabelText('E-Mail-Adresse'), 'keine-email');
+    const submit = screen.getByRole('button', {
+      name: 'Link zum Zurücksetzen senden',
+    });
+    expect(submit.closest('form')).toHaveProperty('noValidate', true);
+    await user.click(submit);
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Gib eine gültige E-Mail-Adresse ein.',
+      ),
+    );
+  });
+
+  it('submits a natively short reset password to the localized action path', async () => {
+    const user = userEvent.setup();
+    const { updatePassword } = await import('@/lib/auth/actions');
+    vi.mocked(updatePassword).mockResolvedValueOnce({
+      status: 'error',
+      code: 'password_too_short',
+    });
+    render(<ResetPasswordForm copy={authMessages.de} />);
+
+    await user.type(screen.getByLabelText('Passwort'), 'kurz');
+    await user.type(screen.getByLabelText('Passwort bestätigen'), 'kurz');
+    const submit = screen.getByRole('button', {
+      name: 'Passwort aktualisieren',
+    });
+    expect(submit.closest('form')).toHaveProperty('noValidate', true);
+    await user.click(submit);
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Verwende mindestens 8 Zeichen.',
       ),
     );
   });
