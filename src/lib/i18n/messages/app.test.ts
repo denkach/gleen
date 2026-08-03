@@ -37,7 +37,9 @@ describe('appMessages', () => {
     expect(appMessages.uk.processing.stages.transcript).toBe(
       'Пошук транскрипту',
     );
-    expect(appMessages.uk.processing.rails.flashcards).toBe('КАРТКИ');
+    expect(appMessages.uk.processing.artifactStates.flashcards.queued).toBe(
+      'Картки в черзі',
+    );
   });
 
   it('formats localized usage plural forms through the shared formatter', () => {
@@ -60,5 +62,42 @@ describe('appMessages', () => {
     expect(appIntakeErrorMessage(appMessages.uk, undefined)).toBe(
       'Не вдалося підготувати аналіз. Спробуйте ще раз.',
     );
+  });
+
+  it('keeps actionable intake failures distinct in every locale', () => {
+    for (const locale of supportedLocales) {
+      expect(appMessages[locale].newAnalysis.errors).toMatchObject({
+        live_not_ready: expect.any(String),
+        unsupported_duration: expect.any(String),
+        transcript_language_unavailable: expect.any(String),
+      });
+      expect(
+        new Set([
+          appMessages[locale].newAnalysis.errors.live_not_ready,
+          appMessages[locale].newAnalysis.errors.unsupported_duration,
+          appMessages[locale].newAnalysis.errors
+            .transcript_language_unavailable,
+        ]).size,
+      ).toBe(3);
+    }
+  });
+
+  it('authors artifact-state grammar per locale and artifact', () => {
+    expect(appMessages.uk.processing).toMatchObject({
+      artifactStates: {
+        summary: { ready: 'Конспект готовий' },
+        flashcards: { ready: 'Картки готові' },
+      },
+    });
+    expect(appMessages.de.processing).toMatchObject({
+      artifactStates: {
+        summary: { ready: 'Die Zusammenfassung ist bereit' },
+      },
+    });
+    expect(appMessages.es.processing).toMatchObject({
+      artifactStates: {
+        flashcards: { ready: 'Las tarjetas están listas' },
+      },
+    });
   });
 });

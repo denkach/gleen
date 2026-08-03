@@ -86,7 +86,13 @@ export const appMessages = defineMessages({
         invalid_url:
           'Enter a supported YouTube URL and valid analysis options.',
         video_unavailable: 'This video is private, restricted, or unavailable.',
+        live_not_ready:
+          'This live video is not ready to analyze yet. Try again after the stream ends.',
+        unsupported_duration:
+          'This video duration is not supported. Choose a shorter video and try again.',
         transcript_unavailable: 'A transcript is not available for this video.',
+        transcript_language_unavailable:
+          'The transcript language is not supported for analysis. Choose another video.',
         provider_outage:
           'The video service is temporarily unavailable. Try again.',
         no_artifacts: 'Choose at least one artifact.',
@@ -139,17 +145,31 @@ export const appMessages = defineMessages({
         structuring: 'Structuring key ideas',
         artifacts: 'Creating knowledge artifacts',
       },
-      rails: {
-        summary: 'SUMMARY',
-        flashcards: 'FLASHCARDS',
-        timestamps: 'TIMESTAMPS',
-        export: 'EXPORT',
-      },
-      railStates: {
-        queued: 'queued',
-        ready: 'ready',
-        failed: 'failed',
-        notSelected: 'not selected',
+      artifactStates: {
+        summary: {
+          queued: 'Summary is queued',
+          ready: 'Summary is ready',
+          failed: 'Summary failed',
+          notSelected: 'Summary not selected',
+        },
+        flashcards: {
+          queued: 'Flashcards are queued',
+          ready: 'Flashcards are ready',
+          failed: 'Flashcards failed',
+          notSelected: 'Flashcards not selected',
+        },
+        timestamps: {
+          queued: 'Timestamps are queued',
+          ready: 'Timestamps are ready',
+          failed: 'Timestamps failed',
+          notSelected: 'Timestamps not selected',
+        },
+        export: {
+          queued: 'Export is queued',
+          ready: 'Export is ready',
+          failed: 'Export failed',
+          notSelected: 'Export not selected',
+        },
       },
       leaveNote:
         'You can safely leave this page. We’ll save the result to your history.',
@@ -280,7 +300,13 @@ export const appMessages = defineMessages({
         invalid_url:
           'Введіть підтримувану URL-адресу YouTube і правильні параметри аналізу.',
         video_unavailable: 'Це відео приватне, обмежене або недоступне.',
+        live_not_ready:
+          'Ця пряма трансляція ще не готова до аналізу. Спробуйте після її завершення.',
+        unsupported_duration:
+          'Тривалість цього відео не підтримується. Виберіть коротше відео.',
         transcript_unavailable: 'Для цього відео немає доступного транскрипту.',
+        transcript_language_unavailable:
+          'Мова транскрипту не підтримується для аналізу. Виберіть інше відео.',
         provider_outage: 'Відеосервіс тимчасово недоступний. Спробуйте ще раз.',
         no_artifacts: 'Виберіть принаймні один матеріал.',
         session_expired: 'Ваш сеанс завершено. Увійдіть і спробуйте ще раз.',
@@ -332,17 +358,31 @@ export const appMessages = defineMessages({
         structuring: 'Структурування ключових ідей',
         artifacts: 'Створення навчальних матеріалів',
       },
-      rails: {
-        summary: 'КОНСПЕКТ',
-        flashcards: 'КАРТКИ',
-        timestamps: 'ТАЙМКОДИ',
-        export: 'ЕКСПОРТ',
-      },
-      railStates: {
-        queued: 'у черзі',
-        ready: 'готово',
-        failed: 'помилка',
-        notSelected: 'не вибрано',
+      artifactStates: {
+        summary: {
+          queued: 'Конспект у черзі',
+          ready: 'Конспект готовий',
+          failed: 'Не вдалося створити конспект',
+          notSelected: 'Конспект не вибрано',
+        },
+        flashcards: {
+          queued: 'Картки в черзі',
+          ready: 'Картки готові',
+          failed: 'Не вдалося створити картки',
+          notSelected: 'Картки не вибрано',
+        },
+        timestamps: {
+          queued: 'Таймкоди в черзі',
+          ready: 'Таймкоди готові',
+          failed: 'Не вдалося створити таймкоди',
+          notSelected: 'Таймкоди не вибрано',
+        },
+        export: {
+          queued: 'Експорт у черзі',
+          ready: 'Експорт готовий',
+          failed: 'Не вдалося експортувати',
+          notSelected: 'Експорт не вибрано',
+        },
       },
       leaveNote:
         'Можете безпечно залишити сторінку. Результат збережеться в історії.',
@@ -473,7 +513,13 @@ export const appMessages = defineMessages({
         invalid_url:
           'Введите поддерживаемый URL-адрес YouTube и правильные параметры анализа.',
         video_unavailable: 'Это видео закрыто, ограничено или недоступно.',
+        live_not_ready:
+          'Эта прямая трансляция ещё не готова к анализу. Попробуйте после её завершения.',
+        unsupported_duration:
+          'Длительность этого видео не поддерживается. Выберите более короткое видео.',
         transcript_unavailable: 'Для этого видео нет доступного транскрипта.',
+        transcript_language_unavailable:
+          'Язык транскрипта не поддерживается для анализа. Выберите другое видео.',
         provider_outage: 'Видеосервис временно недоступен. Попробуйте ещё раз.',
         no_artifacts: 'Выберите хотя бы один материал.',
         session_expired: 'Сеанс завершён. Войдите и попробуйте ещё раз.',
@@ -525,17 +571,31 @@ export const appMessages = defineMessages({
         structuring: 'Структурирование ключевых идей',
         artifacts: 'Создание учебных материалов',
       },
-      rails: {
-        summary: 'КОНСПЕКТ',
-        flashcards: 'КАРТОЧКИ',
-        timestamps: 'ТАЙМКОДЫ',
-        export: 'ЭКСПОРТ',
-      },
-      railStates: {
-        queued: 'в очереди',
-        ready: 'готово',
-        failed: 'ошибка',
-        notSelected: 'не выбрано',
+      artifactStates: {
+        summary: {
+          queued: 'Конспект в очереди',
+          ready: 'Конспект готов',
+          failed: 'Не удалось создать конспект',
+          notSelected: 'Конспект не выбран',
+        },
+        flashcards: {
+          queued: 'Карточки в очереди',
+          ready: 'Карточки готовы',
+          failed: 'Не удалось создать карточки',
+          notSelected: 'Карточки не выбраны',
+        },
+        timestamps: {
+          queued: 'Таймкоды в очереди',
+          ready: 'Таймкоды готовы',
+          failed: 'Не удалось создать таймкоды',
+          notSelected: 'Таймкоды не выбраны',
+        },
+        export: {
+          queued: 'Экспорт в очереди',
+          ready: 'Экспорт готов',
+          failed: 'Не удалось экспортировать',
+          notSelected: 'Экспорт не выбран',
+        },
       },
       leaveNote:
         'Можно безопасно покинуть страницу. Результат сохранится в истории.',
@@ -670,8 +730,14 @@ export const appMessages = defineMessages({
           'Introduce una URL de YouTube compatible y opciones de análisis válidas.',
         video_unavailable:
           'Este vídeo es privado, está restringido o no está disponible.',
+        live_not_ready:
+          'Este vídeo en directo aún no está listo para analizarse. Inténtalo cuando termine la emisión.',
+        unsupported_duration:
+          'La duración de este vídeo no es compatible. Elige un vídeo más corto.',
         transcript_unavailable:
           'No hay una transcripción disponible para este vídeo.',
+        transcript_language_unavailable:
+          'El idioma de la transcripción no es compatible con el análisis. Elige otro vídeo.',
         provider_outage:
           'El servicio de vídeo no está disponible temporalmente. Inténtalo de nuevo.',
         no_artifacts: 'Elige al menos un material.',
@@ -726,17 +792,31 @@ export const appMessages = defineMessages({
         structuring: 'Estructurando las ideas clave',
         artifacts: 'Creando materiales de conocimiento',
       },
-      rails: {
-        summary: 'RESUMEN',
-        flashcards: 'TARJETAS',
-        timestamps: 'MARCAS',
-        export: 'EXPORTAR',
-      },
-      railStates: {
-        queued: 'en cola',
-        ready: 'listo',
-        failed: 'error',
-        notSelected: 'no seleccionado',
+      artifactStates: {
+        summary: {
+          queued: 'El resumen está en cola',
+          ready: 'El resumen está listo',
+          failed: 'No se pudo crear el resumen',
+          notSelected: 'El resumen no está seleccionado',
+        },
+        flashcards: {
+          queued: 'Las tarjetas están en cola',
+          ready: 'Las tarjetas están listas',
+          failed: 'No se pudieron crear las tarjetas',
+          notSelected: 'Las tarjetas no están seleccionadas',
+        },
+        timestamps: {
+          queued: 'Las marcas de tiempo están en cola',
+          ready: 'Las marcas de tiempo están listas',
+          failed: 'No se pudieron crear las marcas de tiempo',
+          notSelected: 'Las marcas de tiempo no están seleccionadas',
+        },
+        export: {
+          queued: 'La exportación está en cola',
+          ready: 'La exportación está lista',
+          failed: 'No se pudo crear la exportación',
+          notSelected: 'La exportación no está seleccionada',
+        },
       },
       leaveNote:
         'Puedes salir de esta página con seguridad. Guardaremos el resultado en tu historial.',
@@ -873,8 +953,14 @@ export const appMessages = defineMessages({
           'Gib eine unterstützte YouTube-URL und gültige Analyseoptionen ein.',
         video_unavailable:
           'Dieses Video ist privat, eingeschränkt oder nicht verfügbar.',
+        live_not_ready:
+          'Dieses Livevideo ist noch nicht zur Analyse bereit. Versuche es nach Ende des Streams erneut.',
+        unsupported_duration:
+          'Die Dauer dieses Videos wird nicht unterstützt. Wähle ein kürzeres Video.',
         transcript_unavailable:
           'Für dieses Video ist kein Transkript verfügbar.',
+        transcript_language_unavailable:
+          'Die Sprache des Transkripts wird für die Analyse nicht unterstützt. Wähle ein anderes Video.',
         provider_outage:
           'Der Videodienst ist vorübergehend nicht verfügbar. Bitte versuche es erneut.',
         no_artifacts: 'Wähle mindestens ein Material aus.',
@@ -929,17 +1015,31 @@ export const appMessages = defineMessages({
         structuring: 'Kernideen strukturieren',
         artifacts: 'Wissensmaterialien erstellen',
       },
-      rails: {
-        summary: 'ZUSAMMENFASSUNG',
-        flashcards: 'LERNKARTEN',
-        timestamps: 'ZEITMARKEN',
-        export: 'EXPORT',
-      },
-      railStates: {
-        queued: 'in Warteschlange',
-        ready: 'bereit',
-        failed: 'fehlgeschlagen',
-        notSelected: 'nicht ausgewählt',
+      artifactStates: {
+        summary: {
+          queued: 'Die Zusammenfassung ist in der Warteschlange',
+          ready: 'Die Zusammenfassung ist bereit',
+          failed: 'Die Zusammenfassung ist fehlgeschlagen',
+          notSelected: 'Die Zusammenfassung ist nicht ausgewählt',
+        },
+        flashcards: {
+          queued: 'Die Lernkarten sind in der Warteschlange',
+          ready: 'Die Lernkarten sind bereit',
+          failed: 'Die Lernkarten sind fehlgeschlagen',
+          notSelected: 'Die Lernkarten sind nicht ausgewählt',
+        },
+        timestamps: {
+          queued: 'Die Zeitmarken sind in der Warteschlange',
+          ready: 'Die Zeitmarken sind bereit',
+          failed: 'Die Zeitmarken sind fehlgeschlagen',
+          notSelected: 'Die Zeitmarken sind nicht ausgewählt',
+        },
+        export: {
+          queued: 'Der Export ist in der Warteschlange',
+          ready: 'Der Export ist bereit',
+          failed: 'Der Export ist fehlgeschlagen',
+          notSelected: 'Der Export ist nicht ausgewählt',
+        },
       },
       leaveNote:
         'Du kannst diese Seite sicher verlassen. Wir speichern das Ergebnis in deinem Verlauf.',

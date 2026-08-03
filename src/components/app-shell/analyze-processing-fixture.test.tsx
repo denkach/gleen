@@ -94,10 +94,10 @@ describe('AnalyzeProcessingFixture', () => {
 
   it('always exposes the four approved artifact rails', () => {
     render(<AnalyzeProcessingFixture />);
-    expect(screen.getByText('SUMMARY')).toBeInTheDocument();
-    expect(screen.getByText('FLASHCARDS')).toBeInTheDocument();
-    expect(screen.getByText('TIMESTAMPS')).toBeInTheDocument();
-    expect(screen.getByText('EXPORT')).toBeInTheDocument();
+    expect(screen.getAllByText('Summary is queued')).toHaveLength(2);
+    expect(screen.getAllByText('Flashcards not selected')).toHaveLength(2);
+    expect(screen.getAllByText('Timestamps are queued')).toHaveLength(2);
+    expect(screen.getAllByText('Export is queued')).toHaveLength(2);
     expect(screen.queryByText('TRANSCRIPT')).not.toBeInTheDocument();
     expect(visual()).toHaveAttribute(
       'data-submitted-url',

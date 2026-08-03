@@ -67,14 +67,13 @@ export function AnalyzeProcessingVisual({
       ? (artifactStates?.[artifactKind] ?? (isComplete ? 'ready' : 'queued'))
       : 'not selected';
   };
-  const railStateCopy = (value: ArtifactRailState) =>
-    value === 'not selected'
-      ? copy.railStates.notSelected
-      : copy.railStates[value];
-  const semanticRailLabel = (railId: ArtifactRailId) => {
-    const label = copy.rails[railId].toLocaleLowerCase();
-    return `${label.charAt(0).toLocaleUpperCase()}${label.slice(1)}`;
-  };
+  const artifactStateCopy = (
+    railId: ArtifactRailId,
+    value: ArtifactRailState,
+  ) =>
+    copy.artifactStates[railId][
+      value === 'not selected' ? 'notSelected' : value
+    ];
 
   useEffect(() => {
     const previous = previousMode.current;
@@ -129,8 +128,7 @@ export function AnalyzeProcessingVisual({
             <ul className="sr-only" aria-label={copy.artifactStatus}>
               {artifactRailDefinitions.map((rail) => (
                 <li key={rail.id}>
-                  {semanticRailLabel(rail.id)}{' '}
-                  {railStateCopy(railState(rail.id))}
+                  {artifactStateCopy(rail.id, railState(rail.id))}
                 </li>
               ))}
             </ul>
@@ -178,9 +176,10 @@ export function AnalyzeProcessingVisual({
               <div className="analyze-rails" aria-hidden="true">
                 {artifactRailDefinitions.map((rail) => (
                   <div className={`analyze-rail ${rail.tone}`} key={rail.id}>
-                    <span>{copy.rails[rail.id]}</span>
+                    <span>
+                      {artifactStateCopy(rail.id, railState(rail.id))}
+                    </span>
                     <span className="analyze-track" />
-                    <small>{railStateCopy(railState(rail.id))}</small>
                   </div>
                 ))}
               </div>

@@ -7,7 +7,10 @@ import {
 export type IntakeActionErrorCode =
   | 'invalid_url'
   | 'video_unavailable'
+  | 'live_not_ready'
+  | 'unsupported_duration'
   | 'transcript_unavailable'
+  | 'transcript_language_unavailable'
   | 'provider_outage'
   | 'no_artifacts'
   | 'session_expired'

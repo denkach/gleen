@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { unavailableUsage } from '@/lib/app-shell';
@@ -70,7 +70,13 @@ describe('AppShell', () => {
       document.getElementById('app-shell-unavailable-description'),
     ).toHaveTextContent('In dieser Version nicht verfügbar');
     expect(
-      screen.getByRole('button', { name: 'Sprache: Deutsch' }),
+      screen.getAllByRole('button', { name: 'Sprache: Deutsch' }),
+    ).toHaveLength(2);
+    expect(
+      within(document.querySelector('.mobile-topbar') as HTMLElement).getByRole(
+        'button',
+        { name: 'Sprache: Deutsch' },
+      ),
     ).toBeEnabled();
     expect(screen.getByText('Arbeitsbereich')).toBeInTheDocument();
     expect(screen.getByText('Hilfe')).toBeInTheDocument();

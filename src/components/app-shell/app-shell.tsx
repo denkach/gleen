@@ -140,7 +140,11 @@ export function AppShell({
         <header className="mobile-topbar">
           <Brand label={copy.shell.brandHome} />
           <div className="topbar-actions">
-            <UnavailableButton label={copy.shell.notifications} icon="bell" />
+            <LocaleSwitcher
+              locale={locale}
+              copy={localeSwitcherCopy}
+              variant="app"
+            />
             <span className="avatar">{identity.initials}</span>
           </div>
         </header>

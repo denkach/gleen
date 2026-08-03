@@ -195,9 +195,7 @@ describe('InlineAnalysisProcessing', () => {
         retryAction={vi.fn()}
       />,
     );
-    expect(screen.getByText('FLASHCARDS').parentElement).toHaveTextContent(
-      'not selected',
-    );
+    expect(screen.getAllByText('Flashcards not selected')).toHaveLength(2);
     expect(
       screen.getByRole('list', { name: 'Artifact status' }),
     ).toHaveTextContent('Flashcards not selected');
@@ -418,12 +416,8 @@ describe('InlineAnalysisProcessing', () => {
       />,
     );
 
-    expect(screen.getByText('SUMMARY').parentElement).toHaveTextContent(
-      'ready',
-    );
-    expect(screen.getByText('TIMESTAMPS').parentElement).toHaveTextContent(
-      'failed',
-    );
+    expect(screen.getAllByText('Summary is ready')).toHaveLength(2);
+    expect(screen.getAllByText('Timestamps failed')).toHaveLength(2);
     expect(
       screen.getByRole('button', { name: 'View available results' }),
     ).toBeVisible();
@@ -433,9 +427,7 @@ describe('InlineAnalysisProcessing', () => {
     expect(retryAction).toHaveBeenCalledTimes(1);
     const formData = retryAction.mock.calls[0]?.[0] as FormData;
     expect(formData.get('analysisId')).toBe(analysisId);
-    expect(screen.getByText('SUMMARY').parentElement).toHaveTextContent(
-      'ready',
-    );
+    expect(screen.getAllByText('Summary is ready')).toHaveLength(2);
     await waitFor(() => expect(refreshAction).toHaveBeenCalledTimes(2));
     expect(
       screen.queryByRole('button', { name: 'View available results' }),

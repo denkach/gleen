@@ -37,14 +37,34 @@ describe('AnalyzeProcessingVisual', () => {
       'data-stage-state',
       'done',
     );
-    expect(screen.getByText('КОНСПЕКТ')).toBeInTheDocument();
-    expect(screen.getByText('ТАЙМКОДИ')).toBeInTheDocument();
-    expect(screen.getByText('КАРТКИ')).toBeInTheDocument();
-    expect(screen.getByText('ЕКСПОРТ')).toBeInTheDocument();
+    expect(screen.getAllByText('Конспект у черзі')).toHaveLength(2);
+    expect(screen.getAllByText('Таймкоди в черзі')).toHaveLength(2);
+    expect(screen.getAllByText('Картки не вибрано')).toHaveLength(2);
+    expect(screen.getAllByText('Експорт у черзі')).toHaveLength(2);
     expect(screen.queryByText('TRANSCRIPT')).not.toBeInTheDocument();
     expect(container.querySelectorAll('.analyze-rail')).toHaveLength(4);
     expect(container.querySelector('.analyze-prism')).not.toBeInTheDocument();
     expect(container.querySelector('.analyze-rays')).not.toBeInTheDocument();
+  });
+
+  it('renders locale-authored complete artifact states without runtime casing', () => {
+    render(
+      <AnalyzeProcessingVisual
+        copy={appMessages.uk.processing}
+        state="complete"
+        submittedUrl="https://youtu.be/dQw4w9WgXcQ"
+        selectedArtifactKinds={[
+          'summary',
+          'timestamps',
+          'transcript',
+          'flashcards',
+        ]}
+      />,
+    );
+
+    expect(screen.getAllByText('Конспект готовий')).toHaveLength(2);
+    expect(screen.getAllByText('Картки готові')).toHaveLength(2);
+    expect(screen.queryByText('Конспект готово')).not.toBeInTheDocument();
   });
 
   it('keeps every optical element out of the accessibility tree', () => {
@@ -122,18 +142,12 @@ describe('AnalyzeProcessingVisual', () => {
     expect(
       screen.getByRole('button', { name: 'Retry failed artifact' }),
     ).toBeVisible();
-    expect(screen.getByText('SUMMARY').parentElement).toHaveTextContent(
-      'ready',
-    );
-    expect(screen.getByText('TIMESTAMPS').parentElement).toHaveTextContent(
-      'failed',
-    );
+    expect(screen.getAllByText('Summary is ready')).toHaveLength(2);
+    expect(screen.getAllByText('Timestamps failed')).toHaveLength(2);
     expect(
       screen.getByRole('list', { name: 'Artifact status' }),
-    ).toHaveTextContent('Summary ready');
-    expect(screen.getByText('FLASHCARDS').parentElement).toHaveTextContent(
-      'not selected',
-    );
+    ).toHaveTextContent('Summary is ready');
+    expect(screen.getAllByText('Flashcards not selected')).toHaveLength(2);
   });
 
   it('truthfully represents a custom artifact selection in visual and semantic status', () => {
@@ -144,20 +158,19 @@ describe('AnalyzeProcessingVisual', () => {
         selectedArtifactKinds={['flashcards']}
       />,
     );
-    expect(screen.getByText('FLASHCARDS').parentElement).toHaveTextContent(
-      'queued',
-    );
-    expect(screen.getByText('SUMMARY').parentElement).toHaveTextContent(
-      'not selected',
-    );
+    expect(screen.getAllByText('Flashcards are queued')).toHaveLength(2);
+    expect(screen.getAllByText('Summary not selected')).toHaveLength(2);
     const statuses = screen.getByRole('list', { name: 'Artifact status' });
-    expect(statuses).toHaveTextContent('Flashcards queued');
+    expect(statuses).toHaveTextContent('Flashcards are queued');
     expect(statuses).toHaveTextContent('Summary not selected');
   });
 
-  it.each(['ready', 'failed'] as const)(
+  it.each([
+    ['ready', 'Export is ready'],
+    ['failed', 'Export failed'],
+  ] as const)(
     'maps a %s Transcript artifact to the visible and semantic Export rail',
-    (status) => {
+    (status, expectedPhrase) => {
       render(
         <AnalyzeProcessingVisual
           state="error"
@@ -166,12 +179,10 @@ describe('AnalyzeProcessingVisual', () => {
           artifactStates={{ transcript: status }}
         />,
       );
-      expect(screen.getByText('EXPORT').parentElement).toHaveTextContent(
-        status,
-      );
+      expect(screen.getAllByText(expectedPhrase)).toHaveLength(2);
       expect(
         screen.getByRole('list', { name: 'Artifact status' }),
-      ).toHaveTextContent(`Export ${status}`);
+      ).toHaveTextContent(expectedPhrase);
     },
   );
 
@@ -285,6 +296,12 @@ describe('AnalyzeProcessingVisual', () => {
     expect(css).toContain('.analyze-rail.flashcards');
     expect(css).toContain('.analyze-rail.timestamps');
     expect(css).toContain('.analyze-rail.export');
+    expect(css).toMatch(
+      /\.analysis-visual \.analyze-rail\s*{[^}]*grid-template-columns:\s*var\(--analysis-rail-copy-column\)\s+var\(\s*--analysis-rail-track-column\s*\)/,
+    );
+    expect(css).toMatch(
+      /\.analysis-visual \.analyze-rail span:first-child\s*{[^}]*overflow-wrap:\s*anywhere/,
+    );
     expect(css).toMatch(
       /\.analysis-visual \.analyze-shell\.exiting \.analyze-processing-panel\s*{[^}]*opacity:\s*0;[^}]*transform:\s*scale\(0\.985\)/,
     );
