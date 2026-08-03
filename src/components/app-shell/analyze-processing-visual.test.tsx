@@ -281,6 +281,12 @@ describe('AnalyzeProcessingVisual', () => {
       /@media \(max-width: 900px\)[\s\S]*?\.analysis-visual \.analyze-shell\.idle\.production-intake\s*{[^}]*height:\s*112px/,
     );
     expect(css).toMatch(
+      /@container \(max-width: 540px\)[\s\S]*?\.analysis-visual \.analyze-shell\.processing,[\s\S]*?\.analysis-visual \.analyze-shell\.error\s*{(?=[^}]*height:\s*auto)(?=[^}]*min-height:\s*500px)[^}]*}/,
+    );
+    expect(css).toMatch(
+      /@container \(max-width: 540px\)[\s\S]*?\.analysis-visual\s+:is\(\.processing, \.complete, \.error\)\s+\.analyze-processing-panel\s*{(?=[^}]*position:\s*relative)(?=[^}]*min-height:\s*500px)[^}]*}/,
+    );
+    expect(css).toMatch(
       /\.analysis-visual \.analyze-shell\.idle\.production-intake \.analyze-input-row\s*{[\s\S]*?position:\s*relative;[\s\S]*?inset:\s*auto;[\s\S]*?padding:\s*0/,
     );
     expect(css).toMatch(

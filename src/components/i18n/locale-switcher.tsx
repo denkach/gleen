@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 type LocaleSwitcherProps = Readonly<{
+  compact?: boolean;
   locale: Locale;
   copy: LocaleSwitcherCopy;
   variant: 'landing' | 'auth' | 'app';
@@ -22,7 +23,12 @@ type LocaleSwitcherProps = Readonly<{
 
 const initialActionState: LocaleActionState = { status: 'idle' };
 
-export function LocaleSwitcher({ locale, copy, variant }: LocaleSwitcherProps) {
+export function LocaleSwitcher({
+  compact = false,
+  locale,
+  copy,
+  variant,
+}: LocaleSwitcherProps) {
   const formId = useId();
   const router = useRouter();
   const [state, formAction, pending] = useActionState(
@@ -47,12 +53,25 @@ export function LocaleSwitcher({ locale, copy, variant }: LocaleSwitcherProps) {
         <DropdownMenuTrigger asChild>
           <button
             aria-label={`${copy.localeSwitcher.label}: ${localeMetadata[locale].nativeName}`}
-            className={`btn btn-ghost btn-sm language-btn locale-switcher__trigger locale-switcher__trigger--${variant}`}
+            className={`btn btn-ghost btn-sm language-btn locale-switcher__trigger locale-switcher__trigger--${variant}${compact ? ' locale-switcher__trigger--compact' : ''}`}
             disabled={pending}
             type="button"
           >
-            {localeMetadata[locale].nativeName}{' '}
-            <span aria-hidden="true">›</span>
+            {compact ? (
+              <svg
+                aria-hidden="true"
+                className="locale-switcher__compact-icon"
+                viewBox="0 0 24 24"
+              >
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="M3.8 12h16.4M12 3.5c2.2 2.3 3.3 5.1 3.3 8.5S14.2 18.2 12 20.5C9.8 18.2 8.7 15.4 8.7 12S9.8 5.8 12 3.5Z" />
+              </svg>
+            ) : (
+              <>
+                {localeMetadata[locale].nativeName}{' '}
+                <span aria-hidden="true">›</span>
+              </>
+            )}
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent

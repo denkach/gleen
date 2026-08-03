@@ -1010,6 +1010,42 @@ body:has(.app-shell)
   .mobile-topbar .app-brand {
     font-size: 19px;
   }
+  .mobile-topbar .topbar-actions {
+    gap: 4px;
+  }
+  .mobile-topbar .locale-switcher {
+    display: flex;
+    align-items: center;
+  }
+  .mobile-topbar .locale-switcher__trigger--compact,
+  .mobile-topbar .app-action-button {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+  }
+  .mobile-topbar .locale-switcher__trigger--compact {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-secondary);
+  }
+  .mobile-topbar .locale-switcher__compact-icon {
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+  }
+  .mobile-topbar .locale-switcher__status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
   .bottom-nav {
     position: fixed;
     left: 0;
@@ -1677,13 +1713,21 @@ body:has(.app-shell)
   .analysis-visual .analyze-shell.processing,
   .analysis-visual .analyze-shell.complete,
   .analysis-visual .analyze-shell.error {
-    height: 500px;
+    height: auto;
+    min-height: 500px;
     border-radius: 24px;
   }
   .analysis-visual .analyze-processing-panel {
     grid-template-columns: 1fr;
     gap: 12px;
     padding: 28px 24px;
+  }
+  .analysis-visual
+    :is(.processing, .complete, .error)
+    .analyze-processing-panel {
+    position: relative;
+    inset: auto;
+    min-height: 500px;
   }
   .analysis-visual .analyze-rail-visual {
     min-height: 180px;

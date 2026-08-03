@@ -59,6 +59,9 @@ describe('AppShell', () => {
       screen.getByRole('button', { name: 'Support' }),
       ...screen.getAllByRole('button', { name: 'Benachrichtigungen' }),
     ];
+    expect(
+      screen.getAllByRole('button', { name: 'Benachrichtigungen' }),
+    ).toHaveLength(2);
     for (const control of unavailableControls) {
       expect(control).toBeDisabled();
       expect(control).toHaveAttribute(
@@ -77,7 +80,13 @@ describe('AppShell', () => {
         'button',
         { name: 'Sprache: Deutsch' },
       ),
-    ).toBeEnabled();
+    ).toHaveClass('locale-switcher__trigger--compact');
+    expect(
+      within(document.querySelector('.mobile-topbar') as HTMLElement).getByRole(
+        'button',
+        { name: 'Benachrichtigungen' },
+      ),
+    ).toBeDisabled();
     expect(screen.getByText('Arbeitsbereich')).toBeInTheDocument();
     expect(screen.getByText('Hilfe')).toBeInTheDocument();
     expect(screen.getByText('Alex Koval')).toBeInTheDocument();
