@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
+import { historyMessages } from '@/lib/i18n/messages/history';
+
 import { toHistoryItem } from './presentation';
 import type { HistoryDatabaseRow } from './repository';
 
@@ -27,7 +29,8 @@ function row(overrides: Partial<HistoryDatabaseRow> = {}): HistoryDatabaseRow {
 }
 
 const formatOptions = {
-  locale: 'en-GB',
+  locale: 'en',
+  copy: historyMessages.en,
   timeZone: 'UTC',
 } as const;
 
@@ -100,6 +103,27 @@ describe('history presentation', () => {
     expect(item.analyzedAtLabel).toBe('24 Jul 2026, 14:35');
     expect(item.lastOpenedAt).toBe('2026-07-24T16:05:00.000Z');
     expect(item.lastOpenedAtLabel).toBe('24 Jul 2026, 16:05');
+  });
+
+  test('localizes German status, preset, and date presentation without changing source data', () => {
+    const item = toHistoryItem(
+      row({
+        title: 'Systems thinking',
+        channelTitle: 'Knowledge Channel',
+        transcriptLanguage: 'en',
+        summaryPreset: 'detailed',
+      }),
+      { locale: 'de', copy: historyMessages.de, timeZone: 'UTC' },
+    );
+
+    expect(item).toMatchObject({
+      title: 'Systems thinking',
+      channel: 'Knowledge Channel',
+      language: 'en',
+      summaryPresetLabel: 'Detailliert',
+      analyzedAtLabel: '24.07.2026, 14:35',
+      status: { key: 'ready', label: 'Bereit' },
+    });
   });
 
   test('preserves source values and keeps missing metadata absent', () => {

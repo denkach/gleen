@@ -4,6 +4,12 @@ import { z } from 'zod';
 
 import { HistoryWorkspace } from '@/components/history/history-workspace';
 import {
+  selectMessages,
+  type MissingTranslationEvent,
+} from '@/lib/i18n/catalog';
+import { historyMessages } from '@/lib/i18n/messages/history';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
+import {
   deleteHistoryItem,
   loadMoreHistory,
   markHistoryItemOpened,
@@ -23,9 +29,23 @@ import {
 } from '@/lib/history/supabase-repository';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-export const metadata: Metadata = {
-  title: 'History — Gleen',
-};
+function reportMissingTranslation(event: MissingTranslationEvent) {
+  console.error(event);
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    historyMessages,
+    locale,
+    'history',
+    reportMissingTranslation,
+  );
+  return {
+    title: copy.metadata.title,
+    description: copy.metadata.description,
+  };
+}
 
 const historyActions = {
   toggleHistoryFavorite,
@@ -41,6 +61,13 @@ type HistoryPageProps = Readonly<{
 }>;
 
 export default async function HistoryPage({ searchParams }: HistoryPageProps) {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    historyMessages,
+    locale,
+    'history',
+    reportMissingTranslation,
+  );
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -59,6 +86,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
     : null;
   const repository = createSupabaseHistoryRepository(
     supabase as unknown as SupabaseHistoryClient,
+    { locale, copy },
   );
 
   let historyData:
@@ -78,6 +106,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   if (!historyData) {
     return (
       <HistoryWorkspace
+        copy={copy}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -90,6 +119,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   const [initialPage, facets, verifiedDuplicate] = historyData;
   return (
     <HistoryWorkspace
+      copy={copy}
       initialPage={initialPage}
       query={query}
       facets={facets}

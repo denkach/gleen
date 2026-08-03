@@ -2,6 +2,12 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import {
+  selectMessages,
+  type MissingTranslationEvent,
+} from '@/lib/i18n/catalog';
+import { historyMessages } from '@/lib/i18n/messages/history';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
+import {
   decodeHistoryCursor,
   parseHistoryQuery,
   serializeHistoryQuery,
@@ -33,7 +39,6 @@ export type HistoryActionResult<T = undefined> =
   | Readonly<{
       ok: false;
       code: 'unauthorized' | 'not-found' | 'invalid' | 'conflict' | 'failed';
-      message: string;
     }>;
 
 type HistoryAuthenticatedContext = Readonly<{
@@ -64,32 +69,16 @@ const loadMoreSchema = z
   })
   .strict();
 
+function reportMissingTranslation(event: MissingTranslationEvent) {
+  console.error(event);
+}
+
 const failures = {
-  unauthorized: {
-    ok: false,
-    code: 'unauthorized',
-    message: 'Your session has expired. Sign in and try again.',
-  },
-  'not-found': {
-    ok: false,
-    code: 'not-found',
-    message: 'This saved analysis is no longer available.',
-  },
-  invalid: {
-    ok: false,
-    code: 'invalid',
-    message: 'Check the requested change and try again.',
-  },
-  conflict: {
-    ok: false,
-    code: 'conflict',
-    message: 'This title changed elsewhere. Refresh and try again.',
-  },
-  failed: {
-    ok: false,
-    code: 'failed',
-    message: 'We could not update History. Try again.',
-  },
+  unauthorized: { ok: false, code: 'unauthorized' },
+  'not-found': { ok: false, code: 'not-found' },
+  invalid: { ok: false, code: 'invalid' },
+  conflict: { ok: false, code: 'conflict' },
+  failed: { ok: false, code: 'failed' },
 } as const satisfies Record<
   Exclude<HistoryActionResult<never>, { ok: true }>['code'],
   Exclude<HistoryActionResult<never>, { ok: true }>
@@ -282,6 +271,13 @@ export function createHistoryActions(dependencies: HistoryActionDependencies) {
 }
 
 async function productionContext(): Promise<HistoryAuthenticatedContext | null> {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    historyMessages,
+    locale,
+    'history',
+    reportMissingTranslation,
+  );
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -296,6 +292,7 @@ async function productionContext(): Promise<HistoryAuthenticatedContext | null> 
     userId: user.id,
     history: createSupabaseHistoryRepository(
       supabase as unknown as SupabaseHistoryClient,
+      { locale, copy },
     ),
     intake,
     userState: createSupabaseResultUserStateRepository(

@@ -1,21 +1,24 @@
-import type {
-  HistoryDatabaseRow,
-  HistoryItem,
-  HistoryStatus,
-} from './repository';
+import type { HistoryDatabaseRow, HistoryItem } from './repository';
+import { formatDate } from '@/lib/i18n/format';
+import type { Locale } from '@/lib/i18n/locales';
+import type { HistoryMessages } from '@/lib/i18n/messages/history';
 
 export type HistoryPresentationOptions = Readonly<{
-  locale?: string;
+  locale: Locale;
+  copy: HistoryMessages;
   timeZone?: string;
 }>;
 
-const statuses = {
-  complete: { key: 'ready', label: 'Ready' },
-  partial: { key: 'partial', label: 'Partial' },
-  queued: { key: 'processing', label: 'Processing' },
-  running: { key: 'processing', label: 'Processing' },
-  failed: { key: 'failed', label: 'Failed' },
-} as const satisfies Record<HistoryDatabaseRow['status'], HistoryStatus>;
+const statusKeys = {
+  complete: 'ready',
+  partial: 'partial',
+  queued: 'processing',
+  running: 'processing',
+  failed: 'failed',
+} as const satisfies Record<
+  HistoryDatabaseRow['status'],
+  'ready' | 'partial' | 'processing' | 'failed'
+>;
 
 function formatDuration(durationSeconds: number | null): string | null {
   if (durationSeconds === null) return null;
@@ -33,14 +36,21 @@ function formatDuration(durationSeconds: number | null): string | null {
     : minuteSeconds;
 }
 
-function formatDate(
+function formatHistoryDate(
   value: string | null,
-  formatter: Intl.DateTimeFormat,
+  options: HistoryPresentationOptions,
 ): string | null {
   if (value === null) return null;
 
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : formatter.format(date);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return formatDate({
+    value: date,
+    locale: options.locale,
+    fallback: options.copy.presentation.dateUnavailable,
+    options: { timeStyle: 'short', timeZone: options.timeZone },
+  });
 }
 
 function historyHref(id: string, status: HistoryDatabaseRow['status']): string {
@@ -53,13 +63,9 @@ function historyHref(id: string, status: HistoryDatabaseRow['status']): string {
 
 export function toHistoryItem(
   row: HistoryDatabaseRow,
-  options: HistoryPresentationOptions = {},
+  options: HistoryPresentationOptions,
 ): HistoryItem {
-  const dateFormatter = new Intl.DateTimeFormat(options.locale, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: options.timeZone,
-  });
+  const statusKey = statusKeys[row.status];
 
   return {
     id: row.id,
@@ -75,15 +81,18 @@ export function toHistoryItem(
       row.summaryPreset === null
         ? null
         : row.summaryPreset === 'detailed'
-          ? 'Detailed'
-          : 'Balanced',
+          ? options.copy.presentation.presets.detailed
+          : options.copy.presentation.presets.balanced,
     durationSeconds: row.durationSeconds,
     durationLabel: formatDuration(row.durationSeconds),
     analyzedAt: row.analyzedAt,
-    analyzedAtLabel: formatDate(row.analyzedAt, dateFormatter),
+    analyzedAtLabel: formatHistoryDate(row.analyzedAt, options),
     lastOpenedAt: row.lastOpenedAt,
-    lastOpenedAtLabel: formatDate(row.lastOpenedAt, dateFormatter),
-    status: statuses[row.status],
+    lastOpenedAtLabel: formatHistoryDate(row.lastOpenedAt, options),
+    status: {
+      key: statusKey,
+      label: options.copy.presentation.statuses[statusKey],
+    },
     favorite: row.favorite,
     selectedArtifacts: [...row.selectedArtifacts],
     readyArtifacts: [...row.readyArtifacts],

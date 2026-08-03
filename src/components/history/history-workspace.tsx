@@ -8,6 +8,7 @@ import { HistoryFilters } from '@/components/history/history-filters';
 import { HistoryList } from '@/components/history/history-list';
 import { HistoryToolbar } from '@/components/history/history-toolbar';
 import type { HistoryActionResult } from '@/lib/history/actions';
+import type { HistoryMessages } from '@/lib/i18n/messages/history';
 import {
   serializeHistoryQuery,
   type HistoryQuery,
@@ -37,6 +38,7 @@ export type HistoryWorkspaceActions = Readonly<{
 }>;
 
 export type HistoryWorkspaceProps = Readonly<{
+  copy: HistoryMessages;
   initialPage: HistoryPage;
   query: HistoryQuery;
   facets: HistoryFacets;
@@ -77,18 +79,14 @@ function appliedFilterCount(query: HistoryQuery): number {
   );
 }
 
-function resultAnnouncement(count: number): string {
-  if (count === 0) return 'No saved analyses';
-  if (count === 1) return '1 saved analysis';
-  return `${count} saved analyses`;
-}
-
-function duplicateReassurance(item: HistoryItem): string {
+function duplicateReassurance(
+  copy: HistoryMessages,
+  item: HistoryItem,
+): string {
   const details = [item.language, item.summaryPresetLabel].filter(
     (value): value is string => value !== null,
   );
-  const version = details.length > 0 ? ` ${details.join(' · ')}` : '';
-  return `Open the saved${version} version. No credits will be used.`;
+  return copy.actions.duplicate.reassurance(details.join(' · '));
 }
 
 function subscribeToHydrationSignal() {
@@ -104,6 +102,7 @@ function serverHydrationSnapshot() {
 }
 
 export function HistoryWorkspace({
+  copy,
   initialPage,
   query,
   facets,
@@ -118,6 +117,7 @@ export function HistoryWorkspace({
   return (
     <HistoryWorkspaceState
       key={serializeHistoryQuery(query).toString()}
+      copy={copy}
       initialPage={initialPage}
       query={query}
       facets={facets}
@@ -135,6 +135,7 @@ export function HistoryWorkspace({
 type HistoryWorkspaceStateProps = Pick<
   HistoryWorkspaceProps,
   | 'initialPage'
+  | 'copy'
   | 'query'
   | 'facets'
   | 'verifiedDuplicate'
@@ -147,6 +148,7 @@ type HistoryWorkspaceStateProps = Pick<
   Readonly<{ navigationPath: string }>;
 
 function HistoryWorkspaceState({
+  copy,
   initialPage,
   query,
   facets,
@@ -166,7 +168,7 @@ function HistoryWorkspaceState({
   const [reanalyzing, setReanalyzing] = useState(false);
   const reanalysisPendingRef = useRef(false);
   const [announcement, setAnnouncement] = useState(() =>
-    resultAnnouncement(initialPage.items.length),
+    copy.page.resultCount(initialPage.items.length),
   );
   const hydrated = useSyncExternalStore(
     subscribeToHydrationSignal,
@@ -215,7 +217,7 @@ function HistoryWorkspaceState({
     event.preventDefault();
     if (!verifiedDuplicate || reanalysisPendingRef.current) return;
 
-    const failureMessage = 'We could not start another analysis. Try again.';
+    const failureMessage = copy.actions.duplicate.failed;
     reanalysisPendingRef.current = true;
     setReanalyzing(true);
     let navigationStarted = false;
@@ -224,7 +226,7 @@ function HistoryWorkspaceState({
         analysisId: verifiedDuplicate.id,
       });
       if (!result.ok) {
-        setAnnouncement(result.message);
+        setAnnouncement(copy.errors[result.code]);
         return;
       }
 
@@ -251,19 +253,21 @@ function HistoryWorkspaceState({
   return (
     <section
       className="history-workspace history-bottom-nav-clearance"
-      aria-label="History"
+      aria-label={copy.page.label}
       data-history-hydrated={hydrated ? 'true' : 'false'}
     >
       <header className="history-page-head">
         <div className="history-page-head__copy">
-          <span className="history-page-head__eyebrow">Your library</span>
-          <h1>History</h1>
-          <p>Open a saved result without spending another analysis.</p>
+          <span className="history-page-head__eyebrow">
+            {copy.page.eyebrow}
+          </span>
+          <h1>{copy.page.title}</h1>
+          <p>{copy.page.description}</p>
         </div>
         <div className="history-page-head__actions">
           <Link className="history-new-analysis" href="/app">
             <span aria-hidden="true">✦</span>
-            New analysis
+            {copy.page.newAnalysis}
           </Link>
         </div>
       </header>
@@ -271,19 +275,19 @@ function HistoryWorkspaceState({
       {verifiedDuplicate ? (
         <aside
           className="history-duplicate-banner"
-          aria-label="Saved analysis available"
+          aria-label={copy.actions.duplicate.label}
         >
           <span className="history-duplicate-banner__play" aria-hidden="true" />
           <div className="history-duplicate-banner__copy">
-            <strong>You already analyzed this video</strong>
-            <p>{duplicateReassurance(verifiedDuplicate)}</p>
+            <strong>{copy.actions.duplicate.title}</strong>
+            <p>{duplicateReassurance(copy, verifiedDuplicate)}</p>
           </div>
           <div className="history-duplicate-banner__actions">
             <Link
               className="history-duplicate-banner__primary"
               href={verifiedDuplicate.href}
             >
-              Open saved result
+              {copy.actions.duplicate.openSaved}
             </Link>
             <form onSubmit={analyzeAnotherVersion}>
               <button
@@ -292,8 +296,8 @@ function HistoryWorkspaceState({
                 disabled={reanalyzing}
               >
                 {reanalyzing
-                  ? 'Starting another analysis…'
-                  : 'Analyze another version'}
+                  ? copy.actions.duplicate.starting
+                  : copy.actions.duplicate.analyzeAnother}
               </button>
             </form>
           </div>
@@ -308,23 +312,25 @@ function HistoryWorkspaceState({
             aria-live="polite"
             aria-atomic="true"
           >
-            History is temporarily unavailable.
+            {copy.empty.error.announcement}
           </div>
           <section className="history-empty history-empty--initial">
-            <h2>History is unavailable</h2>
-            <p>We could not load your saved analyses.</p>
-            <Link href="/app/history">Try again</Link>
+            <h2>{copy.empty.error.title}</h2>
+            <p>{copy.empty.error.description}</p>
+            <Link href="/app/history">{copy.empty.error.retry}</Link>
           </section>
         </>
       ) : (
         <>
           <HistoryToolbar
             query={query}
+            copy={copy}
             initialSortOpen={initialOverlay === 'sort'}
             onSearch={search}
             onSortChange={changeSort}
             filterControl={
               <HistoryFilters
+                copy={copy}
                 draft={draft}
                 appliedCount={appliedFilterCount(query)}
                 presentationCountOverride={filterPresentationCountOverride}
@@ -349,6 +355,7 @@ function HistoryWorkspaceState({
           </div>
 
           <HistoryList
+            copy={copy}
             initialPage={initialPage}
             query={query}
             actions={actions}

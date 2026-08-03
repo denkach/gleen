@@ -11,6 +11,7 @@ import {
   type HistorySort,
 } from '@/lib/history/query';
 import { toHistoryItem } from '@/lib/history/presentation';
+import type { HistoryPresentationOptions } from '@/lib/history/presentation';
 import type {
   HistoryDatabaseRow,
   HistoryFacets,
@@ -248,6 +249,7 @@ function distinctNonEmpty(
 
 export function createSupabaseHistoryRepository(
   client: SupabaseHistoryClient,
+  presentation: HistoryPresentationOptions,
 ): HistoryRepository {
   return {
     async listOwned(userId, query, requestedLimit): Promise<HistoryPage> {
@@ -299,7 +301,9 @@ export function createSupabaseHistoryRepository(
           : null;
 
       return {
-        items: visibleRows.map((row) => toHistoryItem(toDatabaseRow(row))),
+        items: visibleRows.map((row) =>
+          toHistoryItem(toDatabaseRow(row), presentation),
+        ),
         nextCursor,
       };
     },
@@ -335,7 +339,10 @@ export function createSupabaseHistoryRepository(
 
       if (result.error) throw new HistoryRepositoryError();
       if (result.data === null) return null;
-      return toHistoryItem(toDatabaseRow(parseHistoryViewRow(result.data)));
+      return toHistoryItem(
+        toDatabaseRow(parseHistoryViewRow(result.data)),
+        presentation,
+      );
     },
 
     async deleteOwned(userId, analysisId) {

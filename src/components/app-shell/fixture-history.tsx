@@ -9,6 +9,7 @@ import { historyEntryPresentation } from '@/lib/analysis-pipeline/recovery';
 import { createSessionRecoveryRepositories } from '@/lib/analysis-pipeline/session-recovery-repository';
 import { parseHistoryQuery } from '@/lib/history/query';
 import type { HistoryItem } from '@/lib/history/repository';
+import { historyMessages } from '@/lib/i18n/messages/history';
 
 import type {
   HistoryFixtureAction,
@@ -338,6 +339,7 @@ export function FixtureHistory({
     <>
       <ActiveAnalysisRecoveryLink />
       <HistoryWorkspace
+        copy={historyMessages.en}
         initialPage={{
           items: itemsFor(visualCase, query),
           nextCursor:

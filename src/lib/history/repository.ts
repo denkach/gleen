@@ -26,7 +26,7 @@ export type HistoryDatabaseRow = Readonly<{
 
 export type HistoryStatus = Readonly<{
   key: 'ready' | 'partial' | 'processing' | 'failed';
-  label: 'Ready' | 'Partial' | 'Processing' | 'Failed';
+  label: string;
 }>;
 
 export type HistoryItem = Readonly<{
@@ -39,7 +39,7 @@ export type HistoryItem = Readonly<{
   source: string;
   language: string | null;
   outputLocale: string;
-  summaryPresetLabel: 'Balanced' | 'Detailed' | null;
+  summaryPresetLabel: string | null;
   durationSeconds: number | null;
   durationLabel: string | null;
   analyzedAt: string;

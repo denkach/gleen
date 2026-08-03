@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { HistoryItem } from '@/lib/history/repository';
+import { historyMessages } from '@/lib/i18n/messages/history';
 
 import { HistoryItemActions } from './history-item-actions';
 
@@ -36,6 +37,7 @@ function setup(
 ) {
   const props: Parameters<typeof HistoryItemActions>[0] = {
     item,
+    copy: historyMessages.en,
     toggleFavorite: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
     renameItem: vi.fn().mockResolvedValue({
       ok: true,
@@ -64,15 +66,12 @@ describe('HistoryItemActions', () => {
   it('optimistically favorites with a selected state and rolls back on failure', async () => {
     const user = userEvent.setup();
     let resolveFavorite:
-      | ((value: { ok: false; code: 'failed'; message: string }) => void)
-      | undefined;
+      ((value: { ok: false; code: 'failed' }) => void) | undefined;
     const toggleFavorite = vi.fn(
       () =>
-        new Promise<{ ok: false; code: 'failed'; message: string }>(
-          (resolve) => {
-            resolveFavorite = resolve;
-          },
-        ),
+        new Promise<{ ok: false; code: 'failed' }>((resolve) => {
+          resolveFavorite = resolve;
+        }),
     );
     const props = setup({ toggleFavorite });
     const favorite = screen.getByRole('button', {
@@ -90,7 +89,6 @@ describe('HistoryItemActions', () => {
     resolveFavorite?.({
       ok: false,
       code: 'failed',
-      message: 'Could not save favorite.',
     });
     expect(
       await screen.findByRole('button', {
@@ -98,7 +96,7 @@ describe('HistoryItemActions', () => {
       }),
     ).toHaveAttribute('aria-pressed', 'false');
     expect(props.onAnnouncement).toHaveBeenCalledWith(
-      'Could not save favorite.',
+      'We could not update History. Try again.',
     );
   });
 
@@ -236,7 +234,6 @@ describe('HistoryItemActions', () => {
       .mockResolvedValueOnce({
         ok: false,
         code: 'conflict',
-        message: 'This title changed elsewhere.',
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -306,7 +303,6 @@ describe('HistoryItemActions', () => {
       .mockResolvedValueOnce({
         ok: false,
         code: 'failed',
-        message: 'Deletion failed.',
       })
       .mockResolvedValueOnce({ ok: true, data: undefined });
     const props = setup({ deleteItem });
@@ -320,12 +316,44 @@ describe('HistoryItemActions', () => {
 
     await user.click(screen.getByRole('button', { name: 'Delete analysis' }));
     expect(props.onDelete).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toHaveTextContent('Deletion failed.');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'We could not update History. Try again.',
+    );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Delete analysis' }));
     expect(props.onDelete).toHaveBeenCalledOnce();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('renders German actions and resolves failure codes through German copy', async () => {
+    const user = userEvent.setup();
+    const props = setup({
+      copy: historyMessages.de,
+      toggleFavorite: vi.fn().mockResolvedValue({
+        ok: false,
+        code: 'unauthorized',
+      }),
+    });
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Systems Thinking zu Favoriten hinzufügen',
+      }),
+    );
+    expect(props.onAnnouncement).toHaveBeenCalledWith(
+      'Deine Sitzung ist abgelaufen. Melde dich an und versuche es erneut.',
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Aktionen für Systems Thinking' }),
+    );
+    expect(
+      await screen.findByRole('menuitem', { name: 'Umbenennen' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: 'Exportieren' }),
+    ).toHaveAttribute('href', `${item.href}#export`);
   });
 
   it('keeps delete confirmation and clears pending state when the action rejects', async () => {

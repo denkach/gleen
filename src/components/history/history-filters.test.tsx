@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { HistoryFilters } from './history-filters';
 import type { HistoryFilterDraft } from './history-workspace';
+import { historyMessages } from '@/lib/i18n/messages/history';
 
 const initialDraft: HistoryFilterDraft = {
   status: ['ready'],
@@ -49,10 +50,12 @@ function stubHistoryViewport(initialMobile: boolean) {
 afterEach(() => vi.unstubAllGlobals());
 
 function FiltersHarness({
+  copy = historyMessages.en,
   onApply = vi.fn(),
   onClearAll = vi.fn(),
   onReset = vi.fn(),
 }: Readonly<{
+  copy?: (typeof historyMessages)['en'];
   onApply?: () => void;
   onClearAll?: () => void;
   onReset?: () => void;
@@ -62,6 +65,7 @@ function FiltersHarness({
 
   return (
     <HistoryFilters
+      copy={copy}
       draft={draft}
       appliedCount={3}
       facets={{
@@ -142,6 +146,25 @@ describe('HistoryFilters', () => {
     expect(
       within(panel).getByRole('checkbox', { name: 'Show favorites only' }),
     ).not.toBeChecked();
+  });
+
+  it('renders German filter labels while keeping stable option values', async () => {
+    stubHistoryViewport(false);
+    const user = userEvent.setup();
+    render(<FiltersHarness copy={historyMessages.de} />);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Filter, 3 angewendet' }),
+    );
+    const panel = screen.getByRole('region', { name: 'Ergebnisse filtern' });
+    expect(
+      within(panel).getByRole('checkbox', { name: 'Bereit' }),
+    ).toBeChecked();
+    const date = within(panel).getByRole('combobox', { name: 'Zeitraum' });
+    expect(date).toHaveValue('7d');
+    expect(
+      within(date).getByRole('option', { name: 'Letzte 7 Tage' }),
+    ).toHaveValue('7d');
   });
 
   it('dismisses the desktop panel on Escape and outside pointer, restoring focus', async () => {

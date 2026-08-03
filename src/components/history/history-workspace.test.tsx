@@ -14,6 +14,7 @@ import {
 } from './history-workspace';
 import type { HistoryQuery } from '@/lib/history/query';
 import type { HistoryItem } from '@/lib/history/repository';
+import { historyMessages } from '@/lib/i18n/messages/history';
 
 const query: HistoryQuery = {
   q: 'prisms',
@@ -67,6 +68,7 @@ const historyItem: HistoryItem = {
 function renderWorkspace(queryOverride: HistoryQuery = query) {
   return render(
     <HistoryWorkspace
+      copy={historyMessages.en}
       initialPage={{ items: [], nextCursor: null }}
       query={queryOverride}
       facets={{ languages: ['en', 'sk'], sources: ['YouTube'] }}
@@ -116,6 +118,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
+        copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -177,6 +180,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
+        copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -230,6 +234,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
+        copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -282,6 +287,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
+        copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -307,7 +313,6 @@ describe('HistoryWorkspace URL state', () => {
       resolveReanalysis?.({
         ok: false,
         code: 'not-found',
-        message: 'This saved analysis is no longer available.',
       });
     });
 
@@ -323,6 +328,7 @@ describe('HistoryWorkspace URL state', () => {
   it('omits unavailable duplicate metadata instead of inventing copy', () => {
     render(
       <HistoryWorkspace
+        copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -344,6 +350,7 @@ describe('HistoryWorkspace URL state', () => {
   it('renders the safe load error under the same approved page heading', () => {
     render(
       <HistoryWorkspace
+        copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -514,6 +521,7 @@ describe('HistoryWorkspace URL state', () => {
     };
     view.rerender(
       <HistoryWorkspace
+        copy={historyMessages.en}
         initialPage={{ items: [], nextCursor: null }}
         query={restoredQuery}
         facets={{ languages: ['en', 'sk'], sources: ['YouTube'] }}
@@ -560,6 +568,7 @@ describe('HistoryWorkspace URL state', () => {
     });
     render(
       <HistoryWorkspace
+        copy={historyMessages.en}
         initialPage={{ items: [historyItem], nextCursor: null }}
         query={{ ...query, q: '', status: [], cursor: null }}
         facets={{ languages: [], sources: [] }}
@@ -580,6 +589,40 @@ describe('HistoryWorkspace URL state', () => {
     });
     expect(screen.getByRole('status')).toHaveTextContent(
       'Integrated history item added to favorites.',
+    );
+  });
+
+  it('renders German workspace copy while preserving canonical query values', async () => {
+    const user = userEvent.setup();
+    render(
+      <HistoryWorkspace
+        copy={historyMessages.de}
+        initialPage={{ items: [], nextCursor: null }}
+        query={query}
+        facets={{ languages: ['en'], sources: ['YouTube'] }}
+        verifiedDuplicate={{
+          ...historyItem,
+          summaryPresetLabel: 'Detailliert',
+        }}
+        actions={actions}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Verlauf', level: 1 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Du hast dieses Video bereits analysiert'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/English · Detailliert/u)).toBeInTheDocument();
+
+    const search = screen.getByRole('searchbox', {
+      name: 'Verlauf durchsuchen',
+    });
+    await user.clear(search);
+    await user.type(search, 'wissen{Enter}');
+    expect(push).toHaveBeenCalledWith(
+      '/app/history?q=wissen&status=ready&language=en&source=YouTube&date=30d&favorite=true&sort=recent',
     );
   });
 });

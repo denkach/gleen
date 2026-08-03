@@ -293,8 +293,37 @@ describe('History server actions', () => {
     const actions = createHistoryActions(deps);
 
     const result = await actions.deleteHistoryItem({ analysisId });
-    expect(result).toMatchObject({ ok: false, code: 'failed' });
-    if (!result.ok) expect(result.message).not.toContain('provider');
+    expect(result).toEqual({ ok: false, code: 'failed' });
+    expect(result).not.toHaveProperty('message');
+  });
+
+  test('returns code-only failures for every stable error path', async () => {
+    const deps = dependencies();
+    const actions = createHistoryActions(deps);
+
+    const invalid = await actions.deleteHistoryItem({ analysisId: 'bad' });
+    expect(invalid).toEqual({ ok: false, code: 'invalid' });
+
+    deps.authenticate.mockResolvedValueOnce(null);
+    const unauthorized = await actions.deleteHistoryItem({ analysisId });
+    expect(unauthorized).toEqual({ ok: false, code: 'unauthorized' });
+
+    deps.intake.findOwned.mockResolvedValueOnce(null);
+    const notFound = await actions.deleteHistoryItem({ analysisId });
+    expect(notFound).toEqual({ ok: false, code: 'not-found' });
+
+    deps.intake.findOwned.mockResolvedValueOnce({ id: analysisId });
+    deps.intake.saveOwnedTitle.mockResolvedValueOnce(null);
+    const conflict = await actions.renameHistoryItem({
+      analysisId,
+      title: 'Renamed',
+      expectedUpdatedAt,
+    });
+    expect(conflict).toEqual({ ok: false, code: 'conflict' });
+
+    for (const result of [invalid, unauthorized, notFound, conflict]) {
+      expect(result).not.toHaveProperty('message');
+    }
   });
 
   test('loads an owner-scoped page from a canonical serialized query and cursor', async () => {

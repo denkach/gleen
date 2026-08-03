@@ -7,14 +7,12 @@ import { useEffect, useState } from 'react';
 import type { HistoryActionResult } from '@/lib/history/actions';
 import { cx } from '@/lib/cx';
 import { serializeHistoryQuery, type HistoryQuery } from '@/lib/history/query';
+import type { HistoryMessages } from '@/lib/i18n/messages/history';
 import type { HistoryItem, HistoryPage } from '@/lib/history/repository';
 
 import { HistoryItemActions } from './history-item-actions';
 
 const mobileHistoryQuery = '(max-width: 720px)';
-const rejectedLoadMoreMessage =
-  'We could not load more saved analyses. Try again.';
-
 export type HistoryListActions = Readonly<{
   toggleHistoryFavorite(input: unknown): Promise<HistoryActionResult>;
   renameHistoryItem(
@@ -28,6 +26,7 @@ export type HistoryListActions = Readonly<{
 export type HistoryListProps = Readonly<{
   initialPage: HistoryPage;
   query: HistoryQuery;
+  copy: HistoryMessages;
   actions: HistoryListActions;
   initialItemDialog?: 'rename' | 'delete' | null;
   onClearSearch(): void;
@@ -60,7 +59,10 @@ function useMobileHistoryLayout(): boolean {
   return mobile;
 }
 
-function Media({ item }: Readonly<{ item: HistoryItem }>) {
+function Media({
+  item,
+  copy,
+}: Readonly<{ item: HistoryItem; copy: HistoryMessages }>) {
   const [failed, setFailed] = useState(false);
   const showImage = item.thumbnailUrl !== null && !failed;
   const fixtureThumbnailClass = /^history-fixture-thumbnail--0[1-6]$/u.test(
@@ -75,7 +77,7 @@ function Media({ item }: Readonly<{ item: HistoryItem }>) {
         <Image
           className="history-item-media__image"
           src={item.thumbnailUrl ?? ''}
-          alt={`Thumbnail for ${item.title}`}
+          alt={copy.list.thumbnail(item.title)}
           width={320}
           height={180}
           sizes="(max-width: 720px) 112px, 144px"
@@ -86,13 +88,13 @@ function Media({ item }: Readonly<{ item: HistoryItem }>) {
         <span
           className={cx('history-item-media__fallback', fixtureThumbnailClass)}
           data-testid={`history-thumbnail-fallback-${item.id}`}
-          aria-label={`Thumbnail unavailable for ${item.title}`}
+          aria-label={copy.list.thumbnailUnavailable(item.title)}
         />
       )}
       <Link
         className="history-item-media__play"
         href={item.href}
-        aria-label={`Play ${item.title}`}
+        aria-label={copy.list.play(item.title)}
       >
         <span aria-hidden="true">▶</span>
       </Link>
@@ -119,6 +121,7 @@ function Status({ item }: Readonly<{ item: HistoryItem }>) {
 
 type ItemViewProps = Readonly<{
   item: HistoryItem;
+  copy: HistoryMessages;
   actions: HistoryListActions;
   onChange(change: Partial<HistoryItem>): void;
   onDelete(): void;
@@ -130,6 +133,7 @@ function ItemActions(props: ItemViewProps) {
   return (
     <HistoryItemActions
       item={props.item}
+      copy={props.copy}
       toggleFavorite={props.actions.toggleHistoryFavorite}
       renameItem={props.actions.renameHistoryItem}
       deleteItem={props.actions.deleteHistoryItem}
@@ -144,16 +148,20 @@ function ItemActions(props: ItemViewProps) {
 
 function EmptyState({
   query,
+  copy,
   onClearSearch,
   onClearFilters,
-}: Pick<HistoryListProps, 'query' | 'onClearSearch' | 'onClearFilters'>) {
+}: Pick<
+  HistoryListProps,
+  'query' | 'copy' | 'onClearSearch' | 'onClearFilters'
+>) {
   if (query.q) {
     return (
       <section className="history-empty history-empty--search">
-        <h2>No results for “{query.q}”</h2>
-        <p>Try a different title, channel, URL, or keyword.</p>
+        <h2>{copy.empty.search.title(query.q)}</h2>
+        <p>{copy.empty.search.description}</p>
         <button type="button" onClick={onClearSearch}>
-          Clear search
+          {copy.empty.search.clear}
         </button>
       </section>
     );
@@ -162,10 +170,10 @@ function EmptyState({
   if (hasFilters(query)) {
     return (
       <section className="history-empty history-empty--filters">
-        <h2>No analyses match these filters</h2>
-        <p>Clear the active filters to see more saved analyses.</p>
+        <h2>{copy.empty.filters.title}</h2>
+        <p>{copy.empty.filters.description}</p>
         <button type="button" onClick={onClearFilters}>
-          Clear filters
+          {copy.empty.filters.clear}
         </button>
       </section>
     );
@@ -173,9 +181,9 @@ function EmptyState({
 
   return (
     <section className="history-empty history-empty--initial">
-      <h2>No analyses yet</h2>
-      <p>Your completed and in-progress analyses will appear here.</p>
-      <Link href="/app">Start a new analysis</Link>
+      <h2>{copy.empty.initial.title}</h2>
+      <p>{copy.empty.initial.description}</p>
+      <Link href="/app">{copy.empty.initial.start}</Link>
     </section>
   );
 }
@@ -183,6 +191,7 @@ function EmptyState({
 export function HistoryList({
   initialPage,
   query,
+  copy,
   actions,
   initialItemDialog = null,
   onClearSearch,
@@ -215,8 +224,9 @@ export function HistoryList({
         cursor: nextCursor,
       });
       if (!result.ok) {
-        setLoadError(result.message);
-        onAnnouncement(result.message);
+        const message = copy.errors[result.code];
+        setLoadError(message);
+        onAnnouncement(message);
         return;
       }
 
@@ -228,14 +238,10 @@ export function HistoryList({
       });
       setItems((current) => [...current, ...appended]);
       setNextCursor(result.data.nextCursor);
-      onAnnouncement(
-        appended.length === 1
-          ? '1 more saved analysis loaded.'
-          : `${appended.length} more saved analyses loaded.`,
-      );
+      onAnnouncement(copy.loadMore.more(appended.length));
     } catch {
-      setLoadError(rejectedLoadMoreMessage);
-      onAnnouncement(rejectedLoadMoreMessage);
+      setLoadError(copy.loadMore.rejected);
+      onAnnouncement(copy.loadMore.rejected);
     } finally {
       setLoadingMore(false);
     }
@@ -245,6 +251,7 @@ export function HistoryList({
     return (
       <EmptyState
         query={query}
+        copy={copy}
         onClearSearch={onClearSearch}
         onClearFilters={onClearFilters}
       />
@@ -260,7 +267,7 @@ export function HistoryList({
         >
           {items.map((item, index) => (
             <article key={item.id} className="history-card">
-              <Media item={item} />
+              <Media item={item} copy={copy} />
               <div className="history-card__body">
                 <Link href={item.href} className="history-card__title">
                   {item.title}
@@ -276,6 +283,7 @@ export function HistoryList({
               <div className="history-card__actions">
                 <ItemActions
                   item={item}
+                  copy={copy}
                   actions={actions}
                   onChange={(change) => changeItem(item.id, change)}
                   onDelete={() => deleteItem(item.id)}
@@ -294,17 +302,17 @@ export function HistoryList({
           <table className="history-table">
             <thead>
               <tr>
-                <th scope="col">Video</th>
-                <th scope="col">Details</th>
-                <th scope="col">Status</th>
-                <th scope="col">Actions</th>
+                <th scope="col">{copy.list.columns.video}</th>
+                <th scope="col">{copy.list.columns.details}</th>
+                <th scope="col">{copy.list.columns.status}</th>
+                <th scope="col">{copy.list.columns.actions}</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item, index) => (
                 <tr key={item.id} className="history-row">
                   <td className="history-row__video">
-                    <Media item={item} />
+                    <Media item={item} copy={copy} />
                     <div>
                       <Link href={item.href} className="history-row__title">
                         {item.title}
@@ -330,6 +338,7 @@ export function HistoryList({
                   <td className="history-row__actions">
                     <ItemActions
                       item={item}
+                      copy={copy}
                       actions={actions}
                       onChange={(change) => changeItem(item.id, change)}
                       onDelete={() => deleteItem(item.id)}
@@ -348,7 +357,7 @@ export function HistoryList({
         <div className="history-list__load-error" role="alert">
           <p>{loadError}</p>
           <button type="button" onClick={() => void loadMore()}>
-            Try loading more again
+            {copy.loadMore.retry}
           </button>
         </div>
       ) : nextCursor ? (
@@ -358,7 +367,7 @@ export function HistoryList({
           disabled={loadingMore}
           onClick={() => void loadMore()}
         >
-          {loadingMore ? 'Loading…' : 'Load more'}
+          {loadingMore ? copy.loadMore.loading : copy.loadMore.action}
         </button>
       ) : null}
     </div>

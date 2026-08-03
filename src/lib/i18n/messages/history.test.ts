@@ -1,0 +1,109 @@
+import { describe, expect, it } from 'vitest';
+
+import { supportedLocales } from '@/lib/i18n/locales';
+
+import { historyMessages } from './history';
+
+function messagePaths(value: unknown, path = ''): string[] {
+  if (typeof value === 'string' || typeof value === 'function') return [path];
+  if (!value || typeof value !== 'object') return [];
+
+  return Object.entries(value).flatMap(([key, child]) =>
+    messagePaths(child, path ? `${path}.${key}` : key),
+  );
+}
+
+describe('historyMessages', () => {
+  it('provides the complete History presentation contract in five locales', () => {
+    const englishPaths = messagePaths(historyMessages.en).sort();
+
+    expect(Object.keys(historyMessages).sort()).toEqual(
+      [...supportedLocales].sort(),
+    );
+    for (const locale of supportedLocales) {
+      expect(messagePaths(historyMessages[locale]).sort()).toEqual(
+        englishPaths,
+      );
+      expect(historyMessages[locale]).toMatchObject({
+        presentation: {
+          statuses: {
+            ready: expect.any(String),
+            partial: expect.any(String),
+            processing: expect.any(String),
+            failed: expect.any(String),
+          },
+          presets: {
+            balanced: expect.any(String),
+            detailed: expect.any(String),
+          },
+        },
+        toolbar: {
+          sorts: {
+            newest: expect.any(String),
+            oldest: expect.any(String),
+            recent: expect.any(String),
+            'title-asc': expect.any(String),
+            'title-desc': expect.any(String),
+          },
+          views: {
+            list: expect.any(String),
+            grid: expect.any(String),
+            gridUnavailable: expect.any(String),
+          },
+        },
+        filters: {
+          statuses: {
+            ready: expect.any(String),
+            processing: expect.any(String),
+            failed: expect.any(String),
+          },
+          dates: {
+            all: expect.any(String),
+            today: expect.any(String),
+            '7d': expect.any(String),
+            '30d': expect.any(String),
+            year: expect.any(String),
+          },
+        },
+        empty: {
+          search: { title: expect.any(Function) },
+          filters: { title: expect.any(String) },
+          initial: { title: expect.any(String) },
+          error: { title: expect.any(String) },
+        },
+        actions: {
+          favorite: expect.any(Object),
+          rename: expect.any(Object),
+          delete: expect.any(Object),
+          duplicate: expect.any(Object),
+          exportUnavailable: expect.any(String),
+        },
+        loadMore: expect.any(Object),
+        toasts: expect.any(Object),
+        errors: {
+          unauthorized: expect.any(String),
+          'not-found': expect.any(String),
+          invalid: expect.any(String),
+          conflict: expect.any(String),
+          failed: expect.any(String),
+        },
+      });
+    }
+  });
+
+  it('keeps representative German History copy available', () => {
+    expect(historyMessages.de.presentation.statuses.ready).toBe('Bereit');
+    expect(historyMessages.de.presentation.presets.detailed).toBe(
+      'Detailliert',
+    );
+    expect(historyMessages.de.toolbar.sorts.recent).toBe('Zuletzt geöffnet');
+    expect(historyMessages.de.filters.dates['30d']).toBe('Letzte 30 Tage');
+    expect(historyMessages.de.actions.rename.save).toBe('Titel speichern');
+    expect(historyMessages.de.actions.duplicate.openSaved).toBe(
+      'Gespeichertes Ergebnis öffnen',
+    );
+    expect(historyMessages.de.loadMore.more(2)).toBe(
+      '2 weitere gespeicherte Analysen geladen.',
+    );
+  });
+});

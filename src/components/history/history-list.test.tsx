@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { HistoryQuery } from '@/lib/history/query';
 import type { HistoryItem } from '@/lib/history/repository';
+import { historyMessages } from '@/lib/i18n/messages/history';
 
 import { HistoryList } from './history-list';
 
@@ -116,6 +117,7 @@ function historyListProps(
   return {
     initialPage: { items, nextCursor: null },
     query,
+    copy: historyMessages.en,
     actions: actions(),
     onClearSearch: vi.fn(),
     onClearFilters: vi.fn(),
@@ -278,16 +280,30 @@ describe('HistoryList', () => {
     vi.mocked(props.actions.loadMoreHistory).mockResolvedValue({
       ok: false,
       code: 'failed',
-      message: 'Could not load more saved analyses.',
     });
 
     await user.click(screen.getByRole('button', { name: 'Load more' }));
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Could not load more saved analyses.',
+      'We could not update History. Try again.',
     );
     expect(screen.getAllByText('Video ready')).toHaveLength(1);
     expect(
       screen.getByRole('button', { name: 'Try loading more again' }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders German empty and table copy while preserving source titles', () => {
+    stubHistoryViewport(false);
+    renderList({ copy: historyMessages.de });
+
+    expect(
+      screen.getByRole('columnheader', { name: 'Aktionen' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Video ready')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'Video ready aus Favoriten entfernen',
+      }),
     ).toBeInTheDocument();
   });
 

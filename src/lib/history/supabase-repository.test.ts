@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { decodeHistoryCursor, type HistoryQuery } from '@/lib/history/query';
+import { historyMessages } from '@/lib/i18n/messages/history';
 
 import { createSupabaseHistoryRepository } from './supabase-repository';
 
@@ -17,6 +18,18 @@ const defaults: HistoryQuery = {
   sort: 'newest',
   cursor: null,
 };
+
+const englishPresentation = {
+  locale: 'en',
+  copy: historyMessages.en,
+  timeZone: 'UTC',
+} as const;
+
+function createHistoryRepository(
+  client: Parameters<typeof createSupabaseHistoryRepository>[0],
+) {
+  return createSupabaseHistoryRepository(client, englishPresentation);
+}
 
 function query(overrides: Partial<HistoryQuery> = {}): HistoryQuery {
   return { ...defaults, ...overrides };
@@ -149,7 +162,7 @@ describe('Supabase History repository', () => {
     const { client, recorded } = createRecordingClient([
       { data: [], error: null },
     ]);
-    const repository = createSupabaseHistoryRepository(client);
+    const repository = createHistoryRepository(client);
 
     await repository.listOwned('owner-1', query({ q: 'systems' }), 20);
 
@@ -181,7 +194,7 @@ describe('Supabase History repository', () => {
         { data: [], error: null },
       ]);
 
-      await createSupabaseHistoryRepository(client).listOwned(
+      await createHistoryRepository(client).listOwned(
         'owner-1',
         query({ status }),
         20,
@@ -202,7 +215,7 @@ describe('Supabase History repository', () => {
       { data: [], error: null },
     ]);
 
-    await createSupabaseHistoryRepository(client).listOwned(
+    await createHistoryRepository(client).listOwned(
       'owner-1',
       query({
         favorite: true,
@@ -235,7 +248,7 @@ describe('Supabase History repository', () => {
       { data: [], error: null },
     ]);
 
-    await createSupabaseHistoryRepository(client).listOwned(
+    await createHistoryRepository(client).listOwned(
       'owner-1',
       query({ date: 'year' }),
       20,
@@ -291,7 +304,7 @@ describe('Supabase History repository', () => {
         { data: [], error: null },
       ]);
 
-      await createSupabaseHistoryRepository(client).listOwned(
+      await createHistoryRepository(client).listOwned(
         'owner-1',
         query({ sort }),
         20,
@@ -329,7 +342,7 @@ describe('Supabase History repository', () => {
         ? 'systems thinking'
         : '2026-07-24T14:35:00.000Z';
 
-      await createSupabaseHistoryRepository(client).listOwned(
+      await createHistoryRepository(client).listOwned(
         'owner-1',
         query({ sort, cursor: { sort, value, id: 'analysis-1' } }),
         20,
@@ -345,7 +358,7 @@ describe('Supabase History repository', () => {
       { data: [], error: null },
     ]);
 
-    await createSupabaseHistoryRepository(client).listOwned(
+    await createHistoryRepository(client).listOwned(
       'owner-1',
       query({
         sort: 'recent',
@@ -370,7 +383,7 @@ describe('Supabase History repository', () => {
       { data: [], error: null },
     ]);
 
-    await createSupabaseHistoryRepository(client).listOwned(
+    await createHistoryRepository(client).listOwned(
       'owner-1',
       query({
         sort: 'recent',
@@ -389,7 +402,7 @@ describe('Supabase History repository', () => {
       { data: [], error: null },
     ]);
 
-    await createSupabaseHistoryRepository(client).listOwned(
+    await createHistoryRepository(client).listOwned(
       'owner-1',
       query({
         sort: 'newest',
@@ -415,7 +428,7 @@ describe('Supabase History repository', () => {
     );
     const { client } = createRecordingClient([{ data: rows, error: null }]);
 
-    const page = await createSupabaseHistoryRepository(client).listOwned(
+    const page = await createHistoryRepository(client).listOwned(
       'owner-1',
       query(),
       20,
@@ -436,7 +449,7 @@ describe('Supabase History repository', () => {
     );
     const { client } = createRecordingClient([{ data: rows, error: null }]);
 
-    const page = await createSupabaseHistoryRepository(client).listOwned(
+    const page = await createHistoryRepository(client).listOwned(
       'owner-1',
       query(),
       20,
@@ -456,7 +469,7 @@ describe('Supabase History repository', () => {
         { data: [], error: null },
       ]);
 
-      await createSupabaseHistoryRepository(client).listOwned(
+      await createHistoryRepository(client).listOwned(
         'owner-1',
         query(),
         limit,
@@ -491,7 +504,7 @@ describe('Supabase History repository', () => {
     ]);
 
     await expect(
-      createSupabaseHistoryRepository(client).listFacets('owner-1'),
+      createHistoryRepository(client).listFacets('owner-1'),
     ).resolves.toEqual({
       languages: ['en', 'uk'],
       sources: [
@@ -511,7 +524,7 @@ describe('Supabase History repository', () => {
     ]);
 
     await expect(
-      createSupabaseHistoryRepository(client).findOwnedReusableDuplicate(
+      createHistoryRepository(client).findOwnedReusableDuplicate(
         'owner-1',
         'analysis-1',
       ),
@@ -531,16 +544,34 @@ describe('Supabase History repository', () => {
     expect(ownerCallCount(recorded)).toBe(1);
   });
 
+  test('maps rows with injected locale copy without translating stored values', async () => {
+    const { client } = createRecordingClient([
+      { data: [databaseRow()], error: null },
+    ]);
+
+    const page = await createSupabaseHistoryRepository(client, {
+      locale: 'de',
+      copy: historyMessages.de,
+      timeZone: 'UTC',
+    }).listOwned('owner-1', query(), 20);
+
+    expect(page.items[0]).toMatchObject({
+      title: 'Systems thinking',
+      channel: 'Knowledge Channel',
+      language: 'en',
+      summaryPresetLabel: 'Detailliert',
+      analyzedAtLabel: '24.07.2026, 14:35',
+      status: { key: 'ready', label: 'Bereit' },
+    });
+  });
+
   test('deletes an intake only by both analysis id and owner', async () => {
     const { client, recorded } = createRecordingClient([
       { data: { id: 'analysis-1' }, error: null },
     ]);
 
     await expect(
-      createSupabaseHistoryRepository(client).deleteOwned(
-        'owner-1',
-        'analysis-1',
-      ),
+      createHistoryRepository(client).deleteOwned('owner-1', 'analysis-1'),
     ).resolves.toBe(true);
 
     expect(recorded).toContainEqual(['from', 'analysis_intakes']);

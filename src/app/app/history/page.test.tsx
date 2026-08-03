@@ -4,9 +4,11 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { HistoryItem } from '@/lib/history/repository';
 
 const {
+  createHistoryRepository,
   deleteHistoryItem,
   findOwnedReusableDuplicate,
   getUser,
+  getRequestLocale,
   listFacets,
   listOwned,
   loadMoreHistory,
@@ -16,9 +18,11 @@ const {
   renameHistoryItem,
   toggleHistoryFavorite,
 } = vi.hoisted(() => ({
+  createHistoryRepository: vi.fn(),
   deleteHistoryItem: vi.fn(),
   findOwnedReusableDuplicate: vi.fn(),
   getUser: vi.fn(),
+  getRequestLocale: vi.fn(async () => 'en'),
   listFacets: vi.fn(),
   listOwned: vi.fn(),
   loadMoreHistory: vi.fn(),
@@ -44,12 +48,10 @@ vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: async () => ({ auth: { getUser } }),
 }));
 
+vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
+
 vi.mock('@/lib/history/supabase-repository', () => ({
-  createSupabaseHistoryRepository: () => ({
-    findOwnedReusableDuplicate,
-    listFacets,
-    listOwned,
-  }),
+  createSupabaseHistoryRepository: createHistoryRepository,
 }));
 
 vi.mock('@/lib/history/actions', () => ({
@@ -61,7 +63,7 @@ vi.mock('@/lib/history/actions', () => ({
   toggleHistoryFavorite,
 }));
 
-import HistoryPage from './page';
+import HistoryPage, { generateMetadata } from './page';
 
 const ownerId = '11111111-1111-4111-8111-111111111111';
 const verifiedDuplicate: HistoryItem = {
@@ -100,6 +102,12 @@ function renderPage(
 describe('HistoryPage server boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getRequestLocale.mockResolvedValue('en');
+    createHistoryRepository.mockReturnValue({
+      findOwnedReusableDuplicate,
+      listFacets,
+      listOwned,
+    });
     getUser.mockResolvedValue({ data: { user: { id: ownerId } } });
     listOwned.mockResolvedValue({ items: [], nextCursor: null });
     listFacets.mockResolvedValue({
@@ -148,6 +156,28 @@ describe('HistoryPage server boundary', () => {
     expect(
       screen.getByRole('heading', { name: 'History', level: 1 }),
     ).toBeInTheDocument();
+  });
+
+  test('selects German page, metadata, and repository presentation copy', async () => {
+    getRequestLocale.mockResolvedValue('de');
+
+    await renderPage();
+
+    expect(
+      screen.getByRole('heading', { name: 'Verlauf', level: 1 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Neue Analyse' })).toHaveAttribute(
+      'href',
+      '/app',
+    );
+    expect(createHistoryRepository).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ locale: 'de' }),
+    );
+    await expect(generateMetadata()).resolves.toEqual({
+      title: 'Verlauf — Gleen',
+      description: 'Finde und öffne deine gespeicherten Analysen erneut.',
+    });
   });
 
   test('falls back safely for malformed query state', async () => {

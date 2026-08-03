@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { HistoryToolbar } from './history-toolbar';
 import type { HistoryQuery } from '@/lib/history/query';
+import { historyMessages } from '@/lib/i18n/messages/history';
 
 const query: HistoryQuery = {
   q: 'prisms',
@@ -33,6 +34,7 @@ describe('HistoryToolbar', () => {
     const { container } = render(
       <HistoryToolbar
         query={query}
+        copy={historyMessages.en}
         onSearch={vi.fn()}
         onSortChange={vi.fn()}
         filterControl={<button type="button">Filters</button>}
@@ -94,6 +96,7 @@ describe('HistoryToolbar', () => {
     render(
       <HistoryToolbar
         query={query}
+        copy={historyMessages.en}
         onSearch={onSearch}
         onSortChange={onSortChange}
         filterControl={<button type="button">Filters</button>}
@@ -126,6 +129,7 @@ describe('HistoryToolbar', () => {
     render(
       <HistoryToolbar
         query={query}
+        copy={historyMessages.en}
         onSearch={vi.fn()}
         onSortChange={vi.fn()}
         filterControl={<button type="button">Filters</button>}
@@ -146,6 +150,7 @@ describe('HistoryToolbar', () => {
     render(
       <HistoryToolbar
         query={query}
+        copy={historyMessages.en}
         onSearch={vi.fn()}
         onSortChange={vi.fn()}
         filterControl={
@@ -168,5 +173,36 @@ describe('HistoryToolbar', () => {
     const grid = screen.getByRole('button', { name: 'Grid view unavailable' });
     expect(grid).toBeDisabled();
     expect(grid).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('renders injected German search, sort, and view copy', async () => {
+    const user = userEvent.setup();
+    render(
+      <HistoryToolbar
+        query={query}
+        copy={historyMessages.de}
+        onSearch={vi.fn()}
+        onSortChange={vi.fn()}
+        filterControl={<button type="button">Filter</button>}
+      />,
+    );
+
+    expect(
+      screen.getByRole('searchbox', { name: 'Verlauf durchsuchen' }),
+    ).toHaveAttribute(
+      'placeholder',
+      'Nach Titel, Kanal, URL oder Stichwort suchen',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Rasteransicht nicht verfügbar' }),
+    ).toBeDisabled();
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Verlauf sortieren: Zuletzt geöffnet',
+      }),
+    );
+    expect(
+      await screen.findByRole('menuitem', { name: 'Älteste' }),
+    ).toBeInTheDocument();
   });
 });

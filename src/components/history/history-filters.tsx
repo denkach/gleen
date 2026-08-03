@@ -12,6 +12,7 @@ import {
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { HistoryQuery, HistoryStatusFilter } from '@/lib/history/query';
 import type { HistoryFacets } from '@/lib/history/repository';
+import type { HistoryMessages } from '@/lib/i18n/messages/history';
 
 import { HistoryFilterIcon } from './history-toolbar-icons';
 import type { HistoryFilterDraft } from './history-workspace';
@@ -19,21 +20,22 @@ import type { HistoryFilterDraft } from './history-workspace';
 const mobileHistoryQuery = '(max-width: 720px)';
 
 const statusOptions = [
-  ['ready', 'Ready'],
-  ['processing', 'Processing'],
-  ['failed', 'Failed'],
-] as const satisfies readonly (readonly [HistoryStatusFilter, string])[];
+  'ready',
+  'processing',
+  'failed',
+] as const satisfies readonly HistoryStatusFilter[];
 
 const dateOptions = [
-  ['all', 'All time'],
-  ['today', 'Today'],
-  ['7d', 'Last 7 days'],
-  ['30d', 'Last 30 days'],
-  ['year', 'This year'],
-] as const satisfies readonly (readonly [HistoryQuery['date'], string])[];
+  'all',
+  'today',
+  '7d',
+  '30d',
+  'year',
+] as const satisfies readonly HistoryQuery['date'][];
 
 export type HistoryFiltersProps = Readonly<{
   draft: HistoryFilterDraft;
+  copy: HistoryMessages;
   appliedCount: number;
   presentationCountOverride?: number;
   facets: HistoryFacets;
@@ -71,15 +73,6 @@ function useMobileHistoryLayout(): boolean {
   return mobile;
 }
 
-function triggerLabel(mobile: boolean, count: number): string {
-  const noun = mobile ? 'Filter' : 'Filters';
-  return count === 0 ? `${noun}, none applied` : `${noun}, ${count} applied`;
-}
-
-function appliedNote(count: number): string {
-  return count === 1 ? '1 filter applied' : `${count} filters applied`;
-}
-
 export function HistoryFilters(props: HistoryFiltersProps) {
   const mobile = useMobileHistoryLayout();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -106,6 +99,7 @@ type HistoryFiltersPresentationProps = HistoryFiltersProps &
 
 function DesktopHistoryFilters({
   draft,
+  copy,
   facets,
   open,
   onOpenChange,
@@ -158,6 +152,7 @@ function DesktopHistoryFilters({
       <FilterTrigger
         ref={triggerRef}
         count={presentedAppliedCount}
+        copy={copy}
         mobile={false}
         open={open}
         controls={panelId}
@@ -172,19 +167,20 @@ function DesktopHistoryFilters({
         >
           <header className="history-filters__header">
             <h2 id={titleId} className="history-filters__title">
-              Filter results
+              {copy.filters.panelTitle}
             </h2>
             <button
               type="button"
               className="history-filters__reset"
               onClick={onReset}
             >
-              Reset
+              {copy.filters.reset}
             </button>
           </header>
           <FilterFields
             idPrefix={`${panelId}-desktop`}
             draft={draft}
+            copy={copy}
             facets={facets}
             onChange={onChange}
           />
@@ -194,9 +190,9 @@ function DesktopHistoryFilters({
               className="history-filters__clear"
               onClick={onClearAll}
             >
-              Clear all
+              {copy.filters.clearAll}
             </button>
-            <ApplyButton count={count} onApply={onApply} />
+            <ApplyButton copy={copy} count={count} onApply={onApply} />
           </footer>
         </section>
       ) : null}
@@ -206,6 +202,7 @@ function DesktopHistoryFilters({
 
 function MobileHistoryFilters({
   draft,
+  copy,
   facets,
   open,
   onOpenChange,
@@ -228,15 +225,16 @@ function MobileHistoryFilters({
       <FilterTrigger
         ref={triggerRef}
         count={presentedAppliedCount}
+        copy={copy}
         mobile
         open={open}
         onClick={() => onOpenChange(!open)}
       />
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          title="Filters"
-          description="Refine the saved analyses shown in history."
-          closeLabel="Close filters"
+          title={copy.filters.dialogTitle}
+          description={copy.filters.dialogDescription}
+          closeLabel={copy.filters.close}
           className="history-filters__mobile-sheet history-filter-sheet"
         >
           <span
@@ -249,18 +247,19 @@ function MobileHistoryFilters({
             className="history-filters__reset"
             onClick={onReset}
           >
-            Reset
+            {copy.filters.reset}
           </button>
           <FilterFields
             idPrefix={`${fieldId}-mobile`}
             draft={draft}
+            copy={copy}
             facets={facets}
             onChange={onChange}
           />
           <div className="history-filters__mobile-actions">
-            <ApplyButton count={count} onApply={onApply} />
+            <ApplyButton copy={copy} count={count} onApply={onApply} />
             <p className="history-filters__applied-note">
-              {appliedNote(presentedAppliedCount)}
+              {copy.filters.appliedNote(presentedAppliedCount)}
             </p>
           </div>
         </DialogContent>
@@ -272,6 +271,7 @@ function MobileHistoryFilters({
 const FilterTrigger = ({
   ref,
   count,
+  copy,
   mobile,
   open,
   controls,
@@ -279,6 +279,7 @@ const FilterTrigger = ({
 }: Readonly<{
   ref: RefObject<HTMLButtonElement | null>;
   count: number;
+  copy: HistoryMessages;
   mobile: boolean;
   open: boolean;
   controls?: string;
@@ -288,14 +289,14 @@ const FilterTrigger = ({
     ref={ref}
     type="button"
     className="history-filters__trigger"
-    aria-label={triggerLabel(mobile, count)}
+    aria-label={copy.filters.triggerLabel(mobile, count)}
     aria-expanded={open}
     aria-controls={controls}
     aria-haspopup={mobile ? 'dialog' : undefined}
     onClick={onClick}
   >
     <HistoryFilterIcon />
-    {mobile ? 'Filter' : 'Filters'}
+    {mobile ? copy.filters.mobileTrigger : copy.filters.desktopTrigger}
     {count > 0 ? (
       <span className="history-filters__count" aria-hidden="true">
         {count}
@@ -305,12 +306,13 @@ const FilterTrigger = ({
 );
 
 function ApplyButton({
+  copy,
   count,
   onApply,
-}: Readonly<{ count: number; onApply(): void }>) {
+}: Readonly<{ copy: HistoryMessages; count: number; onApply(): void }>) {
   return (
     <button type="button" className="history-filters__apply" onClick={onApply}>
-      Apply filters ({count})
+      {copy.filters.apply(count)}
     </button>
   );
 }
@@ -318,11 +320,13 @@ function ApplyButton({
 function FilterFields({
   idPrefix,
   draft,
+  copy,
   facets,
   onChange,
 }: Readonly<{
   idPrefix: string;
   draft: HistoryFilterDraft;
+  copy: HistoryMessages;
   facets: HistoryFacets;
   onChange(draft: HistoryFilterDraft): void;
 }>) {
@@ -345,9 +349,9 @@ function FilterFields({
   return (
     <div className="history-filters__fields">
       <fieldset className="history-filters__field history-filters__status">
-        <legend>Status</legend>
+        <legend>{copy.filters.status}</legend>
         <div className="history-filters__status-options">
-          {statusOptions.map(([value, label]) => (
+          {statusOptions.map((value) => (
             <label key={value} className="history-filters__status-option">
               <input
                 type="checkbox"
@@ -358,7 +362,7 @@ function FilterFields({
                 className={`history-filters__status-dot history-filters__status-dot--${value}`}
                 aria-hidden="true"
               />
-              {label}
+              {copy.filters.statuses[value]}
             </label>
           ))}
         </div>
@@ -366,17 +370,17 @@ function FilterFields({
 
       <SelectField
         id={`${idPrefix}-language`}
-        label="Language"
+        label={copy.filters.language}
         value={draft.language ?? ''}
-        allLabel="All"
+        allLabel={copy.filters.all}
         options={facets.languages}
         onChange={(event) => changeScalar('language', event)}
       />
       <SelectField
         id={`${idPrefix}-source`}
-        label="Source"
+        label={copy.filters.source}
         value={draft.source ?? ''}
-        allLabel="All sources"
+        allLabel={copy.filters.allSources}
         options={facets.sources}
         onChange={(event) => changeScalar('source', event)}
       />
@@ -385,7 +389,7 @@ function FilterFields({
         className="history-filters__field history-filters__select-field"
         htmlFor={`${idPrefix}-date`}
       >
-        <span>Date range</span>
+        <span>{copy.filters.dateRange}</span>
         <select
           id={`${idPrefix}-date`}
           value={draft.date}
@@ -396,16 +400,16 @@ function FilterFields({
             })
           }
         >
-          {dateOptions.map(([value, label]) => (
+          {dateOptions.map((value) => (
             <option key={value} value={value}>
-              {label}
+              {copy.filters.dates[value]}
             </option>
           ))}
         </select>
       </label>
 
       <div className="history-filters__field history-filters__favorite">
-        <span>Favorites only</span>
+        <span>{copy.filters.favoritesOnly}</span>
         <label className="history-filters__favorite-control">
           <input
             type="checkbox"
@@ -414,7 +418,7 @@ function FilterFields({
               onChange({ ...draft, favorite: event.currentTarget.checked })
             }
           />
-          <span>Show favorites only</span>
+          <span>{copy.filters.showFavoritesOnly}</span>
         </label>
       </div>
     </div>

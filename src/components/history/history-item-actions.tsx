@@ -12,10 +12,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { HistoryActionResult } from '@/lib/history/actions';
+import type { HistoryMessages } from '@/lib/i18n/messages/history';
 import type { HistoryItem } from '@/lib/history/repository';
 
 export type HistoryItemActionsProps = Readonly<{
   item: HistoryItem;
+  copy: HistoryMessages;
   toggleFavorite(input: unknown): Promise<HistoryActionResult>;
   renameItem(
     input: unknown,
@@ -29,15 +31,15 @@ export type HistoryItemActionsProps = Readonly<{
 }>;
 
 function failureMessage(
+  copy: HistoryMessages,
   result: Exclude<HistoryActionResult<unknown>, { ok: true }>,
 ): string {
-  return result.message;
+  return copy.errors[result.code];
 }
-
-const rejectedMutationMessage = 'We could not update History. Try again.';
 
 export function HistoryItemActions({
   item,
+  copy,
   toggleFavorite,
   renameItem,
   deleteItem,
@@ -74,7 +76,7 @@ export function HistoryItemActions({
       });
       if (!result.ok) {
         setOptimisticFavorite(null);
-        onAnnouncement(failureMessage(result));
+        onAnnouncement(failureMessage(copy, result));
         return;
       }
 
@@ -82,12 +84,12 @@ export function HistoryItemActions({
       setOptimisticFavorite(null);
       onAnnouncement(
         next
-          ? `${item.title} added to favorites.`
-          : `${item.title} removed from favorites.`,
+          ? copy.toasts.favoriteAdded(item.title)
+          : copy.toasts.favoriteRemoved(item.title),
       );
     } catch {
       setOptimisticFavorite(null);
-      onAnnouncement(rejectedMutationMessage);
+      onAnnouncement(copy.errors.failed);
     } finally {
       setFavoritePending(false);
     }
@@ -104,7 +106,7 @@ export function HistoryItemActions({
     if (renamePending) return;
     const title = renameTitle.trim();
     if (!title) {
-      setRenameError('Enter a title before saving.');
+      setRenameError(copy.actions.rename.empty);
       return;
     }
 
@@ -117,15 +119,15 @@ export function HistoryItemActions({
         expectedUpdatedAt: item.titleRevision,
       });
       if (!result.ok) {
-        setRenameError(failureMessage(result));
+        setRenameError(failureMessage(copy, result));
         return;
       }
 
       onChange({ title, titleRevision: result.data.updatedAt });
-      onAnnouncement(`${title} renamed.`);
+      onAnnouncement(copy.toasts.renamed(title));
       setRenameOpen(false);
     } catch {
-      setRenameError(rejectedMutationMessage);
+      setRenameError(copy.errors.failed);
     } finally {
       setRenamePending(false);
     }
@@ -143,15 +145,15 @@ export function HistoryItemActions({
     try {
       const result = await deleteItem({ analysisId: item.id });
       if (!result.ok) {
-        setDeleteError(failureMessage(result));
+        setDeleteError(failureMessage(copy, result));
         return;
       }
 
       onDelete();
-      onAnnouncement(`${item.title} deleted.`);
+      onAnnouncement(copy.toasts.deleted(item.title));
       setDeleteOpen(false);
     } catch {
-      setDeleteError(rejectedMutationMessage);
+      setDeleteError(copy.errors.failed);
     } finally {
       setDeletePending(false);
     }
@@ -164,17 +166,19 @@ export function HistoryItemActions({
 
   const openLabel =
     item.status.key === 'ready' || item.status.key === 'partial'
-      ? 'Open'
-      : 'Continue';
+      ? copy.actions.open
+      : copy.actions.continue;
 
   return (
     <div className="history-item-actions">
       <button
         type="button"
         className="history-item-actions__favorite"
-        aria-label={`${favorite ? 'Remove' : 'Add'} ${item.title} ${
-          favorite ? 'from' : 'to'
-        } favorites`}
+        aria-label={
+          favorite
+            ? copy.actions.favorite.removeLabel(item.title)
+            : copy.actions.favorite.addLabel(item.title)
+        }
         aria-pressed={favorite}
         data-selected={favorite ? 'true' : 'false'}
         disabled={favoritePending}
@@ -186,24 +190,26 @@ export function HistoryItemActions({
       <DropdownMenu>
         <DropdownMenuTrigger
           className="history-item-actions__trigger"
-          aria-label={`Actions for ${item.title}`}
+          aria-label={copy.actions.menuLabel(item.title)}
         >
           <span aria-hidden="true">•••</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="history-item-actions__menu"
           align="end"
-          aria-label={`Actions for ${item.title}`}
+          aria-label={copy.actions.menuLabel(item.title)}
         >
           <DropdownMenuItem asChild>
             <Link href={item.href} onClick={markItemOpened}>
               {openLabel}
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={openRename}>Rename</DropdownMenuItem>
+          <DropdownMenuItem onSelect={openRename}>
+            {copy.actions.rename.action}
+          </DropdownMenuItem>
           {item.canExport ? (
             <DropdownMenuItem asChild>
-              <Link href={`${item.href}#export`}>Export</Link>
+              <Link href={`${item.href}#export`}>{copy.actions.export}</Link>
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuSeparator />
@@ -211,19 +217,22 @@ export function HistoryItemActions({
             className="history-item-actions__delete"
             onSelect={openDelete}
           >
-            Delete
+            {copy.actions.delete.action}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent
-          title="Rename saved analysis"
-          description="Give this saved analysis a title that is easier to find."
+          title={copy.actions.rename.title}
+          description={copy.actions.rename.description}
+          closeLabel={copy.actions.closeDialog}
           className="history-item-actions__dialog"
         >
           <form onSubmit={(event) => void submitRename(event)}>
-            <label htmlFor={`history-rename-${item.id}`}>Title</label>
+            <label htmlFor={`history-rename-${item.id}`}>
+              {copy.actions.rename.field}
+            </label>
             <input
               id={`history-rename-${item.id}`}
               value={renameTitle}
@@ -238,10 +247,12 @@ export function HistoryItemActions({
             {renameError ? <p role="alert">{renameError}</p> : null}
             <div className="history-item-actions__dialog-actions">
               <DialogClose type="button" disabled={renamePending}>
-                Cancel
+                {copy.actions.rename.cancel}
               </DialogClose>
               <button type="submit" disabled={renamePending}>
-                {renamePending ? 'Saving…' : 'Save title'}
+                {renamePending
+                  ? copy.actions.rename.saving
+                  : copy.actions.rename.save}
               </button>
             </div>
           </form>
@@ -250,21 +261,24 @@ export function HistoryItemActions({
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent
-          title="Delete saved analysis?"
-          description={`Delete ${item.title} from your history. This cannot be undone.`}
+          title={copy.actions.delete.title}
+          description={copy.actions.delete.description(item.title)}
+          closeLabel={copy.actions.closeDialog}
           className="history-item-actions__dialog"
         >
           {deleteError ? <p role="alert">{deleteError}</p> : null}
           <div className="history-item-actions__dialog-actions">
             <DialogClose type="button" disabled={deletePending}>
-              Cancel
+              {copy.actions.delete.cancel}
             </DialogClose>
             <button
               type="button"
               disabled={deletePending}
               onClick={() => void confirmDelete()}
             >
-              {deletePending ? 'Deleting…' : 'Delete analysis'}
+              {deletePending
+                ? copy.actions.delete.deleting
+                : copy.actions.delete.confirm}
             </button>
           </div>
         </DialogContent>
