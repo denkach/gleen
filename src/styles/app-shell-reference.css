@@ -4,6 +4,14 @@
   grid-template-columns: 242px 1fr;
 }
 
+body:has(.app-shell)
+  > .locale-switcher__menu
+  .locale-switcher__item[aria-current='true'] {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+  box-shadow: inset var(--focus-ring-width) 0 var(--color-focus);
+}
+
 .app-visually-hidden {
   position: absolute;
   width: 1px;

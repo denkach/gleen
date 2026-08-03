@@ -5,6 +5,7 @@ import {
   type OnboardingPatch,
   type OnboardingState,
 } from './preferences';
+import { localeSchema, type Locale } from '@/lib/i18n/locales';
 
 type StorageError = Readonly<{ message: string }>;
 type StorageResult = Readonly<{
@@ -20,6 +21,11 @@ export type OnboardingStorage = Readonly<{
   ): Promise<StorageResult>;
 }>;
 
+export type InterfaceLocaleStorage = Readonly<{
+  readInterfaceLocale(userId: string): Promise<StorageResult>;
+  updateInterfaceLocale(userId: string, locale: Locale): Promise<StorageResult>;
+}>;
+
 export type PreferenceResult<T> =
   | Readonly<{ ok: true; data: T }>
   | Readonly<{
@@ -28,6 +34,18 @@ export type PreferenceResult<T> =
     }>;
 
 const profileRowSchema = onboardingStateSchema.transform((value) => value);
+
+export async function readInterfaceLocale(
+  storage: InterfaceLocaleStorage,
+  userId: string,
+): Promise<Locale | null> {
+  const result = await storage.readInterfaceLocale(userId);
+  if (result.error || !result.data) return null;
+
+  const row = result.data as Record<string, unknown>;
+  const parsed = localeSchema.safeParse(row.interface_locale);
+  return parsed.success ? parsed.data : null;
+}
 
 function parseProfileRow(input: unknown): OnboardingState | null {
   if (!input) return defaultOnboardingState;

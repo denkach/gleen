@@ -1,0 +1,85 @@
+'use client';
+
+import { useActionState, useEffect, useId } from 'react';
+import { useRouter } from 'next/navigation';
+
+import { setInterfaceLocale, type LocaleActionState } from '@/lib/i18n/actions';
+import type { Locale } from '@/lib/i18n/locales';
+import { localeMetadata, supportedLocales } from '@/lib/i18n/locales';
+import type { LocaleSwitcherCopy } from '@/lib/i18n/messages/shared';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+type LocaleSwitcherProps = Readonly<{
+  locale: Locale;
+  copy: LocaleSwitcherCopy;
+  variant: 'landing' | 'auth' | 'app';
+}>;
+
+const initialActionState: LocaleActionState = { status: 'idle' };
+
+export function LocaleSwitcher({ locale, copy, variant }: LocaleSwitcherProps) {
+  const formId = useId();
+  const router = useRouter();
+  const [state, formAction, pending] = useActionState(
+    setInterfaceLocale,
+    initialActionState,
+  );
+
+  useEffect(() => {
+    if (state.status === 'success') router.refresh();
+  }, [router, state.status]);
+
+  const error =
+    state.status === 'error'
+      ? state.code === 'invalid_locale'
+        ? copy.localeSwitcher.errors.invalidLocale
+        : copy.localeSwitcher.errors.profileUpdateFailed
+      : null;
+
+  return (
+    <form action={formAction} id={formId} className="locale-switcher">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            aria-label={`${copy.localeSwitcher.label}: ${localeMetadata[locale].nativeName}`}
+            className={`btn btn-ghost btn-sm language-btn locale-switcher__trigger locale-switcher__trigger--${variant}`}
+            disabled={pending}
+            type="button"
+          >
+            {localeMetadata[locale].nativeName}{' '}
+            <span aria-hidden="true">›</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          aria-label={copy.localeSwitcher.menuLabel}
+          className={`locale-switcher__menu locale-switcher__menu--${variant}`}
+          align="end"
+        >
+          {supportedLocales.map((candidate) => (
+            <DropdownMenuItem asChild key={candidate}>
+              <button
+                aria-current={candidate === locale ? 'true' : undefined}
+                className="locale-switcher__item"
+                disabled={pending}
+                form={formId}
+                name="locale"
+                type="submit"
+                value={candidate}
+              >
+                {localeMetadata[candidate].nativeName}
+              </button>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <p aria-live="polite" className="locale-switcher__status">
+        {pending ? copy.localeSwitcher.saving : error}
+      </p>
+    </form>
+  );
+}

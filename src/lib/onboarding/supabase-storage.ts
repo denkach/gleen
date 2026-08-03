@@ -1,14 +1,33 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { OnboardingStorage } from './repository';
+import type { InterfaceLocaleStorage, OnboardingStorage } from './repository';
+import type { Locale } from '@/lib/i18n/locales';
 
 const profileColumns =
   'interface_locale, output_locale, summary_preset, flashcard_preset, onboarding_step, onboarding_completed_at';
+const interfaceLocaleColumns = 'interface_locale';
 
 export function createSupabaseOnboardingStorage(
   client: SupabaseClient,
-): OnboardingStorage {
+): OnboardingStorage & InterfaceLocaleStorage {
   return {
+    async readInterfaceLocale(userId) {
+      const { data, error } = await client
+        .from('profiles')
+        .select(interfaceLocaleColumns)
+        .eq('user_id', userId)
+        .maybeSingle();
+      return { data, error };
+    },
+    async updateInterfaceLocale(userId, locale: Locale) {
+      const { data, error } = await client
+        .from('profiles')
+        .update({ interface_locale: locale })
+        .eq('user_id', userId)
+        .select(interfaceLocaleColumns)
+        .maybeSingle();
+      return { data, error };
+    },
     async read(userId) {
       const { data, error } = await client
         .from('profiles')

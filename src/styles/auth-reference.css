@@ -233,6 +233,13 @@
   font-family: var(--mono);
   font-size: 12px;
 }
+body:has(.auth-reference)
+  > .locale-switcher__menu
+  .locale-switcher__item[aria-current='true'] {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+  box-shadow: inset var(--focus-ring-width) 0 var(--color-focus);
+}
 .auth-reference .auth-divider {
   display: grid;
   grid-template-columns: 1fr auto 1fr;

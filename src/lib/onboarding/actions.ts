@@ -1,6 +1,8 @@
 'use server';
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { persistInterfaceLocale } from '@/lib/i18n/actions';
+import { localeSchema } from '@/lib/i18n/locales';
 
 import {
   type OnboardingPatch,
@@ -39,10 +41,25 @@ export async function saveOnboardingPreferences(
   let patch: OnboardingPatch;
 
   if (step === 1) {
-    patch = {
-      interfaceLocale: formData.get('interfaceLocale'),
-      onboardingStep: 2,
-    } as OnboardingPatch;
+    const interfaceLocale = localeSchema.safeParse(
+      formData.get('interfaceLocale'),
+    );
+    if (!interfaceLocale.success) {
+      return {
+        status: 'error',
+        message: 'Choose one of the available options.',
+      };
+    }
+
+    const persistence = await persistInterfaceLocale(interfaceLocale.data);
+    if (!persistence.ok) {
+      return {
+        status: 'error',
+        message: 'We could not save your preferences. Try again.',
+      };
+    }
+
+    patch = { onboardingStep: 2 };
   } else if (step === 2) {
     patch = {
       ...(skip ? {} : { outputLocale: formData.get('outputLocale') }),

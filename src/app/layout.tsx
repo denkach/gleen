@@ -6,6 +6,8 @@ import '@fontsource-variable/jetbrains-mono';
 import '@fontsource-variable/space-grotesk';
 
 import { validatePublicEnv } from '@/env';
+import { toBcp47 } from '@/lib/i18n/locales';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
 import './globals.css';
 import '../styles/landing-reference.css';
@@ -38,11 +40,13 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
+  const locale = await getRequestLocale();
+
   return (
-    <html lang="en">
+    <html lang={toBcp47(locale)}>
       <body>{children}</body>
     </html>
   );
