@@ -36,7 +36,7 @@ const messages = defineMessages({
 
 describe('typed message catalogs', () => {
   it('selects a locale while retaining nested messages and interpolation signatures', () => {
-    const selected = selectMessages(messages, 'de', 'test');
+    const selected = selectMessages(messages, 'de', 'test', () => undefined);
 
     expect(selected.save).toBe('Speichern');
     expect(selected.nested.cancel).toBe('Abbrechen');
@@ -49,9 +49,9 @@ describe('typed message catalogs', () => {
       de: undefined,
     } as unknown as typeof messages;
 
-    expect(() => selectMessages(missingGerman, 'de', 'shared')).toThrow(
-      'Missing translation: shared (de)',
-    );
+    expect(() =>
+      selectMessages(missingGerman, 'de', 'shared', () => undefined),
+    ).toThrow('Missing translation: shared (de)');
   });
 
   it('reports a missing production catalog and recovers with canonical English', () => {
@@ -102,6 +102,8 @@ const catalogWithMissingKey = defineMessages({
 const widenedString: string = typedMessages.en.save;
 const preservedSignature: (value: number) => string = typedMessages.en.count;
 
+// @ts-expect-error Production recovery requires a reporter for its diagnostic.
+const missingReporter = selectMessages(typedMessages, 'en', 'test');
 // @ts-expect-error English string literals are intentionally widened.
 const literalString: 'Save' = typedMessages.en.save;
 // @ts-expect-error Message functions retain their interpolation parameters.
@@ -109,6 +111,7 @@ const wrongSignature: (value: string) => string = typedMessages.en.count;
 
 void widenedString;
 void preservedSignature;
+void missingReporter;
 void literalString;
 void wrongSignature;
 void catalogWithMissingKey;

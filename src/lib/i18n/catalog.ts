@@ -46,7 +46,7 @@ export function selectMessages<English extends MessageTree>(
   catalog: LocalizedMessages<English>,
   locale: Locale,
   namespace: string,
-  reporter?: MissingTranslationReporter,
+  reporter: MissingTranslationReporter,
 ): WidenMessage<English> {
   const selected = catalog[locale];
 
@@ -56,6 +56,6 @@ export function selectMessages<English extends MessageTree>(
     throw new Error(`Missing translation: ${namespace} (${locale})`);
   }
 
-  reporter?.({ event: 'missing_translation', namespace, locale });
+  reporter({ event: 'missing_translation', namespace, locale });
   return catalog.en;
 }
