@@ -19,13 +19,15 @@ export function createSupabaseOnboardingStorage(
         .maybeSingle();
       return { data, error };
     },
-    async updateInterfaceLocale(userId, locale: Locale) {
+    async upsertInterfaceLocale(userId, locale: Locale) {
       const { data, error } = await client
         .from('profiles')
-        .update({ interface_locale: locale })
-        .eq('user_id', userId)
+        .upsert(
+          { user_id: userId, interface_locale: locale },
+          { onConflict: 'user_id' },
+        )
         .select(interfaceLocaleColumns)
-        .maybeSingle();
+        .single();
       return { data, error };
     },
     async read(userId) {

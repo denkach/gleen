@@ -23,7 +23,7 @@ export type OnboardingStorage = Readonly<{
 
 export type InterfaceLocaleStorage = Readonly<{
   readInterfaceLocale(userId: string): Promise<StorageResult>;
-  updateInterfaceLocale(userId: string, locale: Locale): Promise<StorageResult>;
+  upsertInterfaceLocale(userId: string, locale: Locale): Promise<StorageResult>;
 }>;
 
 export type PreferenceResult<T> =

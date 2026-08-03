@@ -37,7 +37,7 @@ export async function persistInterfaceLocale(
   if (user) {
     const result = await createSupabaseOnboardingStorage(
       supabase,
-    ).updateInterfaceLocale(user.id, locale);
+    ).upsertInterfaceLocale(user.id, locale);
     if (result.error || !result.data)
       return { ok: false, code: 'profile_update_failed' };
   }

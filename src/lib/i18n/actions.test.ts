@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { cookieStore, getUser, storage } = vi.hoisted(() => ({
   cookieStore: { set: vi.fn() },
   getUser: vi.fn(),
-  storage: { updateInterfaceLocale: vi.fn() },
+  storage: {
+    upsertInterfaceLocale: vi.fn(),
+  },
 }));
 
 vi.mock('next/headers', () => ({
@@ -22,7 +24,7 @@ describe('interface locale persistence', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
-    storage.updateInterfaceLocale.mockResolvedValue({
+    storage.upsertInterfaceLocale.mockResolvedValue({
       data: { interface_locale: 'de' },
       error: null,
     });
@@ -34,19 +36,19 @@ describe('interface locale persistence', () => {
       locale: 'de',
     });
 
-    expect(storage.updateInterfaceLocale).toHaveBeenCalledWith('user-1', 'de');
+    expect(storage.upsertInterfaceLocale).toHaveBeenCalledWith('user-1', 'de');
     expect(cookieStore.set).toHaveBeenCalledWith('gleen_locale', 'de', {
       maxAge: 31_536_000,
       path: '/',
       sameSite: 'lax',
     });
-    expect(storage.updateInterfaceLocale.mock.calls.flat()).not.toContain(
+    expect(storage.upsertInterfaceLocale.mock.calls.flat()).not.toContain(
       'output_locale',
     );
   });
 
   it('keeps the existing cookie and output preference unchanged when a profile update fails', async () => {
-    storage.updateInterfaceLocale.mockResolvedValue({
+    storage.upsertInterfaceLocale.mockResolvedValue({
       data: null,
       error: { message: 'storage unavailable' },
     });
@@ -57,13 +59,13 @@ describe('interface locale persistence', () => {
     });
 
     expect(cookieStore.set).not.toHaveBeenCalled();
-    expect(storage.updateInterfaceLocale.mock.calls.flat()).not.toContain(
+    expect(storage.upsertInterfaceLocale.mock.calls.flat()).not.toContain(
       'output_locale',
     );
   });
 
   it('keeps the existing cookie when an authenticated profile update affects no row', async () => {
-    storage.updateInterfaceLocale.mockResolvedValue({
+    storage.upsertInterfaceLocale.mockResolvedValue({
       data: null,
       error: null,
     });
@@ -84,6 +86,22 @@ describe('interface locale persistence', () => {
       setInterfaceLocale({ status: 'idle' }, formData),
     ).resolves.toEqual({ status: 'error', code: 'invalid_locale' });
     expect(cookieStore.set).not.toHaveBeenCalled();
-    expect(storage.updateInterfaceLocale).not.toHaveBeenCalled();
+    expect(storage.upsertInterfaceLocale).not.toHaveBeenCalled();
+  });
+
+  it('persists a guest selection in the cookie without touching profile storage', async () => {
+    getUser.mockResolvedValue({ data: { user: null } });
+
+    await expect(persistInterfaceLocale('es')).resolves.toEqual({
+      ok: true,
+      locale: 'es',
+    });
+
+    expect(cookieStore.set).toHaveBeenCalledWith('gleen_locale', 'es', {
+      maxAge: 31_536_000,
+      path: '/',
+      sameSite: 'lax',
+    });
+    expect(storage.upsertInterfaceLocale).not.toHaveBeenCalled();
   });
 });

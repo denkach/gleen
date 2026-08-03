@@ -1,13 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getUser, persistInterfaceLocale, saveOnboardingStep, storage } =
-  vi.hoisted(() => ({
+const { cookieStore, getUser, saveOnboardingStep, storage } = vi.hoisted(
+  () => ({
+    cookieStore: { set: vi.fn() },
     getUser: vi.fn(),
-    persistInterfaceLocale: vi.fn(),
     saveOnboardingStep: vi.fn(),
-    storage: { read: vi.fn(), upsert: vi.fn() },
-  }));
+    storage: {
+      read: vi.fn(),
+      upsert: vi.fn(),
+      upsertInterfaceLocale: vi.fn(),
+    },
+  }),
+);
 
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(async () => cookieStore),
+}));
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(async () => ({ auth: { getUser } })),
 }));
@@ -15,7 +23,6 @@ vi.mock('./repository', () => ({ saveOnboardingStep }));
 vi.mock('./supabase-storage', () => ({
   createSupabaseOnboardingStorage: vi.fn(() => storage),
 }));
-vi.mock('@/lib/i18n/actions', () => ({ persistInterfaceLocale }));
 
 import { saveOnboardingPreferences } from './actions';
 
@@ -47,8 +54,11 @@ describe('onboarding actions', () => {
     ).resolves.toMatchObject({ status: 'success', redirectTo: '/app' });
   });
 
-  it('uses the interface-locale persistence boundary for onboarding step one', async () => {
-    persistInterfaceLocale.mockResolvedValue({ ok: true, locale: 'de' });
+  it('advances onboarding step one after create-safe locale persistence for a first-time profile', async () => {
+    storage.upsertInterfaceLocale.mockResolvedValue({
+      data: { interface_locale: 'de' },
+      error: null,
+    });
     saveOnboardingStep.mockResolvedValue({
       ok: true,
       data: {
@@ -68,7 +78,12 @@ describe('onboarding actions', () => {
       saveOnboardingPreferences({ status: 'idle' }, formData),
     ).resolves.toMatchObject({ status: 'success' });
 
-    expect(persistInterfaceLocale).toHaveBeenCalledWith('de');
+    expect(storage.upsertInterfaceLocale).toHaveBeenCalledWith('user-1', 'de');
+    expect(cookieStore.set).toHaveBeenCalledWith('gleen_locale', 'de', {
+      maxAge: 31_536_000,
+      path: '/',
+      sameSite: 'lax',
+    });
     expect(saveOnboardingStep).toHaveBeenCalledWith(storage, 'user-1', {
       onboardingStep: 2,
     });
