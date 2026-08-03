@@ -1,4 +1,5 @@
 import type { IntakeActionState } from './action-state';
+import { UsageLimitReachedError } from '@/lib/analysis-pipeline/supabase-repository';
 import {
   intakeConfigurationSchema,
   normalizeIntakeConfiguration,
@@ -32,6 +33,7 @@ const safeMessages: Record<IntakeErrorCode, string> = {
   provider_unavailable:
     'The video service is temporarily unavailable. Try again.',
   session_expired: 'Your session has expired. Sign in and try again.',
+  usage_limit_reached: 'Your analysis limit has been reached.',
   persistence_failure: 'We could not save this analysis. Try again.',
 };
 
@@ -55,6 +57,16 @@ function errorState(
   configuration: IntakeConfiguration,
   code: IntakeErrorCode,
 ): IntakeActionState {
+  if (code === 'usage_limit_reached') {
+    return {
+      status: 'error',
+      code,
+      redirectTo: '/app/subscription/limit-reached',
+      rawUrl,
+      configuration,
+      message: 'Your analysis limit has been reached.',
+    };
+  }
   return {
     status: 'error',
     rawUrl,
@@ -64,6 +76,7 @@ function errorState(
 }
 
 function codeFrom(error: unknown): IntakeErrorCode {
+  if (error instanceof UsageLimitReachedError) return 'usage_limit_reached';
   return error instanceof IntakeServiceError
     ? error.code
     : 'persistence_failure';

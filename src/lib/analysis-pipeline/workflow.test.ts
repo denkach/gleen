@@ -253,7 +253,7 @@ describe('analysis workflow orchestration', () => {
     expect(ledger.settle).toHaveBeenCalledWith('job-id');
   });
 
-  it('keeps ready artifacts, marks partial, and releases reservation', async () => {
+  it('keeps ready artifacts, marks partial, and settles its reservation', async () => {
     const { repository, provider, ledger, snapshot } = harness({
       fail: ['gleen_flashcards_v1'],
     });
@@ -270,7 +270,8 @@ describe('analysis workflow orchestration', () => {
       snapshot().artifacts.find(({ kind }) => kind === 'summary')?.status,
     ).toBe('ready');
     expect(snapshot().job.status).toBe('partial');
-    expect(ledger.release).toHaveBeenCalledWith('job-id');
+    expect(ledger.settle).toHaveBeenCalledWith('job-id');
+    expect(ledger.release).not.toHaveBeenCalled();
   });
 
   it('skips ready artifacts during a retry attempt', async () => {

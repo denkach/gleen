@@ -5,11 +5,11 @@ export type UsageLedger = Readonly<{
   release(jobId: string): Promise<void>;
 }>;
 
-export function createNoopUsageLedger(
-  repository: AnalysisRepository,
+export function createUsageLedger(
+  repository: Pick<AnalysisRepository, 'transitionReservation'>,
 ): UsageLedger {
   return {
-    settle: (jobId) => repository.setReservationStatus(jobId, 'settled'),
-    release: (jobId) => repository.setReservationStatus(jobId, 'released'),
+    settle: (jobId) => repository.transitionReservation(jobId, 'settled'),
+    release: (jobId) => repository.transitionReservation(jobId, 'released'),
   };
 }

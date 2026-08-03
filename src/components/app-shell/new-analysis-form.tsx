@@ -125,8 +125,26 @@ export function NewAnalysisForm({
   }, []);
 
   useEffect(() => {
-    if (reanalyzeState.redirectTo) router.push(reanalyzeState.redirectTo);
-  }, [reanalyzeState.redirectTo, router]);
+    if (
+      state.status === 'error' &&
+      state.code === 'usage_limit_reached' &&
+      state.redirectTo === '/app/subscription/limit-reached'
+    ) {
+      router.push('/app/subscription/limit-reached');
+    }
+  }, [router, state]);
+
+  useEffect(() => {
+    if (
+      reanalyzeState.status === 'error' &&
+      reanalyzeState.code === 'usage_limit_reached' &&
+      reanalyzeState.redirectTo === '/app/subscription/limit-reached'
+    ) {
+      router.push('/app/subscription/limit-reached');
+    } else if (reanalyzeState.status === 'ready' && reanalyzeState.redirectTo) {
+      router.push(reanalyzeState.redirectTo);
+    }
+  }, [reanalyzeState, router]);
 
   useEffect(() => {
     if (!autoSubmit || autoSubmitted.current || !formRef.current) return;

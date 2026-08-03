@@ -12,6 +12,7 @@ export type IntakeActionState = Readonly<{
   existingId?: string;
   duplicateConfiguration?: NormalizedIntakeConfiguration;
   analysisId?: string;
+  code?: 'usage_limit_reached';
   redirectTo?: string;
 }>;
 

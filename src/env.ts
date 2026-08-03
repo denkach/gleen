@@ -19,6 +19,19 @@ export type SupabaseAdminEnv = Readonly<{
   SUPABASE_SECRET_KEY: string;
 }>;
 
+export type StripePublicEnv = Readonly<{
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: string;
+}>;
+
+export type StripeServerEnv = Readonly<{
+  STRIPE_SECRET_KEY: string;
+  STRIPE_WEBHOOK_SECRET: string;
+}>;
+
+export type StripePortalEnv = Readonly<{
+  STRIPE_PORTAL_CONFIGURATION_ID: string;
+}>;
+
 const invalidUrlMessage = 'NEXT_PUBLIC_APP_URL must be an absolute HTTP(S) URL';
 
 function readHttpsSupabaseUrl(input: NodeJS.ProcessEnv): string {
@@ -75,6 +88,53 @@ export function validateProviderEnv(input: NodeJS.ProcessEnv): ProviderEnv {
   return Object.freeze({
     YOUTUBE_DATA_API_KEY: youtube,
     SUPADATA_API_KEY: supadata,
+  });
+}
+
+export function validateStripePublicEnv(
+  input: Readonly<Partial<NodeJS.ProcessEnv>>,
+): StripePublicEnv {
+  const publishableKey = input.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
+  if (!publishableKey) {
+    throw new Error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is required');
+  }
+
+  return Object.freeze({
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: publishableKey,
+  });
+}
+
+export function validateStripeServerEnv(
+  input: Readonly<Partial<NodeJS.ProcessEnv>>,
+): StripeServerEnv {
+  const secretKey = input.STRIPE_SECRET_KEY?.trim();
+  if (!secretKey) {
+    throw new Error('STRIPE_SECRET_KEY is required');
+  }
+
+  const webhookSecret = input.STRIPE_WEBHOOK_SECRET?.trim();
+  if (!webhookSecret) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is required');
+  }
+
+  return Object.freeze({
+    STRIPE_SECRET_KEY: secretKey,
+    STRIPE_WEBHOOK_SECRET: webhookSecret,
+  });
+}
+
+export function validateStripePortalEnv(
+  input: Readonly<Partial<NodeJS.ProcessEnv>>,
+): StripePortalEnv {
+  const configurationId = input.STRIPE_PORTAL_CONFIGURATION_ID?.trim();
+  if (!configurationId) {
+    throw new Error('STRIPE_PORTAL_CONFIGURATION_ID is required');
+  }
+  if (!configurationId.startsWith('bpc_')) {
+    throw new Error('STRIPE_PORTAL_CONFIGURATION_ID must start with bpc_');
+  }
+  return Object.freeze({
+    STRIPE_PORTAL_CONFIGURATION_ID: configurationId,
   });
 }
 

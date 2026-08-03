@@ -24,6 +24,8 @@ async function submit(
 ) {
   if (scenario === 'ready')
     await new Promise((resolve) => setTimeout(resolve, 1_800));
+  if (scenario === 'provider-outage')
+    await new Promise((resolve) => setTimeout(resolve, 200));
   const result = await actions(scenario).submit(previous, formData);
   if (scenario === 'ready' && result.redirectTo) {
     const params = new URLSearchParams({
@@ -75,6 +77,24 @@ export async function submitProviderOutageFixture(
   formData: FormData,
 ) {
   return submit('provider-outage', previous, formData);
+}
+export async function submitUsageLimitFixture(
+  previous: IntakeActionState,
+  _formData: FormData,
+) {
+  void _formData;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'Development intake fixtures are unavailable in production.',
+    );
+  }
+  return {
+    ...previous,
+    status: 'error',
+    code: 'usage_limit_reached',
+    redirectTo: '/app/subscription/limit-reached',
+    message: 'Your analysis limit has been reached.',
+  } as const;
 }
 export async function submitReanalysisFixture(
   previous: IntakeActionState,

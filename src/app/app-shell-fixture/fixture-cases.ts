@@ -5,6 +5,7 @@ export const fixtureCases = [
   'video-unavailable',
   'transcript-unavailable',
   'provider-outage',
+  'usage-limit',
   'reanalysis',
   'pipeline-queued',
   'pipeline-validating',

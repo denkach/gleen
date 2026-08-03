@@ -21,10 +21,9 @@ export async function startAnalysisWithDependencies(
   jobId: string,
   dependencies: StartDependencies,
 ) {
+  let run: { runId: string };
   try {
-    const run = await dependencies.startRun(jobId);
-    await dependencies.repository.attachWorkflowRun(jobId, run.runId);
-    return { runId: run.runId };
+    run = await dependencies.startRun(jobId);
   } catch {
     await dependencies.repository.setJobState(jobId, {
       status: 'failed',
@@ -35,6 +34,14 @@ export async function startAnalysisWithDependencies(
     await dependencies.ledger.release(jobId);
     throw new AnalysisWorkflowStartError();
   }
+
+  try {
+    await dependencies.repository.attachWorkflowRun(jobId, run.runId);
+  } catch {
+    // The workflow already exists and owns this reservation. It can complete
+    // from its durable jobId input even when this observability link is late.
+  }
+  return { runId: run.runId };
 }
 
 export async function startAnalysis(

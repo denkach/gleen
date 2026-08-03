@@ -5,6 +5,7 @@ import {
   deriveAppIdentity,
   isAppNavigationItemActive,
   unavailableUsage,
+  type AppUsage,
 } from './app-shell';
 
 describe('application shell model', () => {
@@ -54,5 +55,25 @@ describe('application shell model', () => {
       label: 'Usage available with billing',
     });
     expect(JSON.stringify(unavailableUsage)).not.toMatch(/18|25|Prism|August/);
+  });
+
+  it('accepts an available owner usage snapshot without losing billing detail', () => {
+    const usage: AppUsage = {
+      status: 'available',
+      label: '7 analyses left',
+      planName: 'Prism Pro',
+      used: 18,
+      limit: 25,
+      resetAt: '2026-08-01T00:00:00.000Z',
+    };
+
+    expect(usage).toEqual({
+      status: 'available',
+      label: '7 analyses left',
+      planName: 'Prism Pro',
+      used: 18,
+      limit: 25,
+      resetAt: '2026-08-01T00:00:00.000Z',
+    });
   });
 });

@@ -94,6 +94,11 @@
 
 ## Milestone 8 — Billing and usage
 
+Implementation status: DEN-20 application, database, and authenticated browser
+flows are implemented. Stripe Sandbox resource configuration and the full
+payment lifecycle acceptance remain the release gate before any live-mode
+configuration.
+
 - plans;
 - usage ledger;
 - Stripe Checkout;

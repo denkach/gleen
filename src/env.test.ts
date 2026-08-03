@@ -1,8 +1,11 @@
 import {
-  validateSupabaseAdminEnv,
   validateAnalysisProviderEnv,
   validateProviderEnv,
   validatePublicEnv,
+  validateStripePortalEnv,
+  validateStripePublicEnv,
+  validateStripeServerEnv,
+  validateSupabaseAdminEnv,
 } from '@/env';
 import { describe, expect, it } from 'vitest';
 
@@ -153,5 +156,67 @@ describe('validateSupabaseAdminEnv', () => {
         }),
       ),
     ).toThrow('NEXT_PUBLIC_SUPABASE_URL must be an absolute HTTPS URL');
+  });
+});
+
+describe('validateStripePublicEnv', () => {
+  it('requires the Stripe publishable key', () => {
+    expect(() => validateStripePublicEnv({})).toThrow(
+      'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is required',
+    );
+  });
+
+  it('trims the Stripe publishable key', () => {
+    expect(
+      validateStripePublicEnv({
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ' pk_test_123 ',
+      }),
+    ).toEqual({ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'pk_test_123' });
+  });
+});
+
+describe('validateStripeServerEnv', () => {
+  it('requires and trims server-only Stripe configuration', () => {
+    expect(() => validateStripeServerEnv({})).toThrow(
+      'STRIPE_SECRET_KEY is required',
+    );
+    expect(() =>
+      validateStripeServerEnv({ STRIPE_SECRET_KEY: 'sk_test_123' }),
+    ).toThrow('STRIPE_WEBHOOK_SECRET is required');
+    expect(
+      validateStripeServerEnv({
+        STRIPE_SECRET_KEY: ' sk_test_123 ',
+        STRIPE_WEBHOOK_SECRET: ' whsec_123 ',
+      }),
+    ).toEqual({
+      STRIPE_SECRET_KEY: 'sk_test_123',
+      STRIPE_WEBHOOK_SECRET: 'whsec_123',
+    });
+  });
+});
+
+describe('validateStripePortalEnv', () => {
+  it('requires a Portal configuration ID', () => {
+    expect(() => validateStripePortalEnv({})).toThrow(
+      'STRIPE_PORTAL_CONFIGURATION_ID is required',
+    );
+  });
+
+  it('rejects malformed Portal configuration IDs', () => {
+    expect(() =>
+      validateStripePortalEnv({
+        STRIPE_PORTAL_CONFIGURATION_ID: 'pc_test_prorated',
+      }),
+    ).toThrow('STRIPE_PORTAL_CONFIGURATION_ID must start with bpc_');
+  });
+
+  it('trims a valid Portal configuration ID', () => {
+    expect(
+      validateStripePortalEnv({
+        STRIPE_PORTAL_CONFIGURATION_ID: ' bpc_test_prorated ',
+      }),
+    ).toEqual({
+      STRIPE_PORTAL_CONFIGURATION_ID: 'bpc_test_prorated',
+    });
   });
 });

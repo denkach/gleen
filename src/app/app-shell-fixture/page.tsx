@@ -13,6 +13,7 @@ import {
   submitReadyFixture,
   submitReanalysisFixture,
   submitTranscriptUnavailableFixture,
+  submitUsageLimitFixture,
   submitVideoUnavailableFixture,
 } from '@/lib/youtube-intake/development-fixture-actions';
 
@@ -59,6 +60,7 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
     'video-unavailable': submitVideoUnavailableFixture,
     'transcript-unavailable': submitTranscriptUnavailableFixture,
     'provider-outage': submitProviderOutageFixture,
+    'usage-limit': submitUsageLimitFixture,
     reanalysis: submitReanalysisFixture,
   } as const;
 

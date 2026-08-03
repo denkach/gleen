@@ -65,6 +65,31 @@ function renderForm(
 }
 
 describe('NewAnalysisForm', () => {
+  test('navigates only the closed usage-limit error to the limit route', async () => {
+    const action = vi.fn(async () => ({
+      ...createInitialIntakeActionState(defaults),
+      status: 'error' as const,
+      code: 'usage_limit_reached' as const,
+      redirectTo: '/app/subscription/limit-reached' as const,
+      message: 'Your analysis limit has been reached.' as const,
+    }));
+    renderForm(action);
+    fireEvent.change(screen.getByLabelText('YouTube URL'), {
+      target: { value: 'https://youtu.be/abcdefghijk' },
+    });
+
+    await act(async () => {
+      fireEvent.submit(document.querySelector('#new-analysis-form')!);
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(routerPush).toHaveBeenCalledWith(
+        '/app/subscription/limit-reached',
+      ),
+    );
+  });
+
   test('threads the selected artifact configuration into durable processing', () => {
     const initial = createInitialIntakeActionState(defaults);
     render(
