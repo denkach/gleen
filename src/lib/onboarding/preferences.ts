@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
-export const supportedLocales = ['uk', 'ru', 'en', 'es', 'de'] as const;
-export const interfaceLocaleSchema = z.enum(supportedLocales);
-export const outputLocaleSchema = z.enum(supportedLocales);
+import { localeSchema } from '@/lib/i18n/locales';
+
+export { supportedLocales } from '@/lib/i18n/locales';
+
+export const interfaceLocaleSchema = localeSchema;
+export const outputLocaleSchema = localeSchema;
 export const summaryPresetSchema = z.enum(['balanced', 'detailed']);
 export const flashcardPresetSchema = z.union([z.literal(18), z.literal(30)]);
 export const onboardingStepSchema = z.union([

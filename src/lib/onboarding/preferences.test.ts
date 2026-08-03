@@ -8,11 +8,12 @@ import {
   onboardingStateSchema,
   outputLocaleSchema,
   outputPreferencesSchema,
+  supportedLocales,
 } from './preferences';
 
 describe('onboarding preferences', () => {
   it('accepts the five approved interface and output locales', () => {
-    for (const locale of ['uk', 'ru', 'en', 'es', 'de']) {
+    for (const locale of supportedLocales) {
       expect(interfaceLocaleSchema.parse(locale)).toBe(locale);
       expect(outputLocaleSchema.parse(locale)).toBe(locale);
     }
