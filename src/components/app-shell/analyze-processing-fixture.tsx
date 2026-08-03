@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { AnalysisVisualState } from '@/lib/analyze-processing/analysis-visual-state';
+import type { AppMessages } from '@/lib/i18n/messages/app';
 
 import { AnalyzeProcessingVisual } from './analyze-processing-visual';
 
@@ -18,7 +19,9 @@ const prototypeSchedule: readonly [
   [6_500, 'complete'],
 ];
 
-export function AnalyzeProcessingFixture() {
+export function AnalyzeProcessingFixture({
+  copy,
+}: Readonly<{ copy: AppMessages['processing'] }>) {
   const [state, setState] = useState<AnalysisVisualState>('idle');
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const isRunning = !['idle', 'complete', 'error'].includes(state);
@@ -81,6 +84,7 @@ export function AnalyzeProcessingFixture() {
       </div>
 
       <AnalyzeProcessingVisual
+        copy={copy}
         state={state}
         submittedUrl={fixtureUrl}
         errorMessage={

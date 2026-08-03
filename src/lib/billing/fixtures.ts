@@ -363,9 +363,9 @@ function shellFor(snapshot: BillingSnapshot) {
     },
     usage: {
       status: 'available',
-      label: `${remaining} ${remaining === 1 ? 'analysis' : 'analyses'} left`,
       planName: snapshot.currentPlan.displayName,
       used,
+      remaining,
       limit: snapshot.usage.limit,
       resetAt: snapshot.period.endsAt,
     },

@@ -1,9 +1,22 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
+import type { ComponentProps } from 'react';
 
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
+import { appMessages } from '@/lib/i18n/messages/app';
 
-import { IntakeReadiness } from './intake-readiness';
+import { IntakeReadiness as LocalizedIntakeReadiness } from './intake-readiness';
+
+function IntakeReadiness({
+  copy = appMessages.en,
+  locale = 'en',
+  ...props
+}: Omit<ComponentProps<typeof LocalizedIntakeReadiness>, 'copy' | 'locale'> &
+  Partial<
+    Pick<ComponentProps<typeof LocalizedIntakeReadiness>, 'copy' | 'locale'>
+  >) {
+  return <LocalizedIntakeReadiness copy={copy} locale={locale} {...props} />;
+}
 
 const readyIntake: AnalysisIntake = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -34,7 +47,13 @@ const readyIntake: AnalysisIntake = {
 
 describe('IntakeReadiness', () => {
   test('presents the validated intake and its processing readiness', () => {
-    render(<IntakeReadiness intake={readyIntake} />);
+    render(
+      <IntakeReadiness
+        copy={appMessages.uk}
+        intake={readyIntake}
+        locale="uk"
+      />,
+    );
 
     expect(
       screen.getByRole('heading', { name: readyIntake.title }),
@@ -42,17 +61,16 @@ describe('IntakeReadiness', () => {
     expect(screen.getByText(readyIntake.channelTitle)).toBeInTheDocument();
     expect(screen.getByText('12:34')).toBeInTheDocument();
     expect(screen.getByText('English')).toBeInTheDocument();
-    expect(screen.getByText('Spanish')).toBeInTheDocument();
-    expect(screen.getByText('Detailed')).toBeInTheDocument();
-    expect(screen.getByText('18 cards')).toBeInTheDocument();
-    expect(screen.getByText('Ready for processing')).toBeInTheDocument();
+    expect(screen.getByText('Español')).toBeInTheDocument();
+    expect(screen.getByText('Докладний')).toBeInTheDocument();
+    expect(screen.getByText('18 карток')).toBeInTheDocument();
+    expect(screen.getByText('Готово до обробки')).toBeInTheDocument();
     expect(
-      screen.getByText(/processing is implemented in the next issue/i),
+      screen.getByText(/обробку буде реалізовано в наступному завданні/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /new analysis/i })).toHaveAttribute(
-      'href',
-      '/app',
-    );
+    expect(
+      screen.getByRole('link', { name: /нового аналізу/i }),
+    ).toHaveAttribute('href', '/app');
   });
 
   test('does not expose transcript content or claim artifacts were generated', () => {

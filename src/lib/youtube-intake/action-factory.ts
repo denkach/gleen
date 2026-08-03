@@ -19,22 +19,22 @@ export type IntakeActionDependencies = Readonly<{
   resultPathPrefix?: string;
 }>;
 
-const safeMessages: Record<IntakeErrorCode, string> = {
-  invalid_url: 'Enter a supported YouTube URL and valid analysis options.',
-  video_unavailable: 'This video is private or unavailable.',
-  video_restricted: 'This video is restricted or cannot be embedded.',
-  live_not_ready: 'This live video is not ready for analysis.',
-  unsupported_duration: 'This video duration is not supported.',
-  transcript_unavailable:
-    'A native transcript is not available for this video.',
-  transcript_language_unavailable:
-    'A transcript is not available in the selected language.',
-  provider_configuration: 'Video analysis is temporarily unavailable.',
-  provider_unavailable:
-    'The video service is temporarily unavailable. Try again.',
-  session_expired: 'Your session has expired. Sign in and try again.',
-  usage_limit_reached: 'Your analysis limit has been reached.',
-  persistence_failure: 'We could not save this analysis. Try again.',
+const actionCodeByServiceCode: Record<
+  IntakeErrorCode,
+  NonNullable<IntakeActionState['code']>
+> = {
+  invalid_url: 'invalid_url',
+  video_unavailable: 'video_unavailable',
+  video_restricted: 'video_unavailable',
+  live_not_ready: 'video_unavailable',
+  unsupported_duration: 'video_unavailable',
+  transcript_unavailable: 'transcript_unavailable',
+  transcript_language_unavailable: 'transcript_unavailable',
+  provider_configuration: 'provider_outage',
+  provider_unavailable: 'provider_outage',
+  session_expired: 'session_expired',
+  usage_limit_reached: 'usage_limit_reached',
+  persistence_failure: 'unexpected',
 };
 
 function formConfiguration(
@@ -55,8 +55,9 @@ function formConfiguration(
 function errorState(
   rawUrl: string,
   configuration: IntakeConfiguration,
-  code: IntakeErrorCode,
+  serviceCode: IntakeErrorCode,
 ): IntakeActionState {
+  const code = actionCodeByServiceCode[serviceCode];
   if (code === 'usage_limit_reached') {
     return {
       status: 'error',
@@ -64,14 +65,13 @@ function errorState(
       redirectTo: '/app/subscription/limit-reached',
       rawUrl,
       configuration,
-      message: 'Your analysis limit has been reached.',
     };
   }
   return {
     status: 'error',
     rawUrl,
     configuration,
-    message: safeMessages[code],
+    code,
   };
 }
 
@@ -112,9 +112,7 @@ export function createIntakeActions(dependencies: IntakeActionDependencies) {
           status: 'error',
           rawUrl,
           configuration,
-          message: artifactsIssue
-            ? 'Choose at least one artifact.'
-            : safeMessages.invalid_url,
+          code: artifactsIssue ? 'no_artifacts' : 'invalid_url',
         };
       }
       try {

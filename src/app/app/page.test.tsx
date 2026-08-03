@@ -6,6 +6,9 @@ const read = vi.fn();
 const findOwned = vi.fn();
 const findOwnedSnapshot = vi.fn();
 const findMostRecentOwnedActive = vi.fn();
+const { getRequestLocale } = vi.hoisted(() => ({
+  getRequestLocale: vi.fn(async () => 'uk'),
+}));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -17,6 +20,7 @@ vi.mock('@/lib/supabase/server', () => ({
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: read }) }) }),
   }),
 }));
+vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
 
 vi.mock('@/lib/youtube-intake/supabase-repository', () => ({
   createSupabaseIntakeRepository: () => ({ findOwned }),
@@ -31,12 +35,18 @@ vi.mock('@/lib/analysis-pipeline/supabase-repository', () => ({
 
 vi.mock('@/components/app-shell/new-analysis-home', () => ({
   NewAnalysisHome: (props: {
+    copy: { newAnalysis: { title: string } };
+    profileDefaults: { outputLocale: string };
     initialAnalysis?: { intake: { id: string } };
     continuation?: { rawUrl: string };
   }) => (
     <div>
       <span data-testid="analysis">{props.initialAnalysis?.intake.id}</span>
       <span data-testid="continuation">{props.continuation?.rawUrl}</span>
+      <span data-testid="localized-title">{props.copy.newAnalysis.title}</span>
+      <span data-testid="output-locale">
+        {props.profileDefaults.outputLocale}
+      </span>
     </div>
   ),
 }));
@@ -66,6 +76,10 @@ describe('AppPage', () => {
   test('loads authenticated profile defaults for the intake form', async () => {
     render(await AppPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByTestId('analysis')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('localized-title')).toHaveTextContent(
+      'Перетворіть відео на щось корисне.',
+    );
+    expect(screen.getByTestId('output-locale')).toHaveTextContent('es');
   });
 
   test('prefers an explicitly owned active analysis', async () => {

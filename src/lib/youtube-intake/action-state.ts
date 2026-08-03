@@ -4,15 +4,24 @@ import {
   type NormalizedIntakeConfiguration,
 } from './configuration';
 
+export type IntakeActionErrorCode =
+  | 'invalid_url'
+  | 'video_unavailable'
+  | 'transcript_unavailable'
+  | 'provider_outage'
+  | 'no_artifacts'
+  | 'session_expired'
+  | 'usage_limit_reached'
+  | 'unexpected';
+
 export type IntakeActionState = Readonly<{
   status: 'idle' | 'error' | 'duplicate' | 'ready';
   rawUrl: string;
   configuration: IntakeConfiguration;
-  message?: string;
   existingId?: string;
   duplicateConfiguration?: NormalizedIntakeConfiguration;
   analysisId?: string;
-  code?: 'usage_limit_reached';
+  code?: IntakeActionErrorCode;
   redirectTo?: string;
 }>;
 

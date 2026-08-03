@@ -18,11 +18,13 @@ import {
   defaultArtifactSelection,
   type IntakeConfiguration,
 } from '@/lib/youtube-intake/configuration';
+import type { AppMessages } from '@/lib/i18n/messages/app';
 
 import { AnalyzeProcessingVisual } from './analyze-processing-visual';
 
 export type InlineAnalysisProcessingProps = Readonly<{
   analysisId: string;
+  copy: AppMessages;
   initialSnapshot?: AnalysisSnapshot;
   refreshAction?: typeof refreshAnalysisSnapshot;
   retryAction?: typeof retryAnalysis;
@@ -51,6 +53,7 @@ function preserveReadyArtifacts(
 
 export function InlineAnalysisProcessing({
   analysisId,
+  copy,
   initialSnapshot,
   refreshAction = refreshAnalysisSnapshot,
   retryAction = retryAnalysis,
@@ -81,7 +84,6 @@ export function InlineAnalysisProcessing({
   } | null>(null);
   const [retryError, setRetryError] = useState<{
     analysisId: string;
-    message: string;
   } | null>(null);
   const [refreshUnavailableFor, setRefreshUnavailableFor] = useState<
     string | null
@@ -271,7 +273,6 @@ export function InlineAnalysisProcessing({
       if (!result.ok) {
         setRetryError({
           analysisId,
-          message: 'Retry could not be started. Please try again.',
         });
         return;
       }
@@ -284,7 +285,6 @@ export function InlineAnalysisProcessing({
       if (controllerGeneration.current !== generation) return;
       setRetryError({
         analysisId,
-        message: 'Retry could not be started. Please try again.',
       });
     } finally {
       setRetryingAnalysisId((current) =>
@@ -309,17 +309,18 @@ export function InlineAnalysisProcessing({
 
   return (
     <AnalyzeProcessingVisual
+      copy={copy.processing}
       state={state}
       isExiting={isExiting}
       submittedUrl=""
       errorMessage={
         retryError?.analysisId === analysisId
-          ? retryError.message
+          ? copy.processing.errors.retryStart
           : refreshUnavailableFor === analysisId
-            ? 'Status refresh is temporarily unavailable. Retrying…'
+            ? copy.processing.errors.refreshUnavailable
             : ownedSnapshot &&
                 ['partial', 'failed'].includes(ownedSnapshot.job.status)
-              ? 'Analysis stopped safely. Your completed work has been kept.'
+              ? copy.processing.errors.stopped
               : undefined
       }
       artifactStates={artifactStates}
@@ -333,7 +334,7 @@ export function InlineAnalysisProcessing({
                 type="button"
                 onClick={() => push(resultPath)}
               >
-                View available results
+                {copy.processing.viewAvailable}
               </button>
             ) : null}
             <button
@@ -341,7 +342,7 @@ export function InlineAnalysisProcessing({
               type="button"
               onClick={retryFailed}
             >
-              Retry failed artifact
+              {copy.processing.retryFailed}
             </button>
           </>
         ) : undefined

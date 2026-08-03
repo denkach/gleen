@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import AnalyzeProcessingFixtureEntry from '@/components/app-shell/analyze-processing-fixture-entry';
+import { appMessages } from '@/lib/i18n/messages/app';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 
 export default function AnalyzeProcessingFixturePage() {
@@ -8,5 +9,5 @@ export default function AnalyzeProcessingFixturePage() {
     notFound();
   }
 
-  return <AnalyzeProcessingFixtureEntry />;
+  return <AnalyzeProcessingFixtureEntry copy={appMessages.en.processing} />;
 }

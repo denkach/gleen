@@ -10,6 +10,8 @@ import {
   type HistoryVisualCase,
 } from '@/components/app-shell/fixture-history-contract';
 import { unavailableUsage } from '@/lib/app-shell';
+import { appMessages } from '@/lib/i18n/messages/app';
+import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 
 export const metadata: Metadata = {
@@ -72,7 +74,10 @@ export default async function FixtureHistoryPage({
 
   return (
     <AppShell
+      copy={appMessages.en}
       identity={fixtureIdentity}
+      locale="en"
+      localeSwitcherCopy={sharedMessages.en}
       usage={unavailableUsage}
       pathnameOverride="/app/history"
     >

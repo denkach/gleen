@@ -10,6 +10,7 @@ import {
   defaultArtifactSelection,
   type IntakeConfiguration,
 } from '@/lib/youtube-intake/configuration';
+import type { AppMessages } from '@/lib/i18n/messages/app';
 import { useEffect, useRef, type ReactNode } from 'react';
 
 type ArtifactRailState = 'queued' | 'ready' | 'failed' | 'not selected';
@@ -24,6 +25,7 @@ const artifactKindByRail = {
 } as const satisfies Record<ArtifactRailId, ArtifactKind>;
 
 export type AnalyzeProcessingVisualProps = Readonly<{
+  copy: AppMessages['processing'];
   state: AnalysisVisualState;
   isExiting?: boolean;
   submittedUrl: string;
@@ -37,6 +39,7 @@ export type AnalyzeProcessingVisualProps = Readonly<{
 }>;
 
 export function AnalyzeProcessingVisual({
+  copy,
   state,
   isExiting = false,
   submittedUrl,
@@ -49,6 +52,7 @@ export function AnalyzeProcessingVisual({
   idleContent,
 }: AnalyzeProcessingVisualProps) {
   const presentation = getAnalysisVisualPresentation(state);
+  const presentationCopy = copy.presentations[state];
   const isError = presentation.mode === 'error';
   const isComplete = presentation.mode === 'complete';
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -62,6 +66,14 @@ export function AnalyzeProcessingVisual({
     return selectedArtifacts.has(artifactKind)
       ? (artifactStates?.[artifactKind] ?? (isComplete ? 'ready' : 'queued'))
       : 'not selected';
+  };
+  const railStateCopy = (value: ArtifactRailState) =>
+    value === 'not selected'
+      ? copy.railStates.notSelected
+      : copy.railStates[value];
+  const semanticRailLabel = (railId: ArtifactRailId) => {
+    const label = copy.rails[railId].toLocaleLowerCase();
+    return `${label.charAt(0).toLocaleUpperCase()}${label.slice(1)}`;
   };
 
   useEffect(() => {
@@ -102,23 +114,23 @@ export function AnalyzeProcessingVisual({
             aria-live={isError ? 'assertive' : 'polite'}
           >
             <div className="analyze-status-kicker">
-              {isError ? 'ANALYSIS INTERRUPTED' : 'ANALYSIS IN PROGRESS'}
+              {isError ? copy.kickerInterrupted : copy.kickerProgress}
             </div>
             <h2 ref={titleRef} tabIndex={-1} className="analyze-status-title">
-              {presentation.title}
+              {presentationCopy.title}
             </h2>
             <div
               ref={terminalRef}
               tabIndex={isError ? -1 : undefined}
               className="analyze-status-subtitle"
             >
-              {errorMessage ?? presentation.subtitle}
+              {errorMessage ?? presentationCopy.subtitle}
             </div>
-            <ul className="sr-only" aria-label="Artifact status">
+            <ul className="sr-only" aria-label={copy.artifactStatus}>
               {artifactRailDefinitions.map((rail) => (
                 <li key={rail.id}>
-                  {rail.label.charAt(0) + rail.label.slice(1).toLowerCase()}{' '}
-                  {railState(rail.id)}
+                  {semanticRailLabel(rail.id)}{' '}
+                  {railStateCopy(railState(rail.id))}
                 </li>
               ))}
             </ul>
@@ -135,16 +147,15 @@ export function AnalyzeProcessingVisual({
                 return (
                   <div className={`analyze-step ${stageState}`} key={stage.id}>
                     <span className="analyze-step-dot" aria-hidden="true" />
-                    <span data-stage-state={stageState}>{stage.label}</span>
+                    <span data-stage-state={stageState}>
+                      {copy.stages[stage.id]}
+                    </span>
                     <span className="analyze-trace" aria-hidden="true" />
                   </div>
                 );
               })}
             </div>
-            <div className="analyze-leave-note">
-              You can safely leave this page. We’ll save the result to your
-              history.
-            </div>
+            <div className="analyze-leave-note">{copy.leaveNote}</div>
             {controls ? (
               <div className="analyze-controls">{controls}</div>
             ) : isError && onRetry ? (
@@ -155,7 +166,7 @@ export function AnalyzeProcessingVisual({
                   onClick={onRetry}
                   disabled={retryDisabled}
                 >
-                  {retryDisabled ? 'Retrying…' : 'Try again'}
+                  {retryDisabled ? copy.retrying : copy.tryAgain}
                 </button>
               </div>
             ) : null}
@@ -167,9 +178,9 @@ export function AnalyzeProcessingVisual({
               <div className="analyze-rails" aria-hidden="true">
                 {artifactRailDefinitions.map((rail) => (
                   <div className={`analyze-rail ${rail.tone}`} key={rail.id}>
-                    <span>{rail.label}</span>
+                    <span>{copy.rails[rail.id]}</span>
                     <span className="analyze-track" />
-                    <small>{railState(rail.id)}</small>
+                    <small>{railStateCopy(railState(rail.id))}</small>
                   </div>
                 ))}
               </div>

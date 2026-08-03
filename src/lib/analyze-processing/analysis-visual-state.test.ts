@@ -9,8 +9,6 @@ describe('getAnalysisVisualPresentation', () => {
   test('keeps production submitting honest and does not fabricate completed stages', () => {
     expect(getAnalysisVisualPresentation('submitting')).toEqual({
       mode: 'processing',
-      title: 'Analyzing your video',
-      subtitle: 'Checking video and transcript…',
       activeStage: null,
       completedStages: [],
     });
@@ -31,21 +29,21 @@ describe('getAnalysisVisualPresentation', () => {
     },
   );
 
-  test('uses the approved ordered stage labels', () => {
-    expect(orderedAnalysisStages.map((stage) => stage.label)).toEqual([
-      'Validating video',
-      'Finding transcript',
-      'Structuring key ideas',
-      'Creating knowledge artifacts',
+  test('uses stable ordered stage identities', () => {
+    expect(orderedAnalysisStages.map((stage) => stage.id)).toEqual([
+      'validating',
+      'transcript',
+      'structuring',
+      'artifacts',
     ]);
   });
 
   test('defines the four approved semantic rails without optical geometry', () => {
     expect(artifactRailDefinitions).toEqual([
-      { id: 'summary', label: 'SUMMARY', tone: 'summary' },
-      { id: 'flashcards', label: 'FLASHCARDS', tone: 'flashcards' },
-      { id: 'timestamps', label: 'TIMESTAMPS', tone: 'timestamps' },
-      { id: 'export', label: 'EXPORT', tone: 'export' },
+      { id: 'summary', tone: 'summary' },
+      { id: 'flashcards', tone: 'flashcards' },
+      { id: 'timestamps', tone: 'timestamps' },
+      { id: 'export', tone: 'export' },
     ]);
   });
 });

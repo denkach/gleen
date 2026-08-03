@@ -1,14 +1,18 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import AppLoading from './loading';
 
+vi.mock('@/lib/i18n/request-locale', () => ({
+  getRequestLocale: vi.fn(async () => 'uk'),
+}));
+
 describe('AppLoading', () => {
-  test('announces loading and reserves the shell content geometry', () => {
-    const { container } = render(<AppLoading />);
+  test('announces loading and reserves the shell content geometry', async () => {
+    const { container } = render(await AppLoading());
 
     const status = screen.getByRole('status');
-    expect(status).toHaveTextContent('Loading workspace');
+    expect(status).toHaveTextContent('Завантаження робочого простору');
     expect(status).toHaveClass('app-loading');
     expect(container.querySelector('.app-loading-head')).not.toBeNull();
     expect(container.querySelector('.app-loading-hero')).not.toBeNull();

@@ -6,10 +6,7 @@ import {
   chooseNewestSnapshot,
   toAnalysisVisualState,
 } from '@/lib/analysis-pipeline/client-state';
-import type {
-  AnalysisSnapshot,
-  ArtifactKind,
-} from '@/lib/analysis-pipeline/domain';
+import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import type { RetryActionResult } from '@/lib/analysis-pipeline/retry-actions';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
@@ -22,8 +19,10 @@ import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
 import { ResultWorkspace } from '@/components/result-workspace/result-workspace';
 
 import { AnalyzeProcessingVisual } from './analyze-processing-visual';
+import type { AppMessages } from '@/lib/i18n/messages/app';
 
 type Props = Readonly<{
+  copy: AppMessages;
   intake: AnalysisIntake;
   initialSnapshot: AnalysisSnapshot;
   retryAction(formData: FormData): Promise<RetryActionResult>;
@@ -32,15 +31,10 @@ type Props = Readonly<{
   reconcileOnMount?: boolean;
 }>;
 
-const artifactLabels: Record<ArtifactKind, string> = {
-  transcript: 'Transcript',
-  summary: 'Summary',
-  flashcards: 'Flashcards',
-  timestamps: 'Timestamps',
-};
 const pollingIntervalMs = 3_000;
 
 export function AnalysisProcessingScreen({
+  copy,
   intake,
   initialSnapshot,
   retryAction,
@@ -49,7 +43,7 @@ export function AnalysisProcessingScreen({
   reconcileOnMount = false,
 }: Props) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
-  const [retryError, setRetryError] = useState<string>();
+  const [retryError, setRetryError] = useState(false);
   const [isRetryPending, startRetryTransition] = useTransition();
   const [showResults, setShowResults] = useState(
     initialSnapshot.job.status === 'complete',
@@ -148,15 +142,13 @@ export function AnalysisProcessingScreen({
 
   const retry = () => {
     if (isRetryPending) return;
-    setRetryError(undefined);
+    setRetryError(false);
     const formData = new FormData();
     formData.set('analysisId', intake.id);
     startRetryTransition(async () => {
       const result = await retryAction(formData);
       if (!result.ok) {
-        setRetryError(
-          'We couldn’t restart the unfinished work. Please try again.',
-        );
+        setRetryError(true);
         return;
       }
       setShowResults(false);
@@ -177,11 +169,12 @@ export function AnalysisProcessingScreen({
       aria-labelledby="analysis-video-title"
     >
       <header className="analysis-processing-heading">
-        <p>ANALYSIS</p>
+        <p>{copy.processing.analysisLabel}</p>
         <h1 id="analysis-video-title">{intake.title}</h1>
       </header>
       {!showResults ? (
         <AnalyzeProcessingVisual
+          copy={copy.processing}
           state={toAnalysisVisualState(snapshot)}
           submittedUrl={intake.canonicalUrl}
           isExiting={
@@ -189,11 +182,11 @@ export function AnalysisProcessingScreen({
             (snapshot.job.status === 'partial' && readyArtifacts.length > 0)
           }
           errorMessage={
-            retryError ??
+            (retryError ? copy.processing.errors.restart : undefined) ??
             (snapshot.job.status === 'partial'
-              ? 'Some artifacts are ready. Retry only the unfinished work.'
+              ? copy.processing.errors.partial
               : snapshot.job.status === 'failed'
-                ? 'Analysis stopped safely. Your completed work has been kept.'
+                ? copy.processing.errors.stopped
                 : undefined)
           }
           onRetry={
@@ -208,7 +201,7 @@ export function AnalysisProcessingScreen({
           {snapshot.job.status === 'partial' ? (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border-default)] bg-white/[0.015] p-4">
               <p role="status" className="text-sm text-[var(--text-secondary)]">
-                Some artifacts need attention. Your ready results remain usable.
+                {copy.processing.partialStatus}
               </p>
               <button
                 type="button"
@@ -216,7 +209,9 @@ export function AnalysisProcessingScreen({
                 onClick={retry}
                 disabled={isRetryPending}
               >
-                {isRetryPending ? 'Retrying…' : 'Try again'}
+                {isRetryPending
+                  ? copy.processing.retrying
+                  : copy.processing.tryAgain}
               </button>
             </div>
           ) : null}
@@ -229,15 +224,20 @@ export function AnalysisProcessingScreen({
         </>
       )}
       {readyArtifacts.length || failedArtifacts.length ? (
-        <ul className="analysis-artifact-status" aria-label="Artifact status">
+        <ul
+          className="analysis-artifact-status"
+          aria-label={copy.processing.artifactStatus}
+        >
           {readyArtifacts.map((artifact) => (
             <li key={artifact.id} data-artifact-status="ready">
-              {artifactLabels[artifact.kind]} ready
+              {copy.newAnalysis.artifacts[artifact.kind]}{' '}
+              {copy.processing.artifactReady}
             </li>
           ))}
           {failedArtifacts.map((artifact) => (
             <li key={artifact.id} data-artifact-status="failed">
-              {artifactLabels[artifact.kind]} needs retry
+              {copy.newAnalysis.artifacts[artifact.kind]}{' '}
+              {copy.processing.artifactNeedsRetry}
             </li>
           ))}
         </ul>

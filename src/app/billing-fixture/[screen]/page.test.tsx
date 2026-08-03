@@ -105,12 +105,12 @@ describe('BillingFixturePage guard', () => {
   });
 
   it.each([
-    ['subscription', 'free', 'Free', 1, 3, '2 analyses left'],
-    ['subscription', 'active', 'Starter', 3, 10, '7 analyses left'],
-    ['limit-reached', 'limit-reached', 'Starter', 10, 10, '0 analyses left'],
+    ['subscription', 'free', 'Free', 1, 3, 2],
+    ['subscription', 'active', 'Starter', 3, 10, 7],
+    ['limit-reached', 'limit-reached', 'Starter', 10, 10, 0],
   ])(
     'composes a state-aware shell for %s/%s',
-    async (fixtureScreen, state, planName, used, limit, label) => {
+    async (fixtureScreen, state, planName, used, limit, remaining) => {
       isUiPreviewEnabled.mockReturnValue(true);
 
       render(
@@ -125,9 +125,9 @@ describe('BillingFixturePage guard', () => {
         expect.objectContaining({
           usage: {
             status: 'available',
-            label,
             planName,
             used,
+            remaining,
             limit,
             resetAt: '2025-08-01T00:00:00.000Z',
           },

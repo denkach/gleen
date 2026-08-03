@@ -1,7 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { appMessages } from '@/lib/i18n/messages/app';
 
-import { AnalyzeProcessingFixture } from './analyze-processing-fixture';
+import { AnalyzeProcessingFixture as LocalizedAnalyzeProcessingFixture } from './analyze-processing-fixture';
+
+function AnalyzeProcessingFixture() {
+  return <LocalizedAnalyzeProcessingFixture copy={appMessages.en.processing} />;
+}
 
 const visual = () => screen.getByTestId('analyze-processing-visual');
 const expectState = (state: string) =>

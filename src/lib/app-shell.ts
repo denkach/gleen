@@ -7,20 +7,18 @@ export type AppIdentity = Readonly<{
 export type AppUsage =
   | Readonly<{
       status: 'unavailable';
-      label: string;
     }>
   | Readonly<{
       status: 'available';
-      label: string;
       planName: string;
       used: number;
+      remaining: number;
       limit: number;
       resetAt: string;
     }>;
 
 export type AppNavigationItem = Readonly<{
-  label: 'New analysis' | 'History' | 'Subscription' | 'Settings';
-  mobileLabel: 'New' | 'History' | 'Plan' | 'Profile';
+  id: 'new' | 'history' | 'subscription' | 'settings';
   href: string;
   icon: 'plus' | 'history' | 'credit' | 'settings';
   match: 'exact' | 'prefix';
@@ -28,29 +26,25 @@ export type AppNavigationItem = Readonly<{
 
 export const appNavigation: readonly AppNavigationItem[] = [
   {
-    label: 'New analysis',
-    mobileLabel: 'New',
+    id: 'new',
     href: '/app',
     icon: 'plus',
     match: 'exact',
   },
   {
-    label: 'History',
-    mobileLabel: 'History',
+    id: 'history',
     href: '/app/history',
     icon: 'history',
     match: 'prefix',
   },
   {
-    label: 'Subscription',
-    mobileLabel: 'Plan',
+    id: 'subscription',
     href: '/app/subscription',
     icon: 'credit',
     match: 'prefix',
   },
   {
-    label: 'Settings',
-    mobileLabel: 'Profile',
+    id: 'settings',
     href: '/app/settings/profile',
     icon: 'settings',
     match: 'prefix',
@@ -59,7 +53,6 @@ export const appNavigation: readonly AppNavigationItem[] = [
 
 export const unavailableUsage: AppUsage = Object.freeze({
   status: 'unavailable',
-  label: 'Usage available with billing',
 });
 
 type IdentitySource = Readonly<{
@@ -77,13 +70,13 @@ function initialsFor(name: string): string {
 }
 
 export function deriveAppIdentity(user: IdentitySource): AppIdentity {
-  const email = user.email?.trim() || 'Account';
+  const email = user.email?.trim() || 'Gleen';
   const metadata = user.user_metadata ?? {};
   const candidate = [metadata.full_name, metadata.name].find(
     (value): value is string =>
       typeof value === 'string' && value.trim() !== '',
   );
-  const displayName = candidate?.trim() || email.split('@')[0] || 'Account';
+  const displayName = candidate?.trim() || email.split('@')[0] || 'Gleen';
   return { displayName, email, initials: initialsFor(displayName) };
 }
 
@@ -92,7 +85,7 @@ export function isAppNavigationItemActive(
   item: AppNavigationItem,
 ): boolean {
   const matchHref =
-    item.label === 'Settings' ? item.href.replace(/\/[^/]+$/, '') : item.href;
+    item.id === 'settings' ? item.href.replace(/\/[^/]+$/, '') : item.href;
 
   return item.match === 'exact'
     ? pathname === matchHref

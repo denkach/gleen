@@ -116,7 +116,7 @@ describe('intake server actions', () => {
     expect(state).toMatchObject({
       status: 'error',
       rawUrl: ' https://youtu.be/dQw4w9WgXcQ ',
-      message: 'Your session has expired. Sign in and try again.',
+      code: 'session_expired',
     });
     expect(state.configuration.artifacts).toEqual(['transcript', 'flashcards']);
     expect(createYouTubeProvider).not.toHaveBeenCalled();
@@ -141,7 +141,7 @@ describe('intake server actions', () => {
     expect(state).toMatchObject({
       status: 'error',
       rawUrl: ' https://youtu.be/dQw4w9WgXcQ ',
-      message: 'A native transcript is not available for this video.',
+      code: 'transcript_unavailable',
     });
     expect(state.configuration.artifacts).toEqual(['transcript', 'flashcards']);
   });
@@ -154,7 +154,7 @@ describe('intake server actions', () => {
 
     expect(state).toMatchObject({
       status: 'error',
-      message: 'Choose at least one artifact.',
+      code: 'no_artifacts',
       configuration: { artifacts: [] },
     });
     expect(submit).not.toHaveBeenCalled();
@@ -214,45 +214,34 @@ describe('intake server actions', () => {
   });
 
   test.each([
-    [
-      'invalid_url',
-      'Enter a supported YouTube URL and valid analysis options.',
-    ],
-    ['video_unavailable', 'This video is private or unavailable.'],
-    ['video_restricted', 'This video is restricted or cannot be embedded.'],
-    ['live_not_ready', 'This live video is not ready for analysis.'],
-    ['unsupported_duration', 'This video duration is not supported.'],
-    [
-      'transcript_unavailable',
-      'A native transcript is not available for this video.',
-    ],
-    [
-      'transcript_language_unavailable',
-      'A transcript is not available in the selected language.',
-    ],
-    ['provider_configuration', 'Video analysis is temporarily unavailable.'],
-    [
-      'provider_unavailable',
-      'The video service is temporarily unavailable. Try again.',
-    ],
-    ['session_expired', 'Your session has expired. Sign in and try again.'],
-    ['persistence_failure', 'We could not save this analysis. Try again.'],
-  ] as const)('maps %s to stable safe copy', async (code, message) => {
-    submit.mockRejectedValue(new IntakeServiceError(code));
+    ['invalid_url', 'invalid_url'],
+    ['video_unavailable', 'video_unavailable'],
+    ['video_restricted', 'video_unavailable'],
+    ['live_not_ready', 'video_unavailable'],
+    ['unsupported_duration', 'video_unavailable'],
+    ['transcript_unavailable', 'transcript_unavailable'],
+    ['transcript_language_unavailable', 'transcript_unavailable'],
+    ['provider_configuration', 'provider_outage'],
+    ['provider_unavailable', 'provider_outage'],
+    ['session_expired', 'session_expired'],
+    ['persistence_failure', 'unexpected'],
+  ] as const)('maps %s to stable action code %s', async (serviceCode, code) => {
+    submit.mockRejectedValue(new IntakeServiceError(serviceCode));
     await expect(
       submitYouTubeIntake(previousState, form()),
     ).resolves.toMatchObject({
       status: 'error',
-      message,
+      code,
     });
   });
 
-  test('never exposes an unexpected upstream error body', async () => {
+  test('never exposes presentation copy or an unexpected upstream error body', async () => {
     submit.mockRejectedValue(new Error('upstream secret response body'));
 
     const state = await submitYouTubeIntake(previousState, form());
-    expect(state.message).toBe('We could not save this analysis. Try again.');
-    expect(state.message).not.toContain('upstream');
+    expect(state).toMatchObject({ status: 'error', code: 'unexpected' });
+    expect(state).not.toHaveProperty('message');
+    expect(JSON.stringify(state)).not.toContain('upstream');
   });
 
   test('re-analysis trusts only authenticated identity and source id from the form', async () => {

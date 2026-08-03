@@ -5,6 +5,8 @@ import { AnalysisProcessingFixtureScreen } from '@/components/app-shell/analysis
 import { IntakeReadiness } from '@/components/app-shell/intake-readiness';
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import { unavailableUsage } from '@/lib/app-shell';
+import { appMessages } from '@/lib/i18n/messages/app';
+import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
 import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
@@ -587,11 +589,14 @@ export default async function FixtureReadinessPage({
   }
   return (
     <AppShell
+      copy={appMessages.en}
       identity={{
         displayName: 'Test User',
         email: 'test@example.com',
         initials: 'TU',
       }}
+      locale="en"
+      localeSwitcherCopy={sharedMessages.en}
       usage={unavailableUsage}
       pathnameOverride="/app"
     >
@@ -615,6 +620,7 @@ export default async function FixtureReadinessPage({
         />
       ) : snapshot ? (
         <AnalysisProcessingFixtureScreen
+          copy={appMessages.en}
           intake={intake}
           initialSnapshot={snapshot}
           retrySnapshot={retrySnapshot}
@@ -632,7 +638,7 @@ export default async function FixtureReadinessPage({
           }
         />
       ) : (
-        <IntakeReadiness intake={intake} />
+        <IntakeReadiness copy={appMessages.en} intake={intake} locale="en" />
       )}
     </AppShell>
   );

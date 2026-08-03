@@ -111,9 +111,14 @@ function snapshot(
 }
 
 export function AnalysisHandoffFixture({
+  copy,
   journey,
   requestedAnalysisId = null,
-}: Readonly<{ journey: Journey; requestedAnalysisId?: string | null }>) {
+}: Readonly<{
+  copy: import('@/lib/i18n/messages/app').AppMessages;
+  journey: Journey;
+  requestedAnalysisId?: string | null;
+}>) {
   const [recovered, setRecovered] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [settled, setSettled] = useState(false);
@@ -169,6 +174,7 @@ export function AnalysisHandoffFixture({
     <>
       <InlineAnalysisProcessing
         analysisId={analysisId}
+        copy={copy}
         initialSnapshot={initial}
         resultPathPrefix="/app-shell-fixture/app/video"
         enableRealtime={false}

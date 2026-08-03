@@ -93,7 +93,6 @@ export async function submitUsageLimitFixture(
     status: 'error',
     code: 'usage_limit_reached',
     redirectTo: '/app/subscription/limit-reached',
-    message: 'Your analysis limit has been reached.',
   } as const;
 }
 export async function submitReanalysisFixture(

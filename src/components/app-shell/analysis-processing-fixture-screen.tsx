@@ -8,11 +8,13 @@ import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 import { AnalysisProcessingScreen } from './analysis-processing-screen';
 
 export function AnalysisProcessingFixtureScreen({
+  copy,
   intake,
   initialSnapshot,
   retrySnapshot,
   transitionSnapshot,
 }: Readonly<{
+  copy: import('@/lib/i18n/messages/app').AppMessages;
   intake: AnalysisIntake;
   initialSnapshot: AnalysisSnapshot;
   retrySnapshot?: AnalysisSnapshot;
@@ -36,6 +38,7 @@ export function AnalysisProcessingFixtureScreen({
         </button>
       ) : null}
       <AnalysisProcessingScreen
+        copy={copy}
         intake={intake}
         initialSnapshot={initialSnapshot}
         enableLiveUpdates={false}

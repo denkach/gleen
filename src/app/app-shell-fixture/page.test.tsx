@@ -143,6 +143,25 @@ it('renders the real app shell and New analysis home when preview is enabled', a
   expect(notFound).not.toHaveBeenCalled();
 });
 
+it('renders a localized fixture without changing its route shape', async () => {
+  isUiPreviewEnabled.mockReturnValue(true);
+
+  render(
+    await AppShellFixturePage({
+      searchParams: Promise.resolve({ locale: 'de' }),
+    }),
+  );
+
+  expect(
+    screen.getByRole('heading', {
+      name: 'Mach aus einem Video etwas Nützliches.',
+    }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('link', { name: 'Zum Inhalt springen' }),
+  ).toHaveAttribute('href', '#app-content');
+});
+
 it('returns not found before rendering when preview is disabled', async () => {
   isUiPreviewEnabled.mockReturnValue(false);
 

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { LocaleSwitcher } from '@/components/i18n/locale-switcher';
 
 import {
   appNavigation,
@@ -10,6 +11,10 @@ import {
   type AppUsage,
 } from '@/lib/app-shell';
 import { cx } from '@/lib/cx';
+import { appUsageLabel } from '@/lib/i18n/app-format';
+import type { AppMessages } from '@/lib/i18n/messages/app';
+import type { Locale } from '@/lib/i18n/locales';
+import type { LocaleSwitcherCopy } from '@/lib/i18n/messages/shared';
 
 import { AppIcon } from './app-icon';
 
@@ -24,14 +29,17 @@ function isResultVideoRoute(pathname: string): boolean {
 
 type AppShellProps = Readonly<{
   children: React.ReactNode;
+  copy: AppMessages;
   identity: AppIdentity;
+  locale: Locale;
+  localeSwitcherCopy: LocaleSwitcherCopy;
   usage: AppUsage;
   pathnameOverride?: string;
 }>;
 
-function Brand() {
+function Brand({ label }: Readonly<{ label: string }>) {
   return (
-    <Link className="app-brand" href="/app" aria-label="Gleen home">
+    <Link className="app-brand" href="/app" aria-label={label}>
       <span className="app-brand-mark" />
       <span>Gleen</span>
     </Link>
@@ -57,7 +65,10 @@ function UnavailableButton({
 
 export function AppShell({
   children,
+  copy,
   identity,
+  locale,
+  localeSwitcherCopy,
   usage,
   pathnameOverride,
 }: AppShellProps) {
@@ -67,20 +78,24 @@ export function AppShell({
     appNavigation.find((item) => isAppNavigationItemActive(pathname, item)) ??
     appNavigation[0];
   const resultVideoRoute = isResultVideoRoute(pathname);
+  const usageLabel =
+    usage.status === 'available'
+      ? appUsageLabel(locale, copy, usage.remaining)
+      : copy.shell.usageUnavailable;
 
   return (
     <div className="app-shell">
       <a className="skip-link" href="#app-content">
-        Skip to content
+        {copy.shell.skipToContent}
       </a>
       <span className="app-visually-hidden" id={unavailableDescriptionId}>
-        Unavailable in this version
+        {copy.shell.unavailableDescription}
       </span>
 
       <aside className="sidebar">
-        <Brand />
-        <div className="sidebar-section-label">Workspace</div>
-        <nav className="side-nav" aria-label="Application navigation">
+        <Brand label={copy.shell.brandHome} />
+        <div className="sidebar-section-label">{copy.shell.workspace}</div>
+        <nav className="side-nav" aria-label={copy.shell.applicationNavigation}>
           {appNavigation.map((item) => {
             const active = isAppNavigationItemActive(pathname, item);
             return (
@@ -91,13 +106,13 @@ export function AppShell({
                 key={item.href}
               >
                 <AppIcon name={item.icon} />
-                <span>{item.label}</span>
+                <span>{copy.shell.navigation[item.id].label}</span>
               </Link>
             );
           })}
         </nav>
-        <div className="sidebar-section-label">Help</div>
-        <nav className="side-nav" aria-label="Help navigation">
+        <div className="sidebar-section-label">{copy.shell.help}</div>
+        <nav className="side-nav" aria-label={copy.shell.helpNavigation}>
           <button
             className="side-link"
             type="button"
@@ -105,11 +120,11 @@ export function AppShell({
             disabled
           >
             <AppIcon name="help" />
-            <span>Support</span>
+            <span>{copy.shell.support}</span>
           </button>
         </nav>
         <div className="sidebar-bottom">
-          <div className="usage-mini">{usage.label}</div>
+          <div className="usage-mini">{usageLabel}</div>
           <Link className="user-chip" href="/app/settings/profile">
             <span className="avatar">{identity.initials}</span>
             <span className="user-chip-text">
@@ -123,18 +138,24 @@ export function AppShell({
 
       <div className="app-main">
         <header className="mobile-topbar">
-          <Brand />
+          <Brand label={copy.shell.brandHome} />
           <div className="topbar-actions">
-            <UnavailableButton label="Notifications" icon="bell" />
+            <UnavailableButton label={copy.shell.notifications} icon="bell" />
             <span className="avatar">{identity.initials}</span>
           </div>
         </header>
         <header className="app-topbar">
-          <div className="topbar-title">{currentItem.label}</div>
+          <div className="topbar-title">
+            {copy.shell.navigation[currentItem.id].label}
+          </div>
           <div className="topbar-actions">
-            <div className="usage-pill">{usage.label}</div>
-            <UnavailableButton label="Change language" icon="globe" />
-            <UnavailableButton label="Notifications" icon="bell" />
+            <div className="usage-pill">{usageLabel}</div>
+            <LocaleSwitcher
+              locale={locale}
+              copy={localeSwitcherCopy}
+              variant="app"
+            />
+            <UnavailableButton label={copy.shell.notifications} icon="bell" />
             <span className="avatar">{identity.initials}</span>
           </div>
         </header>
@@ -145,7 +166,7 @@ export function AppShell({
 
       <nav
         className="bottom-nav"
-        aria-label="Mobile navigation"
+        aria-label={copy.shell.mobileNavigation}
         data-result-video-route={resultVideoRoute || undefined}
       >
         {appNavigation.map((item) => {
@@ -154,12 +175,12 @@ export function AppShell({
             <Link
               className={cx('bottom-link', active && 'active')}
               href={item.href}
-              aria-label={item.label}
+              aria-label={copy.shell.navigation[item.id].label}
               aria-current={active ? 'page' : undefined}
               key={item.href}
             >
               <AppIcon name={item.icon} />
-              <span>{item.mobileLabel}</span>
+              <span>{copy.shell.navigation[item.id].mobileLabel}</span>
             </Link>
           );
         })}

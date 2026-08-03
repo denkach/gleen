@@ -47,7 +47,6 @@ describe('intake action factory', () => {
         artifacts: ['summary'],
         analysisContractVersion: 1,
       },
-      message: 'Your analysis limit has been reached.',
     });
   });
 });

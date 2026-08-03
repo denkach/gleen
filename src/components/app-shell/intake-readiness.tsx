@@ -2,28 +2,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
-
-const localeNames = {
-  uk: 'Ukrainian',
-  ru: 'Russian',
-  en: 'English',
-  es: 'Spanish',
-  de: 'German',
-} as const;
-
-const artifactNames = {
-  summary: 'Summary',
-  timestamps: 'Timestamps',
-  transcript: 'Transcript',
-  flashcards: 'Flashcards',
-} as const;
-
-const statusNames = {
-  ready: 'Ready for processing',
-  processing: 'Processing',
-  complete: 'Complete',
-  failed: 'Processing failed',
-} as const;
+import { selectPlural } from '@/lib/i18n/format';
+import { localeMetadata, type Locale } from '@/lib/i18n/locales';
+import type { AppMessages } from '@/lib/i18n/messages/app';
 
 function formatDuration(durationSeconds: number) {
   const hours = Math.floor(durationSeconds / 3600);
@@ -34,22 +15,20 @@ function formatDuration(durationSeconds: number) {
   return hours ? `${hours}:${minuteAndSeconds}` : minuteAndSeconds;
 }
 
-function titleCase(value: string) {
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
-}
-
 export function IntakeReadiness({
+  copy,
   intake,
-}: Readonly<{ intake: AnalysisIntake }>) {
+  locale,
+}: Readonly<{ copy: AppMessages; intake: AnalysisIntake; locale: Locale }>) {
   const { configuration } = intake;
 
   return (
     <article className="intake-readiness" aria-labelledby="intake-title">
       <header className="intake-readiness-head">
-        <span className="eyebrow">Validated intake</span>
+        <span className="eyebrow">{copy.readiness.eyebrow}</span>
         <p className="intake-ready-status" role="status">
           <span aria-hidden="true" />
-          {statusNames[intake.status]}
+          {copy.readiness.statuses[intake.status]}
         </p>
       </header>
 
@@ -70,39 +49,48 @@ export function IntakeReadiness({
           <h1 id="intake-title">{intake.title}</h1>
           <dl className="intake-metadata">
             <div>
-              <dt>Duration</dt>
+              <dt>{copy.readiness.duration}</dt>
               <dd>{formatDuration(intake.durationSeconds)}</dd>
             </div>
             <div>
-              <dt>Transcript language</dt>
+              <dt>{copy.readiness.transcriptLanguage}</dt>
               <dd>
-                {localeNames[
-                  intake.transcriptLanguage as keyof typeof localeNames
-                ] ?? intake.transcriptLanguage}
+                {localeMetadata[intake.transcriptLanguage as Locale]
+                  ?.nativeName ?? intake.transcriptLanguage}
               </dd>
             </div>
             <div>
-              <dt>Output language</dt>
-              <dd>{localeNames[configuration.outputLocale]}</dd>
+              <dt>{copy.readiness.outputLanguage}</dt>
+              <dd>{localeMetadata[configuration.outputLocale].nativeName}</dd>
             </div>
             <div>
-              <dt>Selected artifacts</dt>
+              <dt>{copy.readiness.selectedArtifacts}</dt>
               <dd>
                 {configuration.artifacts
-                  .map((artifact) => artifactNames[artifact])
+                  .map((artifact) => copy.newAnalysis.artifacts[artifact])
                   .join(', ')}
               </dd>
             </div>
             {configuration.summaryPreset ? (
               <div>
-                <dt>Summary preset</dt>
-                <dd>{titleCase(configuration.summaryPreset)}</dd>
+                <dt>{copy.readiness.summaryPreset}</dt>
+                <dd>
+                  {configuration.summaryPreset === 'detailed'
+                    ? copy.newAnalysis.advanced.detailed
+                    : copy.newAnalysis.advanced.balanced}
+                </dd>
               </div>
             ) : null}
             {configuration.flashcardPreset ? (
               <div>
-                <dt>Flashcard preset</dt>
-                <dd>{configuration.flashcardPreset} cards</dd>
+                <dt>{copy.readiness.flashcardPreset}</dt>
+                <dd>
+                  {selectPlural(
+                    locale,
+                    configuration.flashcardPreset,
+                    copy.readiness.cards,
+                  )}
+                </dd>
               </div>
             ) : null}
           </dl>
@@ -110,11 +98,8 @@ export function IntakeReadiness({
       </div>
 
       <footer className="intake-readiness-foot">
-        <p>
-          Your video and native transcript are validated. Processing is
-          implemented in the next issue; no generated artifacts exist yet.
-        </p>
-        <Link href="/app">← Back to New analysis</Link>
+        <p>{copy.readiness.note}</p>
+        <Link href="/app">{copy.readiness.back}</Link>
       </footer>
     </article>
   );

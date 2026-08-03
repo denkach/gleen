@@ -8,6 +8,8 @@ import {
   type BillingFixtureState,
 } from '@/lib/billing/fixtures';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
+import { appMessages } from '@/lib/i18n/messages/app';
+import { sharedMessages } from '@/lib/i18n/messages/shared';
 
 import { BillingFixtureScreen } from './fixture-screen';
 
@@ -73,7 +75,10 @@ export default async function BillingFixturePage({
   const fixture = getBillingFixture(screen, state);
   return (
     <AppShell
+      copy={appMessages.en}
       identity={fixture.shell.identity}
+      locale="en"
+      localeSwitcherCopy={sharedMessages.en}
       usage={fixture.shell.usage}
       pathnameOverride="/app/subscription"
     >

@@ -7,13 +7,23 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import type { ComponentProps } from 'react';
 
 import {
   createInitialIntakeActionState,
   type IntakeActionState,
 } from '@/lib/youtube-intake/action-state';
+import { appMessages } from '@/lib/i18n/messages/app';
 
-import { NewAnalysisForm } from './new-analysis-form';
+import { NewAnalysisForm as LocalizedNewAnalysisForm } from './new-analysis-form';
+
+function NewAnalysisForm({
+  copy = appMessages.en,
+  ...props
+}: Omit<ComponentProps<typeof LocalizedNewAnalysisForm>, 'copy'> &
+  Partial<Pick<ComponentProps<typeof LocalizedNewAnalysisForm>, 'copy'>>) {
+  return <LocalizedNewAnalysisForm copy={copy} {...props} />;
+}
 
 const routerPush = vi.fn();
 
@@ -65,13 +75,42 @@ function renderForm(
 }
 
 describe('NewAnalysisForm', () => {
+  test('renders Ukrainian advanced options and stable-code errors', async () => {
+    const user = userEvent.setup();
+    const initialState = {
+      ...createInitialIntakeActionState(defaults),
+      status: 'error' as const,
+      code: 'transcript_unavailable' as const,
+    };
+
+    render(
+      <NewAnalysisForm
+        copy={appMessages.uk}
+        initialState={initialState}
+        action={async (state) => state}
+        reanalyzeAction={async (state) => state}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Для цього відео немає доступного транскрипту.',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Розширені налаштування' }),
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Розширені налаштування' }),
+    ).toHaveTextContent('Виберіть навчальні матеріали для цього аналізу.');
+    expect(screen.getByRole('checkbox', { name: 'Конспект' })).toBeChecked();
+    expect(screen.getByLabelText('Мова результатів')).toBeInTheDocument();
+  });
+
   test('navigates only the closed usage-limit error to the limit route', async () => {
     const action = vi.fn(async () => ({
       ...createInitialIntakeActionState(defaults),
       status: 'error' as const,
       code: 'usage_limit_reached' as const,
       redirectTo: '/app/subscription/limit-reached' as const,
-      message: 'Your analysis limit has been reached.' as const,
     }));
     renderForm(action);
     fireEvent.change(screen.getByLabelText('YouTube URL'), {
@@ -395,7 +434,7 @@ describe('NewAnalysisForm', () => {
         ...createInitialIntakeActionState(defaults),
         status: 'error',
         rawUrl: 'https://youtu.be/abcdefghijk',
-        message: 'The video service is temporarily unavailable. Try again.',
+        code: 'provider_outage',
       }),
     );
     expect(screen.getByTestId('analyze-processing-visual')).toHaveAttribute(
@@ -673,7 +712,7 @@ describe('NewAnalysisForm', () => {
     resolveReanalysis({
       ...duplicate,
       status: 'error',
-      message: 'The video service is temporarily unavailable. Try again.',
+      code: 'provider_outage',
     });
 
     const dialog = screen.getByRole('dialog', {

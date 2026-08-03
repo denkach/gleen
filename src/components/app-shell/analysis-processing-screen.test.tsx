@@ -7,9 +7,11 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { ComponentProps } from 'react';
 
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
+import { appMessages } from '@/lib/i18n/messages/app';
 
 const realtime = vi.hoisted(() => {
   const channel = { on: vi.fn(), subscribe: vi.fn() };
@@ -66,7 +68,17 @@ vi.mock('@/lib/result-workspace/presentation', () => ({
   }),
 }));
 
-import { AnalysisProcessingScreen } from './analysis-processing-screen';
+import { AnalysisProcessingScreen as LocalizedAnalysisProcessingScreen } from './analysis-processing-screen';
+
+function AnalysisProcessingScreen({
+  copy = appMessages.en,
+  ...props
+}: Omit<ComponentProps<typeof LocalizedAnalysisProcessingScreen>, 'copy'> &
+  Partial<
+    Pick<ComponentProps<typeof LocalizedAnalysisProcessingScreen>, 'copy'>
+  >) {
+  return <LocalizedAnalysisProcessingScreen copy={copy} {...props} />;
+}
 
 const intake = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -162,6 +174,24 @@ describe('AnalysisProcessingScreen', () => {
     );
   });
   afterEach(() => vi.useRealTimers());
+
+  test('renders Ukrainian partial handoff and artifact status copy', () => {
+    render(
+      <AnalysisProcessingScreen
+        copy={appMessages.uk}
+        intake={intake}
+        initialSnapshot={snapshot('partial')}
+        retryAction={vi.fn()}
+        refreshAction={vi.fn(async () => snapshot('partial'))}
+      />,
+    );
+
+    expect(screen.getByText('Конспект готово')).toBeVisible();
+    expect(screen.getByText('Картки потрібно повторити')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Спробувати ще раз' }),
+    ).toBeVisible();
+  });
 
   test('retains ready partial artifacts and submits retry only once while pending', async () => {
     let resolveRetry!: (result: { ok: true; attempt: number }) => void;

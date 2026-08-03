@@ -11,10 +11,34 @@ import {
   type SupabaseBillingClient,
 } from '@/lib/billing/supabase-repository';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import {
+  selectMessages,
+  type MissingTranslationEvent,
+} from '@/lib/i18n/catalog';
+import { appMessages } from '@/lib/i18n/messages/app';
+import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
+
+function reportMissingTranslation(event: MissingTranslationEvent) {
+  console.error(event);
+}
 
 export default async function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    appMessages,
+    locale,
+    'app',
+    reportMissingTranslation,
+  );
+  const sharedCopy = selectMessages(
+    sharedMessages,
+    locale,
+    'shared',
+    reportMissingTranslation,
+  );
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -29,9 +53,9 @@ export default async function AppLayout({
     ).getOwnedSnapshot(user.id);
     usage = {
       status: 'available',
-      label: `${snapshot.usage.remaining} analyses left`,
       planName: snapshot.currentPlan.displayName,
       used: snapshot.usage.used + snapshot.usage.reserved,
+      remaining: snapshot.usage.remaining,
       limit: snapshot.usage.limit,
       resetAt: snapshot.period.endsAt,
     };
@@ -40,7 +64,13 @@ export default async function AppLayout({
   }
 
   return (
-    <AppShell identity={deriveAppIdentity(user)} usage={usage}>
+    <AppShell
+      copy={copy}
+      identity={deriveAppIdentity(user)}
+      locale={locale}
+      localeSwitcherCopy={sharedCopy}
+      usage={usage}
+    >
       {children}
     </AppShell>
   );

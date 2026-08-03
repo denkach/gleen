@@ -15,16 +15,43 @@ import {
   createSupabaseIntakeRepository,
   type SupabaseIntakeClient,
 } from '@/lib/youtube-intake/supabase-repository';
+import {
+  selectMessages,
+  type MissingTranslationEvent,
+} from '@/lib/i18n/catalog';
+import { appMessages } from '@/lib/i18n/messages/app';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
-export const metadata: Metadata = {
-  title: 'New analysis — Gleen',
-};
+function reportMissingTranslation(event: MissingTranslationEvent) {
+  console.error(event);
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    appMessages,
+    locale,
+    'app',
+    reportMissingTranslation,
+  );
+  return {
+    title: copy.metadata.newAnalysisTitle,
+    description: copy.metadata.newAnalysisDescription,
+  };
+}
 
 type AppPageProps = Readonly<{
   searchParams: Promise<{ analysis?: string; continuation?: string }>;
 }>;
 
 export default async function AppPage({ searchParams }: AppPageProps) {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    appMessages,
+    locale,
+    'app',
+    reportMissingTranslation,
+  );
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -59,6 +86,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
 
   return (
     <NewAnalysisHome
+      copy={copy}
       profileDefaults={{
         outputLocale: preferences.outputLocale,
         summaryPreset: preferences.summaryPreset,

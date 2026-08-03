@@ -25,6 +25,9 @@ import {
 } from '@/lib/youtube-intake/actions';
 import type { AnalysisVisualState } from '@/lib/analyze-processing/analysis-visual-state';
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
+import { localeMetadata } from '@/lib/i18n/locales';
+import { appIntakeErrorMessage } from '@/lib/i18n/app-format';
+import type { AppMessages } from '@/lib/i18n/messages/app';
 import {
   supportedLocales,
   type OnboardingState,
@@ -40,6 +43,7 @@ type IntakeAction = (
 ) => Promise<IntakeActionState>;
 
 type NewAnalysisFormProps = Readonly<{
+  copy: AppMessages;
   initialState: IntakeActionState;
   action?: IntakeAction;
   reanalyzeAction?: IntakeAction;
@@ -49,40 +53,38 @@ type NewAnalysisFormProps = Readonly<{
 }>;
 
 const artifactOptions = [
-  ['summary', 'Summary'],
-  ['timestamps', 'Timestamps'],
-  ['transcript', 'Transcript'],
-  ['flashcards', 'Flashcards'],
+  'summary',
+  'timestamps',
+  'transcript',
+  'flashcards',
 ] as const;
 
-const localeNames: Record<(typeof supportedLocales)[number], string> = {
-  uk: 'Українська',
-  ru: 'Русский',
-  en: 'English',
-  es: 'Español',
-  de: 'Deutsch',
-};
-
-function SubmitButton({ pending }: Readonly<{ pending: boolean }>) {
+function SubmitButton({
+  copy,
+  pending,
+}: Readonly<{ copy: AppMessages['newAnalysis']; pending: boolean }>) {
   return (
     <button className="btn btn-primary" type="submit" disabled={pending}>
-      <span>{pending ? 'Analyzing…' : 'Analyze video'}</span>
+      <span>{pending ? copy.submitting : copy.submit}</span>
       <AppIcon name="arrow" />
     </button>
   );
 }
 
-function ConfirmButton() {
+function ConfirmButton({
+  copy,
+}: Readonly<{ copy: AppMessages['newAnalysis'] }>) {
   const { pending } = useFormStatus();
   return (
     <button className="btn btn-primary" type="submit" disabled={pending}>
-      {pending ? 'Creating…' : 'Confirm analysis'}
+      {pending ? copy.duplicate.creating : copy.duplicate.confirm}
     </button>
   );
 }
 
 export function NewAnalysisForm({
   action = submitYouTubeIntake,
+  copy,
   initialState,
   reanalyzeAction = reanalyzeIntake,
   resultPathPrefix = '/app/video',
@@ -103,7 +105,7 @@ export function NewAnalysisForm({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedArtifacts, setSelectedArtifacts] = useState<
-    (typeof artifactOptions)[number][0][]
+    (typeof artifactOptions)[number][]
   >(initialState.configuration.artifacts);
   const [outputLocale, setOutputLocale] = useState<
     OnboardingState['outputLocale']
@@ -154,8 +156,8 @@ export function NewAnalysisForm({
   }, [autoSubmit]);
 
   const selectionSummary = artifactOptions
-    .filter(([value]) => selectedArtifacts.includes(value))
-    .map(([, label]) => label)
+    .filter((value) => selectedArtifacts.includes(value))
+    .map((value) => copy.newAnalysis.artifacts[value])
     .join(', ');
 
   function validateArtifacts(event: FormEvent<HTMLFormElement>) {
@@ -170,7 +172,7 @@ export function NewAnalysisForm({
       return;
     }
     event.preventDefault();
-    setClientMessage('Choose at least one artifact.');
+    setClientMessage(copy.newAnalysis.advanced.chooseArtifact);
   }
 
   const resolvedWithoutRedirect =
@@ -190,6 +192,7 @@ export function NewAnalysisForm({
     <>
       {state.analysisId ? (
         <InlineAnalysisProcessing
+          copy={copy}
           analysisId={state.analysisId}
           initialSnapshot={initialSnapshot}
           resultPathPrefix={resultPathPrefix}
@@ -197,10 +200,13 @@ export function NewAnalysisForm({
         />
       ) : (
         <AnalyzeProcessingVisual
+          copy={copy.processing}
           state={displayVisualState}
           submittedUrl={state.rawUrl || submittedUrl}
           errorMessage={
-            displayVisualState === 'error' ? state.message : undefined
+            displayVisualState === 'error'
+              ? appIntakeErrorMessage(copy, state.code)
+              : undefined
           }
           onRetry={
             displayVisualState === 'error'
@@ -220,10 +226,10 @@ export function NewAnalysisForm({
             >
               <AppIcon name="link" className="link-icon" />
               <input
-                aria-label="YouTube URL"
+                aria-label={copy.newAnalysis.urlLabel}
                 name="rawUrl"
                 type="url"
-                placeholder="Paste a YouTube link"
+                placeholder={copy.newAnalysis.urlPlaceholder}
                 defaultValue={state.rawUrl}
                 required
                 disabled={pending}
@@ -243,7 +249,7 @@ export function NewAnalysisForm({
                   value={artifact}
                 />
               ))}
-              <SubmitButton pending={pending} />
+              <SubmitButton copy={copy.newAnalysis} pending={pending} />
             </form>
           }
         />
@@ -252,19 +258,19 @@ export function NewAnalysisForm({
       <div className={`analysis-form-meta${pending ? ' pending' : ''}`}>
         <Dialog open={advancedOpen} onOpenChange={setAdvancedOpen}>
           <DialogTrigger className="advanced-link" disabled={pending}>
-            <AppIcon name="settings" /> Advanced options
+            <AppIcon name="settings" /> {copy.newAnalysis.advanced.trigger}
           </DialogTrigger>
           <DialogContent
             className="analysis-options"
-            title="Advanced options"
-            description="Choose the knowledge artifacts for this analysis."
+            title={copy.newAnalysis.advanced.title}
+            description={copy.newAnalysis.advanced.description}
           >
             <fieldset>
-              <legend>Output language</legend>
+              <legend>{copy.newAnalysis.advanced.outputLanguage}</legend>
               <div
                 className="language-list"
                 role="radiogroup"
-                aria-label="Output language"
+                aria-label={copy.newAnalysis.advanced.outputLanguage}
               >
                 {supportedLocales.map((locale) => (
                   <button
@@ -272,20 +278,20 @@ export function NewAnalysisForm({
                     key={locale}
                     type="button"
                     role="radio"
-                    aria-label={localeNames[locale]}
+                    aria-label={localeMetadata[locale].nativeName}
                     aria-checked={outputLocale === locale}
                     onClick={() => setOutputLocale(locale)}
                   >
-                    <span>{localeNames[locale]}</span>
+                    <span>{localeMetadata[locale].nativeName}</span>
                     <span className="code">{locale.toUpperCase()}</span>
                   </button>
                 ))}
               </div>
             </fieldset>
             <fieldset>
-              <legend>Artifacts</legend>
+              <legend>{copy.newAnalysis.advanced.artifacts}</legend>
               <div className="artifact-options">
-                {artifactOptions.map(([value, label]) => (
+                {artifactOptions.map((value) => (
                   <label key={value} className="artifact-option">
                     <input
                       type="checkbox"
@@ -300,16 +306,16 @@ export function NewAnalysisForm({
                         );
                       }}
                     />
-                    <span>{label}</span>
+                    <span>{copy.newAnalysis.artifacts[value]}</span>
                   </label>
                 ))}
               </div>
             </fieldset>
             {selectedArtifacts.includes('summary') ? (
               <label className="preset-option">
-                <span>Summary preset</span>
+                <span>{copy.newAnalysis.advanced.summaryPreset}</span>
                 <select
-                  aria-label="Summary preset"
+                  aria-label={copy.newAnalysis.advanced.summaryPreset}
                   value={summaryPreset}
                   onChange={(event) =>
                     setSummaryPreset(
@@ -317,16 +323,20 @@ export function NewAnalysisForm({
                     )
                   }
                 >
-                  <option value="balanced">Balanced</option>
-                  <option value="detailed">Detailed</option>
+                  <option value="balanced">
+                    {copy.newAnalysis.advanced.balanced}
+                  </option>
+                  <option value="detailed">
+                    {copy.newAnalysis.advanced.detailed}
+                  </option>
                 </select>
               </label>
             ) : null}
             {selectedArtifacts.includes('flashcards') ? (
               <label className="preset-option">
-                <span>Flashcard count</span>
+                <span>{copy.newAnalysis.advanced.flashcardCount}</span>
                 <select
-                  aria-label="Flashcard count"
+                  aria-label={copy.newAnalysis.advanced.flashcardCount}
                   value={flashcardPreset}
                   onChange={(event) =>
                     setFlashcardPreset(Number(event.target.value) as 18 | 30)
@@ -338,18 +348,18 @@ export function NewAnalysisForm({
               </label>
             ) : null}
             <DialogClose className="btn btn-secondary" type="button">
-              Done
+              {copy.newAnalysis.advanced.done}
             </DialogClose>
           </DialogContent>
         </Dialog>
         <p className="selection-summary">
-          {selectionSummary || 'No artifacts selected'}
+          {selectionSummary || copy.newAnalysis.advanced.noArtifacts}
         </p>
       </div>
 
       {clientMessage || (state.status === 'error' && !visualState) ? (
         <p className="intake-status" id="intake-status" role="status">
-          {clientMessage ?? state.message}
+          {clientMessage ?? appIntakeErrorMessage(copy, state.code)}
         </p>
       ) : (
         <span id="intake-status" className="sr-only" />
@@ -357,13 +367,13 @@ export function NewAnalysisForm({
 
       {state.status === 'duplicate' && state.existingId ? (
         <section className="duplicate-banner" aria-labelledby="duplicate-title">
-          <h2 id="duplicate-title">You already analyzed this video.</h2>
-          <p>No credits will be used.</p>
+          <h2 id="duplicate-title">{copy.newAnalysis.duplicate.title}</h2>
+          <p>{copy.newAnalysis.duplicate.noCredits}</p>
           <Link href={`${resultPathPrefix}/${state.existingId}`}>
-            Open saved result
+            {copy.newAnalysis.duplicate.openSaved}
           </Link>
           <button type="button" onClick={() => setConfirmOpen(true)}>
-            Analyze again
+            {copy.newAnalysis.duplicate.analyzeAgain}
           </button>
         </section>
       ) : null}
@@ -371,39 +381,44 @@ export function NewAnalysisForm({
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent
           className="reanalyze-dialog"
-          title="Analyze this video again?"
-          description="A new processing attempt will be created."
+          title={copy.newAnalysis.duplicate.dialogTitle}
+          description={copy.newAnalysis.duplicate.dialogDescription}
         >
           {state.duplicateConfiguration ? (
             <dl className="reanalyze-configuration">
               <div>
-                <dt>Output language</dt>
-                <dd>{state.duplicateConfiguration.outputLocale}</dd>
+                <dt>{copy.newAnalysis.advanced.outputLanguage}</dt>
+                <dd>
+                  {
+                    localeMetadata[state.duplicateConfiguration.outputLocale]
+                      .nativeName
+                  }
+                </dd>
               </div>
               <div>
-                <dt>Artifacts</dt>
+                <dt>{copy.newAnalysis.advanced.artifacts}</dt>
                 <dd>
                   {artifactOptions
-                    .filter(([value]) =>
+                    .filter((value) =>
                       state.duplicateConfiguration?.artifacts.includes(value),
                     )
-                    .map(([, label]) => label)
+                    .map((value) => copy.newAnalysis.artifacts[value])
                     .join(', ')}
                 </dd>
               </div>
               {state.duplicateConfiguration.summaryPreset ? (
                 <div>
-                  <dt>Summary</dt>
+                  <dt>{copy.newAnalysis.artifacts.summary}</dt>
                   <dd>
                     {state.duplicateConfiguration.summaryPreset === 'detailed'
-                      ? 'Detailed'
-                      : 'Balanced'}
+                      ? copy.newAnalysis.advanced.detailed
+                      : copy.newAnalysis.advanced.balanced}
                   </dd>
                 </div>
               ) : null}
               {state.duplicateConfiguration.flashcardPreset ? (
                 <div>
-                  <dt>Flashcards</dt>
+                  <dt>{copy.newAnalysis.artifacts.flashcards}</dt>
                   <dd>{state.duplicateConfiguration.flashcardPreset}</dd>
                 </div>
               ) : null}
@@ -415,13 +430,13 @@ export function NewAnalysisForm({
           >
             <input type="hidden" name="sourceId" value={state.existingId} />
             <DialogClose className="btn btn-secondary" type="button">
-              Cancel
+              {copy.newAnalysis.duplicate.cancel}
             </DialogClose>
-            <ConfirmButton />
+            <ConfirmButton copy={copy.newAnalysis} />
           </form>
           {reanalyzeState.status === 'error' ? (
             <p className="intake-status" role="status" aria-live="polite">
-              {reanalyzeState.message}
+              {appIntakeErrorMessage(copy, reanalyzeState.code)}
             </p>
           ) : null}
         </DialogContent>

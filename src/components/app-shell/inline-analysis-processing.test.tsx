@@ -1,8 +1,10 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { ComponentProps } from 'react';
 
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
+import { appMessages } from '@/lib/i18n/messages/app';
 
 const realtime = vi.hoisted(() => {
   const channel = { on: vi.fn(), subscribe: vi.fn() };
@@ -23,7 +25,17 @@ vi.mock('@/lib/supabase/browser', () => ({
   }),
 }));
 
-import { InlineAnalysisProcessing } from './inline-analysis-processing';
+import { InlineAnalysisProcessing as LocalizedInlineAnalysisProcessing } from './inline-analysis-processing';
+
+function InlineAnalysisProcessing({
+  copy = appMessages.en,
+  ...props
+}: Omit<ComponentProps<typeof LocalizedInlineAnalysisProcessing>, 'copy'> &
+  Partial<
+    Pick<ComponentProps<typeof LocalizedInlineAnalysisProcessing>, 'copy'>
+  >) {
+  return <LocalizedInlineAnalysisProcessing copy={copy} {...props} />;
+}
 
 const analysisId = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -105,6 +117,28 @@ describe('InlineAnalysisProcessing', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  test('renders Ukrainian recovery copy for a failed analysis', () => {
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        copy={appMessages.uk}
+        initialSnapshot={snapshot('failed')}
+        refreshAction={vi.fn(async () => snapshot('failed'))}
+        retryAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Аналіз безпечно зупинено. Готові матеріали збережено.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Повторити невдалий матеріал' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('list', { name: 'Стан матеріалів' }),
+    ).toBeInTheDocument();
   });
 
   test('refreshes immediately, renders one spectrum, and keeps polling every two seconds', async () => {

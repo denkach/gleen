@@ -10,6 +10,7 @@ import { NewAnalysisForm } from './new-analysis-form';
 import type { ComponentProps } from 'react';
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
+import type { AppMessages } from '@/lib/i18n/messages/app';
 
 type ProfileDefaults = Pick<
   IntakeActionState['configuration'],
@@ -17,6 +18,7 @@ type ProfileDefaults = Pick<
 >;
 
 export function NewAnalysisHome({
+  copy,
   profileDefaults = defaultOnboardingState,
   action,
   reanalyzeAction,
@@ -24,6 +26,7 @@ export function NewAnalysisHome({
   initialAnalysis,
   continuation,
 }: Readonly<{
+  copy: AppMessages;
   profileDefaults?: ProfileDefaults;
   action?: ComponentProps<typeof NewAnalysisForm>['action'];
   reanalyzeAction?: ComponentProps<typeof NewAnalysisForm>['reanalyzeAction'];
@@ -38,9 +41,10 @@ export function NewAnalysisHome({
   return (
     <>
       <section className="analysis-hero" aria-labelledby="new-analysis-title">
-        <span className="eyebrow">New analysis</span>
-        <h1 id="new-analysis-title">Turn a video into something useful.</h1>
+        <span className="eyebrow">{copy.newAnalysis.eyebrow}</span>
+        <h1 id="new-analysis-title">{copy.newAnalysis.title}</h1>
         <NewAnalysisForm
+          copy={copy}
           initialState={
             initialAnalysis
               ? {
@@ -69,25 +73,26 @@ export function NewAnalysisHome({
       <div className="dashboard-grid">
         <section className="panel" aria-labelledby="recent-analyses-title">
           <header className="panel-head">
-            <h2 id="recent-analyses-title">Recent analyses</h2>
-            <Link href="/app/history">View history →</Link>
+            <h2 id="recent-analyses-title">{copy.newAnalysis.recent.title}</h2>
+            <Link href="/app/history">
+              {copy.newAnalysis.recent.viewHistory}
+            </Link>
           </header>
           <div className="panel-empty-state">
-            <strong>No analyses yet</strong>
-            <p>Your completed analyses will appear here.</p>
+            <strong>{copy.newAnalysis.recent.emptyTitle}</strong>
+            <p>{copy.newAnalysis.recent.emptyDescription}</p>
           </div>
         </section>
 
         <aside className="panel" aria-labelledby="monthly-metrics-title">
           <header className="panel-head">
-            <h2 id="monthly-metrics-title">This month</h2>
-            <Link href="/app/subscription">Manage plan</Link>
+            <h2 id="monthly-metrics-title">{copy.newAnalysis.monthly.title}</h2>
+            <Link href="/app/subscription">
+              {copy.newAnalysis.monthly.managePlan}
+            </Link>
           </header>
           <div className="metric-stack">
-            <p>
-              Usage and study metrics become available after your first
-              analysis.
-            </p>
+            <p>{copy.newAnalysis.monthly.empty}</p>
           </div>
         </aside>
       </div>

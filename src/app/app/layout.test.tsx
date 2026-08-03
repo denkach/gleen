@@ -1,14 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getOwnedSnapshot, getUser, redirect, usePathname } = vi.hoisted(() => ({
-  getOwnedSnapshot: vi.fn(),
-  getUser: vi.fn(),
-  redirect: vi.fn((path: string): never => {
-    throw new Error(`NEXT_REDIRECT:${path}`);
-  }),
-  usePathname: vi.fn(() => '/app'),
-}));
+const { getOwnedSnapshot, getRequestLocale, getUser, redirect, usePathname } =
+  vi.hoisted(() => ({
+    getOwnedSnapshot: vi.fn(),
+    getRequestLocale: vi.fn(async () => 'de'),
+    getUser: vi.fn(),
+    redirect: vi.fn((path: string): never => {
+      throw new Error(`NEXT_REDIRECT:${path}`);
+    }),
+    usePathname: vi.fn(() => '/app'),
+  }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(async () => ({ auth: { getUser } })),
@@ -16,7 +18,12 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/billing/supabase-repository', () => ({
   createSupabaseBillingRepository: vi.fn(() => ({ getOwnedSnapshot })),
 }));
-vi.mock('next/navigation', () => ({ redirect, usePathname }));
+vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
+vi.mock('next/navigation', () => ({
+  redirect,
+  usePathname,
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
 import AppLayout from './layout';
 
@@ -75,7 +82,7 @@ describe('authenticated app layout', () => {
 
     expect(screen.getByText('Alex Koval')).toBeInTheDocument();
     expect(screen.getByText('Child')).toBeInTheDocument();
-    expect(screen.getAllByText('7 analyses left')).not.toHaveLength(0);
+    expect(screen.getAllByText('7 Analysen übrig')).not.toHaveLength(0);
     expect(getOwnedSnapshot).toHaveBeenCalledWith(
       '22222222-2222-4222-8222-222222222222',
     );
@@ -97,7 +104,7 @@ describe('authenticated app layout', () => {
 
     expect(screen.getByText('Child')).toBeInTheDocument();
     expect(
-      screen.getAllByText('Usage available with billing'),
+      screen.getAllByText('Nutzung mit Abrechnung verfügbar'),
     ).not.toHaveLength(0);
   });
 });

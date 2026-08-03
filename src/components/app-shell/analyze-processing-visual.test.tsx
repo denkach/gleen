@@ -4,30 +4,43 @@ import path from 'node:path';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { appMessages } from '@/lib/i18n/messages/app';
+import type { ComponentProps } from 'react';
 
-import { AnalyzeProcessingVisual } from './analyze-processing-visual';
+import { AnalyzeProcessingVisual as LocalizedAnalyzeProcessingVisual } from './analyze-processing-visual';
+
+function AnalyzeProcessingVisual({
+  copy = appMessages.en.processing,
+  ...props
+}: Omit<ComponentProps<typeof LocalizedAnalyzeProcessingVisual>, 'copy'> &
+  Partial<
+    Pick<ComponentProps<typeof LocalizedAnalyzeProcessingVisual>, 'copy'>
+  >) {
+  return <LocalizedAnalyzeProcessingVisual copy={copy} {...props} />;
+}
 
 describe('AnalyzeProcessingVisual', () => {
   it('renders the controlled stage and all four approved spectral rails', () => {
     const { container } = render(
       <AnalyzeProcessingVisual
+        copy={appMessages.uk.processing}
         state="transcript"
         submittedUrl="https://youtu.be/dQw4w9WgXcQ"
       />,
     );
 
-    expect(screen.getByText('Finding transcript')).toHaveAttribute(
+    expect(screen.getByText('Пошук транскрипту')).toHaveAttribute(
       'data-stage-state',
       'active',
     );
-    expect(screen.getByText('Validating video')).toHaveAttribute(
+    expect(screen.getByText('Перевірка відео')).toHaveAttribute(
       'data-stage-state',
       'done',
     );
-    expect(screen.getByText('SUMMARY')).toBeInTheDocument();
-    expect(screen.getByText('TIMESTAMPS')).toBeInTheDocument();
-    expect(screen.getByText('FLASHCARDS')).toBeInTheDocument();
-    expect(screen.getByText('EXPORT')).toBeInTheDocument();
+    expect(screen.getByText('КОНСПЕКТ')).toBeInTheDocument();
+    expect(screen.getByText('ТАЙМКОДИ')).toBeInTheDocument();
+    expect(screen.getByText('КАРТКИ')).toBeInTheDocument();
+    expect(screen.getByText('ЕКСПОРТ')).toBeInTheDocument();
     expect(screen.queryByText('TRANSCRIPT')).not.toBeInTheDocument();
     expect(container.querySelectorAll('.analyze-rail')).toHaveLength(4);
     expect(container.querySelector('.analyze-prism')).not.toBeInTheDocument();

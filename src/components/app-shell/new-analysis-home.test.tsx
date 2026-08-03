@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { render, screen } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
+import { appMessages } from '@/lib/i18n/messages/app';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -14,6 +15,7 @@ describe('NewAnalysisHome', () => {
   test('renders active intake with profile defaults and empty analysis states', () => {
     render(
       <NewAnalysisHome
+        copy={appMessages.uk}
         profileDefaults={{
           outputLocale: 'de',
           summaryPreset: 'detailed',
@@ -25,31 +27,31 @@ describe('NewAnalysisHome', () => {
     expect(
       screen.getByRole('heading', {
         level: 1,
-        name: 'Turn a video into something useful.',
+        name: 'Перетворіть відео на щось корисне.',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('YouTube URL')).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Analyze video' })).toBeEnabled();
+    expect(screen.getByLabelText('URL-адреса YouTube')).toBeEnabled();
     expect(
-      screen.getByText(/Summary, Timestamps, Transcript/),
+      screen.getByRole('button', { name: 'Аналізувати відео' }),
+    ).toBeEnabled();
+    expect(
+      screen.getByText(/Конспект, Таймкоди, Транскрипт/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: 'Recent analyses' }),
+      screen.getByRole('heading', { name: 'Останні аналізи' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('No analyses yet')).toBeInTheDocument();
+    expect(screen.getByText('Аналізів ще немає')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Usage and study metrics become available after your first analysis.',
+        'Дані про використання й навчання з’являться після першого аналізу.',
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /View history/ })).toHaveAttribute(
-      'href',
-      '/app/history',
-    );
-    expect(screen.getByRole('link', { name: 'Manage plan' })).toHaveAttribute(
-      'href',
-      '/app/subscription',
-    );
+    expect(
+      screen.getByRole('link', { name: /Переглянути історію/ }),
+    ).toHaveAttribute('href', '/app/history');
+    expect(
+      screen.getByRole('link', { name: 'Керувати тарифом' }),
+    ).toHaveAttribute('href', '/app/subscription');
     expect(
       screen.queryByText('How to Learn Anything Faster'),
     ).not.toBeInTheDocument();

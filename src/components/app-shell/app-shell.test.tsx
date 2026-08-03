@@ -5,12 +5,17 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { unavailableUsage } from '@/lib/app-shell';
+import { appMessages } from '@/lib/i18n/messages/app';
+import { sharedMessages } from '@/lib/i18n/messages/shared';
 
 import { AppShell } from './app-shell';
 
 const { usePathname } = vi.hoisted(() => ({ usePathname: vi.fn() }));
 
-vi.mock('next/navigation', () => ({ usePathname }));
+vi.mock('next/navigation', () => ({
+  usePathname,
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
 const identity = {
   displayName: 'Alex Koval',
@@ -21,23 +26,29 @@ const identity = {
 describe('AppShell', () => {
   beforeEach(() => usePathname.mockReturnValue('/app/history'));
 
-  test('renders the responsive navigation and account shell', () => {
+  test('renders the responsive navigation and account shell in German', () => {
     render(
-      <AppShell identity={identity} usage={unavailableUsage}>
-        <h1>History page</h1>
+      <AppShell
+        copy={appMessages.de}
+        identity={identity}
+        locale="de"
+        localeSwitcherCopy={sharedMessages.de}
+        usage={unavailableUsage}
+      >
+        <h1>Verlaufsseite</h1>
       </AppShell>,
     );
 
     expect(
-      screen.getByRole('link', { name: 'Skip to content' }),
+      screen.getByRole('link', { name: 'Zum Inhalt springen' }),
     ).toHaveAttribute('href', '#app-content');
     expect(
-      screen.getByRole('navigation', { name: 'Application navigation' }),
+      screen.getByRole('navigation', { name: 'Anwendungsnavigation' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('navigation', { name: 'Mobile navigation' }),
+      screen.getByRole('navigation', { name: 'Mobile Navigation' }),
     ).toBeInTheDocument();
-    const historyLinks = screen.getAllByRole('link', { name: 'History' });
+    const historyLinks = screen.getAllByRole('link', { name: 'Verlauf' });
     expect(historyLinks).toHaveLength(2);
     for (const historyLink of historyLinks) {
       expect(historyLink).toHaveAttribute('aria-current', 'page');
@@ -46,8 +57,7 @@ describe('AppShell', () => {
 
     const unavailableControls = [
       screen.getByRole('button', { name: 'Support' }),
-      screen.getByRole('button', { name: 'Change language' }),
-      ...screen.getAllByRole('button', { name: 'Notifications' }),
+      ...screen.getAllByRole('button', { name: 'Benachrichtigungen' }),
     ];
     for (const control of unavailableControls) {
       expect(control).toBeDisabled();
@@ -58,14 +68,19 @@ describe('AppShell', () => {
     }
     expect(
       document.getElementById('app-shell-unavailable-description'),
-    ).toHaveTextContent('Unavailable in this version');
+    ).toHaveTextContent('In dieser Version nicht verfügbar');
+    expect(
+      screen.getByRole('button', { name: 'Sprache: Deutsch' }),
+    ).toBeEnabled();
+    expect(screen.getByText('Arbeitsbereich')).toBeInTheDocument();
+    expect(screen.getByText('Hilfe')).toBeInTheDocument();
     expect(screen.getByText('Alex Koval')).toBeInTheDocument();
     expect(screen.getByText('alex@example.com')).toBeInTheDocument();
     expect(
       screen.queryByText(/18|25|Prism plan|August 01/),
     ).not.toBeInTheDocument();
     expect(
-      screen.getAllByText('Usage available with billing').length,
+      screen.getAllByText('Nutzung mit Abrechnung verfügbar').length,
     ).toBeGreaterThan(0);
     expect(screen.getByRole('main')).toHaveAttribute('id', 'app-content');
   });
@@ -115,7 +130,13 @@ describe('AppShell', () => {
       usePathname.mockReturnValue(pathname);
 
       render(
-        <AppShell identity={identity} usage={unavailableUsage}>
+        <AppShell
+          copy={appMessages.en}
+          identity={identity}
+          locale="en"
+          localeSwitcherCopy={sharedMessages.en}
+          usage={unavailableUsage}
+        >
           <h1>Result page</h1>
         </AppShell>,
       );
@@ -138,7 +159,13 @@ describe('AppShell', () => {
       usePathname.mockReturnValue(pathname);
 
       render(
-        <AppShell identity={identity} usage={unavailableUsage}>
+        <AppShell
+          copy={appMessages.en}
+          identity={identity}
+          locale="en"
+          localeSwitcherCopy={sharedMessages.en}
+          usage={unavailableUsage}
+        >
           <h1>Application page</h1>
         </AppShell>,
       );
