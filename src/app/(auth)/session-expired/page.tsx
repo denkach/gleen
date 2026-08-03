@@ -2,22 +2,57 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 import { AuthShell } from '@/components/auth/auth-shell';
+import {
+  selectMessages,
+  type MissingTranslationEvent,
+} from '@/lib/i18n/catalog';
+import { authMessages } from '@/lib/i18n/messages/auth';
+import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
-export const metadata: Metadata = { title: 'Session expired — Gleen' };
+function reportMissingTranslation(event: MissingTranslationEvent) {
+  console.error(event);
+}
 
-export default function SessionExpiredPage() {
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    authMessages,
+    locale,
+    'auth',
+    reportMissingTranslation,
+  );
+  return { title: copy.metadata.sessionExpired };
+}
+
+export default async function SessionExpiredPage() {
+  const locale = await getRequestLocale();
+  const copy = selectMessages(
+    authMessages,
+    locale,
+    'auth',
+    reportMissingTranslation,
+  );
+  const sharedCopy = selectMessages(
+    sharedMessages,
+    locale,
+    'shared',
+    reportMissingTranslation,
+  );
+
   return (
     <AuthShell
-      visualTitle="Return to the signal."
-      visualDescription="Your work is safe. Sign in again to continue where you stopped."
+      locale={locale}
+      copy={copy}
+      localeSwitcherCopy={sharedCopy}
+      visualTitle={copy.visual.sessionTitle}
+      visualDescription={copy.visual.sessionDescription}
     >
-      <span className="eyebrow">Secure access</span>
-      <h2>Your session expired</h2>
-      <p>
-        For your security, please sign in again. Your saved work is unchanged.
-      </p>
+      <span className="eyebrow">{copy.screens.session.eyebrow}</span>
+      <h2>{copy.screens.session.title}</h2>
+      <p>{copy.screens.session.description}</p>
       <Link className="btn btn-primary auth-submit" href="/sign-in">
-        Sign in again <span aria-hidden="true">→</span>
+        {copy.screens.session.action} <span aria-hidden="true">→</span>
       </Link>
     </AuthShell>
   );

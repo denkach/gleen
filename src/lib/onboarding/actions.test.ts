@@ -32,6 +32,26 @@ describe('onboarding actions', () => {
     getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
   });
 
+  it('returns a stable code instead of an English message for an invalid step', async () => {
+    const formData = new FormData();
+    formData.set('step', '8');
+
+    await expect(
+      saveOnboardingPreferences({ status: 'idle' }, formData),
+    ).resolves.toEqual({ status: 'error', code: 'invalid_step' });
+  });
+
+  it('returns a stable save code without exposing storage text', async () => {
+    saveOnboardingStep.mockResolvedValue({ ok: false, code: 'storage' });
+    const formData = new FormData();
+    formData.set('step', '2');
+    formData.set('outputLocale', 'de');
+
+    await expect(
+      saveOnboardingPreferences({ status: 'idle' }, formData),
+    ).resolves.toEqual({ status: 'error', code: 'save_failed' });
+  });
+
   it('returns the app route after completing step three', async () => {
     saveOnboardingStep.mockResolvedValue({
       ok: true,

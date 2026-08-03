@@ -3,6 +3,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { persistInterfaceLocale } from '@/lib/i18n/actions';
 import { localeSchema } from '@/lib/i18n/locales';
+import type { OnboardingErrorCode } from '@/lib/i18n/messages/onboarding';
 
 import {
   type OnboardingPatch,
@@ -15,7 +16,7 @@ import { createSupabaseOnboardingStorage } from './supabase-storage';
 export type OnboardingActionState = Readonly<{
   status: 'idle' | 'success' | 'error';
   data?: OnboardingState;
-  message?: string;
+  code?: OnboardingErrorCode;
   redirectTo?: string;
 }>;
 
@@ -27,14 +28,14 @@ export async function saveOnboardingPreferences(
     Number(formData.get('step')),
   );
   if (!parsedStep.success) {
-    return { status: 'error', message: 'Choose a valid onboarding step.' };
+    return { status: 'error', code: 'invalid_step' };
   }
 
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { status: 'error', message: 'Your session has expired.' };
+  if (!user) return { status: 'error', code: 'session_expired' };
 
   const step = parsedStep.data;
   const skip = formData.get('skip') === 'true';
@@ -47,7 +48,7 @@ export async function saveOnboardingPreferences(
     if (!interfaceLocale.success) {
       return {
         status: 'error',
-        message: 'Choose one of the available options.',
+        code: 'invalid_selection',
       };
     }
 
@@ -55,7 +56,7 @@ export async function saveOnboardingPreferences(
     if (!persistence.ok) {
       return {
         status: 'error',
-        message: 'We could not save your preferences. Try again.',
+        code: 'save_failed',
       };
     }
 
@@ -86,10 +87,7 @@ export async function saveOnboardingPreferences(
   if (!result.ok) {
     return {
       status: 'error',
-      message:
-        result.code === 'validation'
-          ? 'Choose one of the available options.'
-          : 'We could not save your preferences. Try again.',
+      code: result.code === 'validation' ? 'invalid_selection' : 'save_failed',
     };
   }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import {
   saveOnboardingPreferences,
@@ -10,20 +11,21 @@ import {
   supportedLocales,
   type OnboardingState,
 } from '@/lib/onboarding/preferences';
+import { localeMetadata } from '@/lib/i18n/locales';
+import {
+  onboardingErrorMessage,
+  type OnboardingCopy,
+} from '@/lib/i18n/messages/onboarding';
 
 import { AuthStatus } from '../auth/auth-status';
 
-const localeNames: Record<(typeof supportedLocales)[number], string> = {
-  uk: 'Українська',
-  ru: 'Русский',
-  en: 'English',
-  es: 'Español',
-  de: 'Deutsch',
-};
+type OnboardingFlowProps = Readonly<{
+  initialState: OnboardingState;
+  copy: OnboardingCopy;
+}>;
 
-type OnboardingFlowProps = Readonly<{ initialState: OnboardingState }>;
-
-export function OnboardingFlow({ initialState }: OnboardingFlowProps) {
+export function OnboardingFlow({ initialState, copy }: OnboardingFlowProps) {
+  const router = useRouter();
   const [step, setStep] = useState(initialState.onboardingStep);
   const [interfaceLocale, setInterfaceLocale] = useState(
     initialState.interfaceLocale,
@@ -37,11 +39,15 @@ export function OnboardingFlow({ initialState }: OnboardingFlowProps) {
   );
   const [actionState, formAction, pending] = useActionState(
     async (previousState: OnboardingActionState, formData: FormData) => {
+      const submittedStep = Number(formData.get('step'));
       const nextState = await saveOnboardingPreferences(
         previousState,
         formData,
       );
       if (nextState.data) setStep(nextState.data.onboardingStep);
+      if (nextState.status === 'success' && submittedStep === 1) {
+        router.refresh();
+      }
       if (nextState.redirectTo) window.location.assign(nextState.redirectTo);
       return nextState;
     },
@@ -50,40 +56,48 @@ export function OnboardingFlow({ initialState }: OnboardingFlowProps) {
 
   const title =
     step === 1
-      ? 'Interface language'
+      ? copy.steps.interface.title
       : step === 2
-        ? 'Output language'
-        : 'Output preferences';
+        ? copy.steps.output.title
+        : copy.steps.preferences.title;
   const description =
     step === 1
-      ? 'Choose the language used throughout the Gleen interface.'
+      ? copy.steps.interface.description
       : step === 2
-        ? 'Choose the default language for generated content independently.'
-        : 'Choose defaults for every new analysis. You can change them per video.';
+        ? copy.steps.output.description
+        : copy.steps.preferences.description;
+  const progress = copy.progress[`step${step}`];
 
   return (
     <div className="onboarding-card">
-      <span className="eyebrow">Personalize Gleen</span>
-      <div className="onboarding-progress" aria-label={`Step ${step} of 3`}>
-        <span>Step {step} of 3</span>
+      <span className="eyebrow">{copy.eyebrow}</span>
+      <div
+        className="onboarding-progress"
+        role="status"
+        aria-label={progress}
+        aria-live="polite"
+      >
+        <span>{progress}</span>
         <i style={{ width: `${(step / 3) * 100}%` }} />
       </div>
       <h2>{title}</h2>
       <p>{description}</p>
       <form action={formAction}>
         <input type="hidden" name="step" value={step} />
+        <input type="hidden" name="interfaceLocale" value={interfaceLocale} />
+        <input type="hidden" name="outputLocale" value={outputLocale} />
         {step === 1 ? (
           <LocaleChoices
-            name="interfaceLocale"
             value={interfaceLocale}
             onChange={setInterfaceLocale}
+            label={copy.steps.interface.choicesLabel}
           />
         ) : null}
         {step === 2 ? (
           <LocaleChoices
-            name="outputLocale"
             value={outputLocale}
             onChange={setOutputLocale}
+            label={copy.steps.output.choicesLabel}
           />
         ) : null}
         {step === 3 ? (
@@ -92,38 +106,40 @@ export function OnboardingFlow({ initialState }: OnboardingFlowProps) {
               name="summaryPreset"
               value="balanced"
               selected={summaryPreset === 'balanced'}
-              title="Balanced summary"
-              description="Clear structure with useful detail"
+              title={copy.presets.summaryBalanced.title}
+              description={copy.presets.summaryBalanced.description}
               onSelect={() => setSummaryPreset('balanced')}
             />
             <SelectionCard
               name="summaryPreset"
               value="detailed"
               selected={summaryPreset === 'detailed'}
-              title="Detailed summary"
-              description="More context and deeper chapter notes"
+              title={copy.presets.summaryDetailed.title}
+              description={copy.presets.summaryDetailed.description}
               onSelect={() => setSummaryPreset('detailed')}
             />
             <SelectionCard
               name="flashcardPreset"
               value="18"
               selected={flashcardPreset === 18}
-              title="18 flashcards"
-              description="A focused study deck"
+              title={copy.presets.flashcards18.title}
+              description={copy.presets.flashcards18.description}
               onSelect={() => setFlashcardPreset(18)}
             />
             <SelectionCard
               name="flashcardPreset"
               value="30"
               selected={flashcardPreset === 30}
-              title="30 flashcards"
-              description="A more comprehensive deck"
+              title={copy.presets.flashcards30.title}
+              description={copy.presets.flashcards30.description}
               onSelect={() => setFlashcardPreset(30)}
             />
           </div>
         ) : null}
-        {actionState.message ? (
-          <AuthStatus tone="error">{actionState.message}</AuthStatus>
+        {actionState.status === 'error' ? (
+          <AuthStatus tone="error">
+            {onboardingErrorMessage(copy, actionState.code)}
+          </AuthStatus>
         ) : null}
         <div className="onboarding-actions">
           {step > 1 ? (
@@ -132,7 +148,7 @@ export function OnboardingFlow({ initialState }: OnboardingFlowProps) {
               type="button"
               onClick={() => setStep(step === 3 ? 2 : 1)}
             >
-              Back
+              {copy.actions.back}
             </button>
           ) : (
             <span />
@@ -146,7 +162,7 @@ export function OnboardingFlow({ initialState }: OnboardingFlowProps) {
                 value="true"
                 disabled={pending}
               >
-                Skip for now
+                {copy.actions.skip}
               </button>
             ) : null}
             <button
@@ -154,7 +170,11 @@ export function OnboardingFlow({ initialState }: OnboardingFlowProps) {
               type="submit"
               disabled={pending}
             >
-              {pending ? 'Saving…' : step === 3 ? 'Finish setup' : 'Continue'}
+              {pending
+                ? copy.actions.saving
+                : step === 3
+                  ? copy.actions.finish
+                  : copy.actions.continue}
               <span aria-hidden="true">→</span>
             </button>
           </div>
@@ -165,14 +185,14 @@ export function OnboardingFlow({ initialState }: OnboardingFlowProps) {
 }
 
 type LocaleChoicesProps = Readonly<{
-  name: string;
   value: (typeof supportedLocales)[number];
   onChange(value: (typeof supportedLocales)[number]): void;
+  label: string;
 }>;
 
-function LocaleChoices({ name, value, onChange }: LocaleChoicesProps) {
+function LocaleChoices({ value, onChange, label }: LocaleChoicesProps) {
   return (
-    <div className="language-list" role="radiogroup" aria-label={name}>
+    <div className="language-list" role="radiogroup" aria-label={label}>
       {supportedLocales.map((locale) => (
         <button
           className={`language-option${value === locale ? ' active' : ''}`}
@@ -182,11 +202,10 @@ function LocaleChoices({ name, value, onChange }: LocaleChoicesProps) {
           aria-checked={value === locale}
           onClick={() => onChange(locale)}
         >
-          <span>{localeNames[locale]}</span>
+          <span>{localeMetadata[locale].nativeName}</span>
           <span className="code">{locale.toUpperCase()}</span>
         </button>
       ))}
-      <input type="hidden" name={name} value={value} />
     </div>
   );
 }

@@ -2,15 +2,25 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
+vi.mock('@/lib/i18n/actions', () => ({ setInterfaceLocale: vi.fn() }));
 
 import { AuthShell } from './auth-shell';
 import { AuthStatus } from './auth-status';
+import { authMessages } from '@/lib/i18n/messages/auth';
+import { sharedMessages } from '@/lib/i18n/messages/shared';
 
 describe('approved authentication shell', () => {
   it('preserves the prototype hierarchy and calm prism scene', () => {
     const { container } = render(
       <AuthShell
+        locale="en"
+        copy={authMessages.en}
+        localeSwitcherCopy={sharedMessages.en}
         visualTitle="Return to the signal."
         visualDescription="Every analysis remains exactly where you left it."
       >

@@ -10,6 +10,12 @@ import {
   signUpWithPassword,
   type AuthActionState,
 } from '@/lib/auth/actions';
+import {
+  authErrorMessage,
+  authSuccessMessage,
+  isAuthSuccessCode,
+  type AuthCopy,
+} from '@/lib/i18n/messages/auth';
 
 import { AuthStatus } from './auth-status';
 import { PasswordFields } from './password-fields';
@@ -18,11 +24,13 @@ const initialState: AuthActionState = { status: 'idle' };
 
 type AccessFormProps = Readonly<{
   intent: 'sign-in' | 'sign-up';
+  copy: AuthCopy;
   nextPath?: string;
 }>;
 
 export function AccessForm({
   intent,
+  copy,
   nextPath = '/onboarding',
 }: AccessFormProps) {
   const [mode, setMode] = useState<'link' | 'password'>('link');
@@ -50,20 +58,26 @@ export function AccessForm({
   const submitLabel =
     mode === 'password'
       ? isSignIn
-        ? 'Sign in with password'
-        : 'Create account with password'
+        ? copy.access.signInPassword
+        : copy.access.createPassword
       : isSignIn
-        ? 'Send secure sign-in link'
-        : 'Create account with email';
+        ? copy.access.sendSignInLink
+        : copy.access.createWithEmail;
+  const statusMessage =
+    state.status === 'error'
+      ? authErrorMessage(copy, state.code)
+      : state.status === 'success' && isAuthSuccessCode(state.code)
+        ? authSuccessMessage(copy, state.code)
+        : null;
 
   return (
     <>
-      <span className="eyebrow">Secure access</span>
-      <h2>{isSignIn ? 'Sign in to Gleen' : 'Create your account'}</h2>
+      <span className="eyebrow">{copy.access.eyebrow}</span>
+      <h2>{isSignIn ? copy.access.signInTitle : copy.access.signUpTitle}</h2>
       <p>
         {isSignIn
-          ? 'Continue with Google or receive a secure link by email.'
-          : 'Start with Google or create an account using your email.'}
+          ? copy.access.signInDescription
+          : copy.access.signUpDescription}
       </p>
       <form action={googleFormAction}>
         <input type="hidden" name="next" value={nextPath} />
@@ -75,16 +89,20 @@ export function AccessForm({
           <span className="oauth-icon" aria-hidden="true">
             G
           </span>
-          <span>{googlePending ? 'Connecting…' : 'Continue with Google'}</span>
+          <span>
+            {googlePending
+              ? copy.access.connectingGoogle
+              : copy.access.continueGoogle}
+          </span>
         </button>
       </form>
-      <div className="auth-divider">OR USE EMAIL</div>
+      <div className="auth-divider">{copy.access.emailDivider}</div>
       <form action={emailFormAction}>
         <input type="hidden" name="intent" value={intent} />
         <input type="hidden" name="next" value={nextPath} />
         <div className="form-group">
           <label className="form-label" htmlFor={`${intent}-email`}>
-            Email address
+            {copy.access.emailLabel}
           </label>
           <div className="input-wrap">
             <span className="input-icon" aria-hidden="true">
@@ -104,47 +122,52 @@ export function AccessForm({
             />
           </div>
         </div>
-        {mode === 'password' ? <PasswordFields /> : null}
+        {mode === 'password' ? <PasswordFields copy={copy.password} /> : null}
         <button
           className="btn btn-primary auth-submit"
           type="submit"
           disabled={emailPending}
         >
-          <span>{emailPending ? 'Please wait…' : submitLabel}</span>
+          <span>{emailPending ? copy.access.pending : submitLabel}</span>
           <span aria-hidden="true">→</span>
         </button>
       </form>
-      {state.message ? (
+      {statusMessage ? (
         <AuthStatus tone={state.status === 'error' ? 'error' : 'success'}>
-          {state.message}
+          {statusMessage}
         </AuthStatus>
       ) : null}
       <div className="form-row">
         <span>
-          {mode === 'link' ? 'Prefer a password?' : 'Prefer a secure link?'}
+          {mode === 'link'
+            ? copy.access.preferPassword
+            : copy.access.preferLink}
         </span>
         <button
           className="text-action"
           type="button"
           onClick={() => setMode(mode === 'link' ? 'password' : 'link')}
         >
-          {mode === 'link' ? 'Use password instead' : 'Use email link instead'}
+          {mode === 'link' ? copy.access.usePassword : copy.access.useLink}
         </button>
       </div>
       {mode === 'password' && isSignIn ? (
         <p className="auth-footer">
-          <Link href="/forgot-password">Forgot your password?</Link>
+          <Link href="/forgot-password">{copy.access.forgotPassword}</Link>
         </p>
       ) : null}
       <p className="auth-footer">
-        {isSignIn ? 'New to Gleen? ' : 'Already have an account? '}
+        {isSignIn ? copy.access.newToGleen : copy.access.existingAccount}
         <Link href={alternatePath}>
-          {isSignIn ? 'Create an account' : 'Sign in'}
+          {isSignIn ? copy.access.createAccount : copy.access.signIn}
         </Link>
       </p>
       <p className="auth-footer">
-        By continuing, you agree to the <Link href="/terms">Terms</Link> and
-        acknowledge the <Link href="/privacy">Privacy Policy</Link>.
+        {copy.access.termsPrefix}
+        <Link href="/terms">{copy.access.terms}</Link>
+        {copy.access.privacyConnector}
+        <Link href="/privacy">{copy.access.privacy}</Link>
+        {copy.access.sentenceEnd}
       </p>
     </>
   );

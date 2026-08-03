@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { passwordSchema } from './schemas';
+import { emailSchema, passwordSchema } from './schemas';
 import { safeInternalRedirect } from './redirects';
 
 const auth = {
@@ -28,6 +28,15 @@ describe('auth validation and redirects', () => {
     expect(passwordSchema.safeParse('Signal42!').success).toBe(true);
     expect(passwordSchema.safeParse('short').success).toBe(false);
     expect(passwordSchema.safeParse('onlyletters').success).toBe(false);
+  });
+
+  it('returns precise validation codes from the schemas', () => {
+    expect(
+      emailSchema.safeParse('not-an-email').error?.issues[0]?.message,
+    ).toBe('email_invalid');
+    expect(
+      passwordSchema.safeParse('onlyletters').error?.issues[0]?.message,
+    ).toBe('password_number_required');
   });
 
   it('allows only internal redirect paths', () => {
@@ -93,10 +102,37 @@ describe('auth actions', () => {
     expect(result).toEqual({
       status: 'error',
       code: 'invalid_credentials',
-      message: 'Email or password is incorrect.',
       email: 'alex@example.com',
     });
     expect(JSON.stringify(result)).not.toContain('Signal42!');
+  });
+
+  it('returns an email validation code without calling the provider', async () => {
+    const { signInWithPassword } = await import('./actions');
+    const form = new FormData();
+    form.set('email', 'not-an-email');
+    form.set('password', 'Signal42!');
+
+    await expect(signInWithPassword({ status: 'idle' }, form)).resolves.toEqual(
+      { status: 'error', code: 'email_invalid' },
+    );
+    expect(auth.signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  it('returns the precise weak-password code without calling the provider', async () => {
+    const { signUpWithPassword } = await import('./actions');
+    const form = new FormData();
+    form.set('email', 'alex@example.com');
+    form.set('password', 'onlyletters');
+
+    await expect(signUpWithPassword({ status: 'idle' }, form)).resolves.toEqual(
+      {
+        status: 'error',
+        code: 'password_number_required',
+        email: 'alex@example.com',
+      },
+    );
+    expect(auth.signUp).not.toHaveBeenCalled();
   });
 
   it('uses an allowlisted callback for magic links', async () => {

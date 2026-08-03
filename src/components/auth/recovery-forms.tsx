@@ -7,23 +7,39 @@ import {
   updatePassword,
   type AuthActionState,
 } from '@/lib/auth/actions';
+import {
+  authErrorMessage,
+  authSuccessMessage,
+  isAuthSuccessCode,
+  type AuthCopy,
+} from '@/lib/i18n/messages/auth';
 
 import { AuthStatus } from './auth-status';
 import { PasswordFields } from './password-fields';
 
 const initialState: AuthActionState = { status: 'idle' };
 
-export function ForgotPasswordForm() {
+type RecoveryFormProps = Readonly<{ copy: AuthCopy }>;
+
+function statusMessage(copy: AuthCopy, state: AuthActionState): string | null {
+  if (state.status === 'error') return authErrorMessage(copy, state.code);
+  if (state.status === 'success' && isAuthSuccessCode(state.code))
+    return authSuccessMessage(copy, state.code);
+  return null;
+}
+
+export function ForgotPasswordForm({ copy }: RecoveryFormProps) {
   const [state, action, pending] = useActionState(
     sendPasswordReset,
     initialState,
   );
+  const message = statusMessage(copy, state);
 
   return (
     <form action={action}>
       <div className="form-group">
         <label className="form-label" htmlFor="recovery-email">
-          Email address
+          {copy.screens.forgot.emailLabel}
         </label>
         <input
           className="input"
@@ -40,20 +56,21 @@ export function ForgotPasswordForm() {
         type="submit"
         disabled={pending}
       >
-        {pending ? 'Sending…' : 'Send reset link'}{' '}
+        {pending ? copy.screens.forgot.sending : copy.screens.forgot.submit}{' '}
         <span aria-hidden="true">→</span>
       </button>
-      {state.message ? (
+      {message ? (
         <AuthStatus tone={state.status === 'error' ? 'error' : 'success'}>
-          {state.message}
+          {message}
         </AuthStatus>
       ) : null}
     </form>
   );
 }
 
-export function ResetPasswordForm() {
+export function ResetPasswordForm({ copy }: RecoveryFormProps) {
   const [state, action, pending] = useActionState(updatePassword, initialState);
+  const message = statusMessage(copy, state);
 
   useEffect(() => {
     if (state.redirectTo) window.location.assign(state.redirectTo);
@@ -61,18 +78,18 @@ export function ResetPasswordForm() {
 
   return (
     <form action={action}>
-      <PasswordFields confirm />
+      <PasswordFields confirm copy={copy.password} />
       <button
         className="btn btn-primary auth-submit"
         type="submit"
         disabled={pending}
       >
-        {pending ? 'Updating…' : 'Update password'}{' '}
+        {pending ? copy.screens.reset.updating : copy.screens.reset.submit}{' '}
         <span aria-hidden="true">→</span>
       </button>
-      {state.message ? (
+      {message ? (
         <AuthStatus tone={state.status === 'error' ? 'error' : 'success'}>
-          {state.message}
+          {message}
         </AuthStatus>
       ) : null}
     </form>

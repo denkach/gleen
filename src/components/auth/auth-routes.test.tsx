@@ -1,7 +1,5 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/auth/actions', () => ({
@@ -12,15 +10,28 @@ vi.mock('@/lib/auth/actions', () => ({
   sendPasswordReset: vi.fn(),
   updatePassword: vi.fn(),
 }));
+vi.mock('@/lib/i18n/request-locale', () => ({
+  getRequestLocale: vi.fn(async () => 'en'),
+}));
+vi.mock('@/lib/i18n/actions', () => ({ setInterfaceLocale: vi.fn() }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
 import { AccessForm } from './access-form';
+import { authMessages } from '@/lib/i18n/messages/auth';
 import SignInPage from '@/app/(auth)/sign-in/page';
 import SignUpPage from '@/app/(auth)/sign-up/page';
+import VerifyEmailPage from '@/app/(auth)/verify-email/page';
+import ForgotPasswordPage from '@/app/(auth)/forgot-password/page';
+import ResetPasswordPage from '@/app/(auth)/reset-password/page';
+import SessionExpiredPage from '@/app/(auth)/session-expired/page';
 
 describe('account access and recovery routes', () => {
   it('matches the approved sign-in hierarchy and offers both email modes', () => {
     render(
       <AccessForm
+        copy={authMessages.en}
         intent="sign-in"
         nextPath="/app?continuation=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DdQw4w9WgXcQ"
       />,
@@ -47,34 +58,87 @@ describe('account access and recovery routes', () => {
     );
   });
 
+  it('renders a German message for a stable invalid-email code', async () => {
+    const user = userEvent.setup();
+    const { sendMagicLink } = await import('@/lib/auth/actions');
+    vi.mocked(sendMagicLink).mockResolvedValueOnce({
+      status: 'error',
+      code: 'email_invalid',
+    });
+    render(<AccessForm intent="sign-in" copy={authMessages.de} />);
+
+    await user.type(
+      screen.getByLabelText('E-Mail-Adresse'),
+      'alex@example.com',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Sicheren Anmeldelink senden' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Gib eine gültige E-Mail-Adresse ein.',
+      ),
+    );
+  });
+
+  it('renders a German success message from a stable action code', async () => {
+    const user = userEvent.setup();
+    const { sendMagicLink } = await import('@/lib/auth/actions');
+    vi.mocked(sendMagicLink).mockResolvedValueOnce({
+      status: 'success',
+      code: 'magic_link_sent',
+      email: 'alex@example.com',
+    });
+    render(<AccessForm intent="sign-in" copy={authMessages.de} />);
+
+    await user.type(
+      screen.getByLabelText('E-Mail-Adresse'),
+      'alex@example.com',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Sicheren Anmeldelink senden' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Prüfe dein Postfach für den sicheren Anmeldelink.',
+      ),
+    );
+  });
+
   it('defines every required recovery and session route', async () => {
-    const routes = [
-      ['verify-email', 'Check your email'],
-      ['forgot-password', 'Reset your password'],
-      ['reset-password', 'Choose a new password'],
-      ['session-expired', 'Your session expired'],
+    const pages = [
+      [VerifyEmailPage, 'Check your email'],
+      [ForgotPasswordPage, 'Reset your password'],
+      [ResetPasswordPage, 'Choose a new password'],
+      [SessionExpiredPage, 'Your session expired'],
     ] as const;
 
-    for (const [route, heading] of routes) {
-      const source = await readFile(
-        join(process.cwd(), `src/app/(auth)/${route}/page.tsx`),
-        'utf8',
-      );
-      expect(source).toContain(heading);
-      expect(source).toContain('AuthShell');
+    for (const [Page, heading] of pages) {
+      const page = await Page();
+      render(page);
+      expect(screen.getByRole('heading', { name: heading })).toBeVisible();
+      cleanup();
     }
   });
 
   it('keeps legal and account-switch links in the approved access screens', async () => {
-    const accessForm = await readFile(
-      join(process.cwd(), 'src/components/auth/access-form.tsx'),
-      'utf8',
-    );
+    render(<AccessForm intent="sign-in" copy={authMessages.en} />);
 
-    expect(accessForm).toContain('Sign in to Gleen');
-    expect(accessForm).toContain('Create your account');
-    expect(accessForm).toContain('/terms');
-    expect(accessForm).toContain('/privacy');
+    expect(
+      screen.getByRole('heading', { name: 'Sign in to Gleen' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'Create an account' }),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute(
+      'href',
+      '/terms',
+    );
+    expect(
+      screen.getByRole('link', { name: 'Privacy Policy' }),
+    ).toHaveAttribute('href', '/privacy');
   });
 
   it.each([

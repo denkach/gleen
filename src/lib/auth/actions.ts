@@ -3,6 +3,11 @@
 import { headers } from 'next/headers';
 
 import { validatePublicEnv } from '@/env';
+import {
+  isAuthErrorCode,
+  type AuthActionCode,
+  type AuthErrorCode,
+} from '@/lib/i18n/messages/auth';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 import { safeInternalRedirect } from './redirects';
@@ -14,8 +19,7 @@ import {
 
 export type AuthActionState = Readonly<{
   status: 'idle' | 'success' | 'error';
-  code?: string;
-  message?: string;
+  code?: AuthActionCode;
   email?: string;
   redirectTo?: string;
 }>;
@@ -39,28 +43,28 @@ async function callbackUrl(next: string, recovery = false): Promise<string> {
 }
 
 function errorState(error: SupabaseAuthError, email?: string): AuthActionState {
-  const code = error.code ?? 'auth_error';
-  const messages: Record<string, string> = {
-    invalid_credentials: 'Email or password is incorrect.',
-    user_already_exists: 'An account already exists for this email.',
-    email_not_confirmed: 'Confirm your email before signing in.',
-    over_email_send_rate_limit: 'Please wait before requesting another email.',
-    weak_password: 'Choose a stronger password and try again.',
-  };
+  console.error({
+    event: 'auth_provider_error',
+    code: error.code ?? 'unknown',
+    message: error.message,
+  });
+  const code = isAuthErrorCode(error.code) ? error.code : 'auth_error';
 
   return {
     status: 'error',
     code,
-    message: messages[code] ?? 'We could not complete that request. Try again.',
     ...(email ? { email } : {}),
   };
 }
 
-function invalidState(message: string, email?: string): AuthActionState {
+function validationCode(message: string | undefined): AuthErrorCode {
+  return isAuthErrorCode(message) ? message : 'auth_error';
+}
+
+function invalidState(code: AuthErrorCode, email?: string): AuthActionState {
   return {
     status: 'error',
-    code: 'validation',
-    message,
+    code,
     ...(email ? { email } : {}),
   };
 }
@@ -86,9 +90,7 @@ export async function sendMagicLink(
 ): Promise<AuthActionState> {
   const parsedEmail = emailSchema.safeParse(formData.get('email'));
   if (!parsedEmail.success)
-    return invalidState(
-      parsedEmail.error.issues[0]?.message ?? 'Invalid email.',
-    );
+    return invalidState(validationCode(parsedEmail.error.issues[0]?.message));
 
   const email = parsedEmail.data;
   const next = safeInternalRedirect(formData.get('next'));
@@ -106,7 +108,6 @@ export async function sendMagicLink(
   return {
     status: 'success',
     code: 'magic_link_sent',
-    message: 'Check your inbox for your secure sign-in link.',
     email,
   };
 }
@@ -120,12 +121,10 @@ export async function signUpWithPassword(
   const email = parsedEmail.success ? parsedEmail.data : undefined;
 
   if (!parsedEmail.success)
-    return invalidState(
-      parsedEmail.error.issues[0]?.message ?? 'Invalid email.',
-    );
+    return invalidState(validationCode(parsedEmail.error.issues[0]?.message));
   if (!parsedPassword.success)
     return invalidState(
-      parsedPassword.error.issues[0]?.message ?? 'Invalid password.',
+      validationCode(parsedPassword.error.issues[0]?.message),
       email,
     );
 
@@ -141,7 +140,6 @@ export async function signUpWithPassword(
   return {
     status: 'success',
     code: 'verification_required',
-    message: 'Check your inbox to verify your email address.',
     email,
   };
 }
@@ -155,12 +153,10 @@ export async function signInWithPassword(
   const email = parsedEmail.success ? parsedEmail.data : undefined;
 
   if (!parsedEmail.success)
-    return invalidState(
-      parsedEmail.error.issues[0]?.message ?? 'Invalid email.',
-    );
+    return invalidState(validationCode(parsedEmail.error.issues[0]?.message));
   if (!parsedPassword.success)
     return invalidState(
-      parsedPassword.error.issues[0]?.message ?? 'Invalid password.',
+      validationCode(parsedPassword.error.issues[0]?.message),
       email,
     );
 
@@ -184,9 +180,7 @@ export async function sendPasswordReset(
 ): Promise<AuthActionState> {
   const parsedEmail = emailSchema.safeParse(formData.get('email'));
   if (!parsedEmail.success)
-    return invalidState(
-      parsedEmail.error.issues[0]?.message ?? 'Invalid email.',
-    );
+    return invalidState(validationCode(parsedEmail.error.issues[0]?.message));
 
   const email = parsedEmail.data;
   const supabase = await createServerSupabaseClient();
@@ -198,7 +192,6 @@ export async function sendPasswordReset(
   return {
     status: 'success',
     code: 'reset_sent',
-    message: 'Check your inbox for a password reset link.',
     email,
   };
 }
@@ -212,7 +205,7 @@ export async function updatePassword(
     confirmPassword: formData.get('confirmPassword'),
   });
   if (!parsed.success)
-    return invalidState(parsed.error.issues[0]?.message ?? 'Invalid password.');
+    return invalidState(validationCode(parsed.error.issues[0]?.message));
 
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.auth.updateUser({
@@ -223,7 +216,6 @@ export async function updatePassword(
   return {
     status: 'success',
     code: 'password_updated',
-    message: 'Your password has been updated.',
     redirectTo: '/onboarding',
   };
 }

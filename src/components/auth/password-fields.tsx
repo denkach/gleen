@@ -1,13 +1,16 @@
+import type { AuthCopy } from '@/lib/i18n/messages/auth';
+
 type PasswordFieldsProps = Readonly<{
   confirm?: boolean;
+  copy: AuthCopy['password'];
 }>;
 
-export function PasswordFields({ confirm = false }: PasswordFieldsProps) {
+export function PasswordFields({ confirm = false, copy }: PasswordFieldsProps) {
   return (
     <>
       <div className="form-group">
         <label className="form-label" htmlFor="password">
-          Password
+          {copy.label}
         </label>
         <input
           className="input"
@@ -22,7 +25,7 @@ export function PasswordFields({ confirm = false }: PasswordFieldsProps) {
       {confirm ? (
         <div className="form-group">
           <label className="form-label" htmlFor="confirmPassword">
-            Confirm password
+            {copy.confirmLabel}
           </label>
           <input
             className="input"
