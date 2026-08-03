@@ -33,6 +33,8 @@ export const settingsMessages = defineMessages({
       },
       saving: 'Saving…',
       saved: 'Saved.',
+      loadError: 'We could not load your language preferences.',
+      retry: 'Try again',
       errors: {
         invalid_locale: 'Choose one of the available languages.',
         profile_update_failed: 'We could not save this language. Try again.',
@@ -67,6 +69,8 @@ export const settingsMessages = defineMessages({
       },
       saving: 'Зберігаємо…',
       saved: 'Збережено.',
+      loadError: 'Не вдалося завантажити мовні налаштування.',
+      retry: 'Спробувати ще раз',
       errors: {
         invalid_locale: 'Виберіть одну з доступних мов.',
         profile_update_failed: 'Не вдалося зберегти мову. Спробуйте ще раз.',
@@ -101,6 +105,8 @@ export const settingsMessages = defineMessages({
       },
       saving: 'Сохраняем…',
       saved: 'Сохранено.',
+      loadError: 'Не удалось загрузить языковые настройки.',
+      retry: 'Попробовать снова',
       errors: {
         invalid_locale: 'Выберите один из доступных языков.',
         profile_update_failed: 'Не удалось сохранить язык. Попробуйте ещё раз.',
@@ -136,6 +142,8 @@ export const settingsMessages = defineMessages({
       },
       saving: 'Guardando…',
       saved: 'Guardado.',
+      loadError: 'No hemos podido cargar tus preferencias de idioma.',
+      retry: 'Intentarlo de nuevo',
       errors: {
         invalid_locale: 'Elige uno de los idiomas disponibles.',
         profile_update_failed:
@@ -172,6 +180,8 @@ export const settingsMessages = defineMessages({
       },
       saving: 'Speichern…',
       saved: 'Gespeichert.',
+      loadError: 'Deine Spracheinstellungen konnten nicht geladen werden.',
+      retry: 'Erneut versuchen',
       errors: {
         invalid_locale: 'Wähle eine der verfügbaren Sprachen.',
         profile_update_failed:

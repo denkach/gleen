@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { setInterfaceLocale, type LocaleActionState } from '@/lib/i18n/actions';
@@ -25,12 +25,14 @@ type LanguagePreferencesProps = Readonly<{
   interfaceLocale: Locale;
   outputLocale: Locale;
   copy: SettingsCopy;
+  unavailable?: boolean;
 }>;
 
 export function LanguagePreferences({
   interfaceLocale: initialInterfaceLocale,
   outputLocale: initialOutputLocale,
   copy,
+  unavailable = false,
 }: LanguagePreferencesProps) {
   const router = useRouter();
   const [interfaceLocale, setInterfaceLocaleValue] = useState(
@@ -49,14 +51,20 @@ export function LanguagePreferences({
   const [outputState, outputAction, outputPending] = useActionState(
     async (previousState: OutputLocaleActionState, formData: FormData) => {
       const nextState = await setOutputLocale(previousState, formData);
-      if (nextState.status === 'success') {
-        setOutputLocaleValue(nextState.locale);
-        window.setTimeout(() => setOutputRevision((value) => value + 1), 0);
-      }
       return nextState;
     },
     outputInitialState,
   );
+
+  useEffect(() => {
+    if (outputState.status !== 'success') return;
+
+    const timeout = window.setTimeout(() => {
+      setOutputLocaleValue(outputState.locale);
+      setOutputRevision((value) => value + 1);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [outputState]);
 
   return (
     <section
@@ -71,6 +79,18 @@ export function LanguagePreferences({
         </div>
       </div>
       <div className="settings-content">
+        {unavailable ? (
+          <div className="settings-load-error" role="alert">
+            <p>{copy.language.loadError}</p>
+            <a
+              className="ui-button"
+              data-variant="ghost"
+              href="/app/settings/profile"
+            >
+              {copy.language.retry}
+            </a>
+          </div>
+        ) : null}
         <PreferenceForm
           action={interfaceAction}
           description={copy.language.interface.description}
@@ -82,12 +102,16 @@ export function LanguagePreferences({
           label={copy.language.interface.label}
           onChange={setInterfaceLocaleValue}
           pending={interfacePending}
-          saved={interfaceState.status === 'success'}
+          saved={
+            interfaceState.status === 'success' &&
+            interfaceState.locale === interfaceLocale
+          }
           saveLabel={copy.language.interface.save}
           title={copy.language.interface.title}
           value={interfaceLocale}
           savingLabel={copy.language.saving}
           savedLabel={copy.language.saved}
+          unavailable={unavailable}
         />
         <PreferenceForm
           action={outputAction}
@@ -101,12 +125,16 @@ export function LanguagePreferences({
           onChange={setOutputLocaleValue}
           pending={outputPending}
           revision={outputRevision}
-          saved={outputState.status === 'success'}
+          saved={
+            outputState.status === 'success' &&
+            outputState.locale === outputLocale
+          }
           saveLabel={copy.language.output.save}
           title={copy.language.output.title}
           value={outputLocale}
           savingLabel={copy.language.saving}
           savedLabel={copy.language.saved}
+          unavailable={unavailable}
         />
       </div>
     </section>
@@ -126,6 +154,7 @@ type PreferenceFormProps = Readonly<{
   savedLabel: string;
   savingLabel: string;
   title: string;
+  unavailable: boolean;
   value: Locale;
 }>;
 
@@ -142,6 +171,7 @@ function PreferenceForm({
   savedLabel,
   savingLabel,
   title,
+  unavailable,
   value,
 }: PreferenceFormProps) {
   return (
@@ -157,7 +187,7 @@ function PreferenceForm({
       <label className="language-preferences__field">
         <span>{label}</span>
         <select
-          disabled={pending}
+          disabled={unavailable || pending}
           key={revision}
           name="locale"
           onChange={(event) => onChange(event.target.value as Locale)}
@@ -174,7 +204,7 @@ function PreferenceForm({
         <button
           className="ui-button"
           data-variant="primary"
-          disabled={pending}
+          disabled={unavailable || pending}
           type="submit"
         >
           {pending ? savingLabel : saveLabel}

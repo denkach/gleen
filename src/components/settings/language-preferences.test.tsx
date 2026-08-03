@@ -77,6 +77,34 @@ describe('language preferences', () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  it('clears an output save confirmation after the selection changes again', async () => {
+    const user = userEvent.setup();
+    setOutputLocale.mockResolvedValue({ status: 'success', locale: 'es' });
+    render(
+      <LanguagePreferences
+        interfaceLocale="en"
+        outputLocale="uk"
+        copy={settingsMessages.en}
+      />,
+    );
+
+    await user.selectOptions(
+      screen.getByLabelText('Future generated content language'),
+      'es',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Save output language' }),
+    );
+    await waitFor(() => expect(screen.getByText('Saved.')).toBeVisible());
+
+    await user.selectOptions(
+      screen.getByLabelText('Future generated content language'),
+      'de',
+    );
+
+    expect(screen.queryByText('Saved.')).not.toBeInTheDocument();
+  });
+
   it('keeps each language selector keyboard reachable and reports only its own save failure', async () => {
     const user = userEvent.setup();
     setOutputLocale.mockResolvedValue({

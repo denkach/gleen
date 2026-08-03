@@ -46,6 +46,7 @@ export default async function SettingsProfilePage() {
     createSupabaseOnboardingStorage(supabase),
     user.id,
   );
+  const unavailable = !result.ok;
   const preferences = result.ok ? result.data : defaultOnboardingState;
 
   return (
@@ -53,6 +54,7 @@ export default async function SettingsProfilePage() {
       interfaceLocale={preferences.interfaceLocale}
       outputLocale={preferences.outputLocale}
       copy={copy}
+      unavailable={unavailable}
     />
   );
 }
