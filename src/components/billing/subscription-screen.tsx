@@ -226,6 +226,11 @@ export function SubscriptionScreen({
                 className={cx('billing-plan-card', current && 'current')}
                 key={row.plan.slug}
               >
+                {current && (
+                  <span className="billing-current-ribbon">
+                    {copy.subscription.currentPlan}
+                  </span>
+                )}
                 <div role="listitem">
                   <h2>{row.plan.displayName}</h2>
                   <p className="billing-section-copy">{row.plan.description}</p>

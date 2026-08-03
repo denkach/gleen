@@ -241,7 +241,7 @@ const presentation: SubscriptionPresentation = {
 
 describe('SubscriptionScreen', () => {
   it('renders German subscription headings, actions, states, and mobile navigation', () => {
-    render(
+    const { container } = render(
       <SubscriptionScreen
         presentation={{
           ...presentation,
@@ -263,6 +263,9 @@ describe('SubscriptionScreen', () => {
       screen.getByRole('button', { name: 'Monatliche Abrechnung' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Aktiv')).toBeInTheDocument();
+    expect(
+      container.querySelector('.billing-current-ribbon'),
+    ).toHaveTextContent('Aktueller Tarif');
     expect(
       screen.getByRole('navigation', {
         name: 'Mobile Abrechnungsnavigation',

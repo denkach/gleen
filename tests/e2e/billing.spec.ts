@@ -38,9 +38,11 @@ async function openFixture(
   screen: (typeof billingFixtures)[number][0],
   state: (typeof billingFixtures)[number][1] | 'free',
   boundary?: string,
+  locale?: 'uk' | 'ru' | 'en' | 'es' | 'de',
 ) {
   const query = new URLSearchParams({ state });
   if (boundary !== undefined) query.set('testBoundary', boundary);
+  if (locale !== undefined) query.set('locale', locale);
   const response = await page.goto(
     `/billing-fixture/${screen}?${query.toString()}`,
     { waitUntil: 'domcontentloaded' },
@@ -590,4 +592,47 @@ test('durable reduced motion removes billing transitions and animated progress w
   expect(
     Number.parseFloat(scheduledMotion.transitionDuration),
   ).toBeLessThanOrEqual(0.001);
+});
+
+test('durable German and Spanish billing copy fits narrow responsive layouts with reduced motion', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+
+  for (const fixture of [
+    { locale: 'de', width: 320, heading: 'Abonnement' },
+    { locale: 'es', width: 412, heading: 'Suscripción' },
+  ] as const) {
+    await page.setViewportSize({ width: fixture.width, height: 839 });
+    await openFixture(
+      page,
+      'subscription',
+      'active',
+      undefined,
+      fixture.locale,
+    );
+
+    await expect(
+      page.getByRole('heading', { level: 1, name: fixture.heading }),
+    ).toBeVisible();
+    await expect(page.locator('.billing-current-ribbon')).toBeVisible();
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth ===
+          document.documentElement.clientWidth,
+      ),
+      `${fixture.locale} overflowed at ${fixture.width}px`,
+    ).toBe(true);
+    expect(
+      await page
+        .locator('.billing-plan-card.current')
+        .evaluate((card) => getComputedStyle(card, '::before').content),
+    ).toBe('none');
+    expect(
+      await page
+        .locator('.billing-current-ribbon')
+        .evaluate((ribbon) => getComputedStyle(ribbon).transitionDuration),
+    ).toBe('0s');
+  }
 });

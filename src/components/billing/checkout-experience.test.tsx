@@ -11,7 +11,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CheckoutPresentation } from '@/lib/billing/presentation';
 import { billingMessages } from '@/lib/i18n/messages/billing';
 
-const useCheckoutElements = vi.hoisted(() => vi.fn());
+const { loadStripe, useCheckoutElements } = vi.hoisted(() => ({
+  loadStripe: vi.fn(() => Promise.resolve(null)),
+  useCheckoutElements: vi.fn(),
+}));
 
 vi.mock('@stripe/react-stripe-js/checkout', () => ({
   CheckoutElementsProvider: ({ children }: { children: ReactNode }) => children,
@@ -20,7 +23,7 @@ vi.mock('@stripe/react-stripe-js/checkout', () => ({
   useCheckoutElements,
 }));
 vi.mock('@stripe/stripe-js/pure', () => ({
-  loadStripe: vi.fn(() => Promise.resolve(null)),
+  loadStripe,
 }));
 
 import { CheckoutExperience as ProductionCheckoutExperience } from './checkout-experience';
@@ -95,8 +98,37 @@ function readyCheckout(confirm: () => Promise<unknown>) {
 describe('CheckoutExperience rejection and cleanup', () => {
   beforeEach(() => {
     installMatchMedia();
+    loadStripe.mockClear();
     useCheckoutElements.mockReset();
   });
+
+  it.each([
+    ['de', billingMessages.de, 'de'],
+    ['es', billingMessages.es, 'es'],
+    ['en', billingMessages.en, 'en'],
+    ['ru', billingMessages.ru, 'ru'],
+    ['uk', billingMessages.uk, 'en'],
+  ] as const)(
+    'initializes Stripe with the deterministic %s product locale mapping',
+    (locale, copy, stripeLocale) => {
+      render(
+        <CheckoutExperience
+          presentation={presentation}
+          prices={[presentation.price]}
+          publishableKey="pk_test_checkout"
+          sessionId={null}
+          createCheckout={vi.fn(() => new Promise<never>(() => undefined))}
+          getConfirmation={vi.fn()}
+          locale={locale}
+          copy={copy}
+        />,
+      );
+
+      expect(loadStripe).toHaveBeenCalledWith('pk_test_checkout', {
+        locale: stripeLocale,
+      });
+    },
+  );
 
   it('aborts confirmation polling on unmount and makes no later server calls', async () => {
     vi.useFakeTimers();

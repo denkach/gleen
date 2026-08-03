@@ -25,6 +25,7 @@ vi.mock('@/components/app-shell/app-shell', () => ({
     children: React.ReactNode;
     usage: unknown;
     identity: unknown;
+    locale: string;
   }) => {
     renderShell(props);
     return <div data-testid="fixture-shell">{props.children}</div>;
@@ -83,6 +84,27 @@ describe('BillingFixturePage guard', () => {
       }),
     );
   });
+
+  it.each(['uk', 'ru', 'en', 'es', 'de'] as const)(
+    'selects the exact %s fixture locale at the shell and billing boundaries',
+    async (locale) => {
+      isUiPreviewEnabled.mockReturnValue(true);
+
+      render(
+        await BillingFixturePage({
+          params: Promise.resolve({ screen: 'subscription' }),
+          searchParams: Promise.resolve({ state: 'active', locale }),
+        }),
+      );
+
+      expect(renderShell).toHaveBeenCalledWith(
+        expect.objectContaining({ locale }),
+      );
+      expect(renderFixture).toHaveBeenCalledWith(
+        expect.objectContaining({ locale }),
+      );
+    },
+  );
 
   it.each([
     'portal-upgrade',

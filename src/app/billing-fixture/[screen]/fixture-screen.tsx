@@ -17,6 +17,7 @@ import type {
 } from '@/lib/billing/actions';
 import { useState, useSyncExternalStore } from 'react';
 import { billingMessages } from '@/lib/i18n/messages/billing';
+import type { Locale } from '@/lib/i18n/locales';
 
 const disabledExport = async () =>
   ({ ok: false, code: 'fixture-disabled' }) as const;
@@ -40,15 +41,14 @@ const fixtureStarterPlan = billingFixtureCatalog.find(
 const fixturePrismProPlan = billingFixtureCatalog.find(
   ({ plan }) => plan.slug === 'prism-pro',
 )!.plan;
-const fixtureLocale = 'en' as const;
-const fixtureCopy = billingMessages.en;
-
 export function BillingFixtureScreen({
   fixture,
   testBoundary,
   routeQuery,
+  locale,
 }: Readonly<{
   fixture: BillingFixture;
+  locale: Locale;
   testBoundary:
     | 'usage-actions'
     | 'checkout-action'
@@ -67,6 +67,7 @@ export function BillingFixtureScreen({
     cursor: string | null;
   }>;
 }>) {
+  const fixtureCopy = billingMessages[locale];
   const hydrated = useSyncExternalStore(
     subscribeHydration,
     () => true,
@@ -141,7 +142,7 @@ export function BillingFixtureScreen({
           <SubscriptionScreen
             presentation={fixture.presentation}
             initialInterval="month"
-            locale={fixtureLocale}
+            locale={locale}
             copy={fixtureCopy}
           />
           {boundaryEvidence}
@@ -203,7 +204,7 @@ export function BillingFixtureScreen({
                   }
                 : disabledExport
             }
-            locale={fixtureLocale}
+            locale={locale}
             copy={fixtureCopy}
           />
           {boundaryEvidence}
@@ -274,7 +275,7 @@ export function BillingFixtureScreen({
                     )
                 : undefined
             }
-            locale={fixtureLocale}
+            locale={locale}
             copy={fixtureCopy}
           />
           {boundaryEvidence}
@@ -321,7 +322,7 @@ export function BillingFixtureScreen({
                 ? (url) => setOpenedPortal(url)
                 : undefined
             }
-            locale={fixtureLocale}
+            locale={locale}
             copy={fixtureCopy}
           />
           {boundaryEvidence}
@@ -371,7 +372,7 @@ export function BillingFixtureScreen({
             }}
             pageSize={25}
             exportAction={disabledExport}
-            locale={fixtureLocale}
+            locale={locale}
             copy={fixtureCopy}
           />
           {boundaryEvidence}
@@ -384,7 +385,7 @@ export function BillingFixtureScreen({
           <LimitReachedScreen
             presentation={fixture.presentation}
             now={fixture.now}
-            locale={fixtureLocale}
+            locale={locale}
             copy={fixtureCopy}
           />
           {boundaryEvidence}

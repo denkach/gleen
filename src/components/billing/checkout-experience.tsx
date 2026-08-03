@@ -6,6 +6,7 @@ import {
   PaymentElement,
   useCheckoutElements,
 } from '@stripe/react-stripe-js/checkout';
+import type { StripeConstructorOptions } from '@stripe/stripe-js';
 import { loadStripe } from '@stripe/stripe-js/pure';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -33,6 +34,18 @@ type ConfirmationActionResult = Readonly<{
 
 const confirmationAttempts = 8;
 const confirmationIntervalMs = 1_500;
+const stripeLocaleByProductLocale = {
+  de: 'de',
+  en: 'en',
+  es: 'es',
+  ru: 'ru',
+  // Stripe.js 9.12 does not support Ukrainian. Keep the fallback explicit so
+  // payment and address validation never drift to the browser's language.
+  uk: 'en',
+} as const satisfies Record<
+  Locale,
+  NonNullable<StripeConstructorOptions['locale']>
+>;
 
 function CheckoutElements({
   presentation,
@@ -172,7 +185,13 @@ export function CheckoutExperience({
     useState<CheckoutScreenState>(
       sessionId === null ? { kind: 'loading' } : { kind: 'confirming' },
     );
-  const stripe = useMemo(() => loadStripe(publishableKey), [publishableKey]);
+  const stripe = useMemo(
+    () =>
+      loadStripe(publishableKey, {
+        locale: stripeLocaleByProductLocale[locale],
+      }),
+    [locale, publishableKey],
+  );
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
 
@@ -300,6 +319,7 @@ export function CheckoutExperience({
 
   return (
     <CheckoutElementsProvider
+      key={locale}
       stripe={stripe}
       options={{
         clientSecret,

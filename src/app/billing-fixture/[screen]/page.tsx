@@ -10,6 +10,7 @@ import {
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { localeSchema } from '@/lib/i18n/locales';
 
 import { BillingFixtureScreen } from './fixture-screen';
 
@@ -53,6 +54,8 @@ export default async function BillingFixturePage({
 
   const { screen } = await params;
   const query = await searchParams;
+  const parsedLocale = localeSchema.safeParse(query.locale);
+  const locale = parsedLocale.success ? parsedLocale.data : 'en';
   const requestedState = query.state;
   const testBoundary =
     typeof query.testBoundary === 'string' &&
@@ -72,18 +75,19 @@ export default async function BillingFixturePage({
 
   if (!isBillingFixtureSelection(screen, state)) notFound();
 
-  const fixture = getBillingFixture(screen, state);
+  const fixture = getBillingFixture(screen, state, locale);
   return (
     <AppShell
-      copy={appMessages.en}
+      copy={appMessages[locale]}
       identity={fixture.shell.identity}
-      locale="en"
-      localeSwitcherCopy={sharedMessages.en}
+      locale={locale}
+      localeSwitcherCopy={sharedMessages[locale]}
       usage={fixture.shell.usage}
       pathnameOverride="/app/subscription"
     >
       <BillingFixtureScreen
         fixture={fixture}
+        locale={locale}
         testBoundary={testBoundary}
         routeQuery={{
           search: typeof query.search === 'string' ? query.search : '',

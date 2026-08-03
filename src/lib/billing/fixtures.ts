@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { billingMessages } from '@/lib/i18n/messages/billing';
+import type { Locale } from '@/lib/i18n/locales';
 
 import type {
   BillingPlanCatalogRow,
@@ -45,12 +46,14 @@ export type BillingFixtureState = (typeof billingFixtureStates)[number];
 const fixtureScreenSchema = z.enum(billingFixtureScreens);
 const fixtureStateSchema = z.enum(billingFixtureStates);
 const now = '2025-07-29T00:00:00.000Z';
-const presentationOptions = {
-  locale: 'en',
-  copy: billingMessages.en,
-  timeZone: 'UTC',
-  now,
-} as const;
+function presentationOptions(locale: Locale) {
+  return {
+    locale,
+    copy: billingMessages[locale],
+    timeZone: 'UTC',
+    now,
+  } as const;
+}
 
 function paidCatalogRows(plan: {
   slug: Exclude<BillingPlanSlug, 'free'>;
@@ -375,15 +378,16 @@ function shellFor(snapshot: BillingSnapshot) {
   } as const;
 }
 
-function subscriptionFixture(state: BillingFixtureState) {
+function subscriptionFixture(state: BillingFixtureState, locale: Locale) {
   const snapshot = snapshotFor(state);
+  const options = presentationOptions(locale);
   return {
     screen: 'subscription',
     state,
     now,
     shell: shellFor(snapshot),
     presentation: toSubscriptionPresentation(snapshot, {
-      ...presentationOptions,
+      ...options,
       paymentMethod: {
         status: 'available',
         brand: 'visa',
@@ -395,12 +399,10 @@ function subscriptionFixture(state: BillingFixtureState) {
   } as const;
 }
 
-function usageFixture(state: BillingFixtureState) {
+function usageFixture(state: BillingFixtureState, locale: Locale) {
   const snapshot = snapshotFor('active');
-  const subscription = toSubscriptionPresentation(
-    snapshot,
-    presentationOptions,
-  );
+  const options = presentationOptions(locale);
+  const subscription = toSubscriptionPresentation(snapshot, options);
   const page =
     state === 'empty-usage'
       ? ({
@@ -419,16 +421,17 @@ function usageFixture(state: BillingFixtureState) {
       resetAt: subscription.resetAt,
       resetAtLabel: subscription.resetAtLabel,
     },
-    usage: toUsagePresentation(page, presentationOptions),
+    usage: toUsagePresentation(page, options),
   } as const;
 }
 
-function checkoutFixture(state: BillingFixtureState) {
+function checkoutFixture(state: BillingFixtureState, locale: Locale) {
   const snapshot = snapshotFor('active');
+  const options = presentationOptions(locale);
   const presentation = toCheckoutPresentation(
     prismProPlan,
     prismMonthly,
-    presentationOptions,
+    options,
   );
   return {
     screen: 'checkout',
@@ -437,23 +440,27 @@ function checkoutFixture(state: BillingFixtureState) {
     shell: shellFor(snapshot),
     presentation,
     prices: [prismMonthly, prismYearly].map(
-      (price) =>
-        toCheckoutPresentation(prismProPlan, price, presentationOptions).price,
+      (price) => toCheckoutPresentation(prismProPlan, price, options).price,
     ),
     totals: {
-      subtotal: '$49.00',
+      subtotal: formatMoney({
+        amountMinor: 4900,
+        currency: 'usd',
+        locale,
+      }),
       discount: '—',
-      tax: 'Calculated after billing address',
-      total: '$49.00',
+      tax: billingMessages[locale].checkout.order.calculatedAfterAddress,
+      total: formatMoney({ amountMinor: 4900, currency: 'usd', locale }),
       currency: 'USD',
     },
   } as const;
 }
 
-function portalFixture(state: BillingFixtureState) {
+function portalFixture(state: BillingFixtureState, locale: Locale) {
   const snapshot = snapshotFor(state);
+  const options = presentationOptions(locale);
   const subscription = toSubscriptionPresentation(snapshot, {
-    ...presentationOptions,
+    ...options,
     paymentMethod: {
       status: 'available',
       brand: 'visa',
@@ -480,22 +487,20 @@ function portalFixture(state: BillingFixtureState) {
         formattedAmount: formatMoney({
           amountMinor: snapshot.paymentSummary.outstandingAmountMinor,
           currency: snapshot.paymentSummary.currency,
-          locale: presentationOptions.locale,
+          locale,
         }),
       },
     },
-    activity: toInvoicePresentation(invoicePage(state), presentationOptions),
+    activity: toInvoicePresentation(invoicePage(state), options),
   } as const;
 }
 
-function invoicesFixture(state: BillingFixtureState) {
+function invoicesFixture(state: BillingFixtureState, locale: Locale) {
   const snapshot = snapshotFor(
     state === 'failed-invoice' ? 'past-due' : 'active',
   );
-  const subscription = toSubscriptionPresentation(
-    snapshot,
-    presentationOptions,
-  );
+  const options = presentationOptions(locale);
+  const subscription = toSubscriptionPresentation(snapshot, options);
   return {
     screen: 'invoices',
     state,
@@ -506,24 +511,27 @@ function invoicesFixture(state: BillingFixtureState) {
       resetAtLabel: subscription.resetAtLabel,
       entitlement: subscription.entitlement,
     },
-    invoices: toInvoicePresentation(invoicePage(state), presentationOptions),
+    invoices: toInvoicePresentation(invoicePage(state), options),
     summary: toInvoiceSummaryPresentation(
       state === 'failed-invoice'
         ? { ...invoiceSummary, lastInvoiceAt: failedInvoice.createdAt }
         : invoiceSummary,
-      presentationOptions,
+      options,
     ),
   } as const;
 }
 
-function limitFixture(state: BillingFixtureState) {
+function limitFixture(state: BillingFixtureState, locale: Locale) {
   const snapshot = snapshotFor('limit-reached');
   return {
     screen: 'limit-reached',
     state,
     now,
     shell: shellFor(snapshot),
-    presentation: toLimitReachedPresentation(snapshot, presentationOptions),
+    presentation: toLimitReachedPresentation(
+      snapshot,
+      presentationOptions(locale),
+    ),
   } as const;
 }
 
@@ -538,6 +546,7 @@ export type BillingFixture =
 export function getBillingFixture(
   screen: unknown,
   state: unknown,
+  locale: Locale = 'en',
 ): BillingFixture {
   if (!isBillingFixtureSelection(screen, state)) {
     throw new Error('Invalid billing fixture selection');
@@ -545,16 +554,16 @@ export function getBillingFixture(
 
   switch (screen) {
     case 'subscription':
-      return subscriptionFixture(state as BillingFixtureState);
+      return subscriptionFixture(state as BillingFixtureState, locale);
     case 'usage':
-      return usageFixture(state as BillingFixtureState);
+      return usageFixture(state as BillingFixtureState, locale);
     case 'checkout':
-      return checkoutFixture(state as BillingFixtureState);
+      return checkoutFixture(state as BillingFixtureState, locale);
     case 'portal':
-      return portalFixture(state as BillingFixtureState);
+      return portalFixture(state as BillingFixtureState, locale);
     case 'invoices':
-      return invoicesFixture(state as BillingFixtureState);
+      return invoicesFixture(state as BillingFixtureState, locale);
     case 'limit-reached':
-      return limitFixture(state as BillingFixtureState);
+      return limitFixture(state as BillingFixtureState, locale);
   }
 }

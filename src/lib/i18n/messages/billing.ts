@@ -1,4 +1,5 @@
 import { defineMessages } from '../catalog';
+import { selectPlural } from '../format';
 
 export const billingMessages = defineMessages({
   en: {
@@ -260,7 +261,11 @@ export const billingMessages = defineMessages({
       metrics: {
         yearToDate: 'Year-to-date spend',
         lastInvoice: 'Last invoice',
-        invoiceCount: (count: number) => `${count} invoices`,
+        invoiceCount: (count: number) =>
+          selectPlural('en', count, {
+            one: '{count} invoice',
+            other: '{count} invoices',
+          }),
         nextRenewal: 'Next renewal',
         paymentStatus: 'Payment status',
         goodStanding: 'In good standing',
@@ -394,7 +399,10 @@ export const billingMessages = defineMessages({
       usageLabel: 'Analysis usage',
       resetToday: (date: string) => `Resets today on ${date}`,
       resetIn: (days: number, date: string) =>
-        `Resets in ${days} ${days === 1 ? 'day' : 'days'} on ${date}`,
+        `Resets in ${selectPlural('en', days, {
+          one: '{count} day',
+          other: '{count} days',
+        })} on ${date}`,
       detail:
         'You’ve reached your plan’s monthly analysis limit. New analyses are blocked until the reset date or until you upgrade. Saved results remain available.',
       actions: {
@@ -675,7 +683,13 @@ export const billingMessages = defineMessages({
       metrics: {
         yearToDate: 'Витрати від початку року',
         lastInvoice: 'Останній рахунок',
-        invoiceCount: (count: number) => `Рахунків: ${count}`,
+        invoiceCount: (count: number) =>
+          selectPlural('uk', count, {
+            one: '{count} рахунок',
+            few: '{count} рахунки',
+            many: '{count} рахунків',
+            other: '{count} рахунку',
+          }),
         nextRenewal: 'Наступне поновлення',
         paymentStatus: 'Статус оплати',
         goodStanding: 'Усе сплачено',
@@ -811,7 +825,12 @@ export const billingMessages = defineMessages({
       usageLabel: 'Використання аналізів',
       resetToday: (date: string) => `Скидання сьогодні, ${date}`,
       resetIn: (days: number, date: string) =>
-        `Скидання через ${days} дн., ${date}`,
+        `Скидання через ${selectPlural('uk', days, {
+          one: '{count} день',
+          few: '{count} дні',
+          many: '{count} днів',
+          other: '{count} дня',
+        })}, ${date}`,
       detail:
         'Ви досягли місячного ліміту аналізів плану. Нові аналізи заблоковано до дати скидання або оновлення плану. Збережені результати залишаються доступними.',
       actions: {
@@ -1094,7 +1113,13 @@ export const billingMessages = defineMessages({
       metrics: {
         yearToDate: 'Расходы с начала года',
         lastInvoice: 'Последний счёт',
-        invoiceCount: (count: number) => `Счетов: ${count}`,
+        invoiceCount: (count: number) =>
+          selectPlural('ru', count, {
+            one: '{count} счёт',
+            few: '{count} счёта',
+            many: '{count} счетов',
+            other: '{count} счёта',
+          }),
         nextRenewal: 'Следующее продление',
         paymentStatus: 'Статус оплаты',
         goodStanding: 'Всё оплачено',
@@ -1229,7 +1254,12 @@ export const billingMessages = defineMessages({
       usageLabel: 'Использование анализов',
       resetToday: (date: string) => `Сброс сегодня, ${date}`,
       resetIn: (days: number, date: string) =>
-        `Сброс через ${days} дн., ${date}`,
+        `Сброс через ${selectPlural('ru', days, {
+          one: '{count} день',
+          few: '{count} дня',
+          many: '{count} дней',
+          other: '{count} дня',
+        })}, ${date}`,
       detail:
         'Вы достигли месячного лимита анализов плана. Новые анализы заблокированы до даты сброса или обновления плана. Сохранённые результаты остаются доступными.',
       actions: {
@@ -1513,7 +1543,11 @@ export const billingMessages = defineMessages({
       metrics: {
         yearToDate: 'Gasto anual acumulado',
         lastInvoice: 'Última factura',
-        invoiceCount: (count: number) => `${count} facturas`,
+        invoiceCount: (count: number) =>
+          selectPlural('es', count, {
+            one: '{count} factura',
+            other: '{count} facturas',
+          }),
         nextRenewal: 'Próxima renovación',
         paymentStatus: 'Estado del pago',
         goodStanding: 'Al corriente de pago',
@@ -1653,7 +1687,10 @@ export const billingMessages = defineMessages({
       usageLabel: 'Uso de análisis',
       resetToday: (date: string) => `Se restablece hoy, ${date}`,
       resetIn: (days: number, date: string) =>
-        `Se restablece en ${days} días, el ${date}`,
+        `Se restablece en ${selectPlural('es', days, {
+          one: '{count} día',
+          other: '{count} días',
+        })}, el ${date}`,
       detail:
         'Has alcanzado el límite mensual de análisis de tu plan. Los nuevos análisis están bloqueados hasta la fecha de restablecimiento o hasta que mejores el plan. Los resultados guardados siguen disponibles.',
       actions: {
@@ -1938,7 +1975,11 @@ export const billingMessages = defineMessages({
       metrics: {
         yearToDate: 'Ausgaben im laufenden Jahr',
         lastInvoice: 'Letzte Rechnung',
-        invoiceCount: (count: number) => `${count} Rechnungen`,
+        invoiceCount: (count: number) =>
+          selectPlural('de', count, {
+            one: '{count} Rechnung',
+            other: '{count} Rechnungen',
+          }),
         nextRenewal: 'Nächste Verlängerung',
         paymentStatus: 'Zahlungsstatus',
         goodStanding: 'Zahlungen aktuell',
@@ -2080,7 +2121,10 @@ export const billingMessages = defineMessages({
       usageLabel: 'Analysenutzung',
       resetToday: (date: string) => `Zurücksetzung heute am ${date}`,
       resetIn: (days: number, date: string) =>
-        `Zurücksetzung in ${days} Tagen am ${date}`,
+        `Zurücksetzung in ${selectPlural('de', days, {
+          one: '{count} Tag',
+          other: '{count} Tagen',
+        })} am ${date}`,
       detail:
         'Du hast das monatliche Analyselimit deines Tarifs erreicht. Neue Analysen sind bis zur Zurücksetzung oder einem Upgrade gesperrt. Gespeicherte Ergebnisse bleiben verfügbar.',
       actions: {
