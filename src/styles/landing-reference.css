@@ -244,12 +244,13 @@
   font-family: var(--mono);
   color: var(--text-2);
 }
-body:has(.landing-reference)
-  > .locale-switcher__menu
-  .locale-switcher__item[aria-current='true'] {
-  color: var(--color-text-primary);
-  background: var(--color-surface-hover);
-  box-shadow: inset var(--focus-ring-width) 0 var(--color-focus);
+.landing-reference .header-actions .locale-switcher {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+}
+.landing-reference .header-actions .locale-switcher__trigger {
+  min-height: 36px;
 }
 .landing-reference .hero {
   position: relative;

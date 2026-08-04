@@ -9,6 +9,18 @@ const styles = readFileSync(
 );
 
 describe('landing reference compact header layout', () => {
+  it('keeps the locale switcher centered without flow-based feedback', () => {
+    expect(styles).toMatch(
+      /\.landing-reference \.header-actions \.locale-switcher\s*\{[^}]*display:\s*inline-flex[^}]*align-items:\s*center/,
+    );
+    expect(styles).toMatch(
+      /\.landing-reference \.header-actions \.locale-switcher__trigger\s*\{[^}]*min-height:\s*36px/,
+    );
+    expect(styles).not.toMatch(
+      /\.landing-reference[^}]*\.locale-switcher__status\s*\{[^}]*position:\s*(?:static|relative)/,
+    );
+  });
+
   it('moves full locale and CTA controls below the brand at 320px while retaining the 42px menu', () => {
     const compactHeader = styles.slice(
       styles.indexOf('@media (max-width: 420px)'),

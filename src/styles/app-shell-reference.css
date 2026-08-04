@@ -4,14 +4,6 @@
   grid-template-columns: 242px 1fr;
 }
 
-body:has(.app-shell)
-  > .locale-switcher__menu
-  .locale-switcher__item[aria-current='true'] {
-  color: var(--color-text-primary);
-  background: var(--color-surface-hover);
-  box-shadow: inset var(--focus-ring-width) 0 var(--color-focus);
-}
-
 .app-visually-hidden {
   position: absolute;
   width: 1px;
@@ -284,6 +276,32 @@ body:has(.app-shell)
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.app-topbar .locale-switcher {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+}
+.app-topbar .locale-switcher__trigger {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-secondary);
+  font: 10px var(--font-mono);
+  cursor: pointer;
+  transition:
+    border-color var(--motion-micro) var(--ease-prism),
+    background var(--motion-micro) var(--ease-prism),
+    color var(--motion-micro) var(--ease-prism);
+}
+.app-topbar .locale-switcher__trigger:hover,
+.app-topbar .locale-switcher__trigger[data-state='open'] {
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
 .usage-pill {
   height: 36px;
@@ -1094,7 +1112,7 @@ body:has(.app-shell)
     gap: 4px;
   }
   .mobile-topbar .locale-switcher {
-    display: flex;
+    display: inline-flex;
     align-items: center;
   }
   .mobile-topbar .locale-switcher__trigger--compact,
