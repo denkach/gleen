@@ -30,8 +30,8 @@ export function resolveInterfaceLocale({
   header,
 }: InterfaceLocaleResolutionInput): Locale {
   return (
-    parseLocale(profile) ??
     parseLocale(cookie) ??
+    parseLocale(profile) ??
     parseAcceptLanguage(header) ??
     defaultLocale
   );

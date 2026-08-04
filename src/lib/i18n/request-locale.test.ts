@@ -3,10 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { resolveInterfaceLocale } from './request-locale';
 
 describe('resolveInterfaceLocale', () => {
-  it('uses a valid profile locale before every request fallback', () => {
+  it('uses a valid profile locale when the current-device cookie is absent', () => {
+    expect(
+      resolveInterfaceLocale({ profile: 'ru', cookie: null, header: 'es' }),
+    ).toBe('ru');
+  });
+
+  it('uses the explicit current-device cookie before a stale profile locale', () => {
     expect(
       resolveInterfaceLocale({ profile: 'ru', cookie: 'de', header: 'es' }),
-    ).toBe('ru');
+    ).toBe('de');
   });
 
   it('uses a valid locale cookie when the profile has no locale', () => {
