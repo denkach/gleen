@@ -53,6 +53,27 @@ function ControlledPanel({
 }
 
 describe('LanguagePanel', () => {
+  it.each([
+    ['MacIntel', '⌘ K'],
+    ['Win32', 'Ctrl K'],
+    ['Linux x86_64', 'Ctrl K'],
+  ])('shows the %s platform shortcut as %s', (platform, shortcut) => {
+    render(
+      <LanguagePanel
+        copy={copy}
+        locale="en"
+        onSelect={vi.fn()}
+        open
+        onOpenChange={vi.fn()}
+        platform={platform}
+        trigger={<button type="button">English</button>}
+        variant="landing"
+      />,
+    );
+
+    expect(screen.getByText(shortcut, { selector: 'kbd' })).toBeVisible();
+  });
+
   it('exposes the five ordered languages as radios and focuses the selection', async () => {
     render(<ControlledPanel initialOpen />);
 

@@ -4,6 +4,7 @@ import {
   useEffect,
   useId,
   useRef,
+  useSyncExternalStore,
   type KeyboardEvent,
   type ReactElement,
 } from 'react';
@@ -31,11 +32,15 @@ type LanguagePanelProps = Readonly<{
   onSelect: (locale: Locale) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  platform?: string;
   trigger: ReactElement;
   variant: 'landing' | 'auth' | 'app';
 }>;
 
 const selectionCloseDelay = 210;
+const subscribeToPlatform = () => () => {};
+const getBrowserPlatform = () => window.navigator.platform;
+const getServerPlatform = () => '';
 
 export function LanguagePanel({
   copy,
@@ -43,6 +48,7 @@ export function LanguagePanel({
   onSelect,
   open,
   onOpenChange,
+  platform,
   trigger,
   variant,
 }: LanguagePanelProps) {
@@ -50,6 +56,11 @@ export function LanguagePanel({
   const descriptionId = useId();
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const browserPlatform = useSyncExternalStore(
+    subscribeToPlatform,
+    getBrowserPlatform,
+    getServerPlatform,
+  );
 
   useEffect(
     () => () => {
@@ -99,6 +110,9 @@ export function LanguagePanel({
   }
 
   const selectedIndex = supportedLocales.indexOf(locale);
+  const shortcutLabel = /mac/i.test(platform ?? browserPlatform)
+    ? '⌘ K'
+    : 'Ctrl K';
   const selectedRef = {
     get current() {
       return optionRefs.current[selectedIndex] ?? null;
@@ -197,7 +211,7 @@ export function LanguagePanel({
           </div>
 
           <footer className="locale-language-panel__footer">
-            <kbd>⌘ K</kbd>
+            <kbd>{shortcutLabel}</kbd>
             <span>{copy.localeSwitcher.quickSwitch}</span>
           </footer>
         </DialogContentPrimitive>

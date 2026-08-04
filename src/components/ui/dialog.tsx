@@ -6,7 +6,6 @@ import {
   useEffect,
   useRef,
   type ButtonHTMLAttributes,
-  type ComponentPropsWithoutRef,
   type HTMLAttributes,
   type ReactNode,
   type RefObject,
@@ -14,22 +13,37 @@ import {
 
 import { cx } from '@/lib/cx';
 
-export function DialogPortal(
-  props: ComponentPropsWithoutRef<typeof DialogPrimitive.Portal>,
-) {
+export interface DialogPortalProps {
+  children?: ReactNode;
+}
+
+export function DialogPortal(props: DialogPortalProps) {
   return <DialogPrimitive.Portal {...props} />;
 }
 
-export const DialogOverlay = forwardRef<
-  HTMLDivElement,
-  ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(function DialogOverlay(props, ref) {
-  return <DialogPrimitive.Overlay {...props} ref={ref} />;
-});
+export interface DialogOverlayProps {
+  className?: string;
+  'data-variant'?: string;
+}
+
+export const DialogOverlay = forwardRef<HTMLDivElement, DialogOverlayProps>(
+  function DialogOverlay(props, ref) {
+    return <DialogPrimitive.Overlay {...props} ref={ref} />;
+  },
+);
+
+export interface DialogContentPrimitiveProps {
+  'aria-describedby'?: string;
+  'aria-labelledby'?: string;
+  children: ReactNode;
+  className?: string;
+  'data-variant'?: string;
+  onOpenAutoFocus?: (event: Event) => void;
+}
 
 export const DialogContentPrimitive = forwardRef<
   HTMLDivElement,
-  ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+  DialogContentPrimitiveProps
 >(function DialogContentPrimitive(props, ref) {
   return <DialogPrimitive.Content {...props} ref={ref} />;
 });

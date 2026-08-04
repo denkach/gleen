@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const sources = ['dialog', 'dropdown-menu', 'tabs', 'tooltip'].map((name) =>
   readFileSync(`src/components/ui/${name}.tsx`, 'utf8'),
 );
+const dialogSource = sources[0];
 
 describe('Gleen primitive public API', () => {
   it('does not export raw Radix component aliases', () => {
@@ -21,5 +22,11 @@ describe('Gleen primitive public API', () => {
         /export (interface|type)[\s\S]{0,160}ComponentPropsWithoutRef<\s*typeof \w+Primitive\./,
       );
     }
+  });
+
+  it('keeps low-level Dialog forward signatures owned by Gleen', () => {
+    expect(dialogSource).not.toMatch(
+      /ComponentPropsWithoutRef<typeof DialogPrimitive\.(Portal|Overlay|Content)>/,
+    );
   });
 });
