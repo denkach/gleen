@@ -161,8 +161,11 @@ The shared locale-switcher copy gains localized strings for:
 - close button;
 - selected state;
 - quick switch;
-- success toast;
+- success-toast template containing the literal `{language}` token;
 - profile synchronization error.
+
+The client replaces only that known token with the selected native language
+name. No function-valued copy crosses a React Server Component boundary.
 
 Every existing Ukrainian, Russian, English, Spanish, and German UI catalog is
 reviewed as product copy rather than mechanically translated text. The audit
