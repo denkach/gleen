@@ -6,6 +6,16 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  Dialog,
+  DialogClose,
+  DialogContentPrimitive,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from './dialog';
+import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -39,6 +49,49 @@ function TestMenu({ onSelect = vi.fn() }: { onSelect?: () => void }) {
     </DropdownMenu>
   );
 }
+
+function PrimitiveDialog() {
+  return (
+    <Dialog>
+      <DialogTrigger>Open primitive dialog</DialogTrigger>
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogContentPrimitive aria-describedby="primitive-description">
+          <DialogTitle>Primitive title</DialogTitle>
+          <DialogDescription id="primitive-description">
+            Primitive description
+          </DialogDescription>
+          <button type="button">First action</button>
+          <DialogClose>Close primitive dialog</DialogClose>
+        </DialogContentPrimitive>
+      </DialogPortal>
+    </Dialog>
+  );
+}
+
+describe('raw Dialog forwards', () => {
+  it('retain labelled modal focus containment, Escape close, and focus return', async () => {
+    const user = userEvent.setup();
+    render(<PrimitiveDialog />);
+    const trigger = screen.getByRole('button', {
+      name: 'Open primitive dialog',
+    });
+
+    await user.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: 'Primitive title' });
+    expect(dialog).toHaveAccessibleDescription('Primitive description');
+    expect(screen.getByRole('button', { name: 'First action' })).toHaveFocus();
+
+    await user.tab();
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    await user.tab();
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+});
 
 describe('DropdownMenu', () => {
   it('warns once when mounted without content items', async () => {
