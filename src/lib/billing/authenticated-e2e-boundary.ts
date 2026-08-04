@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { localeSchema, type Locale } from '@/lib/i18n/locales';
+
 import { billingFixtureCatalogRows } from './fixtures';
 
 export const billingE2eOwnerId = '22222222-2222-4222-8222-222222222222';
@@ -30,8 +32,23 @@ export function isAuthenticatedBillingE2eBoundaryEnabled(
   );
 }
 
+type ProfileRow = {
+  user_id: typeof billingE2eOwnerId;
+  interface_locale: Locale;
+};
+
+const fixtureGlobal = globalThis as typeof globalThis & {
+  __gleenAuthenticatedBillingE2eProfiles?: ProfileRow[];
+};
+const profileRows = (fixtureGlobal.__gleenAuthenticatedBillingE2eProfiles ??=
+  []);
+
+export function resetAuthenticatedBillingE2eProfiles() {
+  profileRows.splice(0);
+}
+
 const ownerRows = {
-  profiles: [],
+  profiles: profileRows,
   billing_plan_catalog: billingFixtureCatalogRows,
   billing_subscription_overview: [
     {
@@ -164,6 +181,32 @@ const ownerRows = {
 type Table = keyof typeof ownerRows;
 type Filter = (row: Record<string, unknown>) => boolean;
 
+function isExactProfileLocaleUpsert(
+  row: unknown,
+  options: unknown,
+): row is ProfileRow {
+  if (
+    typeof row !== 'object' ||
+    row === null ||
+    Array.isArray(row) ||
+    typeof options !== 'object' ||
+    options === null ||
+    Array.isArray(options)
+  ) {
+    return false;
+  }
+
+  const values = row as Record<string, unknown>;
+  const config = options as Record<string, unknown>;
+  return (
+    Object.keys(values).sort().join(',') === 'interface_locale,user_id' &&
+    values.user_id === billingE2eOwnerId &&
+    localeSchema.safeParse(values.interface_locale).success &&
+    Object.keys(config).join(',') === 'onConflict' &&
+    config.onConflict === 'user_id'
+  );
+}
+
 class BoundaryQuery implements PromiseLike<{
   data: unknown;
   error: null;
@@ -173,10 +216,35 @@ class BoundaryQuery implements PromiseLike<{
   private from = 0;
   private to: number | null = null;
   private singleRow = false;
+  private selectedColumns: string[] | null = null;
 
   constructor(private readonly table: Table) {}
 
-  select() {
+  select(columns?: string) {
+    if (this.table === 'profiles' && columns && columns !== '*') {
+      this.selectedColumns = columns.split(',').map((column) => column.trim());
+    }
+    return this;
+  }
+  upsert(row: unknown, options: unknown) {
+    if (
+      this.table !== 'profiles' ||
+      !isExactProfileLocaleUpsert(row, options)
+    ) {
+      throw new Error('Authenticated billing fixture rejected profile upsert');
+    }
+
+    const existing = profileRows.find(
+      (profile) => profile.user_id === billingE2eOwnerId,
+    );
+    if (existing) {
+      existing.interface_locale = row.interface_locale;
+    } else {
+      profileRows.push({
+        user_id: billingE2eOwnerId,
+        interface_locale: row.interface_locale,
+      });
+    }
     return this;
   }
   eq(column: string, value: unknown) {
@@ -246,8 +314,16 @@ class BoundaryQuery implements PromiseLike<{
       this.to === null
         ? filtered.slice(this.from)
         : filtered.slice(this.from, this.to + 1);
+    const selectedRows =
+      this.table === 'profiles' && this.selectedColumns
+        ? rows.map((row) =>
+            Object.fromEntries(
+              this.selectedColumns!.map((column) => [column, row[column]]),
+            ),
+          )
+        : rows;
     return {
-      data: this.singleRow ? (rows[0] ?? null) : rows,
+      data: this.singleRow ? (selectedRows[0] ?? null) : selectedRows,
       error: null,
       count: filtered.length,
     } as const;

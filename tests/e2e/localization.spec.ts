@@ -89,6 +89,12 @@ function getLocaleTrigger(page: Page, nativeName: string) {
   });
 }
 
+function getAnyLocaleTrigger(page: Page) {
+  return page.getByRole('button', {
+    name: new RegExp(`: (${allNativeLanguageNames.join('|')})$`),
+  });
+}
+
 function getResultNavigationControl(page: Page, name: string) {
   const role =
     (page.viewportSize()?.width ?? Number.POSITIVE_INFINITY) <= 620
@@ -107,6 +113,17 @@ async function addAuthenticatedFixtureCookie(page: Page) {
       sameSite: 'Lax',
     },
   ]);
+}
+
+async function clearGuestLocaleCookie(page: Page) {
+  await page.context().clearCookies({ name: localeCookie });
+  const cookies = await page.context().cookies(origin);
+  expect(
+    cookies.find((cookie) => cookie.name === localeCookie),
+  ).toBeUndefined();
+  expect(cookies.find((cookie) => cookie.name === authCookie)?.value).toBe(
+    authToken,
+  );
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -180,8 +197,8 @@ async function captureEvidence(
   });
 }
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
+test.beforeEach(async ({ context }) => {
+  await context.addInitScript(() => {
     const state = { currentTime: 0 };
     class Player {
       iframe = document.createElement('iframe');
@@ -253,14 +270,15 @@ test('@localization guest locale keeps the auth route and query and persists aft
   ).toBeVisible();
 });
 
-test('@localization authenticated fixture keeps Spanish across shell, History, result, and billing routes', async ({
+test('@localization authenticated profile keeps Spanish across new page, reload, shell, History, result, and billing routes', async ({
   page,
 }) => {
+  await addAuthenticatedFixtureCookie(page);
   const intakeRoute = '/app-shell-fixture?intake=ready';
   await page.goto(intakeRoute);
   const originalUrl = page.url();
 
-  await getLocaleTrigger(page, 'English').click();
+  await getAnyLocaleTrigger(page).click();
   await page.getByRole('menuitem', { name: 'Español' }).click();
   await expect(page).toHaveURL(originalUrl);
   await expect(page.locator('html')).toHaveAttribute('lang', 'es-ES');
@@ -271,28 +289,48 @@ test('@localization authenticated fixture keeps Spanish across shell, History, r
     page.getByRole('link', { name: 'Historial', exact: true }).first(),
   ).toBeVisible();
 
-  await page.goto('/app-shell-fixture/history?visualCase=default');
-  await expect(page).toHaveURL(
+  await clearGuestLocaleCookie(page);
+  const restoredPage = await page.context().newPage();
+  await restoredPage.goto('/app/settings/profile');
+  await expect(restoredPage.locator('html')).toHaveAttribute('lang', 'es-ES');
+  await expect(
+    restoredPage.getByRole('heading', { level: 1, name: 'Ajustes' }),
+  ).toBeVisible();
+  await restoredPage.reload();
+  await expect(restoredPage.locator('html')).toHaveAttribute('lang', 'es-ES');
+  await expect(
+    restoredPage.getByRole('heading', { level: 1, name: 'Ajustes' }),
+  ).toBeVisible();
+  await clearGuestLocaleCookie(restoredPage);
+
+  await restoredPage.goto('/app-shell-fixture/history?visualCase=default');
+  await expect(restoredPage).toHaveURL(
     /\/app-shell-fixture\/history\?visualCase=default$/,
   );
-  await expect(page.getByRole('heading', { name: 'Historial' })).toBeVisible();
+  await expect(
+    restoredPage.getByRole('heading', { name: 'Historial' }),
+  ).toBeVisible();
 
-  await page.goto('/app-shell-fixture/app/video/result-den-25#overview');
-  await expect(page).toHaveURL(
+  await restoredPage.goto(
+    '/app-shell-fixture/app/video/result-den-25#overview',
+  );
+  await expect(restoredPage).toHaveURL(
     /\/app-shell-fixture\/app\/video\/result-den-25#overview$/,
   );
-  await expect(getResultNavigationControl(page, 'Vista general')).toBeVisible();
+  await expect(
+    getResultNavigationControl(restoredPage, 'Vista general'),
+  ).toBeVisible();
 
-  await page.goto('/billing-fixture/subscription?state=active');
-  await expect(page).toHaveURL(
+  await restoredPage.goto('/billing-fixture/subscription?state=active');
+  await expect(restoredPage).toHaveURL(
     /\/billing-fixture\/subscription\?state=active$/,
   );
   await expect(
-    page.getByRole('heading', { level: 1, name: 'Suscripción' }),
+    restoredPage.getByRole('heading', { level: 1, name: 'Suscripción' }),
   ).toBeVisible();
 
-  if ((page.viewportSize()?.width ?? Number.POSITIVE_INFINITY) <= 760) {
-    const billingNavigation = page.getByRole('navigation', {
+  if ((restoredPage.viewportSize()?.width ?? Number.POSITIVE_INFINITY) <= 760) {
+    const billingNavigation = restoredPage.getByRole('navigation', {
       name: 'Navegación móvil de facturación',
     });
     const currentPlan = billingNavigation.getByRole('link', {
@@ -311,7 +349,9 @@ test('@localization authenticated fixture keeps Spanish across shell, History, r
     ).toHaveAttribute('href', '/billing-fixture/usage?locale=es');
   } else {
     await expect(
-      page.getByRole('link', { name: 'Suscripción', exact: true }).first(),
+      restoredPage
+        .getByRole('link', { name: 'Suscripción', exact: true })
+        .first(),
     ).toHaveAttribute('href', '/app/subscription');
   }
 });
@@ -347,6 +387,9 @@ test('@localization all five native locale labels work by keyboard with visible 
     await trigger.focus();
     await expect(trigger).toBeFocused();
     await trigger.press('Enter');
+    const menuItems = page.getByRole('menuitem');
+    await expect(menuItems).toHaveCount(5);
+    await expect(menuItems).toHaveText([...allNativeLanguageNames]);
     await page.keyboard.press('Home');
     await expect(
       page.getByRole('menuitem', { name: allNativeLanguageNames[0] }),
@@ -389,9 +432,19 @@ for (const [localeKey, locale] of Object.entries(localeCases) as Array<
         if (screen.name === 'settings') {
           await addAuthenticatedFixtureCookie(page);
         }
-        const response = await page.goto(screen.route, {
+        let response = await page.goto(screen.route, {
           waitUntil: 'domcontentloaded',
         });
+        if (screen.name === 'settings') {
+          await getAnyLocaleTrigger(page).click();
+          await page.getByRole('menuitem', { name: locale.nativeName }).click();
+          await expect(page.locator('html')).toHaveAttribute(
+            'lang',
+            locale.bcp47,
+          );
+          await clearGuestLocaleCookie(page);
+          response = await page.reload({ waitUntil: 'domcontentloaded' });
+        }
         expect(
           response?.ok(),
           `${screen.name} returned a non-success status`,

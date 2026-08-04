@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
   billingE2eOwnerId,
   createAuthenticatedBillingE2eClient,
   isAuthenticatedBillingE2eBoundaryEnabled,
+  resetAuthenticatedBillingE2eProfiles,
 } from './authenticated-e2e-boundary';
 import {
   createSupabaseBillingRepository,
@@ -16,6 +17,10 @@ import { createSupabaseOnboardingStorage } from '@/lib/onboarding/supabase-stora
 const token = 'playwright-local-only-token';
 
 describe('authenticated billing E2E boundary', () => {
+  beforeEach(() => {
+    resetAuthenticatedBillingE2eProfiles();
+  });
+
   it.each(['production', 'preview', 'development'])(
     'never enables for the Vercel %s environment',
     (vercelEnvironment) => {
@@ -106,6 +111,79 @@ describe('authenticated billing E2E boundary', () => {
     expect(() => client.from('profiles_archive')).toThrow(
       'Authenticated billing fixture rejected unknown table',
     );
+  });
+
+  it('persists the exact owner-scoped interface locale across fixture clients', async () => {
+    const writer = createSupabaseOnboardingStorage(
+      createAuthenticatedBillingE2eClient() as unknown as SupabaseClient,
+    );
+
+    await expect(
+      writer.upsertInterfaceLocale(billingE2eOwnerId, 'es'),
+    ).resolves.toEqual({ data: { interface_locale: 'es' }, error: null });
+
+    const reader = createSupabaseOnboardingStorage(
+      createAuthenticatedBillingE2eClient() as unknown as SupabaseClient,
+    );
+    await expect(readInterfaceLocale(reader, billingE2eOwnerId)).resolves.toBe(
+      'es',
+    );
+  });
+
+  it('rejects every profile upsert outside the locale persistence contract', () => {
+    const client = createAuthenticatedBillingE2eClient();
+    const upsert = (
+      table: string,
+      values: Record<string, unknown>,
+      options: Record<string, unknown>,
+    ) =>
+      (
+        client.from(table) as unknown as {
+          upsert(
+            row: Record<string, unknown>,
+            config: Record<string, unknown>,
+          ): unknown;
+        }
+      ).upsert(values, options);
+
+    expect(() =>
+      upsert(
+        'profiles',
+        { user_id: billingE2eOwnerId, output_locale: 'uk' },
+        { onConflict: 'user_id' },
+      ),
+    ).toThrow('Authenticated billing fixture rejected profile upsert');
+    expect(() =>
+      upsert(
+        'profiles',
+        {
+          user_id: '99999999-9999-4999-8999-999999999999',
+          interface_locale: 'es',
+        },
+        { onConflict: 'user_id' },
+      ),
+    ).toThrow('Authenticated billing fixture rejected profile upsert');
+    expect(() =>
+      upsert(
+        'profiles',
+        { user_id: billingE2eOwnerId, interface_locale: 'fr' },
+        { onConflict: 'user_id' },
+      ),
+    ).toThrow('Authenticated billing fixture rejected profile upsert');
+    expect(() =>
+      upsert(
+        'profiles',
+        { user_id: billingE2eOwnerId, interface_locale: 'es' },
+        { onConflict: 'id' },
+      ),
+    ).toThrow('Authenticated billing fixture rejected profile upsert');
+    expect(() =>
+      upsert(
+        'billing_plan_catalog',
+        { user_id: billingE2eOwnerId, interface_locale: 'es' },
+        { onConflict: 'user_id' },
+      ),
+    ).toThrow('Authenticated billing fixture rejected profile upsert');
   });
 
   it('exercises repository owner filters against mixed owner and foreign rows', async () => {

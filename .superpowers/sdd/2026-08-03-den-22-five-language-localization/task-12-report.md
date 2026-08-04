@@ -120,6 +120,42 @@
   and default onboarding state to remain authoritative; an unrelated profile
   table is still rejected.
 
+### Review round: authenticated profile persistence RED / GREEN
+
+- Review found that the functional test named “authenticated fixture” switched
+  to Spanish before installing the authenticated fixture cookie. It therefore
+  proved only guest-cookie persistence; the cookie was added later only for the
+  responsive settings visits. The read-only `profiles` fixture also lacked the
+  exact `.upsert(...).select(...).single()` chain used by authenticated locale
+  persistence.
+- Strict unit RED:
+  `npx vitest run src/lib/billing/authenticated-e2e-boundary.test.ts` — 2 failed
+  and 9 passed. The real onboarding storage chain failed with
+  `upsert is not a function`, and invalid writes could not produce the required
+  narrow fixture rejection.
+- Unit GREEN: the same command — 1 file and all 11 tests passed. The local,
+  token-gated fixture now persists only the exact
+  `{ user_id: fixtureOwner, interface_locale: supportedLocale }` row with exact
+  `{ onConflict: 'user_id' }` options. The profile survives distinct fixture
+  client instances; wrong table, owner, field, locale, or conflict key is
+  rejected. Unknown tables remain rejected and no general fake database was
+  introduced.
+- The browser journey now installs authentication before the locale action,
+  deletes `gleen_locale` after the action while verifying the auth cookie
+  remains, then opens a new page at authenticated settings, reloads it, and
+  continues through History, result, and billing. Spanish can therefore be
+  restored only from the fixture profile, not from the guest-cookie fallback.
+  Responsive authenticated settings visits explicitly write their requested
+  locale before deleting the guest cookie and reloading, keeping the
+  module-persistent fixture deterministic across the serialized matrix and
+  retries.
+- The keyboard journey now asserts exactly five menu items and their exact five
+  native-name labels before exercising each selection.
+- Final review-round GREEN: the combined Chromium and mobile-chrome
+  localization rerun passed 22/22 tests in 1.4 minutes. The subsequent full
+  gate passed 212/212 in 4.4 minutes, with only the known color-environment and
+  non-failing LCP development warnings.
+
 ### Current 3086 test-fixture findings
 
 - Keyboard trace showed the third iteration sent two arrow keys only a few
@@ -368,11 +404,19 @@
   `CI=1 PLAYWRIGHT_PORT=3100 npm run test:e2e` — PASS, 212/212 tests in 4.3
   minutes across Chromium and mobile-chrome. Output contained only the existing
   `NO_COLOR`/`FORCE_COLOR` warning and non-failing LCP suggestions.
-- The auth evidence images and some desktop/tablet billing images freeze the
-  approved finite entrance animation before its final frame, so their text is
-  visibly blurred or dimmed. The accessible localized headings, route checks,
-  and overflow checks have already passed; this is an evidence-capture clarity
-  limitation rather than a final-state layout failure.
+- Authenticated-profile review rerun:
+  `CI=1 PLAYWRIGHT_PORT=3101 npx playwright test tests/e2e/localization.spec.ts --project=chromium --project=mobile-chrome`
+  — PASS, 22/22 tests in 1.4 minutes.
+- Post-review full browser gate:
+  `CI=1 PLAYWRIGHT_PORT=3103 npm run test:e2e` — PASS, 212/212 tests in 4.4
+  minutes across Chromium and mobile-chrome. Output contained only the known
+  `NO_COLOR`/`FORCE_COLOR` warning and non-failing LCP development suggestions.
+- The 42 full-page captures are evidence for the automated semantic locale and
+  overflow checks, not pixel-baseline approvals. Some auth and desktop/tablet
+  billing captures freeze the approved finite entrance animation before its
+  final frame, so text can appear blurred or dimmed. The stable Pixel 7 billing
+  snapshot was separately inspected and approved, and the full visual gate
+  passed; no runtime UI or motion change is warranted for capture timing.
 
 ## Repository gates
 
@@ -398,6 +442,16 @@
   queries and result navigation, and reduced-motion immediate navigation.
 - `npx playwright test tests/e2e/localization.spec.ts --project=mobile-chrome --list`
   — PASS, all 11 intended tests collect.
+- Review-round targeted integration:
+  `npx vitest run src/lib/billing/authenticated-e2e-boundary.test.ts src/lib/i18n/actions.test.ts src/lib/i18n/request-locale.test.ts src/lib/onboarding/repository.test.ts`
+  — PASS, 4 files and 23 tests. Strict type checking also passes, and
+  `npx playwright test tests/e2e/localization.spec.ts --project=chromium --list`
+  still collects exactly 11 tests without starting a server.
+- Review-round browser GREEN: the combined Chromium/mobile localization suite
+  passed 22/22, then the full gate passed 212/212. This confirms authenticated
+  profile-backed restoration without `gleen_locale`, exact five-item keyboard
+  coverage, deterministic responsive profile setup, and no cross-suite
+  regression.
 - The next full Chromium plus mobile-chrome gate confirmed the earlier
   billing/History/intake corrections while reaching 204 passed and 8 failed.
   The approved snapshot then passed 1/1, and the following full rerun confirmed
@@ -413,16 +467,18 @@
 - `git status --short` contains only the focused Task 12 test/config changes
   and the localization-caused RSC, locale-switcher, and authenticated-fixture
   fixes documented above. The report lives under the intentionally ignored
-  `.superpowers/sdd` directory and must be force-added at final commit time.
+  `.superpowers/sdd` directory and was force-added to the Task 12 commit; its
+  review-round edits are now tracked normally.
 - `next-env.d.ts` was restored and is absent from the final status.
 - No `.env` file, dependency manifest, migration, credential, provider key, or
   secret value changed. A scan of added lines found no private-key material or
   populated Supabase, Stripe, OpenRouter, YouTube, or Supadata secret values.
 - No plan, price, currency, usage-limit, or generated-content literal was added
   by Task 12. Billing domain behavior is unchanged; its client copy-source
-  boundary is now serializable. The token-gated test fixture permits only the
-  exact owner-filtered `profiles` read already performed by request-locale
-  resolution.
+  boundary is now serializable. The token-gated local fixture permits the exact
+  owner-filtered `profiles` read and exact interface-locale upsert already used
+  by request resolution and locale persistence; all broader profile writes are
+  rejected.
 - The complete `origin/main` diff is the cumulative 226-file DEN-22
   localization implementation from Tasks 1–12. Its touched namespaces match
   the issue plan: locale infrastructure and catalogs, localized route/component
@@ -447,8 +503,9 @@
   tests, covering explicit submission from the Radix portal, menu closure, and
   synchronized document language.
 - Authenticated fixture: `src/lib/billing/authenticated-e2e-boundary.ts` and its
-  test, adding only the request-locale `profiles` lookup to the explicit fixture
-  catalog.
+  test, adding the request-locale `profiles` lookup and exact owner-scoped
+  interface-locale upsert to the explicit fixture catalog while rejecting all
+  broader writes.
 - Production billing RSC boundary: the six `/app/subscription*` pages,
   `src/components/billing/billing-copy-source.ts`, the six affected client
   screens and tests, `BillingPage`, `BillingMobileNavigation`, the billing
@@ -460,12 +517,12 @@
 
 - The final full gate passes 212/212 and confirms the approved visual update,
   corrected processing behavior, and stacked-only containment scope across all
-  four geometry viewports.
-- Full-page evidence capture can land mid-way through finite entrance motion,
-  producing blurred/dim auth or billing artifacts even though semantic and
-  overflow assertions pass. Publication-quality screenshots should wait for
-  the final animation frame; no approved runtime motion was changed here.
+  four geometry viewports. The post-review full gate also passes 212/212 after
+  the authenticated-profile persistence correction.
+- Full-page evidence capture can land mid-way through finite entrance motion;
+  those files document semantic and overflow automation, while the separately
+  reviewed stable billing snapshot is the pixel-level visual evidence. No
+  approved runtime motion was changed here.
 - The production build uses validated placeholder public environment values
   and therefore does not exercise live Supabase, Stripe, or provider services.
-- The ignored Task 12 report requires an intentional force-add before the final
-  conventional commit.
+- The Task 12 report remains tracked despite its parent directory's ignore rule.
