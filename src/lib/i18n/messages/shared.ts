@@ -11,11 +11,16 @@ export const sharedMessages = defineMessages({
     },
     localeSwitcher: {
       label: 'Language',
-      menuLabel: 'Choose interface language',
-      saving: 'Saving language…',
+      panelTitle: 'Language',
+      panelDescription: 'Choose your interface language',
+      close: 'Close language selector',
+      selected: 'Selected',
+      quickSwitch: 'Quick switch',
+      changedTemplate: 'Language changed to {language}',
       errors: {
         invalidLocale: 'Choose a supported language.',
-        profileUpdateFailed: 'We could not save your language. Try again.',
+        profileUpdateFailed:
+          'Your language was changed on this device, but could not be synchronized with your profile. Try again.',
       },
     },
     uiPreview: {
@@ -151,11 +156,16 @@ export const sharedMessages = defineMessages({
     },
     localeSwitcher: {
       label: 'Мова',
-      menuLabel: 'Виберіть мову інтерфейсу',
-      saving: 'Зберігаємо мову…',
+      panelTitle: 'Мова',
+      panelDescription: 'Виберіть мову інтерфейсу',
+      close: 'Закрити вибір мови',
+      selected: 'Вибрано',
+      quickSwitch: 'Швидке перемикання',
+      changedTemplate: 'Мову змінено на {language}',
       errors: {
         invalidLocale: 'Виберіть підтримувану мову.',
-        profileUpdateFailed: 'Не вдалося зберегти мову. Спробуйте ще раз.',
+        profileUpdateFailed:
+          'Мову змінено на цьому пристрої, але не вдалося синхронізувати її з профілем. Спробуйте ще раз.',
       },
     },
     uiPreview: {
@@ -291,11 +301,16 @@ export const sharedMessages = defineMessages({
     },
     localeSwitcher: {
       label: 'Язык',
-      menuLabel: 'Выберите язык интерфейса',
-      saving: 'Сохраняем язык…',
+      panelTitle: 'Язык',
+      panelDescription: 'Выберите язык интерфейса',
+      close: 'Закрыть выбор языка',
+      selected: 'Выбран',
+      quickSwitch: 'Быстрое переключение',
+      changedTemplate: 'Язык изменён на {language}',
       errors: {
         invalidLocale: 'Выберите поддерживаемый язык.',
-        profileUpdateFailed: 'Не удалось сохранить язык. Попробуйте ещё раз.',
+        profileUpdateFailed:
+          'Язык изменён на этом устройстве, но не удалось синхронизировать его с профилем. Попробуйте ещё раз.',
       },
     },
     uiPreview: {
@@ -431,12 +446,16 @@ export const sharedMessages = defineMessages({
     },
     localeSwitcher: {
       label: 'Idioma',
-      menuLabel: 'Elige el idioma de la interfaz',
-      saving: 'Guardando idioma…',
+      panelTitle: 'Idioma',
+      panelDescription: 'Elige el idioma de la interfaz',
+      close: 'Cerrar el selector de idioma',
+      selected: 'Seleccionado',
+      quickSwitch: 'Cambio rápido',
+      changedTemplate: 'Idioma cambiado a {language}',
       errors: {
         invalidLocale: 'Elige un idioma compatible.',
         profileUpdateFailed:
-          'No hemos podido guardar el idioma. Inténtalo de nuevo.',
+          'El idioma se ha cambiado en este dispositivo, pero no se ha podido sincronizar con tu perfil. Inténtalo de nuevo.',
       },
     },
     uiPreview: {
@@ -574,12 +593,16 @@ export const sharedMessages = defineMessages({
     },
     localeSwitcher: {
       label: 'Sprache',
-      menuLabel: 'Sprache der Benutzeroberfläche wählen',
-      saving: 'Sprache wird gespeichert…',
+      panelTitle: 'Sprache',
+      panelDescription: 'Wähle deine Sprache für die Benutzeroberfläche',
+      close: 'Sprachauswahl schließen',
+      selected: 'Ausgewählt',
+      quickSwitch: 'Schnellwechsel',
+      changedTemplate: 'Sprache wurde zu {language} geändert',
       errors: {
         invalidLocale: 'Wähle eine unterstützte Sprache.',
         profileUpdateFailed:
-          'Die Sprache konnte nicht gespeichert werden. Bitte versuche es erneut.',
+          'Die Sprache wurde auf diesem Gerät geändert, konnte aber nicht mit deinem Profil synchronisiert werden. Bitte versuche es erneut.',
       },
     },
     uiPreview: {

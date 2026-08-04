@@ -62,10 +62,14 @@ describe('HomePage', () => {
       const received = receivedLocaleSwitcherCopy.mock.lastCall![0];
       expect(Object.keys(received)).toEqual(['localeSwitcher']);
       expect(Object.keys(received.localeSwitcher).sort()).toEqual([
+        'changedTemplate',
+        'close',
         'errors',
         'label',
-        'menuLabel',
-        'saving',
+        'panelDescription',
+        'panelTitle',
+        'quickSwitch',
+        'selected',
       ]);
       expect(
         Object.values(received.localeSwitcher).every(

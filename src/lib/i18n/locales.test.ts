@@ -16,6 +16,13 @@ describe('locale primitives', () => {
     expect(localeSchema.parse('es')).toBe('es');
     expect(localeSchema.safeParse('fr').success).toBe(false);
     expect(localeMetadata.uk.nativeName).toBe('Українська');
+    expect(localeMetadata).toMatchObject({
+      uk: { englishName: 'Ukrainian' },
+      ru: { englishName: 'Russian' },
+      en: { englishName: 'English' },
+      es: { englishName: 'Spanish' },
+      de: { englishName: 'German' },
+    });
     expect(toBcp47('uk')).toBe('uk-UA');
     expect(toBcp47('en')).toBe('en-GB');
   });

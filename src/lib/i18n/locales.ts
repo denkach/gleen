@@ -9,12 +9,15 @@ export type Locale = z.infer<typeof localeSchema>;
 export const defaultLocale: Locale = 'en';
 
 export const localeMetadata = {
-  uk: { bcp47: 'uk-UA', nativeName: 'Українська' },
-  ru: { bcp47: 'ru-RU', nativeName: 'Русский' },
-  en: { bcp47: 'en-GB', nativeName: 'English' },
-  es: { bcp47: 'es-ES', nativeName: 'Español' },
-  de: { bcp47: 'de-DE', nativeName: 'Deutsch' },
-} as const satisfies Record<Locale, { bcp47: string; nativeName: string }>;
+  uk: { bcp47: 'uk-UA', nativeName: 'Українська', englishName: 'Ukrainian' },
+  ru: { bcp47: 'ru-RU', nativeName: 'Русский', englishName: 'Russian' },
+  en: { bcp47: 'en-GB', nativeName: 'English', englishName: 'English' },
+  es: { bcp47: 'es-ES', nativeName: 'Español', englishName: 'Spanish' },
+  de: { bcp47: 'de-DE', nativeName: 'Deutsch', englishName: 'German' },
+} as const satisfies Record<
+  Locale,
+  { bcp47: string; nativeName: string; englishName: string }
+>;
 
 export function toBcp47(locale: Locale): string {
   return localeMetadata[locale].bcp47;

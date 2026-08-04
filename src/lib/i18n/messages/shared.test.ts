@@ -46,4 +46,21 @@ describe('shared localization messages', () => {
       toastActionResult: 'Resultado de la acción del aviso',
     });
   });
+
+  it('provides the serializable language panel copy contract in every locale', () => {
+    for (const locale of supportedLocales) {
+      expect(sharedMessages[locale].localeSwitcher).toMatchObject({
+        label: expect.any(String),
+        panelTitle: expect.any(String),
+        panelDescription: expect.any(String),
+        close: expect.any(String),
+        selected: expect.any(String),
+        quickSwitch: expect.any(String),
+        changedTemplate: expect.stringContaining('{language}'),
+      });
+      expect(sharedMessages[locale].localeSwitcher).not.toHaveProperty(
+        'saving',
+      );
+    }
+  });
 });
