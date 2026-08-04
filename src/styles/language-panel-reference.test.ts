@@ -29,6 +29,10 @@ describe('language panel prototype contract', () => {
     expect(styles).toMatch(
       /\.locale-language-panel\s*\{[^}]*position-anchor:\s*--locale-language-trigger/,
     );
+    expect(styles).toMatch(/top:\s*var\(--locale-language-panel-top,\s*94px\)/);
+    expect(styles).toMatch(
+      /right:\s*var\(--locale-language-panel-right,\s*32px\)/,
+    );
     expect(styles).toMatch(/opacity\s+190ms/);
     expect(styles).toMatch(/transform\s+260ms/);
     expect(styles).toMatch(
@@ -44,6 +48,27 @@ describe('language panel prototype contract', () => {
     );
     expect(styles).toMatch(
       /\.locale-language-toast\s*\{[^}]*locale-language-toast-opacity-in\s+180ms[^}]*locale-language-toast-transform-in\s+240ms/,
+    );
+  });
+
+  it('covers every surrounding header with the scrim and keeps the panel above it', () => {
+    expect(styles).toMatch(
+      /\.locale-language-panel__scrim\s*\{[^}]*z-index:\s*calc\(var\(--layer-dialog\) \+ 1\)/,
+    );
+    expect(styles).toMatch(
+      /\.locale-language-panel\s*\{[^}]*z-index:\s*calc\(var\(--layer-dialog\) \+ 2\)/,
+    );
+  });
+
+  it('provides prototype exits for panel descendants and toast lifetime', () => {
+    expect(styles).toMatch(
+      /\.locale-language-panel\[data-state='closed'\]::before\s*\{[^}]*locale-language-edge-out\s+580ms[^}]*90ms/,
+    );
+    expect(styles).toMatch(
+      /\.locale-language-panel\[data-state='closed'\]\s+\.locale-language-panel__option\s*\{[^}]*locale-language-row-opacity-out\s+220ms[^}]*locale-language-row-transform-out\s+280ms/,
+    );
+    expect(styles).toMatch(
+      /\.locale-language-toast\[data-state='closed'\]\s*\{[^}]*locale-language-toast-opacity-out\s+180ms[^}]*locale-language-toast-transform-out\s+240ms/,
     );
   });
 

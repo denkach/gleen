@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -54,6 +55,8 @@ export function LanguagePanel({
 }: LanguagePanelProps) {
   const titleId = useId();
   const descriptionId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const browserPlatform = useSyncExternalStore(
@@ -62,12 +65,44 @@ export function LanguagePanel({
     getServerPlatform,
   );
 
+  const positionPanelFromTrigger = useCallback((panel = panelRef.current) => {
+    const activeTrigger = triggerRef.current;
+    if (!activeTrigger || !panel) return;
+
+    const triggerRect = activeTrigger.getBoundingClientRect();
+    panel.style.setProperty(
+      '--locale-language-panel-top',
+      `${Math.round(triggerRect.bottom + 32)}px`,
+    );
+    panel.style.setProperty(
+      '--locale-language-panel-right',
+      `${Math.max(0, Math.round(window.innerWidth - triggerRect.right))}px`,
+    );
+  }, []);
+
+  const setPanelRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      panelRef.current = node;
+      if (node) positionPanelFromTrigger(node);
+    },
+    [positionPanelFromTrigger],
+  );
+
   useEffect(
     () => () => {
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     },
     [],
   );
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleResize = () => positionPanelFromTrigger();
+    positionPanelFromTrigger();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [open, positionPanelFromTrigger]);
 
   function select(candidate: Locale) {
     onSelect(candidate);
@@ -120,8 +155,16 @@ export function LanguagePanel({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) positionPanelFromTrigger();
+        onOpenChange(nextOpen);
+      }}
+    >
+      <DialogTrigger asChild ref={triggerRef}>
+        {trigger}
+      </DialogTrigger>
       <DialogPortal>
         <DialogOverlay
           className="locale-language-panel__scrim"
@@ -132,6 +175,7 @@ export function LanguagePanel({
           aria-labelledby={titleId}
           className="locale-language-panel"
           data-variant={variant}
+          ref={setPanelRef}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             selectedRef.current?.focus();

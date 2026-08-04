@@ -151,6 +151,12 @@ describe('LocaleSwitcher', () => {
         screen.getByText(copy.localeSwitcher.errors.profileUpdateFailed),
       ).toBeVisible(),
     );
+    const error = screen.getByText(
+      copy.localeSwitcher.errors.profileUpdateFailed,
+    );
+    const errorPortal = error.closest('.locale-language-feedback');
+    expect(errorPortal).not.toBeNull();
+    expect(errorPortal?.parentElement).toBe(document.body);
     expect(screen.getByLabelText('Language: Español')).toBeVisible();
     expect(document.documentElement).toHaveAttribute('lang', 'es-ES');
     expect(document.cookie).toContain('gleen_locale=es');
@@ -198,7 +204,17 @@ describe('LocaleSwitcher', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'Language changed to Deutsch; keep {languageName}',
     );
+    expect(screen.getByRole('status')).toHaveAttribute('data-state', 'open');
+    const toastPortal = screen
+      .getByRole('status')
+      .closest('.locale-language-feedback');
+    expect(toastPortal).not.toBeNull();
+    expect(toastPortal?.parentElement).toBe(document.body);
     act(() => vi.advanceTimersByTime(2199));
+    expect(screen.getByRole('status')).toHaveAttribute('data-state', 'open');
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByRole('status')).toHaveAttribute('data-state', 'closed');
+    act(() => vi.advanceTimersByTime(239));
     expect(screen.getByRole('status')).toBeInTheDocument();
     act(() => vi.advanceTimersByTime(1));
     expect(screen.queryByRole('status')).not.toBeInTheDocument();

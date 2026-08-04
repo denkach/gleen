@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 
 import { LanguagePanel } from '@/components/i18n/language-panel';
@@ -24,6 +25,7 @@ type LocaleSwitcherProps = Readonly<{
 
 const initialActionState: LocaleActionState = { status: 'idle' };
 const successToastDuration = 2200;
+const successToastExitDuration = 240;
 
 type OptimisticLocale = Readonly<{
   baseLocale: Locale;
@@ -42,12 +44,15 @@ export function LocaleSwitcher({
   const submitterRefs = useRef<Partial<Record<Locale, HTMLButtonElement>>>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [optimisticLocale, setOptimisticLocale] = useState<OptimisticLocale>({
     baseLocale: locale,
     selectedLocale: locale,
   });
   const [dismissedSuccess, setDismissedSuccess] =
+    useState<LocaleActionState | null>(null);
+  const [exitingSuccess, setExitingSuccess] =
     useState<LocaleActionState | null>(null);
   const [state, formAction] = useActionState(
     setInterfaceLocale,
@@ -77,13 +82,20 @@ export function LocaleSwitcher({
     if (state.status !== 'success' || panelOpen) return;
 
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    if (toastExitTimerRef.current) clearTimeout(toastExitTimerRef.current);
     toastTimerRef.current = setTimeout(() => {
       toastTimerRef.current = null;
-      setDismissedSuccess(state);
+      setExitingSuccess(state);
+      toastExitTimerRef.current = setTimeout(() => {
+        toastExitTimerRef.current = null;
+        setDismissedSuccess(state);
+        setExitingSuccess(null);
+      }, successToastExitDuration);
     }, successToastDuration);
 
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (toastExitTimerRef.current) clearTimeout(toastExitTimerRef.current);
     };
   }, [panelOpen, state]);
 
@@ -95,7 +107,12 @@ export function LocaleSwitcher({
       clearTimeout(toastTimerRef.current);
       toastTimerRef.current = null;
     }
+    if (toastExitTimerRef.current) {
+      clearTimeout(toastExitTimerRef.current);
+      toastExitTimerRef.current = null;
+    }
     setDismissedSuccess(state);
+    setExitingSuccess(null);
     setOptimisticLocale({
       baseLocale: locale,
       selectedLocale: parsed.data,
@@ -133,6 +150,24 @@ export function LocaleSwitcher({
           localeMetadata[state.locale].nativeName,
         )
       : null;
+  const feedback =
+    error && !panelOpen ? (
+      <p aria-live="polite" className="locale-switcher__status">
+        {error}
+      </p>
+    ) : toastMessage ? (
+      <div
+        aria-live="polite"
+        className="locale-language-toast"
+        data-state={exitingSuccess === state ? 'closed' : 'open'}
+        role="status"
+      >
+        <span aria-hidden="true" className="locale-language-toast__icon">
+          ✓
+        </span>
+        <span className="locale-language-toast__message">{toastMessage}</span>
+      </div>
+    ) : null;
   const trigger = (
     <button
       aria-label={`${copy.localeSwitcher.label}: ${selectedMetadata.nativeName}`}
@@ -161,49 +196,46 @@ export function LocaleSwitcher({
   );
 
   return (
-    <form
-      action={formAction}
-      id={formId}
-      className="locale-switcher"
-      ref={formRef}
-    >
-      <LanguagePanel
-        copy={copy}
-        locale={selectedLocale}
-        onSelect={selectLocale}
-        open={panelOpen}
-        onOpenChange={setPanelOpen}
-        trigger={trigger}
-        variant={variant}
-      />
-      {supportedLocales.map((candidate) => (
-        <button
-          aria-hidden="true"
-          hidden
-          key={candidate}
-          name="locale"
-          ref={(node) => {
-            if (node) submitterRefs.current[candidate] = node;
-            else delete submitterRefs.current[candidate];
-          }}
-          tabIndex={-1}
-          type="submit"
-          value={candidate}
+    <>
+      <form
+        action={formAction}
+        id={formId}
+        className="locale-switcher"
+        ref={formRef}
+      >
+        <LanguagePanel
+          copy={copy}
+          locale={selectedLocale}
+          onSelect={selectLocale}
+          open={panelOpen}
+          onOpenChange={setPanelOpen}
+          trigger={trigger}
+          variant={variant}
         />
-      ))}
-      {error && !panelOpen ? (
-        <p aria-live="polite" className="locale-switcher__status">
-          {error}
-        </p>
-      ) : null}
-      {toastMessage ? (
-        <div aria-live="polite" className="locale-language-toast" role="status">
-          <span aria-hidden="true" className="locale-language-toast__icon">
-            ✓
-          </span>
-          <span className="locale-language-toast__message">{toastMessage}</span>
-        </div>
-      ) : null}
-    </form>
+        {supportedLocales.map((candidate) => (
+          <button
+            aria-hidden="true"
+            hidden
+            key={candidate}
+            name="locale"
+            ref={(node) => {
+              if (node) submitterRefs.current[candidate] = node;
+              else delete submitterRefs.current[candidate];
+            }}
+            tabIndex={-1}
+            type="submit"
+            value={candidate}
+          />
+        ))}
+      </form>
+      {feedback && typeof document !== 'undefined'
+        ? createPortal(
+            <div className="locale-language-feedback" data-variant={variant}>
+              {feedback}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }

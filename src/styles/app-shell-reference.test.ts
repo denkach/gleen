@@ -22,5 +22,8 @@ describe('app shell locale switcher layout', () => {
     expect(styles).toMatch(
       /\.mobile-topbar \.locale-switcher__trigger--compact[^}]*height:\s*40px[^}]*min-height:\s*40px/,
     );
+    expect(styles).not.toMatch(
+      /\.mobile-topbar \.locale-switcher__status\s*\{/,
+    );
   });
 });

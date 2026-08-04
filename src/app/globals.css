@@ -1157,7 +1157,7 @@ p {
 .locale-language-panel__scrim {
   position: fixed;
   inset: 0;
-  z-index: var(--layer-overlay);
+  z-index: calc(var(--layer-dialog) + 1);
   background: color-mix(in srgb, var(--background-deep) 17%, transparent);
   backdrop-filter: blur(2px);
   animation: locale-language-scrim-in 220ms var(--ease-prism) both;
@@ -1174,9 +1174,9 @@ p {
   --locale-panel-origin: 88% 0;
   position: fixed;
   position-anchor: --locale-language-trigger;
-  top: 94px;
-  right: 32px;
-  z-index: var(--layer-dialog);
+  top: var(--locale-language-panel-top, 94px);
+  right: var(--locale-language-panel-right, 32px);
+  z-index: calc(var(--layer-dialog) + 2);
   display: flex;
   width: 390px;
   max-height: calc(100svh - 106px);
@@ -1232,11 +1232,17 @@ p {
     color-mix(in srgb, var(--artifact-timestamps) 25%, transparent);
   content: '';
   opacity: 0.9;
+  transform: scaleY(1);
   transform-origin: top;
   transition: transform 580ms cubic-bezier(0.18, 1.15, 0.38, 1) 90ms;
   animation: locale-language-edge-in 580ms cubic-bezier(0.18, 1.15, 0.38, 1)
     90ms both;
   pointer-events: none;
+}
+
+.locale-language-panel[data-state='closed']::before {
+  animation: locale-language-edge-out 580ms cubic-bezier(0.18, 1.15, 0.38, 1)
+    90ms both;
 }
 
 .locale-language-panel__header {
@@ -1346,6 +1352,13 @@ p {
 
 .locale-language-panel__option:nth-child(5) {
   animation-delay: 210ms;
+}
+
+.locale-language-panel[data-state='closed'] .locale-language-panel__option {
+  animation:
+    locale-language-row-opacity-out 220ms var(--ease-prism) both,
+    locale-language-row-transform-out 280ms cubic-bezier(0.18, 1.15, 0.38, 1)
+      both;
 }
 
 .locale-language-panel__option:last-child {
@@ -1511,10 +1524,18 @@ p {
   color: var(--text-primary);
   font-size: 13px;
   line-height: 1.45;
+  transform: translate(-50%, 0) scale(1);
   backdrop-filter: blur(18px);
   animation:
     locale-language-toast-opacity-in 180ms var(--ease-prism) both,
     locale-language-toast-transform-in 240ms cubic-bezier(0.18, 1.15, 0.38, 1)
+      both;
+}
+
+.locale-language-toast[data-state='closed'] {
+  animation:
+    locale-language-toast-opacity-out 180ms var(--ease-prism) both,
+    locale-language-toast-transform-out 240ms cubic-bezier(0.18, 1.15, 0.38, 1)
       both;
 }
 
@@ -1585,6 +1606,12 @@ p {
   }
 }
 
+@keyframes locale-language-edge-out {
+  to {
+    transform: scaleY(0.2);
+  }
+}
+
 @keyframes locale-language-row-opacity-in {
   from {
     opacity: 0;
@@ -1593,6 +1620,18 @@ p {
 
 @keyframes locale-language-row-transform-in {
   from {
+    transform: translateY(7px);
+  }
+}
+
+@keyframes locale-language-row-opacity-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes locale-language-row-transform-out {
+  to {
     transform: translateY(7px);
   }
 }
@@ -1621,6 +1660,18 @@ p {
   }
   to {
     transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes locale-language-toast-opacity-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes locale-language-toast-transform-out {
+  to {
+    transform: translate(-50%, 18px) scale(0.98);
   }
 }
 

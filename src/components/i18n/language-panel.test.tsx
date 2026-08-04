@@ -26,6 +26,7 @@ const copy = {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 function ControlledPanel({
@@ -53,6 +54,51 @@ function ControlledPanel({
 }
 
 describe('LanguagePanel', () => {
+  it('measures the active trigger into deterministic viewport fallback variables', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1440);
+    render(<ControlledPanel />);
+
+    const trigger = screen.getByRole('button', { name: 'English' });
+    const getTriggerRect = vi
+      .spyOn(trigger, 'getBoundingClientRect')
+      .mockReturnValue({
+        bottom: 52,
+        height: 36,
+        left: 1210,
+        right: 1340,
+        top: 16,
+        width: 130,
+        x: 1210,
+        y: 16,
+        toJSON: () => ({}),
+      });
+
+    await user.click(trigger);
+
+    expect(screen.getByRole('dialog', { name: 'Language' })).toHaveStyle({
+      '--locale-language-panel-right': '100px',
+      '--locale-language-panel-top': '84px',
+    });
+
+    getTriggerRect.mockReturnValue({
+      bottom: 60,
+      height: 36,
+      left: 1190,
+      right: 1320,
+      top: 24,
+      width: 130,
+      x: 1190,
+      y: 24,
+      toJSON: () => ({}),
+    });
+    fireEvent(window, new Event('resize'));
+    expect(screen.getByRole('dialog', { name: 'Language' })).toHaveStyle({
+      '--locale-language-panel-right': '120px',
+      '--locale-language-panel-top': '92px',
+    });
+  });
+
   it.each([
     ['MacIntel', '⌘ K'],
     ['Win32', 'Ctrl K'],
