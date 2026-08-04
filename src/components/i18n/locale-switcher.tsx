@@ -1,11 +1,11 @@
 'use client';
 
-import { useActionState, useEffect, useId } from 'react';
+import { useActionState, useEffect, useId, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { setInterfaceLocale, type LocaleActionState } from '@/lib/i18n/actions';
 import type { Locale } from '@/lib/i18n/locales';
-import { localeMetadata, supportedLocales } from '@/lib/i18n/locales';
+import { localeMetadata, supportedLocales, toBcp47 } from '@/lib/i18n/locales';
 import type { LocaleSwitcherCopy } from '@/lib/i18n/messages/shared';
 import {
   DropdownMenu,
@@ -31,14 +31,18 @@ export function LocaleSwitcher({
 }: LocaleSwitcherProps) {
   const formId = useId();
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [state, formAction, pending] = useActionState(
     setInterfaceLocale,
     initialActionState,
   );
 
   useEffect(() => {
-    if (state.status === 'success') router.refresh();
-  }, [router, state.status]);
+    if (state.status === 'success') {
+      document.documentElement.lang = toBcp47(state.locale);
+      router.refresh();
+    }
+  }, [router, state]);
 
   const error =
     state.status === 'error'
@@ -49,7 +53,7 @@ export function LocaleSwitcher({
 
   return (
     <form action={formAction} id={formId} className="locale-switcher">
-      <DropdownMenu>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
           <button
             aria-label={`${copy.localeSwitcher.label}: ${localeMetadata[locale].nativeName}`}
@@ -87,6 +91,11 @@ export function LocaleSwitcher({
                 disabled={pending}
                 form={formId}
                 name="locale"
+                onClick={(event) => {
+                  event.preventDefault();
+                  setMenuOpen(false);
+                  event.currentTarget.form?.requestSubmit(event.currentTarget);
+                }}
                 type="submit"
                 value={candidate}
               >

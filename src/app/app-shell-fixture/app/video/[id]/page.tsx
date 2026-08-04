@@ -7,6 +7,7 @@ import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import { unavailableUsage } from '@/lib/app-shell';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
 import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
@@ -618,7 +619,7 @@ export default async function FixtureReadinessPage({
         initials: 'TU',
       }}
       locale={locale}
-      localeSwitcherCopy={sharedMessages[locale]}
+      localeSwitcherCopy={materializeLocaleSwitcherCopy(sharedMessages[locale])}
       usage={unavailableUsage}
       pathnameOverride="/app"
     >

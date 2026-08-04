@@ -9,7 +9,11 @@ import type { ComponentProps, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CheckoutPresentation } from '@/lib/billing/presentation';
-import { billingMessages } from '@/lib/i18n/messages/billing';
+import {
+  billingMessages,
+  type BillingMessages,
+} from '@/lib/i18n/messages/billing';
+import type { Locale } from '@/lib/i18n/locales';
 
 const { loadStripe, useCheckoutElements } = vi.hoisted(() => ({
   loadStripe: vi.fn(() => Promise.resolve(null)),
@@ -35,10 +39,13 @@ function CheckoutExperience({
   locale = 'en',
   copy = billingMessages.en,
   ...props
-}: Omit<CheckoutExperienceProps, 'locale' | 'copy'> &
-  Partial<Pick<CheckoutExperienceProps, 'locale' | 'copy'>>) {
+}: Omit<CheckoutExperienceProps, 'copySource'> &
+  Readonly<{ locale?: Locale; copy?: BillingMessages }>) {
   return (
-    <ProductionCheckoutExperience {...props} locale={locale} copy={copy} />
+    <ProductionCheckoutExperience
+      {...props}
+      copySource={{ kind: 'injected', locale, copy }}
+    />
   );
 }
 

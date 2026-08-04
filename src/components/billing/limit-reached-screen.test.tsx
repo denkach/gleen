@@ -8,7 +8,11 @@ import {
   type LimitReachedPresentation,
 } from '@/lib/billing/presentation';
 import { billingFixtureCatalog } from '@/lib/billing/fixtures';
-import { billingMessages } from '@/lib/i18n/messages/billing';
+import {
+  billingMessages,
+  type BillingMessages,
+} from '@/lib/i18n/messages/billing';
+import type { Locale } from '@/lib/i18n/locales';
 
 import { LimitReachedScreen as ProductionLimitReachedScreen } from './limit-reached-screen';
 
@@ -19,10 +23,13 @@ function LimitReachedScreen({
   locale = 'en',
   copy = billingMessages.en,
   ...props
-}: Omit<LimitReachedScreenProps, 'locale' | 'copy'> &
-  Partial<Pick<LimitReachedScreenProps, 'locale' | 'copy'>>) {
+}: Omit<LimitReachedScreenProps, 'copySource'> &
+  Readonly<{ locale?: Locale; copy?: BillingMessages }>) {
   return (
-    <ProductionLimitReachedScreen {...props} locale={locale} copy={copy} />
+    <ProductionLimitReachedScreen
+      {...props}
+      copySource={{ kind: 'injected', locale, copy }}
+    />
   );
 }
 

@@ -12,7 +12,11 @@ import type {
   SubscriptionPresentation,
   UsagePresentation,
 } from '@/lib/billing/presentation';
-import { billingMessages } from '@/lib/i18n/messages/billing';
+import {
+  billingMessages,
+  type BillingMessages,
+} from '@/lib/i18n/messages/billing';
+import type { Locale } from '@/lib/i18n/locales';
 
 import { UsageScreen as ProductionUsageScreen } from './usage-screen';
 
@@ -21,9 +25,14 @@ function UsageScreen({
   locale = 'en',
   copy = billingMessages.en,
   ...props
-}: Omit<UsageScreenProps, 'locale' | 'copy'> &
-  Partial<Pick<UsageScreenProps, 'locale' | 'copy'>>) {
-  return <ProductionUsageScreen {...props} locale={locale} copy={copy} />;
+}: Omit<UsageScreenProps, 'copySource'> &
+  Readonly<{ locale?: Locale; copy?: BillingMessages }>) {
+  return (
+    <ProductionUsageScreen
+      {...props}
+      copySource={{ kind: 'injected', locale, copy }}
+    />
+  );
 }
 
 const subscription: Pick<

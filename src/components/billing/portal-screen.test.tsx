@@ -20,7 +20,11 @@ import type {
   InvoicePresentation,
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
-import { billingMessages } from '@/lib/i18n/messages/billing';
+import {
+  billingMessages,
+  type BillingMessages,
+} from '@/lib/i18n/messages/billing';
+import type { Locale } from '@/lib/i18n/locales';
 
 import { PortalScreen as ProductionPortalScreen } from './portal-screen';
 
@@ -29,9 +33,14 @@ function PortalScreen({
   locale = 'en',
   copy = billingMessages.en,
   ...props
-}: Omit<PortalScreenProps, 'locale' | 'copy'> &
-  Partial<Pick<PortalScreenProps, 'locale' | 'copy'>>) {
-  return <ProductionPortalScreen {...props} locale={locale} copy={copy} />;
+}: Omit<PortalScreenProps, 'copySource'> &
+  Readonly<{ locale?: Locale; copy?: BillingMessages }>) {
+  return (
+    <ProductionPortalScreen
+      {...props}
+      copySource={{ kind: 'injected', locale, copy }}
+    />
+  );
 }
 
 const subscription = {

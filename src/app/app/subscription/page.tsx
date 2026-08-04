@@ -79,8 +79,7 @@ export default async function SubscriptionPage({
     <SubscriptionScreen
       presentation={presentation}
       initialInterval={interval}
-      locale={locale}
-      copy={copy}
+      copySource={{ kind: 'catalog', locale }}
     />
   );
 }

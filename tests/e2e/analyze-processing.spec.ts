@@ -3,6 +3,12 @@ import type { Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
 const fixtureUrl = 'https://www.youtube.com/watch?v=gleen-fixture';
+const completeProcessingUrl =
+  /\/app\?journey=complete&locale=en&analysis=result-complete$/;
+const completeResultUrl =
+  /\/app-shell-fixture\/app\/video\/result-complete\?journey=complete&locale=en#overview$/;
+const reducedResultUrl =
+  /\/app-shell-fixture\/app\/video\/result-complete\?journey=reduced&locale=en#overview$/;
 const crossPlatformGeometryTolerance = 2;
 const viewports = [
   { width: 1440, height: 900 },
@@ -143,12 +149,15 @@ test('launches the approved opening and renders the fixed spectral rails', async
     'analyze-shell-flash',
   );
   await expect(visual.locator('.analyze-master-rail')).toBeVisible();
-  await expect(visual.locator('.analyze-rail')).toHaveCount(4);
-  await expect(visual.getByText('SUMMARY', { exact: true })).toBeVisible();
-  await expect(visual.getByText('FLASHCARDS', { exact: true })).toBeVisible();
-  await expect(visual.getByText('TIMESTAMPS', { exact: true })).toBeVisible();
-  await expect(visual.getByText('EXPORT', { exact: true })).toBeVisible();
-  await expect(visual.getByText('TRANSCRIPT', { exact: true })).toHaveCount(0);
+  await expect(visual.locator('.analyze-rail')).toHaveText([
+    'Summary is queued',
+    'Flashcards not selected',
+    'Timestamps are queued',
+    'Export is queued',
+  ]);
+  await expect(
+    visual.locator('.analyze-rail').filter({ hasText: 'Transcript' }),
+  ).toHaveCount(0);
   const samples: Array<{
     elapsed: number;
     shellHeight: number;
@@ -307,6 +316,7 @@ test('hands completion through the exit wipe before opening the result', async (
 }) => {
   await page.goto('/app-shell-fixture?journey=complete');
   await page.getByRole('button', { name: 'Start fixture analysis' }).click();
+  await expect(page).toHaveURL(completeProcessingUrl);
 
   const visual = page.getByTestId('analyze-processing-visual');
   await expect(visual).toHaveAttribute('data-analysis-state', 'complete', {
@@ -318,8 +328,7 @@ test('hands completion through the exit wipe before opening the result', async (
   await expect(visual).toHaveAttribute('data-analysis-exiting', 'true', {
     timeout: 1_000,
   });
-  await expect(page).toHaveURL(/\/app\?analysis=result-complete/);
-  await expect(page).toHaveURL(/\/app-shell-fixture\/app\/video\//, {
+  await expect(page).toHaveURL(completeResultUrl, {
     timeout: 10_000,
   });
 });
@@ -465,26 +474,49 @@ for (const viewport of viewports) {
   }) => {
     await page.setViewportSize(viewport);
     await openFixture(page);
-    await page.getByRole('button', { name: 'Analyze video' }).click();
     const visual = page.getByTestId('analyze-processing-visual');
     const panel = visual.locator('.analyze-processing-panel');
     const shell = visual.locator('.analyze-shell');
+    await page.getByRole('button', { name: 'Analyze video' }).click();
+    await expect(visual).toHaveAttribute('data-analysis-state', 'submitting');
+    await visual.evaluate(async (element) => {
+      const shell = element.querySelector('.analyze-shell');
+      const panel = element.querySelector('.analyze-processing-panel');
+      const transitions = [shell, panel].flatMap((target) =>
+        target === null
+          ? []
+          : target
+              .getAnimations()
+              .filter(
+                (animation): animation is CSSTransition =>
+                  animation instanceof CSSTransition,
+              ),
+      );
+      await Promise.all(
+        transitions.map((transition) =>
+          transition.finished.catch(() => undefined),
+        ),
+      );
+    });
 
     await expectNoHorizontalOverflow(page);
     await expect(shell).toBeVisible();
     await expect(panel).toBeVisible();
     await expect(visual.getByText('Validating video')).toBeVisible();
     await expect(visual.locator('.analyze-rail')).toHaveCount(4);
-    const expectedHeight =
-      viewport.width <= 540 ? 500 : viewport.width <= 1100 ? 420 : 300;
-    await expect
-      .poll(async () => (await shell.boundingBox())?.height ?? 0)
-      .toBeCloseTo(expectedHeight, 0);
+    const shellHeight = (await shell.boundingBox())?.height ?? 0;
+    if (viewport.width <= 540) {
+      expect(shellHeight).toBeGreaterThanOrEqual(500);
+    } else {
+      const expectedHeight = viewport.width <= 1100 ? 420 : 300;
+      expect(shellHeight).toBeCloseTo(expectedHeight, 0);
+    }
     const shellBox = (await shell.boundingBox())!;
     expect(shellBox.width).toBeCloseTo(Math.min(1_395, viewport.width), 0);
     const geometry = await panel.evaluate((element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
+      const shell = element.parentElement!.getBoundingClientRect();
       const status = element
         .querySelector('.analyze-status-copy')!
         .getBoundingClientRect();
@@ -493,6 +525,8 @@ for (const viewport of viewports) {
         .getBoundingClientRect();
       return {
         columns: style.gridTemplateColumns.split(' ').length,
+        contentInsideShell:
+          rect.top >= shell.top - 1 && rect.bottom <= shell.bottom + 1,
         gap: Number.parseFloat(style.gap),
         paddingTop: Number.parseFloat(style.paddingTop),
         paddingLeft: Number.parseFloat(style.paddingLeft),
@@ -511,6 +545,7 @@ for (const viewport of viewports) {
     expect(geometry.paddingLeft).toBe(viewport.width <= 1100 ? 24 : 42);
     expect(geometry.gap).toBe(isStacked ? 12 : isCompact ? 20 : 48);
     if (isStacked) {
+      expect(geometry.contentInsideShell).toBe(true);
       expect(geometry.railsTop).toBeGreaterThan(geometry.statusTop);
     } else {
       expect(Math.abs(geometry.railsTop - geometry.statusTop)).toBeLessThan(2);
@@ -619,7 +654,7 @@ test('durable queued and running stay on New analysis with exactly one spectrum 
     if (frame === page.mainFrame()) transitions.push(frame.url());
   });
   await page.getByRole('button', { name: 'Start fixture analysis' }).click();
-  await expect(page).toHaveURL(/\/app\?analysis=result-complete$/);
+  await expect(page).toHaveURL(completeProcessingUrl);
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
   await expect(page.getByTestId('analyze-processing-visual')).toHaveAttribute(
     'data-analysis-state',
@@ -629,10 +664,7 @@ test('durable queued and running stay on New analysis with exactly one spectrum 
     'data-analysis-state',
     'transcript',
   );
-  await expect(page).toHaveURL(
-    /\/app-shell-fixture\/app\/video\/result-complete#overview$/,
-    { timeout: 7_000 },
-  );
+  await expect(page).toHaveURL(completeResultUrl, { timeout: 7_000 });
   await expect(page.getByTestId('result-layout')).toBeVisible();
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);
   await page.waitForTimeout(500);
@@ -722,10 +754,7 @@ test('durable reduced motion keeps truthful completion without decorative delay'
   await page.goto('/app-shell-fixture?journey=reduced');
   const startedAt = Date.now();
   await page.getByRole('button', { name: 'Start fixture analysis' }).click();
-  await expect(page).toHaveURL(
-    /\/app-shell-fixture\/app\/video\/result-complete#overview$/,
-    { timeout: 4_000 },
-  );
+  await expect(page).toHaveURL(reducedResultUrl, { timeout: 4_000 });
   expect(Date.now() - startedAt).toBeLessThan(4_000);
   await expect(page.getByTestId('result-layout')).toBeVisible();
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(0);

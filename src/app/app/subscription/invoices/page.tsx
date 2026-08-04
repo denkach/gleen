@@ -86,8 +86,7 @@ export default async function InvoicesPage({
       query={query}
       pageSize={25}
       exportAction={exportInvoicesCsv}
-      locale={locale}
-      copy={copy}
+      copySource={{ kind: 'catalog', locale }}
     />
   );
 }

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
-import type { BillingMessages } from '@/lib/i18n/messages/billing';
+import { billingMessages } from '@/lib/i18n/messages/billing';
 import type { Locale } from '@/lib/i18n/locales';
 
 import { BillingIcon } from './billing-icons';
@@ -14,9 +14,9 @@ const focusableSelector =
 const subscribeToHydration = () => () => {};
 
 export function BillingMobileNavigation({
-  copy,
   locale,
-}: Readonly<{ copy: BillingMessages['navigation']; locale: Locale }>) {
+}: Readonly<{ locale: Locale }>) {
+  const copy = billingMessages[locale].navigation;
   const pathname = usePathname() ?? '';
   const hydrated = useSyncExternalStore(
     subscribeToHydration,

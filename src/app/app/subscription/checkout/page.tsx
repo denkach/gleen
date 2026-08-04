@@ -103,8 +103,7 @@ export default async function CheckoutPage({
       sessionId={query.sessionId}
       createCheckout={createCheckoutSession}
       getConfirmation={getCheckoutConfirmation}
-      locale={locale}
-      copy={copy}
+      copySource={{ kind: 'catalog', locale }}
     />
   );
 }

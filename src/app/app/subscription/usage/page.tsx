@@ -90,8 +90,7 @@ export default async function UsagePage({ searchParams }: UsagePageProps) {
       periodBounds={periodBounds}
       pageSize={25}
       exportAction={exportUsageCsv}
-      locale={locale}
-      copy={copy}
+      copySource={{ kind: 'catalog', locale }}
     />
   );
 }

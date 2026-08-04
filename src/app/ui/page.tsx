@@ -7,6 +7,7 @@ import {
 } from '@/lib/i18n/catalog';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
+import { materializeUiPreviewCopy } from '@/lib/i18n/ui-preview-copy';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 
 import { UiPreview } from './ui-preview';
@@ -46,5 +47,5 @@ export default async function UiPreviewPage() {
     'shared',
     reportMissingSharedTranslation,
   );
-  return <UiPreview copy={copy.uiPreview} />;
+  return <UiPreview copy={materializeUiPreviewCopy(copy.uiPreview)} />;
 }

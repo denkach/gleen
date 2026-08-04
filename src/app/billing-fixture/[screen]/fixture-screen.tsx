@@ -142,8 +142,7 @@ export function BillingFixtureScreen({
           <SubscriptionScreen
             presentation={fixture.presentation}
             initialInterval="month"
-            locale={locale}
-            copy={fixtureCopy}
+            copySource={{ kind: 'catalog', locale }}
           />
           {boundaryEvidence}
         </>
@@ -204,8 +203,7 @@ export function BillingFixtureScreen({
                   }
                 : disabledExport
             }
-            locale={locale}
-            copy={fixtureCopy}
+            copySource={{ kind: 'catalog', locale }}
           />
           {boundaryEvidence}
         </>
@@ -322,8 +320,7 @@ export function BillingFixtureScreen({
                 ? (url) => setOpenedPortal(url)
                 : undefined
             }
-            locale={locale}
-            copy={fixtureCopy}
+            copySource={{ kind: 'catalog', locale }}
           />
           {boundaryEvidence}
         </>
@@ -372,8 +369,7 @@ export function BillingFixtureScreen({
             }}
             pageSize={25}
             exportAction={disabledExport}
-            locale={locale}
-            copy={fixtureCopy}
+            copySource={{ kind: 'catalog', locale }}
           />
           {boundaryEvidence}
         </>
@@ -385,8 +381,7 @@ export function BillingFixtureScreen({
           <LimitReachedScreen
             presentation={fixture.presentation}
             now={fixture.now}
-            locale={locale}
-            copy={fixtureCopy}
+            copySource={{ kind: 'catalog', locale }}
           />
           {boundaryEvidence}
         </>

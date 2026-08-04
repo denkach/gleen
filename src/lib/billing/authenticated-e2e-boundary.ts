@@ -31,6 +31,7 @@ export function isAuthenticatedBillingE2eBoundaryEnabled(
 }
 
 const ownerRows = {
+  profiles: [],
   billing_plan_catalog: billingFixtureCatalogRows,
   billing_subscription_overview: [
     {

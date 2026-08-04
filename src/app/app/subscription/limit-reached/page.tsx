@@ -47,8 +47,7 @@ export default async function LimitReachedPage() {
     <LimitReachedScreen
       presentation={presentation}
       now={now}
-      locale={locale}
-      copy={copy}
+      copySource={{ kind: 'catalog', locale }}
     />
   );
 }

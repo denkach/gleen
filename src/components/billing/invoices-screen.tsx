@@ -12,9 +12,12 @@ import type {
   InvoiceSummaryPresentation,
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
-import type { Locale } from '@/lib/i18n/locales';
 import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
+import {
+  resolveBillingCopySource,
+  type BillingCopySource,
+} from './billing-copy-source';
 import { BillingIcon } from './billing-icons';
 import { BillingCard, BillingPage, BillingStatus } from './billing-page';
 
@@ -83,8 +86,7 @@ export function InvoicesScreen({
   query,
   pageSize,
   exportAction,
-  locale,
-  copy,
+  copySource,
 }: Readonly<{
   subscription: Pick<
     SubscriptionPresentation,
@@ -95,10 +97,9 @@ export function InvoicesScreen({
   query: InvoiceRouteQuery;
   pageSize: number;
   exportAction: InvoiceExportAction;
-  locale: Locale;
-  copy: BillingMessages;
+  copySource: BillingCopySource;
 }>) {
-  void locale;
+  const { locale, copy } = resolveBillingCopySource(copySource);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(false);
   const mounted = useRef(true);
@@ -117,7 +118,6 @@ export function InvoicesScreen({
         eyebrow={copy.invoices.eyebrow}
         title={copy.invoices.title}
         description={copy.invoices.description}
-        copy={copy}
       >
         <BillingCard className="billing-state-card">
           <div className="billing-state-icon">
@@ -185,7 +185,6 @@ export function InvoicesScreen({
       eyebrow={copy.invoices.eyebrow}
       title={copy.invoices.title}
       description={copy.invoices.description}
-      copy={copy}
     >
       <BillingCard className="billing-invoice-summary">
         <div>

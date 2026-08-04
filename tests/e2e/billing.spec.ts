@@ -126,9 +126,13 @@ test('keeps every deterministic fixture preview-only and owner-safe routes authe
       });
       expect(response.status(), route).toBe(200);
       const html = await response.text();
+      const renderedHtml = html.replace(
+        /<script(?:\s[^>]*)?>[\s\S]*?<\/script>/gi,
+        '',
+      );
       expect(html).toContain('Checkout');
       expect(html).toContain(authenticatedOwner.email);
-      expect(html).not.toMatch(/temporarily unavailable/i);
+      expect(renderedHtml).not.toMatch(/temporarily unavailable/i);
       expect(html).not.toContain('foreign-owner@example.test');
       continue;
     }
@@ -300,7 +304,7 @@ test('splits Portal upgrade, downgrade, cancellation, concurrency, and retry bou
   await expect(
     page.getByRole('region', { name: 'Billing portal' }).getByRole('status'),
   ).toHaveText(
-    'Starter is scheduled for Aug 1, 2026. Your Prism Pro access remains active until then.',
+    'Starter is scheduled for 1 Aug 2026. Your Prism Pro access remains active until then.',
   );
   await expect(
     page.getByRole('button', { name: 'Cancel scheduled downgrade' }),
@@ -439,7 +443,7 @@ test('keeps scheduled plan controls keyboard operable', async ({ page }) => {
   await expect(
     page.getByRole('region', { name: 'Billing portal' }).getByRole('status'),
   ).toHaveText(
-    'Starter is scheduled for Aug 1, 2026. Your Prism Pro access remains active until then.',
+    'Starter is scheduled for 1 Aug 2026. Your Prism Pro access remains active until then.',
   );
 
   await openFixture(page, 'portal', 'active', 'portal-cancel');
@@ -575,7 +579,7 @@ test('durable reduced motion removes billing transitions and animated progress w
     .getByRole('region', { name: 'Billing portal' })
     .getByRole('status');
   await expect(scheduledStatus).toHaveText(
-    'Starter is scheduled for Aug 1, 2026. Your Prism Pro access remains active until then.',
+    'Starter is scheduled for 1 Aug 2026. Your Prism Pro access remains active until then.',
   );
   const scheduledMotion = await scheduledStatus.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -594,7 +598,7 @@ test('durable reduced motion removes billing transitions and animated progress w
   ).toBeLessThanOrEqual(0.001);
 });
 
-test('durable German and Spanish billing copy fits narrow responsive layouts with reduced motion', async ({
+test('@localization durable German and Spanish billing copy fits narrow responsive layouts with reduced motion', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });

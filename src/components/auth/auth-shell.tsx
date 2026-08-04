@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { LocaleSwitcher } from '@/components/i18n/locale-switcher';
+import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import type { Locale } from '@/lib/i18n/locales';
 import type { AuthCopy } from '@/lib/i18n/messages/auth';
 import type { LocaleSwitcherCopy } from '@/lib/i18n/messages/shared';
@@ -43,7 +44,7 @@ export function AuthShell({
         <div className="auth-panel-top">
           <LocaleSwitcher
             locale={locale}
-            copy={localeSwitcherCopy}
+            copy={materializeLocaleSwitcherCopy(localeSwitcherCopy)}
             variant="auth"
           />
         </div>

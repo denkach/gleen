@@ -1,7 +1,10 @@
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const requestLocale = vi.hoisted(() => ({ value: 'de' }));
+const { requestLocale, receivedLocaleSwitcherCopy } = vi.hoisted(() => ({
+  requestLocale: { value: 'de' },
+  receivedLocaleSwitcherCopy: vi.fn(),
+}));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -9,13 +12,71 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/i18n/request-locale', () => ({
   getRequestLocale: () => Promise.resolve(requestLocale.value),
 }));
+vi.mock('@/components/i18n/locale-switcher', () => ({
+  LocaleSwitcher: ({
+    copy,
+    locale,
+  }: {
+    copy: {
+      localeSwitcher: { label: string };
+    };
+    locale: 'uk' | 'ru' | 'en' | 'es' | 'de';
+  }) => {
+    receivedLocaleSwitcherCopy(copy);
+    const nativeName = {
+      uk: 'Українська',
+      ru: 'Русский',
+      en: 'English',
+      es: 'Español',
+      de: 'Deutsch',
+    }[locale];
+    return (
+      <button
+        type="button"
+        aria-label={`${copy.localeSwitcher.label}: ${nativeName}`}
+      />
+    );
+  },
+}));
 
 import HomePage, { generateMetadata } from './page';
 
 describe('HomePage', () => {
   afterEach(() => {
     requestLocale.value = 'de';
+    vi.clearAllMocks();
   });
+
+  it.each([
+    ['uk', 'Українська'],
+    ['ru', 'Русский'],
+    ['en', 'English'],
+    ['es', 'Español'],
+    ['de', 'Deutsch'],
+  ] as const)(
+    'passes only exact serializable locale-switcher strings for %s',
+    async (locale, nativeName) => {
+      requestLocale.value = locale;
+      render(await HomePage());
+
+      const received = receivedLocaleSwitcherCopy.mock.lastCall![0];
+      expect(Object.keys(received)).toEqual(['localeSwitcher']);
+      expect(Object.keys(received.localeSwitcher).sort()).toEqual([
+        'errors',
+        'label',
+        'menuLabel',
+        'saving',
+      ]);
+      expect(
+        Object.values(received.localeSwitcher).every(
+          (value) => typeof value !== 'function',
+        ),
+      ).toBe(true);
+      expect(
+        screen.getByRole('button', { name: new RegExp(nativeName) }),
+      ).toBeVisible();
+    },
+  );
 
   it('renders the complete German marketing surface selected on the server', async () => {
     render(await HomePage());

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
   billingE2eOwnerId,
@@ -9,6 +10,8 @@ import {
   createSupabaseBillingRepository,
   type SupabaseBillingClient,
 } from './supabase-repository';
+import { readInterfaceLocale } from '@/lib/onboarding/repository';
+import { createSupabaseOnboardingStorage } from '@/lib/onboarding/supabase-storage';
 
 const token = 'playwright-local-only-token';
 
@@ -89,6 +92,20 @@ describe('authenticated billing E2E boundary', () => {
         token,
       ),
     ).toBe(true);
+  });
+
+  it('supports the owner-scoped profile lookup used by request locale resolution', async () => {
+    const client = createAuthenticatedBillingE2eClient();
+    const storage = createSupabaseOnboardingStorage(
+      client as unknown as SupabaseClient,
+    );
+
+    await expect(
+      readInterfaceLocale(storage, billingE2eOwnerId),
+    ).resolves.toBeNull();
+    expect(() => client.from('profiles_archive')).toThrow(
+      'Authenticated billing fixture rejected unknown table',
+    );
   });
 
   it('exercises repository owner filters against mixed owner and foreign rows', async () => {

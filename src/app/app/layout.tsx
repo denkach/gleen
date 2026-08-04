@@ -17,6 +17,7 @@ import {
 } from '@/lib/i18n/catalog';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 
 function reportMissingTranslation(event: MissingTranslationEvent) {
@@ -68,7 +69,7 @@ export default async function AppLayout({
       copy={copy}
       identity={deriveAppIdentity(user)}
       locale={locale}
-      localeSwitcherCopy={sharedCopy}
+      localeSwitcherCopy={materializeLocaleSwitcherCopy(sharedCopy)}
       usage={usage}
     >
       {children}

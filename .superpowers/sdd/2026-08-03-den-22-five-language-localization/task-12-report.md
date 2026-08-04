@@ -1,0 +1,471 @@
+# DEN-22 Task 12 verification report
+
+## Scope
+
+- Issue: DEN-22 — complete five-language localization.
+- Branch: `den-22-complete-five-language-localization`.
+- Starting commit: `f217451`.
+- Interface locales: `uk`, `ru`, `en`, `es`, `de`.
+- Routes remain unprefixed; interface and generated-content locales remain independent.
+
+## Plan, assumptions, dependencies, and risks
+
+- Add focused `@localization` Playwright journeys for guest persistence,
+  authenticated fixtures, output-locale independence, keyboard access,
+  German/Spanish responsive expansion, and reduced motion.
+- Preserve the approved dark Prism design and existing billing/processing
+  behavior. Any implementation change is limited to a localization-caused
+  failure reproduced by the new suite.
+- Browser fixtures depend only on the existing local Playwright environment
+  values in `playwright.config.ts`; no real credentials or `.env` files are
+  used.
+- The authenticated settings route is the highest-risk boundary because it
+  joins locale resolution, onboarding preferences, and the local authenticated
+  billing fixture.
+
+## Baseline
+
+- `npm test` — PASS: 168 files, 1,550 tests.
+
+## RED / GREEN evidence
+
+### Browser startup RED
+
+- `PLAYWRIGHT_PORT=3076 npx playwright test tests/e2e/localization.spec.ts --project=chromium`
+  could not bind the local server inside the sandbox: `listen EPERM` on
+  `127.0.0.1:3076`. The required escalated retry reached Next.js but stopped
+  before collecting a test because an RSC prop contained
+  `exampleTabs: function exampleTabs` (digest `680688337`).
+- The interrupted run left a stale listener on port 3076 (PID 7044). A later
+  check showed the listener was gone. Local `reuseExistingServer` also caused
+  an interrupted pre-fix server on port 3079 to be reused; subsequent browser
+  work uses a fresh port or `CI=1` so a new server is guaranteed.
+
+### RSC localization boundary RED / GREEN
+
+- RED: `npx vitest run src/app/ui/page.test.tsx` — 1 file failed, all 5 locale
+  cases failed because the `/ui` client prop received a function instead of a
+  serializable localized tab-label map.
+- GREEN: `npx vitest run src/app/ui/page.test.tsx src/app/ui/ui-preview.test.tsx`
+  — 2 files passed, 7 tests passed after server-side materialization.
+- A fresh `/sign-in` reproduction then proved a second instance of the same
+  root cause: structural `LocaleSwitcherCopy` typing did not remove runtime
+  `common` and `uiPreview` domains from the full shared catalog.
+- RED: `npx vitest run src/app/page.test.tsx` — 5 new locale cases failed;
+  received keys were `common`, `localeSwitcher`, and `uiPreview`, while the
+  client boundary requires only `localeSwitcher`.
+- GREEN: `npx vitest run src/app/page.test.tsx src/components/auth/auth-shell.test.tsx src/app/app/layout.test.tsx src/app/ui/page.test.tsx src/app/ui/ui-preview.test.tsx`
+  — 5 files passed, 21 tests passed. The locale-switcher materializer copies
+  only the exact string fields and is used at landing, auth, app layout, and
+  localized app/history/result/billing fixture boundaries.
+
+### Portalled locale submission RED / GREEN
+
+- Fresh-browser RED: `CI=1 PLAYWRIGHT_PORT=3082 npx playwright test tests/e2e/localization.spec.ts --project=chromium --grep "guest locale" --timeout=30000 --global-timeout=120000`
+  — 1 test failed on all 3 attempts. The trace proves Playwright clicked the
+  visible `Deutsch` menu item, but the portalled Radix item closed without
+  emitting a POST/server-action request; the URL stayed intact while the UI
+  and `<html lang>` remained English.
+- Unit RED: `npx vitest run src/components/i18n/locale-switcher.test.tsx` — 1
+  test failed and 1 passed because the locale option made 0 explicit
+  `requestSubmit` calls.
+- Unit GREEN: the same command — 1 file passed, 2 tests passed after explicitly
+  submitting the associated form from the portalled menu item and synchronizing
+  the preserved root `<html lang>` after the successful server action.
+- Fresh-browser follow-up on port 3083 proved the POST, `gleen_locale=de`
+  response cookie, German RSC refresh, preserved URL, and `de-DE` document
+  language all work. The German heading was present in the DOM but inaccessible
+  because the still-open modal menu marked the auth card `aria-hidden` while
+  the save was pending.
+- Modal-menu RED: `npx vitest run src/components/i18n/locale-switcher.test.tsx`
+  — 1 test failed and 2 passed; a deliberately pending locale action left the
+  menu in `data-state="open"` with disabled items.
+- Modal-menu GREEN: the same command — 1 file passed, 3 tests passed after
+  controlling the menu state and closing it before explicit form submission.
+- Fresh-browser GREEN: `CI=1 PLAYWRIGHT_PORT=3084 npx playwright test tests/e2e/localization.spec.ts --project=chromium --grep "guest locale" --timeout=30000 --global-timeout=120000`
+  — 1 test passed in 5.2 seconds, covering the preserved route/query, German
+  document language and accessible auth copy, and guest-cookie persistence
+  after reload.
+
+### Full localization-suite assertion RED
+
+- `CI=1 PLAYWRIGHT_PORT=3085 npx playwright test tests/e2e/localization.spec.ts --project=chromium`
+  — 3 passed and 8 failed in 4.3 minutes. The three functional locale journeys
+  passed. Trace and accessibility snapshots showed the remaining failures were
+  assertions that did not match the approved UI mechanisms:
+  - keyboard focus uses the shared dropdown's highlighted-state inset
+    `box-shadow`, while the test checked only `outline`;
+  - the localized hero's two visual lines are separated by `<br>`, so raw
+    `textContent` concatenates them while the accessibility tree correctly
+    exposes the expected heading with a space;
+  - Radix names the menu from its trigger via `aria-labelledby` (`Language:
+    English`), which takes precedence over the content's `aria-label`.
+- The assertions now verify the focused/highlighted option's visible computed
+  `box-shadow`, locate the hero by its exact semantic accessible name, and
+  locate the single open locale menu by role. Approved markup, copy, and focus
+  styling are unchanged.
+
+### Authenticated settings fixture RED / GREEN
+
+- Fresh-browser follow-up on port 3086 stopped after deterministic repeats: 3
+  passed, 7 failed, and 1 did not run. All six responsive matrices reached
+  localized landing, auth, intake, History, result, and billing views; the
+  authenticated settings request then failed because the token-gated fixture
+  rejected the exact `profiles` lookup used by request-locale resolution.
+- Unit RED: `npx vitest run src/lib/billing/authenticated-e2e-boundary.test.ts`
+  — 1 failed and 8 passed because `readInterfaceLocale` rejected `profiles`.
+- Unit GREEN: the same command — 1 file passed, 9 tests passed after adding
+  only `profiles` to the fixture's explicit table catalog with no seeded
+  profile. The owner-filtered lookup returns `null`, allowing the locale cookie
+  and default onboarding state to remain authoritative; an unrelated profile
+  table is still rejected.
+
+### Current 3086 test-fixture findings
+
+- Keyboard trace showed the third iteration sent two arrow keys only a few
+  milliseconds apart; Radix applied the first focus move to `Русский` after the
+  second key had already been sent. The test now waits for each intermediate
+  focused option before sending the next keyboard command.
+- Hydration diagnostics showed Playwright's default screenshot caret hiding
+  injected `style="caret-color: transparent"` into inputs before React finished
+  hydration. Evidence screenshots now use `caret: "initial"`, avoiding that
+  test-only DOM mutation.
+- At the approved `max-width: 620px` result layout, the accessibility tree
+  exposes localized bottom-navigation buttons while desktop/tablet expose
+  tabs. The responsive assertion now selects the actual control role at the
+  active viewport breakpoint.
+
+### Mobile app-shell selector RED
+
+- The fresh mobile localization run passed 4 tests before two functional
+  journeys failed on all retries and interrupted the remaining matrix work.
+  Both failures waited for the desktop-only `.app-topbar` locale switcher.
+- The mobile accessibility tree proves the approved compact locale control is
+  present as the visible `Language: English` button in `.mobile-topbar`.
+- The suite now uses one role/name helper keyed by the current native language
+  name. Accessibility visibility selects the approved desktop or compact
+  mobile control without coupling journeys to shell CSS; route and locale
+  assertions are unchanged.
+- The next fresh mobile run passed 10 of 11 tests in 1.2 minutes. Its only
+  failure was the Spanish functional journey's duplicate desktop `tab`
+  assertion. Both the journey and responsive matrix now use the same
+  breakpoint-aware result-navigation helper: approved bottom-navigation button
+  at 620px and below, tab otherwise. The result URL assertion remains exact.
+- A second fresh mobile run again passed 10 of 11 tests. The final failure was
+  the Spanish journey expecting the desktop-only `Suscripción` sidebar link at
+  the approved mobile billing layout. Its accessibility tree instead exposes
+  the localized `Navegación móvil de facturación` region with the current
+  `Plan` link and `Uso` link. The test now verifies that visible mobile region,
+  `aria-current="page"`, and the fixture-safe Spanish destinations; desktop and
+  tablet retain the production `/app/subscription` destination assertion.
+
+### Production billing RSC boundary RED / GREEN
+
+- The first broad `CI=1 PLAYWRIGHT_PORT=3078 npm run test:e2e` run was
+  interrupted with 10 tests passed and 74 not run. Unlike the client-local
+  billing fixture, each production `/app/subscription*` server page passed the
+  complete `billingMessages[locale]` object into a client screen. Next.js
+  correctly rejected formatter functions such as `expires`, `cyclePercent`,
+  `remaining`, `planChange`, `choose`, checkout/order formatters, usage
+  formatters, and invoice formatters at the RSC serialization boundary.
+- Strict page-level RED:
+  `npx vitest run src/app/app/subscription/billing-copy-boundary.test.tsx` — 1
+  file failed, 6/6 route contracts failed. Every captured production client
+  element still had a `copy` prop containing functions and lacked a
+  serializable catalog source.
+- The root fix introduces a required discriminated `BillingCopySource`:
+  production pages pass the exact structured-cloneable
+  `{ kind: 'catalog', locale }`, while direct component tests may explicitly
+  use `{ kind: 'injected', locale, copy }`. Subscription, usage, checkout,
+  portal, invoice, and limit-reached screens resolve the catalog on their side
+  of the client boundary; there is no optional or silent English fallback.
+- `BillingPage` no longer receives the full catalog. Its client mobile
+  navigation receives only `locale` and selects the exact navigation strings
+  locally, so the server-to-client navigation prop is primitive and
+  serializable.
+- Strict page-level GREEN: the same command — 1 file passed, all 6 production
+  route contracts passed, including exact JSON and `structuredClone` checks on
+  the catalog source and absence of the legacy `copy`/`locale` props.
+- Integrated GREEN: 11 production-page, fixture, and component files passed,
+  107 tests passed.
+- Full billing GREEN: all 27 billing page/component/domain/repository/style
+  test files passed, 357 tests passed.
+
+### Broad Chromium localization-contract drift RED / targeted GREEN
+
+- The parent agent's fresh broad Chromium rerun after the billing RSC fix
+  completed with 73 passed and 12 failed. Retry-two `error-context.md` files
+  made every failure deterministic; none exposed a product-state, ownership,
+  keyboard, responsive, or reduced-motion regression.
+- Billing accounted for four failures. The authenticated checkout assertion
+  searched the entire Next.js response, including serialized client catalog
+  scripts, and therefore matched the legitimate app intake message “The video
+  service is temporarily unavailable” even though checkout rendered its
+  loading state with no billing error. The assertion now removes script
+  contents before checking rendered server markup. Three portal assertions
+  expected US-style `Aug 1, 2026`; the selected English contract is `en-GB`,
+  and both the formatter and portal unit tests require `1 Aug 2026`.
+- Intake accounted for seven failures. Four processing handoff assertions
+  expected the pre-localization URL to contain only `analysis`; the fixture now
+  intentionally preserves `intake=ready`, `locale=en`, and `analysis` so the
+  interface locale survives the handoff. The duplicate dialog expected raw
+  locale key `en` instead of the approved native name `English`. Two error
+  assertions used superseded English fragments, and the first processing test
+  still looked for former uppercase rail IDs instead of localized truthful
+  state labels such as `Summary is queued` and `Flashcards not selected`.
+- History accounted for one failure: the favorite rollback still expected the
+  removed one-off string `Favorite could not be saved.` instead of the shared,
+  localized action failure `We could not update History. Try again.`
+- Only the three affected E2E specifications changed; production code did not.
+  The original broad failures are the RED evidence. Targeted non-browser GREEN:
+  12 formatter, billing presentation/portal, processing/intake, and History
+  unit files passed, 143 tests passed. ESLint, strict type checking, and
+  whitespace checks also passed after the assertion corrections.
+- A browser GREEN claim remains deliberately pending. The parent agent owns the
+  targeted Playwright reruns and the subsequent broad Chromium gate.
+
+### Full cross-project gate: 204 passed / 8 failed
+
+- The parent agent's next full Chromium plus mobile-chrome gate ran for 6.1
+  minutes: 204 passed and 8 failed. Seven failures came from five stale
+  assertions in `analyze-processing.spec.ts`; the complete-handoff and
+  reduced-motion failures repeated in both projects. One deterministic visual
+  snapshot remained for review.
+- The processing rail test still searched for former uppercase rail IDs. The
+  localized component now exposes truthful complete phrases in all four visual
+  rails: `Summary is queued`, `Flashcards not selected`, `Timestamps are
+  queued`, and `Export is queued`. This is the same catalog-backed contract
+  already proved by the processing component tests and the corrected intake
+  journey.
+- Three URL assertions expected localization to discard fixture context. The
+  production-like processing URL intentionally preserves `journey` and
+  `locale` before adding `analysis`, and result navigation carries `journey`
+  and `locale` through to `#overview`. The exit-wipe test also checked the
+  transient processing URL only after waiting through the complete and exiting
+  states, by which time navigation could truthfully have completed. It now
+  verifies the preserved processing URL immediately after starting, then the
+  preserved result destination after the exit state. Complete and reduced
+  journeys use their respective semantic query values in both desktop and
+  mobile projects.
+- The 390×844 geometry test expected an exact 500px processing shell. The
+  approved narrow CSS contract has always been `height: auto; min-height:
+  500px`; localized rail-state phrases correctly expand the shell to 607.5px.
+  The E2E assertion now checks the actual invariant (at least 500px), while
+  retaining horizontal-overflow, stacked-column, rail-containment, padding,
+  radius, and gap checks and adding explicit vertical panel containment.
+  Fixed 300px desktop and 420px tablet contracts remain exact.
+- The Pixel 7 `portal/past-due` visual produced the same actual PNG byte-for-byte
+  on the initial run and both retries, with 8,987 changed pixels (reported ratio
+  0.03). Direct expected/actual/diff inspection found two meaningful DEN-22
+  changes: the compact locale-switcher globe is now present in the mobile
+  header, and renewal copy changed from `Aug 1, 2025` to the selected `en-GB`
+  form `1 Aug 2025`. The diff mask also contains thin glyph and edge
+  antialiasing outlines across otherwise aligned text, cards, and navigation;
+  the actual screenshot has no clipping or horizontal overflow. The parent
+  agent visually approved these intentional changes, regenerated only this
+  Pixel 7 portal snapshot, and its targeted update run passed 1/1.
+- Only non-visual stale assertions in `tests/e2e/analyze-processing.spec.ts`
+  were changed locally. Billing production code, visual test code, and CSS
+  remain untouched; the parent-owned visual change is limited to the approved
+  Pixel 7 portal snapshot.
+- The parent targeted processing rerun then passed 6/7. The sole 390×844
+  failure was test synchronization, not layout: the `>=500px` poll succeeded
+  while the declared 0.75-second `height` transition was still moving toward
+  the previously observed 607.5px final auto height, so the following panel
+  containment sample compared final content with a transient shell. The test
+  now registers a `transitionend` listener for the shell's `height` property
+  before dispatching Analyze, then retains the `>=500px` and vertical
+  containment assertions after that specific transition completes. No fixed
+  sleep or arbitrary final height was introduced; targeted browser
+  confirmation remains pending with the parent.
+- That listener-first implementation produced a new targeted RED: 0/1, with
+  all three attempts timing out inside the unresolved pre-click
+  `locator.evaluate`. The pending protocol command prevented Playwright from
+  dispatching the click that would start the transition. The test now clicks
+  first, observes `data-analysis-state="submitting"`, then queries the shell's
+  Web Animations API for an active `CSSTransition` whose
+  `transitionProperty` is `height` and awaits its `finished` promise. An absent
+  or already-finished transition returns immediately; cancellation is handled
+  safely. The final `>=500px` and containment checks remain unchanged, with no
+  arbitrary sleep or final-height hardcode.
+- The next targeted rerun again finished 0/1, now without a timeout: shell
+  height had settled, but vertical containment was still false. The panel owns
+  separate opacity and transform transitions (`0.6s 0.28s` and `0.7s 0.28s`),
+  so it can remain translated and intentionally clipped for roughly 0.23s
+  after the shell's 0.75-second height transition finishes. Final geometry now
+  waits for all active `CSSTransition` animations returned by
+  `getAnimations()` on both the shell and processing panel after the observed
+  `submitting` state. Already-finished or absent transitions require no wait,
+  and canceled transitions are handled safely. The same height and containment
+  contracts remain in place without sleeps or hardcoded localized height.
+- The following full rerun completed in 4.4 minutes with 211/212 passing. Its
+  sole failure was the newly added `contentInsideShell` invariant at 1440×900,
+  not an original desktop contract. Vertical containment was introduced only
+  to replace the stale exact 500px assertion for the narrow stacked
+  `height:auto` layout; desktop and tablet use an absolute/inset animated panel
+  and retain their original exact 300px/420px heights, two-column alignment,
+  padding, radius, gap, overflow, and rail-containment checks. The final
+  assertion is therefore scoped to the stacked/mobile branch alongside its
+  rail-below-status invariant, without weakening any pre-existing
+  desktop/tablet assertion.
+- Final GREEN: the parent reran all four Chromium geometry viewports after that
+  scope correction; all 4 passed in 10.5 seconds. The subsequent clean
+  Chromium plus mobile-chrome gate passed all 212 tests in 4.3 minutes. Its
+  only output beyond passing tests was the existing `NO_COLOR`/`FORCE_COLOR`
+  warning and non-failing LCP suggestions.
+
+## Browser evidence
+
+- Targeted Chromium suite:
+  `PLAYWRIGHT_PORT=3076 npx playwright test tests/e2e/localization.spec.ts --project=chromium`
+  — PASS, 11/11 tests in 29.2 seconds.
+- Targeted mobile suite:
+  `PLAYWRIGHT_PORT=3077 npx playwright test tests/e2e/localization.spec.ts --project=mobile-chrome`
+  — PASS, 11/11 tests in 54.4 seconds.
+- The responsive tests generated 42 full-page evidence screenshots: seven
+  routes for each German/Spanish and desktop/tablet/mobile combination. Every
+  artifact was opened and inspected directly.
+
+| Locale | Viewport | Routes inspected | Overflow |
+| --- | --- | --- | --- |
+| German (`de-DE`) | 1440×900 desktop | landing, auth, intake, History, result, billing, settings | PASS on all 7 |
+| German (`de-DE`) | 1024×768 tablet | landing, auth, intake, History, result, billing, settings | PASS on all 7 |
+| German (`de-DE`) | 390×844 mobile | landing, auth, intake, History, result, billing, settings | PASS on all 7 |
+| Spanish (`es-ES`) | 1440×900 desktop | landing, auth, intake, History, result, billing, settings | PASS on all 7 |
+| Spanish (`es-ES`) | 1024×768 tablet | landing, auth, intake, History, result, billing, settings | PASS on all 7 |
+| Spanish (`es-ES`) | 390×844 mobile | landing, auth, intake, History, result, billing, settings | PASS on all 7 |
+
+- Desktop inspection confirms the approved sidebar/topbar, two-column result
+  workspace, wide History table, and plan/billing layout remain intact with
+  expanded German and Spanish labels.
+- Tablet inspection confirms the compressed sidebar and cards wrap without
+  clipping. Result tabs, History controls, billing cards, and settings fields
+  stay within the 1024px viewport.
+- Mobile inspection confirms the compact header and fixed bottom navigation,
+  card-based History list, result bottom artifact navigation, and billing
+  `Plan`/`Uso` navigation. German and Spanish headings, labels, and long action
+  copy wrap within 390px without horizontal scroll.
+- Result fixture content intentionally remains English while its controls and
+  metadata labels are German or Spanish, visual evidence that interface and
+  generated-content languages remain independent.
+- Keyboard journey: PASS for `Українська`, `Русский`, `English`, `Español`, and
+  `Deutsch`; every item receives Radix highlighted focus with a visible inset
+  focus treatment before Enter selects it.
+- Native-name/no-flag checks: PASS across the keyboard journey and every one
+  of the 42 responsive route visits.
+- Reduced-motion journey: PASS. The existing landing page reports the
+  `reduce-motion` state, the custom cursor is absent, menu animation and
+  transition durations are at most 0.001 seconds, and the locale trigger has
+  no animation after switching to German.
+- Approved visual snapshot confirmation:
+  `CI=1 PLAYWRIGHT_PORT=3070 npx playwright test tests/e2e/billing.visual.spec.ts --project=chromium --grep "den-20-412x839-pixel7-portal-past-due"`
+  — PASS, 1/1 test after regenerating only the reviewed Pixel 7 portal/past-due
+  snapshot.
+- Final processing geometry:
+  `CI=1 PLAYWRIGHT_PORT=3099 npx playwright test tests/e2e/analyze-processing.spec.ts --project=chromium --grep "matches processing geometry without overflow"`
+  — PASS, 4/4 viewports in 10.5 seconds.
+- Final full browser gate:
+  `CI=1 PLAYWRIGHT_PORT=3100 npm run test:e2e` — PASS, 212/212 tests in 4.3
+  minutes across Chromium and mobile-chrome. Output contained only the existing
+  `NO_COLOR`/`FORCE_COLOR` warning and non-failing LCP suggestions.
+- The auth evidence images and some desktop/tablet billing images freeze the
+  approved finite entrance animation before its final frame, so their text is
+  visibly blurred or dimmed. The accessible localized headings, route checks,
+  and overflow checks have already passed; this is an evidence-capture clarity
+  limitation rather than a final-state layout failure.
+
+## Repository gates
+
+- `npm run format` — PASS; only generated `next-env.d.ts` changed and was then
+  restored.
+- `npm run format:check` — PASS, all matched files use Prettier style.
+- `npm run lint` — PASS.
+- `npm run typecheck` — PASS under strict TypeScript settings.
+- `npm test` — PASS with exit code 0. Vitest collection contains 169 test files
+  and 1,562 tests. The existing jsdom `Window.scrollTo()` notices remain
+  non-failing.
+- `NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000 NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=placeholder NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder npm run build`
+  — PASS. Next.js 16.2.10 compiled, type-checked, collected page data, and
+  generated 30/30 static pages. Values were explicit non-secret placeholders
+  for public build-time validation only.
+- Targeted billing verification after the mobile navigation correction:
+  `npx vitest run src/components/billing/subscription-screen.test.tsx 'src/app/billing-fixture/[screen]/page.test.tsx'`
+  — PASS, 2 files and 24 tests.
+- Targeted processing verification after the 204/8 full gate:
+  `npx vitest run src/app/app-shell-fixture/page.test.tsx src/components/app-shell/analyze-processing-fixture.test.tsx src/components/app-shell/analyze-processing-visual.test.tsx src/components/app-shell/inline-analysis-processing.test.tsx`
+  — PASS, 4 files and 46 tests. These cover localized rail-state copy, the
+  narrow `height:auto`/`min-height:500px` CSS contract, preserved processing
+  queries and result navigation, and reduced-motion immediate navigation.
+- `npx playwright test tests/e2e/localization.spec.ts --project=mobile-chrome --list`
+  — PASS, all 11 intended tests collect.
+- The next full Chromium plus mobile-chrome gate confirmed the earlier
+  billing/History/intake corrections while reaching 204 passed and 8 failed.
+  The approved snapshot then passed 1/1, and the following full rerun confirmed
+  the corrected processing behavior at 211/212. Its only failure was the new
+  desktop application of a mobile-only containment invariant, now scoped to
+  the stacked branch. The final all-viewport geometry rerun passed 4/4, and the
+  subsequent full Chromium plus mobile-chrome gate passed 212/212.
+
+## Scope and secret review
+
+- `git diff origin/main --check` — PASS with no whitespace errors.
+- `git diff --check` — PASS for the uncommitted Task 12 delta.
+- `git status --short` contains only the focused Task 12 test/config changes
+  and the localization-caused RSC, locale-switcher, and authenticated-fixture
+  fixes documented above. The report lives under the intentionally ignored
+  `.superpowers/sdd` directory and must be force-added at final commit time.
+- `next-env.d.ts` was restored and is absent from the final status.
+- No `.env` file, dependency manifest, migration, credential, provider key, or
+  secret value changed. A scan of added lines found no private-key material or
+  populated Supabase, Stripe, OpenRouter, YouTube, or Supadata secret values.
+- No plan, price, currency, usage-limit, or generated-content literal was added
+  by Task 12. Billing domain behavior is unchanged; its client copy-source
+  boundary is now serializable. The token-gated test fixture permits only the
+  exact owner-filtered `profiles` read already performed by request-locale
+  resolution.
+- The complete `origin/main` diff is the cumulative 226-file DEN-22
+  localization implementation from Tasks 1–12. Its touched namespaces match
+  the issue plan: locale infrastructure and catalogs, localized route/component
+  injection, formatting and settings, responsive CSS, email copy, tests, and
+  the approved DEN-22 plan/spec. No unrelated product feature was identified.
+
+## Changed files
+
+- Verification: `tests/e2e/localization.spec.ts`, localization tags in the five
+  existing auth/intake/History/billing/result suites, and the focused
+  `mobile-chrome` grep in `playwright.config.ts`.
+- Broad Chromium assertion alignment: `tests/e2e/billing.spec.ts`,
+  `tests/e2e/history.spec.ts`, and `tests/e2e/intake.spec.ts`, limited to
+  localized copy/date/state and preserved-query expectations demonstrated by
+  the failure artifacts.
+- Full-gate processing alignment: `tests/e2e/analyze-processing.spec.ts`, plus
+  the parent-approved regenerated Pixel 7 portal/past-due snapshot.
+- Serializable localization boundaries: `src/lib/i18n/locale-switcher-copy.ts`,
+  `src/lib/i18n/ui-preview-copy.ts`, their page/component tests, and the
+  landing, auth, app layout, UI preview, and localized fixture page call sites.
+- Locale-switch interaction: `src/components/i18n/locale-switcher.tsx` and its
+  tests, covering explicit submission from the Radix portal, menu closure, and
+  synchronized document language.
+- Authenticated fixture: `src/lib/billing/authenticated-e2e-boundary.ts` and its
+  test, adding only the request-locale `profiles` lookup to the explicit fixture
+  catalog.
+- Production billing RSC boundary: the six `/app/subscription*` pages,
+  `src/components/billing/billing-copy-source.ts`, the six affected client
+  screens and tests, `BillingPage`, `BillingMobileNavigation`, the billing
+  fixture screen, existing limit-reached page coverage, and the new six-route
+  boundary test.
+- Evidence: this Task 12 report.
+
+## Remaining risks
+
+- The final full gate passes 212/212 and confirms the approved visual update,
+  corrected processing behavior, and stacked-only containment scope across all
+  four geometry viewports.
+- Full-page evidence capture can land mid-way through finite entrance motion,
+  producing blurred/dim auth or billing artifacts even though semantic and
+  overflow assertions pass. Publication-quality screenshots should wait for
+  the final animation frame; no approved runtime motion was changed here.
+- The production build uses validated placeholder public environment values
+  and therefore does not exercise live Supabase, Stripe, or provider services.
+- The ignored Task 12 report requires an intentional force-add before the final
+  conventional commit.

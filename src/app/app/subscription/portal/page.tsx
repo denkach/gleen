@@ -141,8 +141,7 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
       cancelScheduledDowngradeAction={cancelScheduledDowngrade}
       planChange={planChange}
       planCatalog={portalPlanCatalog}
-      locale={locale}
-      copy={copy}
+      copySource={{ kind: 'catalog', locale }}
     />
   );
 }

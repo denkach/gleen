@@ -7,6 +7,7 @@ import { unavailableUsage } from '@/lib/app-shell';
 import { localeSchema } from '@/lib/i18n/locales';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import {
@@ -101,7 +102,7 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
       copy={appMessages[locale]}
       identity={fixtureIdentity}
       locale={locale}
-      localeSwitcherCopy={sharedMessages[locale]}
+      localeSwitcherCopy={materializeLocaleSwitcherCopy(sharedMessages[locale])}
       usage={unavailableUsage}
       pathnameOverride="/app"
     >

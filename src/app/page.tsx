@@ -16,6 +16,7 @@ import {
 } from '@/lib/i18n/catalog';
 import { marketingMessages } from '@/lib/i18n/messages/marketing';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 
 const Arrow = () => (
@@ -84,7 +85,7 @@ export default async function HomePage() {
           <div className="header-actions">
             <LocaleSwitcher
               locale={locale}
-              copy={sharedCopy}
+              copy={materializeLocaleSwitcherCopy(sharedCopy)}
               variant="landing"
             />
             <a className="btn btn-ghost btn-sm desktop-only" href="/sign-in">

@@ -2,7 +2,11 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { billingMessages } from '@/lib/i18n/messages/billing';
+import {
+  billingMessages,
+  type BillingMessages,
+} from '@/lib/i18n/messages/billing';
+import type { Locale } from '@/lib/i18n/locales';
 
 import type { SubscriptionPresentation } from '@/lib/billing/presentation';
 
@@ -15,10 +19,13 @@ function SubscriptionScreen({
   locale = 'en',
   copy = billingMessages.en,
   ...props
-}: Omit<SubscriptionScreenProps, 'locale' | 'copy'> &
-  Partial<Pick<SubscriptionScreenProps, 'locale' | 'copy'>>) {
+}: Omit<SubscriptionScreenProps, 'copySource'> &
+  Readonly<{ locale?: Locale; copy?: BillingMessages }>) {
   return (
-    <ProductionSubscriptionScreen {...props} locale={locale} copy={copy} />
+    <ProductionSubscriptionScreen
+      {...props}
+      copySource={{ kind: 'injected', locale, copy }}
+    />
   );
 }
 

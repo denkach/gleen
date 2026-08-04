@@ -18,6 +18,10 @@ import type { Locale } from '@/lib/i18n/locales';
 import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
 import {
+  resolveBillingCopySource,
+  type BillingCopySource,
+} from './billing-copy-source';
+import {
   CheckoutScreen,
   pollForCheckoutConfirmation,
   type CheckoutOrderTotals,
@@ -166,8 +170,7 @@ export function CheckoutExperience({
   sessionId,
   createCheckout,
   getConfirmation,
-  locale,
-  copy,
+  copySource,
 }: Readonly<{
   presentation: CheckoutPresentation;
   prices: readonly PricePresentation[];
@@ -178,9 +181,9 @@ export function CheckoutExperience({
     interval: PricePresentation['interval'];
   }) => Promise<CheckoutActionResult>;
   getConfirmation: (sessionId: string) => Promise<ConfirmationActionResult>;
-  locale: Locale;
-  copy: BillingMessages;
+  copySource: BillingCopySource;
 }>) {
+  const { locale, copy } = resolveBillingCopySource(copySource);
   const [confirmationState, setConfirmationState] =
     useState<CheckoutScreenState>(
       sessionId === null ? { kind: 'loading' } : { kind: 'confirming' },

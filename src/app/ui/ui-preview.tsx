@@ -29,9 +29,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { UiPreviewCopy } from '@/lib/i18n/messages/shared';
+import {
+  uiPreviewTabAccents,
+  type SerializableUiPreviewCopy,
+} from '@/lib/i18n/ui-preview-copy';
 
-function tokenGroups(copy: UiPreviewCopy) {
+function tokenGroups(copy: SerializableUiPreviewCopy) {
   return [
     {
       label: copy.surfaces,
@@ -55,14 +58,6 @@ function tokenGroups(copy: UiPreviewCopy) {
   ] as const;
 }
 
-const tabAccents = [
-  'neutral',
-  'summary',
-  'flashcards',
-  'timestamps',
-  'export',
-] as const;
-
 function Section({
   children,
   title,
@@ -80,7 +75,9 @@ function Section({
   );
 }
 
-function MotionPreference({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
+function MotionPreference({
+  copy,
+}: Readonly<{ copy: SerializableUiPreviewCopy }>) {
   const [reduced, setReduced] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -105,7 +102,9 @@ function MotionPreference({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
   );
 }
 
-function ToastExamples({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
+function ToastExamples({
+  copy,
+}: Readonly<{ copy: SerializableUiPreviewCopy }>) {
   const { toast } = useToast();
   const [actionResult, setActionResult] = useState(copy.noToastAction);
 
@@ -167,7 +166,9 @@ function ToastExamples({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
   );
 }
 
-function PreviewGallery({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
+function PreviewGallery({
+  copy,
+}: Readonly<{ copy: SerializableUiPreviewCopy }>) {
   const [checked, setChecked] = useState(true);
 
   return (
@@ -331,10 +332,10 @@ function PreviewGallery({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
 
       <Section title={copy.tabAccents}>
         <div className="ui-preview-tabs">
-          {tabAccents.map((accent) => (
+          {uiPreviewTabAccents.map((accent) => (
             <Tabs defaultValue="one" key={accent}>
               <h3>{accent}</h3>
-              <TabsList accent={accent} aria-label={copy.exampleTabs(accent)}>
+              <TabsList accent={accent} aria-label={copy.exampleTabs[accent]}>
                 <TabsTrigger value="one">{copy.first}</TabsTrigger>
                 <TabsTrigger value="two">{copy.second}</TabsTrigger>
                 <TabsTrigger value="three" disabled>
@@ -377,7 +378,9 @@ function PreviewGallery({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
   );
 }
 
-export function UiPreview({ copy }: Readonly<{ copy: UiPreviewCopy }>) {
+export function UiPreview({
+  copy,
+}: Readonly<{ copy: SerializableUiPreviewCopy }>) {
   return (
     <TooltipProvider>
       <ToastProvider

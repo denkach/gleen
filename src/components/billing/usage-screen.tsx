@@ -16,6 +16,10 @@ import { formatNumber } from '@/lib/i18n/format';
 import type { Locale } from '@/lib/i18n/locales';
 import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
+import {
+  resolveBillingCopySource,
+  type BillingCopySource,
+} from './billing-copy-source';
 import { BillingIcon } from './billing-icons';
 import { BillingCard, BillingPage, BillingStatus } from './billing-page';
 
@@ -77,8 +81,7 @@ export function UsageScreen({
   periodBounds,
   pageSize,
   exportAction,
-  locale,
-  copy,
+  copySource,
 }: Readonly<{
   subscription: Pick<
     SubscriptionPresentation,
@@ -89,9 +92,9 @@ export function UsageScreen({
   periodBounds: UsagePeriodBounds;
   pageSize: number;
   exportAction: UsageScreenExportAction;
-  locale: Locale;
-  copy: BillingMessages;
+  copySource: BillingCopySource;
 }>) {
+  const { locale, copy } = resolveBillingCopySource(copySource);
   const [exportError, setExportError] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -102,7 +105,6 @@ export function UsageScreen({
         eyebrow={copy.usage.eyebrow}
         title={copy.usage.title}
         description={copy.usage.description}
-        copy={copy}
       >
         <BillingCard className="billing-state-card">
           <div className="billing-state-icon">
@@ -170,7 +172,6 @@ export function UsageScreen({
       eyebrow={copy.usage.eyebrow}
       title={copy.usage.title}
       description={copy.usage.description}
-      copy={copy}
     >
       <BillingCard className="billing-usage-metrics">
         <div>

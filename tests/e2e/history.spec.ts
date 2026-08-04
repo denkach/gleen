@@ -30,7 +30,7 @@ async function visibleTitles(page: import('@playwright/test').Page) {
 }
 
 test.describe('DEN-19 History durable behavior', () => {
-  test('durable applied query controls results and Back/Forward restores the complete view', async ({
+  test('@localization durable applied query controls results and Back/Forward restores the complete view', async ({
     page,
   }) => {
     await openHistory(page);
@@ -127,7 +127,7 @@ test.describe('DEN-19 History durable behavior', () => {
     await rejectedFavorite.click();
     await expect(rejectedFavorite).toHaveAttribute('aria-pressed', 'false');
     await expect(page.getByRole('status')).toContainText(
-      'Favorite could not be saved.',
+      'We could not update History. Try again.',
     );
   });
 

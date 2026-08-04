@@ -14,6 +14,7 @@ import { localeSchema } from '@/lib/i18n/locales';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { historyMessages } from '@/lib/i18n/messages/history';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 
@@ -92,7 +93,7 @@ export default async function FixtureHistoryPage({
       copy={appMessages[locale]}
       identity={fixtureIdentity}
       locale={locale}
-      localeSwitcherCopy={sharedMessages[locale]}
+      localeSwitcherCopy={materializeLocaleSwitcherCopy(sharedMessages[locale])}
       usage={unavailableUsage}
       pathnameOverride="/app/history"
     >

@@ -557,7 +557,7 @@ test('isolates partial, corrupted, empty, and legacy fixture states', async ({
   await expect(page.getByRole('button', { name: /\d+:\d+/ })).toHaveCount(0);
 });
 
-test('removes nonessential result motion for reduced-motion users', async ({
+test('@localization removes nonessential result motion for reduced-motion users', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });

@@ -10,6 +10,7 @@ import {
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import { localeSchema } from '@/lib/i18n/locales';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 
@@ -84,7 +85,7 @@ export default async function BillingFixturePage({
       copy={appMessages[locale]}
       identity={fixture.shell.identity}
       locale={locale}
-      localeSwitcherCopy={sharedMessages[locale]}
+      localeSwitcherCopy={materializeLocaleSwitcherCopy(sharedMessages[locale])}
       usage={fixture.shell.usage}
       pathnameOverride="/app/subscription"
     >

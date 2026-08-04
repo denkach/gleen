@@ -14,7 +14,11 @@ import type {
   InvoiceSummaryPresentation,
   SubscriptionPresentation,
 } from '@/lib/billing/presentation';
-import { billingMessages } from '@/lib/i18n/messages/billing';
+import {
+  billingMessages,
+  type BillingMessages,
+} from '@/lib/i18n/messages/billing';
+import type { Locale } from '@/lib/i18n/locales';
 
 import { parseInvoiceRouteQuery } from '@/lib/billing/invoice-query';
 
@@ -25,9 +29,14 @@ function InvoicesScreen({
   locale = 'en',
   copy = billingMessages.en,
   ...props
-}: Omit<InvoicesScreenProps, 'locale' | 'copy'> &
-  Partial<Pick<InvoicesScreenProps, 'locale' | 'copy'>>) {
-  return <ProductionInvoicesScreen {...props} locale={locale} copy={copy} />;
+}: Omit<InvoicesScreenProps, 'copySource'> &
+  Readonly<{ locale?: Locale; copy?: BillingMessages }>) {
+  return (
+    <ProductionInvoicesScreen
+      {...props}
+      copySource={{ kind: 'injected', locale, copy }}
+    />
+  );
 }
 
 const invoices: InvoicePresentation = {

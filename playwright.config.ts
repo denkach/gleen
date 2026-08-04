@@ -38,7 +38,7 @@ export default defineConfig({
     },
     {
       name: 'mobile-chrome',
-      grep: /durable/,
+      grep: /durable|@localization/,
       testIgnore: /billing\.visual\.spec\.ts/,
       use: { ...devices['Pixel 7'] },
     },

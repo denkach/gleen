@@ -154,7 +154,6 @@ export function CheckoutScreen({
       eyebrow={copy.checkout.eyebrow}
       title={copy.checkout.title}
       description={copy.checkout.description}
-      copy={copy}
     >
       {message !== null && (
         <BillingCard className="billing-checkout-state">

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { sharedMessages } from '@/lib/i18n/messages/shared';
+import { materializeUiPreviewCopy } from '@/lib/i18n/ui-preview-copy';
 
 import { UiPreview } from './ui-preview';
 
@@ -20,7 +21,11 @@ beforeEach(() => {
 describe('UiPreview long-content fixtures', () => {
   it('uses localized labels for controls, status, and accessibility text', async () => {
     const user = userEvent.setup();
-    render(<UiPreview copy={sharedMessages.de.uiPreview} />);
+    render(
+      <UiPreview
+        copy={materializeUiPreviewCopy(sharedMessages.de.uiPreview)}
+      />,
+    );
 
     expect(
       screen.getByRole('heading', { name: 'Gleen-UI-Bausteine' }),
@@ -44,7 +49,11 @@ describe('UiPreview long-content fixtures', () => {
 
   it('renders labeled constrained fixtures and exposes interactive long content', async () => {
     const user = userEvent.setup();
-    render(<UiPreview copy={sharedMessages.en.uiPreview} />);
+    render(
+      <UiPreview
+        copy={materializeUiPreviewCopy(sharedMessages.en.uiPreview)}
+      />,
+    );
 
     expect(
       screen.getByRole('textbox', {

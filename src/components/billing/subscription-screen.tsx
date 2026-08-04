@@ -10,9 +10,12 @@ import type {
 } from '@/lib/billing/presentation';
 import { cx } from '@/lib/cx';
 import { formatDate } from '@/lib/i18n/format';
-import type { Locale } from '@/lib/i18n/locales';
 import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
+import {
+  resolveBillingCopySource,
+  type BillingCopySource,
+} from './billing-copy-source';
 import { BillingIcon } from './billing-icons';
 import {
   BillingCard,
@@ -40,14 +43,13 @@ function intervalLabel(
 export function SubscriptionScreen({
   presentation,
   initialInterval,
-  locale,
-  copy,
+  copySource,
 }: Readonly<{
   presentation: SubscriptionPresentation | null;
   initialInterval: BillingInterval;
-  locale: Locale;
-  copy: BillingMessages;
+  copySource: BillingCopySource;
 }>) {
+  const { locale, copy } = resolveBillingCopySource(copySource);
   const [interval, setInterval] = useState(initialInterval);
 
   if (presentation === null) {
@@ -57,7 +59,6 @@ export function SubscriptionScreen({
         eyebrow={copy.subscription.eyebrow}
         title={copy.subscription.title}
         description={copy.subscription.description}
-        copy={copy}
       >
         <BillingCard className="billing-state-card">
           <div className="billing-state-icon">
@@ -101,7 +102,6 @@ export function SubscriptionScreen({
       eyebrow={copy.subscription.eyebrow}
       title={copy.subscription.title}
       description={copy.subscription.description}
-      copy={copy}
     >
       <BillingCard className="billing-plan-overview">
         <div className="billing-current-plan">

@@ -3,6 +3,8 @@ import type { Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
 const videoUrl = 'https://youtu.be/dQw4w9WgXcQ';
+const readyProcessingHandoffUrl =
+  /\/app\?intake=ready&locale=en&analysis=33333333-3333-4333-8333-333333333333$/;
 
 async function noOverflow(page: Page) {
   expect(
@@ -58,21 +60,21 @@ test('chooses artifacts, prevents double submit, and enters one processing hando
       /^(pending|active|done)$/,
     );
   }
-  for (const rail of ['SUMMARY', 'FLASHCARDS', 'TIMESTAMPS', 'EXPORT']) {
-    await expect(processing.getByText(rail, { exact: true })).toBeVisible();
-  }
-  await expect(processing.getByText('TRANSCRIPT', { exact: true })).toHaveCount(
-    0,
-  );
-  await expect(page).toHaveURL(
-    /\/app\?analysis=33333333-3333-4333-8333-333333333333$/,
-    { timeout: 5_000 },
-  );
+  await expect(processing.locator('.analyze-rail')).toHaveText([
+    'Summary is queued',
+    'Flashcards not selected',
+    'Timestamps are queued',
+    'Export is queued',
+  ]);
+  await expect(
+    processing.locator('.analyze-rail').filter({ hasText: 'Transcript' }),
+  ).toHaveCount(0);
+  await expect(page).toHaveURL(readyProcessingHandoffUrl, { timeout: 5_000 });
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
   expect(page.url()).not.toContain('/app/video/');
 });
 
-test('persists output language and summary preset through options and submission', async ({
+test('@localization persists output language and summary preset through options and submission', async ({
   page,
 }) => {
   await page.goto('/app-shell-fixture?intake=ready');
@@ -90,10 +92,7 @@ test('persists output language and summary preset through options and submission
     'detailed',
   );
   await page.getByRole('button', { name: 'Analyze video' }).click();
-  await expect(page).toHaveURL(
-    /\/app\?analysis=33333333-3333-4333-8333-333333333333$/,
-    { timeout: 5_000 },
-  );
+  await expect(page).toHaveURL(readyProcessingHandoffUrl, { timeout: 5_000 });
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
 });
 
@@ -115,11 +114,10 @@ test('retains a 30-card preset and submits it to the processing handoff', async 
   ).toHaveCount(1);
   await page.getByRole('button', { name: 'Analyze video' }).click();
 
-  await expect(page).toHaveURL(
-    /\/app\?analysis=33333333-3333-4333-8333-333333333333$/,
-    { timeout: 5_000 },
-  );
-  await expect(page.getByText('FLASHCARDS', { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(readyProcessingHandoffUrl, { timeout: 5_000 });
+  await expect(
+    page.locator('.analyze-rail').filter({ hasText: 'Flashcards are queued' }),
+  ).toBeVisible();
 });
 
 test('detects an exact duplicate, opens existing, and confirms re-analysis', async ({
@@ -146,7 +144,7 @@ test('detects an exact duplicate, opens existing, and confirms re-analysis', asy
   await expect(confirmation).toContainText(
     'A new processing attempt will be created.',
   );
-  await expect(confirmation).toContainText('en');
+  await expect(confirmation).toContainText('English');
   await expect(confirmation).toContainText('Balanced');
   await expect(confirmation).not.toContainText('Deutsch');
   await expect(confirmation).not.toContainText('30');
@@ -157,8 +155,8 @@ test('detects an exact duplicate, opens existing, and confirms re-analysis', asy
 
 for (const [scenario, rawUrl, message] of [
   ['invalid-url', 'https://example.com/video', 'Enter a supported YouTube URL'],
-  ['video-unavailable', videoUrl, 'private or unavailable'],
-  ['transcript-unavailable', videoUrl, 'native transcript is not available'],
+  ['video-unavailable', videoUrl, 'private, restricted, or unavailable'],
+  ['transcript-unavailable', videoUrl, 'A transcript is not available'],
   ['provider-outage', videoUrl, 'temporarily unavailable'],
 ] as const) {
   test(`preserves input after ${scenario} failures`, async ({ page }) => {
@@ -328,10 +326,7 @@ test('reduced motion enters truthful processing without decorative delay', async
   await page.getByLabel('YouTube URL').fill(videoUrl);
   const startedAt = Date.now();
   await page.getByRole('button', { name: 'Analyze video' }).click();
-  await expect(page).toHaveURL(
-    /\/app\?analysis=33333333-3333-4333-8333-333333333333$/,
-    { timeout: 3_000 },
-  );
+  await expect(page).toHaveURL(readyProcessingHandoffUrl, { timeout: 3_000 });
   // The fixture action intentionally takes 1.8s. This ceiling allows normal
   // parallel-test overhead while proving processing starts without a visual delay.
   expect(Date.now() - startedAt).toBeLessThan(3_500);

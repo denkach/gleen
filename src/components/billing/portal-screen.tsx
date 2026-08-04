@@ -15,9 +15,10 @@ import type {
 } from '@/lib/billing/actions';
 import type { BillingPlanSlug } from '@/lib/billing/domain';
 import { formatDate } from '@/lib/i18n/format';
-import type { Locale } from '@/lib/i18n/locales';
-import type { BillingMessages } from '@/lib/i18n/messages/billing';
-
+import {
+  resolveBillingCopySource,
+  type BillingCopySource,
+} from './billing-copy-source';
 import { BillingIcon } from './billing-icons';
 import {
   BillingCard,
@@ -126,8 +127,7 @@ export function PortalScreen({
   planChange = null,
   planCatalog = emptyPlanCatalog,
   openPortal = defaultOpenPortal,
-  locale,
-  copy,
+  copySource,
 }: Readonly<{
   subscription: PortalSubscription | null;
   activity: InvoicePresentation | null;
@@ -137,9 +137,9 @@ export function PortalScreen({
   planChange?: CheckoutActionInput | null;
   planCatalog?: readonly PortalPlanCatalogEntry[];
   openPortal?: (url: string) => void;
-  locale: Locale;
-  copy: BillingMessages;
+  copySource: BillingCopySource;
 }>) {
+  const { locale, copy } = resolveBillingCopySource(copySource);
   const router = useRouter();
   const [opening, setOpening] = useState(false);
   const [actionError, setActionError] = useState(false);
@@ -264,7 +264,6 @@ export function PortalScreen({
         eyebrow={copy.portal.eyebrow}
         title={copy.portal.title}
         description={copy.portal.description}
-        copy={copy}
       >
         <BillingCard className="billing-state-card">
           <div className="billing-state-icon">
@@ -316,7 +315,6 @@ export function PortalScreen({
       eyebrow={copy.portal.eyebrow}
       title={copy.portal.title}
       description={copy.portal.description}
-      copy={copy}
       ariaBusy={opening}
     >
       {actionError && (

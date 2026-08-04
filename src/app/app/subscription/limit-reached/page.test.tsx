@@ -74,12 +74,7 @@ describe('LimitReachedPage', () => {
             usage: { used: 9, reserved: 1, remaining: 0, limit: 10 },
           },
         }),
-        locale: 'en',
-        copy: expect.objectContaining({
-          limitReached: expect.objectContaining({
-            title: 'Analysis limit reached',
-          }),
-        }),
+        copySource: { kind: 'catalog', locale: 'en' },
       }),
     );
     expect(screen.getByRole('heading', { name: 'Analysis limit reached' }));

@@ -176,7 +176,9 @@ test('renders verification, recovery, reset, and expiry states', async ({
   }
 });
 
-test('keeps account access usable with reduced motion', async ({ page }) => {
+test('@localization keeps account access usable with reduced motion', async ({
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/sign-in');
 

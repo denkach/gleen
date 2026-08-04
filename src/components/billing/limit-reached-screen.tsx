@@ -8,6 +8,10 @@ import { formatDate } from '@/lib/i18n/format';
 import type { Locale } from '@/lib/i18n/locales';
 import type { BillingMessages } from '@/lib/i18n/messages/billing';
 
+import {
+  resolveBillingCopySource,
+  type BillingCopySource,
+} from './billing-copy-source';
 import { BillingIcon } from './billing-icons';
 import { BillingCard, BillingPage } from './billing-page';
 
@@ -97,14 +101,13 @@ function LimitMiniPrism() {
 export function LimitReachedScreen({
   presentation,
   now,
-  locale,
-  copy,
+  copySource,
 }: Readonly<{
   presentation: LimitReachedPresentation;
   now: string;
-  locale: Locale;
-  copy: BillingMessages;
+  copySource: BillingCopySource;
 }>) {
+  const { locale, copy } = resolveBillingCopySource(copySource);
   const consumed = presentation.usage.used + presentation.usage.reserved;
   const usagePercent =
     presentation.usage.limit === 0
@@ -119,7 +122,6 @@ export function LimitReachedScreen({
       eyebrow={copy.limitReached.eyebrow}
       title={copy.limitReached.title}
       description={copy.limitReached.description}
-      copy={copy}
     >
       <div className="billing-locked-input" aria-disabled="true">
         <BillingIcon name="lock" />
