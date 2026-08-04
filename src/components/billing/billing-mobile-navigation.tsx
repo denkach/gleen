@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import type { BillingMessages } from '@/lib/i18n/messages/billing';
+import type { Locale } from '@/lib/i18n/locales';
 
 import { BillingIcon } from './billing-icons';
 
@@ -14,7 +15,8 @@ const subscribeToHydration = () => () => {};
 
 export function BillingMobileNavigation({
   copy,
-}: Readonly<{ copy: BillingMessages['navigation'] }>) {
+  locale,
+}: Readonly<{ copy: BillingMessages['navigation']; locale: Locale }>) {
   const pathname = usePathname() ?? '';
   const hydrated = useSyncExternalStore(
     subscribeToHydration,
@@ -25,11 +27,12 @@ export function BillingMobileNavigation({
   const trigger = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const fixtureMode = pathname.startsWith('/billing-fixture/');
+  const fixtureQuery = fixtureMode ? `?locale=${locale}` : '';
   const planHref = fixtureMode
-    ? '/billing-fixture/subscription'
+    ? `/billing-fixture/subscription${fixtureQuery}`
     : '/app/subscription';
   const usageHref = fixtureMode
-    ? '/billing-fixture/usage'
+    ? `/billing-fixture/usage${fixtureQuery}`
     : '/app/subscription/usage';
   const detailBase = fixtureMode ? '/billing-fixture' : '/app/subscription';
   const planActive =
@@ -138,10 +141,18 @@ export function BillingMobileNavigation({
         >
           <div className="billing-mobile-sheet-handle" aria-hidden="true" />
           <h2>{copy.moreLabel}</h2>
-          <Link href={`${detailBase}/checkout`}>{copy.checkout}</Link>
-          <Link href={`${detailBase}/portal`}>{copy.portal}</Link>
-          <Link href={`${detailBase}/invoices`}>{copy.invoices}</Link>
-          <Link href={`${detailBase}/limit-reached`}>{copy.limitReached}</Link>
+          <Link href={`${detailBase}/checkout${fixtureQuery}`}>
+            {copy.checkout}
+          </Link>
+          <Link href={`${detailBase}/portal${fixtureQuery}`}>
+            {copy.portal}
+          </Link>
+          <Link href={`${detailBase}/invoices${fixtureQuery}`}>
+            {copy.invoices}
+          </Link>
+          <Link href={`${detailBase}/limit-reached${fixtureQuery}`}>
+            {copy.limitReached}
+          </Link>
           <button type="button" onClick={close}>
             {copy.close}
           </button>

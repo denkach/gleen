@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { cx } from '@/lib/cx';
 import type { BillingMessages } from '@/lib/i18n/messages/billing';
+import type { Locale } from '@/lib/i18n/locales';
 
 import { BillingMobileNavigation } from './billing-mobile-navigation';
 
@@ -11,6 +12,7 @@ export function BillingPage({
   description,
   ariaBusy,
   copy,
+  locale,
   children,
 }: Readonly<{
   eyebrow: string;
@@ -18,6 +20,7 @@ export function BillingPage({
   description: string;
   ariaBusy?: boolean;
   copy: BillingMessages;
+  locale: Locale;
   children: ReactNode;
 }>) {
   return (
@@ -36,7 +39,7 @@ export function BillingPage({
         </div>
       </header>
       {children}
-      <BillingMobileNavigation copy={copy.navigation} />
+      <BillingMobileNavigation copy={copy.navigation} locale={locale} />
     </section>
   );
 }

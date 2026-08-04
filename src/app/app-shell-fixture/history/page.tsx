@@ -12,13 +12,10 @@ import {
 import { unavailableUsage } from '@/lib/app-shell';
 import { localeSchema } from '@/lib/i18n/locales';
 import { appMessages } from '@/lib/i18n/messages/app';
+import { historyMessages } from '@/lib/i18n/messages/history';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
-
-export const metadata: Metadata = {
-  title: 'History fixture — Gleen',
-};
 
 const fixtureIdentity = {
   displayName: 'Alex Koval',
@@ -31,6 +28,17 @@ type FixtureHistoryPageProps = Readonly<{
     Readonly<Record<string, string | readonly string[] | undefined>>
   >;
 }>;
+
+export async function generateMetadata({
+  searchParams,
+}: FixtureHistoryPageProps): Promise<Metadata> {
+  const { locale: localeInput } = await searchParams;
+  const parsedLocale = localeSchema.safeParse(localeInput);
+  const locale = parsedLocale.success
+    ? parsedLocale.data
+    : await getRequestLocale();
+  return { title: historyMessages[locale].metadata.title };
+}
 
 function isHistoryVisualCase(value: unknown): value is HistoryVisualCase {
   return (

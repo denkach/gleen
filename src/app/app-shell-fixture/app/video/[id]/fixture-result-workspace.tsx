@@ -14,7 +14,7 @@ import type {
   SummaryPresentation,
 } from '@/lib/result-workspace/presentation';
 import { flashcardRatingSchema } from '@/lib/result-workspace/user-state';
-import { resultMessages } from '@/lib/i18n/messages/results';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 
 const shareFixtureStorageKey = 'gleen:result-share-fixture';
 
@@ -261,11 +261,13 @@ export function FixtureResultWorkspace({
   initialModel,
   fixturePlayerStartMs,
   mode = 'owner',
+  copy,
 }: Readonly<{
   favoriteSaveFails?: boolean;
   initialModel: ResultWorkspaceModel;
   fixturePlayerStartMs?: number;
   mode?: 'owner' | 'public';
+  copy: ResultMessages;
 }>) {
   const storageKey = `gleen:result-fixture:${initialModel.source.intakeId}`;
   const [model, setModel] = useState(initialModel);
@@ -314,8 +316,8 @@ export function FixtureResultWorkspace({
     return (
       <main className="result-public-unavailable">
         <section>
-          <h1>{resultMessages.en.publicViewUnavailable}</h1>
-          <p>{resultMessages.en.publicViewExpired}</p>
+          <h1>{copy.publicViewUnavailable}</h1>
+          <p>{copy.publicViewExpired}</p>
         </section>
       </main>
     );
@@ -325,6 +327,7 @@ export function FixtureResultWorkspace({
     <ResultWorkspace
       mode={mode}
       model={displayedModel}
+      copy={copy}
       saveTitle={async (input) => {
         const edit = resultTitleEditSchema.parse(input);
         return update((current) => ({

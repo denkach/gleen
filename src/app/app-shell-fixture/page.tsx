@@ -23,6 +23,19 @@ import {
 
 import { fixtureCases } from './fixture-cases';
 
+function fixtureQueryString(
+  query: Readonly<Record<string, string | undefined>>,
+  locale: string,
+): string {
+  const parameters = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) parameters.set(key, value);
+  }
+  parameters.delete('analysis');
+  parameters.set('locale', locale);
+  return parameters.toString();
+}
+
 const fixtureIdentity = {
   displayName: 'Test User',
   email: 'test@example.com',
@@ -60,6 +73,10 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
   const locale = parsedLocale.success
     ? parsedLocale.data
     : await getRequestLocale();
+  const resultQuery = fixtureQueryString(
+    { continuation, intake, journey, analysis, locale: localeInput },
+    locale,
+  );
   const resolvedJourney = journey ?? (analysis ? 'recover' : undefined);
   if (
     intake &&
@@ -93,6 +110,7 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
           copy={appMessages[locale]}
           journey={resolvedJourney}
           requestedAnalysisId={analysis}
+          resultQuery={resultQuery}
         />
       ) : (
         <NewAnalysisHome
@@ -100,6 +118,7 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
           action={fixtureActions[scenario as keyof typeof fixtureActions]}
           reanalyzeAction={reanalyzeFixture}
           resultPathPrefix="/app-shell-fixture/app/video"
+          resultQuery={resultQuery}
           continuation={continuation ? { rawUrl: continuation } : undefined}
         />
       )}

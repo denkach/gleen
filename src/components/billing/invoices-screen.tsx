@@ -113,6 +113,7 @@ export function InvoicesScreen({
   if (subscription === null || invoices === null || summary === null) {
     return (
       <BillingPage
+        locale={locale}
         eyebrow={copy.invoices.eyebrow}
         title={copy.invoices.title}
         description={copy.invoices.description}
@@ -180,6 +181,7 @@ export function InvoicesScreen({
 
   return (
     <BillingPage
+      locale={locale}
       eyebrow={copy.invoices.eyebrow}
       title={copy.invoices.title}
       description={copy.invoices.description}

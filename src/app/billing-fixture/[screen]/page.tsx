@@ -11,6 +11,7 @@ import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { localeSchema } from '@/lib/i18n/locales';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 
 import { BillingFixtureScreen } from './fixture-screen';
 
@@ -55,7 +56,9 @@ export default async function BillingFixturePage({
   const { screen } = await params;
   const query = await searchParams;
   const parsedLocale = localeSchema.safeParse(query.locale);
-  const locale = parsedLocale.success ? parsedLocale.data : 'en';
+  const locale = parsedLocale.success
+    ? parsedLocale.data
+    : await getRequestLocale();
   const requestedState = query.state;
   const testBoundary =
     typeof query.testBoundary === 'string' &&

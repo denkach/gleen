@@ -2,12 +2,14 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 
 const {
+  analysisProcessingFixtureScreen,
   fixtureResultWorkspace,
   getRequestLocale,
   isUiPreviewEnabled,
   notFound,
   push,
 } = vi.hoisted(() => ({
+  analysisProcessingFixtureScreen: vi.fn(),
   fixtureResultWorkspace: vi.fn(),
   getRequestLocale: vi.fn(async () => 'en'),
   isUiPreviewEnabled: vi.fn(),
@@ -25,7 +27,10 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/ui-preview', () => ({ isUiPreviewEnabled }));
 vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
 vi.mock('@/components/app-shell/analysis-processing-fixture-screen', () => ({
-  AnalysisProcessingFixtureScreen: () => null,
+  AnalysisProcessingFixtureScreen: (props: unknown) => {
+    analysisProcessingFixtureScreen(props);
+    return null;
+  },
 }));
 vi.mock('./app/video/[id]/fixture-result-workspace', () => ({
   FixtureResultWorkspace: (props: unknown) => {
@@ -133,6 +138,45 @@ it('keeps DEN-25 owner state out of legacy and public fixtures', async () => {
     )?.initialModel;
     expect(fixtureModel?.userState).toBeNull();
   }
+});
+
+it('uses the selected locale copy in result and processing destinations', async () => {
+  isUiPreviewEnabled.mockReturnValue(true);
+
+  render(
+    await FixtureVideoPage({
+      params: Promise.resolve({ id: 'result-den-25' }),
+      searchParams: Promise.resolve({ locale: 'de' }),
+    }),
+  );
+
+  expect(
+    screen.getAllByRole('link', { name: 'Neue Analyse' })[0],
+  ).toBeVisible();
+  expect(fixtureResultWorkspace).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      copy: expect.objectContaining({ tabOverview: 'Übersicht' }),
+    }),
+  );
+
+  render(
+    await FixtureVideoPage({
+      params: Promise.resolve({ id: 'pipeline-partial' }),
+      searchParams: Promise.resolve({ locale: 'de' }),
+    }),
+  );
+
+  expect(analysisProcessingFixtureScreen).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      copy: expect.objectContaining({
+        processing: expect.objectContaining({
+          viewAvailable: 'Verfügbare Ergebnisse anzeigen',
+        }),
+      }),
+      resultCopy: expect.objectContaining({ tabOverview: 'Übersicht' }),
+      resultQuery: 'locale=de',
+    }),
+  );
 });
 
 it('renders the real app shell and New analysis home when preview is enabled', async () => {

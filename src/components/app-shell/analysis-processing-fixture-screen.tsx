@@ -4,6 +4,7 @@ import { useRef } from 'react';
 
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 
 import { AnalysisProcessingScreen } from './analysis-processing-screen';
 
@@ -13,12 +14,16 @@ export function AnalysisProcessingFixtureScreen({
   initialSnapshot,
   retrySnapshot,
   transitionSnapshot,
+  resultCopy,
+  resultQuery,
 }: Readonly<{
   copy: import('@/lib/i18n/messages/app').AppMessages;
   intake: AnalysisIntake;
   initialSnapshot: AnalysisSnapshot;
   retrySnapshot?: AnalysisSnapshot;
   transitionSnapshot?: AnalysisSnapshot;
+  resultCopy: ResultMessages;
+  resultQuery: string;
 }>) {
   const retried = useRef(false);
 
@@ -30,7 +35,7 @@ export function AnalysisProcessingFixtureScreen({
           className="analyze-control"
           onClick={() =>
             window.location.assign(
-              '/app-shell-fixture/app/video/result-partial',
+              `/app-shell-fixture/app/video/result-partial${resultQuery ? `?${resultQuery}` : ''}`,
             )
           }
         >
@@ -39,6 +44,7 @@ export function AnalysisProcessingFixtureScreen({
       ) : null}
       <AnalysisProcessingScreen
         copy={copy}
+        resultCopy={resultCopy}
         intake={intake}
         initialSnapshot={initialSnapshot}
         enableLiveUpdates={false}

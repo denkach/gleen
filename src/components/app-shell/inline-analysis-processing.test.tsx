@@ -113,7 +113,10 @@ function deferred<T>() {
 }
 
 describe('InlineAnalysisProcessing', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.history.replaceState(null, '', '/');
+  });
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -272,6 +275,37 @@ describe('InlineAnalysisProcessing', () => {
     expect(routerPush).toHaveBeenCalledWith(`/app/video/${analysisId}`);
     await act(async () => vi.advanceTimersByTimeAsync(5_000));
     expect(routerPush).toHaveBeenCalledTimes(1);
+  });
+
+  test('preserves the fixture query through inline processing and completion navigation', async () => {
+    vi.useFakeTimers();
+    window.history.replaceState(null, '', '/app-shell-fixture');
+    const replaceState = vi.spyOn(window.history, 'replaceState');
+    const refreshResult = deferred<AnalysisSnapshot | null>();
+
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        initialSnapshot={snapshot('queued')}
+        refreshAction={vi.fn(() => refreshResult.promise)}
+        retryAction={vi.fn()}
+        resultPathPrefix="/app-shell-fixture/app/video"
+        preservedQuery="locale=de&intake=ready"
+      />,
+    );
+
+    expect(replaceState).toHaveBeenCalledWith(
+      null,
+      '',
+      `/app?locale=de&intake=ready&analysis=${analysisId}`,
+    );
+
+    await act(async () => refreshResult.resolve(snapshot('complete', 2)));
+    await act(async () => vi.advanceTimersByTimeAsync(1_000));
+
+    expect(routerPush).toHaveBeenCalledWith(
+      `/app-shell-fixture/app/video/${analysisId}?locale=de&intake=ready`,
+    );
   });
 
   test('removes the decorative completion delay for reduced motion', async () => {
@@ -500,12 +534,18 @@ describe('InlineAnalysisProcessing', () => {
   });
 
   test('opens available partial results only when explicitly requested', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/app-shell-fixture?locale=de&journey=partial',
+    );
     render(
       <InlineAnalysisProcessing
         analysisId={analysisId}
         initialSnapshot={partialSnapshot()}
         refreshAction={vi.fn(async () => partialSnapshot())}
         retryAction={vi.fn()}
+        resultPathPrefix="/app-shell-fixture/app/video"
       />,
     );
     expect(routerPush).not.toHaveBeenCalled();
@@ -513,7 +553,9 @@ describe('InlineAnalysisProcessing', () => {
       screen.getByRole('button', { name: 'View available results' }),
     );
     expect(routerPush).toHaveBeenCalledTimes(1);
-    expect(routerPush).toHaveBeenCalledWith(`/app/video/${analysisId}`);
+    expect(routerPush).toHaveBeenCalledWith(
+      `/app-shell-fixture/app/video/${analysisId}?locale=de&journey=partial`,
+    );
   });
 
   test('shows retry only for a failed analysis', () => {

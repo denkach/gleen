@@ -260,6 +260,7 @@ export function PortalScreen({
   if (subscription === null || activity === null) {
     return (
       <BillingPage
+        locale={locale}
         eyebrow={copy.portal.eyebrow}
         title={copy.portal.title}
         description={copy.portal.description}
@@ -311,6 +312,7 @@ export function PortalScreen({
 
   return (
     <BillingPage
+      locale={locale}
       eyebrow={copy.portal.eyebrow}
       title={copy.portal.title}
       description={copy.portal.description}

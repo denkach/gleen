@@ -98,6 +98,7 @@ export function UsageScreen({
   if (subscription === null || usage === null) {
     return (
       <BillingPage
+        locale={locale}
         eyebrow={copy.usage.eyebrow}
         title={copy.usage.title}
         description={copy.usage.description}
@@ -165,6 +166,7 @@ export function UsageScreen({
 
   return (
     <BillingPage
+      locale={locale}
       eyebrow={copy.usage.eyebrow}
       title={copy.usage.title}
       description={copy.usage.description}

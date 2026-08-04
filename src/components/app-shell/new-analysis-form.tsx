@@ -48,6 +48,7 @@ type NewAnalysisFormProps = Readonly<{
   action?: IntakeAction;
   reanalyzeAction?: IntakeAction;
   resultPathPrefix?: string;
+  resultQuery?: string;
   initialSnapshot?: AnalysisSnapshot;
   autoSubmit?: boolean;
 }>;
@@ -88,6 +89,7 @@ export function NewAnalysisForm({
   initialState,
   reanalyzeAction = reanalyzeIntake,
   resultPathPrefix = '/app/video',
+  resultQuery,
   initialSnapshot,
   autoSubmit = false,
 }: NewAnalysisFormProps) {
@@ -196,6 +198,7 @@ export function NewAnalysisForm({
           analysisId={state.analysisId}
           initialSnapshot={initialSnapshot}
           resultPathPrefix={resultPathPrefix}
+          preservedQuery={resultQuery}
           selectedArtifactKinds={state.configuration.artifacts}
         />
       ) : (
@@ -369,7 +372,9 @@ export function NewAnalysisForm({
         <section className="duplicate-banner" aria-labelledby="duplicate-title">
           <h2 id="duplicate-title">{copy.newAnalysis.duplicate.title}</h2>
           <p>{copy.newAnalysis.duplicate.noCredits}</p>
-          <Link href={`${resultPathPrefix}/${state.existingId}`}>
+          <Link
+            href={`${resultPathPrefix}/${state.existingId}${resultQuery ? `?${resultQuery}` : ''}`}
+          >
             {copy.newAnalysis.duplicate.openSaved}
           </Link>
           <button type="button" onClick={() => setConfirmOpen(true)}>

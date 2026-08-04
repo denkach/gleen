@@ -120,6 +120,7 @@ export function CheckoutScreen({
   onSubmit,
   canSubmit = true,
   promotionPreview,
+  locale,
   copy,
 }: Readonly<{
   presentation: CheckoutPresentation;
@@ -149,6 +150,7 @@ export function CheckoutScreen({
 
   return (
     <BillingPage
+      locale={locale}
       eyebrow={copy.checkout.eyebrow}
       title={copy.checkout.title}
       description={copy.checkout.description}

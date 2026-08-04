@@ -23,6 +23,7 @@ export function NewAnalysisHome({
   action,
   reanalyzeAction,
   resultPathPrefix,
+  resultQuery,
   initialAnalysis,
   continuation,
 }: Readonly<{
@@ -31,6 +32,7 @@ export function NewAnalysisHome({
   action?: ComponentProps<typeof NewAnalysisForm>['action'];
   reanalyzeAction?: ComponentProps<typeof NewAnalysisForm>['reanalyzeAction'];
   resultPathPrefix?: string;
+  resultQuery?: string;
   initialAnalysis?: Readonly<{
     intake: AnalysisIntake;
     snapshot: AnalysisSnapshot;
@@ -67,6 +69,7 @@ export function NewAnalysisHome({
           action={action}
           reanalyzeAction={reanalyzeAction}
           resultPathPrefix={resultPathPrefix}
+          resultQuery={resultQuery}
         />
       </section>
 

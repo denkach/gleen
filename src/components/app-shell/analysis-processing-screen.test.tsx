@@ -12,6 +12,7 @@ import type { ComponentProps } from 'react';
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 import { appMessages } from '@/lib/i18n/messages/app';
+import { resultMessages } from '@/lib/i18n/messages/results';
 
 const realtime = vi.hoisted(() => {
   const channel = { on: vi.fn(), subscribe: vi.fn() };
@@ -72,12 +73,25 @@ import { AnalysisProcessingScreen as LocalizedAnalysisProcessingScreen } from '.
 
 function AnalysisProcessingScreen({
   copy = appMessages.en,
+  resultCopy = resultMessages.en,
   ...props
-}: Omit<ComponentProps<typeof LocalizedAnalysisProcessingScreen>, 'copy'> &
+}: Omit<
+  ComponentProps<typeof LocalizedAnalysisProcessingScreen>,
+  'copy' | 'resultCopy'
+> &
   Partial<
-    Pick<ComponentProps<typeof LocalizedAnalysisProcessingScreen>, 'copy'>
+    Pick<
+      ComponentProps<typeof LocalizedAnalysisProcessingScreen>,
+      'copy' | 'resultCopy'
+    >
   >) {
-  return <LocalizedAnalysisProcessingScreen copy={copy} {...props} />;
+  return (
+    <LocalizedAnalysisProcessingScreen
+      copy={copy}
+      resultCopy={resultCopy}
+      {...props}
+    />
+  );
 }
 
 const intake = {

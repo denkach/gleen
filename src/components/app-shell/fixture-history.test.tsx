@@ -23,7 +23,9 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/ui-preview', () => ({ isUiPreviewEnabled }));
 vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
 
-import FixtureHistoryPage from '@/app/app-shell-fixture/history/page';
+import FixtureHistoryPage, {
+  generateMetadata,
+} from '@/app/app-shell-fixture/history/page';
 import {
   FixtureHistory,
   historyVisualCases,
@@ -244,6 +246,17 @@ describe('FixtureHistory', () => {
 });
 
 describe('FixtureHistoryPage', () => {
+  it('localizes fixture metadata with an explicit or resolved locale', async () => {
+    await expect(
+      generateMetadata({ searchParams: Promise.resolve({ locale: 'de' }) }),
+    ).resolves.toEqual({ title: 'Verlauf — Gleen' });
+
+    getRequestLocale.mockResolvedValue('uk');
+    await expect(
+      generateMetadata({ searchParams: Promise.resolve({}) }),
+    ).resolves.toEqual({ title: 'Історія — Gleen' });
+  });
+
   it('is preview-gated and uses the real History shell selection', async () => {
     isUiPreviewEnabled.mockReturnValue(true);
 

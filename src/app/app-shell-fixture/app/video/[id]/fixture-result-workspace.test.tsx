@@ -3,8 +3,20 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
+import { resultMessages } from '@/lib/i18n/messages/results';
+import type { ComponentProps } from 'react';
 
-import { FixtureResultWorkspace } from './fixture-result-workspace';
+import { FixtureResultWorkspace as LocalizedFixtureResultWorkspace } from './fixture-result-workspace';
+
+function FixtureResultWorkspace({
+  copy = resultMessages.en,
+  ...props
+}: Omit<ComponentProps<typeof LocalizedFixtureResultWorkspace>, 'copy'> &
+  Partial<
+    Pick<ComponentProps<typeof LocalizedFixtureResultWorkspace>, 'copy'>
+  >) {
+  return <LocalizedFixtureResultWorkspace copy={copy} {...props} />;
+}
 
 const model: ResultWorkspaceModel = {
   source: {

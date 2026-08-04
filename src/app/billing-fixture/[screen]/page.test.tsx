@@ -3,12 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
+  getRequestLocale,
   isUiPreviewEnabled,
   notFound,
   renderFixture,
   renderShell,
   usePathname,
 } = vi.hoisted(() => ({
+  getRequestLocale: vi.fn(async () => 'en'),
   isUiPreviewEnabled: vi.fn(),
   notFound: vi.fn((): never => {
     throw new Error('NEXT_NOT_FOUND');
@@ -20,6 +22,7 @@ const {
 
 vi.mock('next/navigation', () => ({ notFound, usePathname }));
 vi.mock('@/lib/ui-preview', () => ({ isUiPreviewEnabled }));
+vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
 vi.mock('./fixture-screen', () => ({
   BillingFixtureScreen: (props: unknown) => {
     renderFixture(props);
@@ -42,7 +45,10 @@ import BillingFixturePage from './page';
 import { getBillingFixture } from '@/lib/billing/fixtures';
 
 describe('BillingFixturePage guard', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getRequestLocale.mockResolvedValue('en');
+  });
 
   it('returns not found in production before resolving fixture data', async () => {
     isUiPreviewEnabled.mockReturnValue(false);
@@ -112,6 +118,25 @@ describe('BillingFixturePage guard', () => {
       );
     },
   );
+
+  it('uses the normal request locale without an explicit fixture override', async () => {
+    isUiPreviewEnabled.mockReturnValue(true);
+    getRequestLocale.mockResolvedValue('de');
+
+    render(
+      await BillingFixturePage({
+        params: Promise.resolve({ screen: 'subscription' }),
+        searchParams: Promise.resolve({ state: 'active' }),
+      }),
+    );
+
+    expect(renderShell).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: 'de' }),
+    );
+    expect(renderFixture).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: 'de' }),
+    );
+  });
 
   it.each([
     'portal-upgrade',
@@ -198,11 +223,11 @@ describe('BillingFixturePage guard', () => {
     ).toBeInTheDocument();
     expect(testingScreen.getByRole('link', { name: 'Tarif' })).toHaveAttribute(
       'href',
-      '/billing-fixture/subscription',
+      '/billing-fixture/subscription?locale=de',
     );
     expect(
       testingScreen.getByRole('link', { name: 'Nutzung' }),
-    ).toHaveAttribute('href', '/billing-fixture/usage');
+    ).toHaveAttribute('href', '/billing-fixture/usage?locale=de');
 
     await user.click(
       testingScreen.getByRole('button', {
@@ -211,6 +236,6 @@ describe('BillingFixturePage guard', () => {
     );
     expect(
       testingScreen.getByRole('link', { name: '04 · Abrechnungsportal' }),
-    ).toHaveAttribute('href', '/billing-fixture/portal');
+    ).toHaveAttribute('href', '/billing-fixture/portal?locale=de');
   });
 });

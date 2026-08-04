@@ -16,10 +16,7 @@ import type {
 } from '@/lib/result-workspace/actions';
 import { trackResultEvent } from '@/lib/analytics/result-events';
 import { getAddressableResultArtifacts } from '@/lib/result-workspace/artifact-availability';
-import {
-  resultMessages,
-  type ResultMessages,
-} from '@/lib/i18n/messages/results';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 import {
   initializeResultArtifactNavigation,
   navigateToResultArtifact,
@@ -579,7 +576,7 @@ function ResultArtifactsStateOwner({
 
 export type ResultWorkspaceProps = Readonly<{
   model: ResultWorkspaceModel;
-  copy?: ResultMessages;
+  copy: ResultMessages;
   mode?: 'owner' | 'public';
   saveTitle?: SaveAction;
   saveArtifact?: SaveAction;
@@ -626,7 +623,7 @@ function ResultLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 }
 
 export function ResultWorkspace(props: ResultWorkspaceProps) {
-  const { model, copy = resultMessages.en } = props;
+  const { model, copy } = props;
   const publicMode = props.mode === 'public';
   const parentController = useVideoPlayer();
   const lifecycleKey = model.source.intakeId;

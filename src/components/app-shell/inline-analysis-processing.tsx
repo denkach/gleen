@@ -29,6 +29,7 @@ export type InlineAnalysisProcessingProps = Readonly<{
   refreshAction?: typeof refreshAnalysisSnapshot;
   retryAction?: typeof retryAnalysis;
   resultPathPrefix?: string;
+  preservedQuery?: string;
   enableRealtime?: boolean;
   selectedArtifactKinds?: readonly IntakeConfiguration['artifacts'][number][];
 }>;
@@ -58,6 +59,7 @@ export function InlineAnalysisProcessing({
   refreshAction = refreshAnalysisSnapshot,
   retryAction = retryAnalysis,
   resultPathPrefix = '/app/video',
+  preservedQuery,
   enableRealtime = true,
   selectedArtifactKinds = defaultArtifactSelection,
 }: InlineAnalysisProcessingProps) {
@@ -72,6 +74,7 @@ export function InlineAnalysisProcessing({
   }));
   const controllerGeneration = useRef(0);
   const navigationScheduledFor = useRef<string | null>(null);
+  const preservedSearch = useRef('');
   const [exitingAnalysisId, setExitingAnalysisId] = useState<string | null>(
     null,
   );
@@ -150,13 +153,30 @@ export function InlineAnalysisProcessing({
   useEffect(() => {
     const generation = ++controllerGeneration.current;
     navigationScheduledFor.current = null;
-    window.history.replaceState(null, '', `/app?analysis=${analysisId}`);
+    const processingSearch = new URLSearchParams(
+      preservedQuery ?? window.location.search,
+    );
+    processingSearch.delete('analysis');
+    preservedSearch.current = processingSearch.toString();
+    processingSearch.set('analysis', analysisId);
+    window.history.replaceState(
+      null,
+      '',
+      `/app?${processingSearch.toString()}`,
+    );
     void refresh(generation);
     return () => {
       if (controllerGeneration.current === generation)
         controllerGeneration.current += 1;
     };
-  }, [analysisId, refresh]);
+  }, [analysisId, preservedQuery, refresh]);
+
+  const resultPath = useCallback(() => {
+    const path = `${resultPathPrefix}/${analysisId}`;
+    return preservedSearch.current
+      ? `${path}?${preservedSearch.current}`
+      : path;
+  }, [analysisId, resultPathPrefix]);
 
   useEffect(() => {
     if (ownedSnapshot || refreshUnavailableFor !== analysisId) return;
@@ -239,24 +259,19 @@ export function InlineAnalysisProcessing({
       '(prefers-reduced-motion: reduce)',
     ).matches;
     if (reducedMotion) {
-      push(`${resultPathPrefix}/${analysisId}`);
+      push(resultPath());
       return;
     }
     const exitTimer = window.setTimeout(
       () => setExitingAnalysisId(analysisId),
       400,
     );
-    const navigationTimer = window.setTimeout(
-      () => push(`${resultPathPrefix}/${analysisId}`),
-      1_000,
-    );
+    const navigationTimer = window.setTimeout(() => push(resultPath()), 1_000);
     return () => {
       window.clearTimeout(exitTimer);
       window.clearTimeout(navigationTimer);
     };
-  }, [analysisId, ownedSnapshot?.job.status, push, resultPathPrefix]);
-
-  const resultPath = `${resultPathPrefix}/${analysisId}`;
+  }, [analysisId, ownedSnapshot?.job.status, push, resultPath]);
   const isPartial = ownedSnapshot?.job.status === 'partial';
   const isFailed = ownedSnapshot?.job.status === 'failed';
   const ownedRevision = ownedSnapshot?.job.revision;
@@ -332,7 +347,7 @@ export function InlineAnalysisProcessing({
               <button
                 className="analyze-control"
                 type="button"
-                onClick={() => push(resultPath)}
+                onClick={() => push(resultPath())}
               >
                 {copy.processing.viewAvailable}
               </button>

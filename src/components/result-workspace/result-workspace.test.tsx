@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ComponentProps } from 'react';
 
 import { resultArtifactEditSchema } from '@/lib/result-workspace/edit-schemas';
 import { resultMessages } from '@/lib/i18n/messages/results';
@@ -20,7 +21,15 @@ import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
 import { PlayerProvider } from './player-context';
 import type { VideoPlayerController } from './player-controller';
-import { ResultWorkspace } from './result-workspace';
+import { ResultWorkspace as LocalizedResultWorkspace } from './result-workspace';
+
+function ResultWorkspace({
+  copy = resultMessages.en,
+  ...props
+}: Omit<ComponentProps<typeof LocalizedResultWorkspace>, 'copy'> &
+  Partial<Pick<ComponentProps<typeof LocalizedResultWorkspace>, 'copy'>>) {
+  return <LocalizedResultWorkspace copy={copy} {...props} />;
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -259,7 +268,7 @@ function renderWorkspaceWithActions({
   saveTitle = vi.fn(),
   saveArtifact = vi.fn(),
   saveFlashcardReview,
-  copy,
+  copy = resultMessages.en,
   value = model,
 }: Readonly<{
   saveTitle?: (

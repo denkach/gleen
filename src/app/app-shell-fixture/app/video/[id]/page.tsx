@@ -11,6 +11,8 @@ import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
 import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
 import { resultMessages } from '@/lib/i18n/messages/results';
+import { localeSchema, type Locale } from '@/lib/i18n/locales';
+import { getRequestLocale } from '@/lib/i18n/request-locale';
 import type { ResultUserState } from '@/lib/result-workspace/user-state';
 import {
   outputLocaleSchema,
@@ -30,6 +32,21 @@ const den25UserStateSeed: ResultUserState = {
     rating: 'got_it' as const,
   })),
 };
+
+function fixtureQueryString(
+  query: Readonly<Record<string, string | readonly string[] | undefined>>,
+  locale: Locale,
+): string {
+  const parameters = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (typeof value === 'string') parameters.append(key, value);
+    else if (Array.isArray(value)) {
+      for (const item of value) parameters.append(key, item);
+    }
+  }
+  parameters.set('locale', locale);
+  return parameters.toString();
+}
 
 const den25Chapters = [
   ['Begin with purpose', 'Why purpose gives every later decision context.'],
@@ -482,13 +499,9 @@ export default async function FixtureReadinessPage({
   searchParams,
 }: Readonly<{
   params: Promise<{ id: string }>;
-  searchParams: Promise<{
-    favoriteSave?: string;
-    flashcardPreset?: string;
-    outputLocale?: string;
-    summaryPreset?: string;
-    visualCase?: string;
-  }>;
+  searchParams: Promise<
+    Readonly<Record<string, string | readonly string[] | undefined>>
+  >;
 }>) {
   if (
     !isUiPreviewEnabled({
@@ -498,13 +511,21 @@ export default async function FixtureReadinessPage({
   )
     notFound();
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
   const {
     favoriteSave,
     flashcardPreset,
     outputLocale,
     summaryPreset,
     visualCase,
-  } = await searchParams;
+    locale: localeInput,
+  } = resolvedSearchParams;
+  const parsedLocale = localeSchema.safeParse(localeInput);
+  const locale = parsedLocale.success
+    ? parsedLocale.data
+    : await getRequestLocale();
+  const resultCopy = resultMessages[locale];
+  const resultQuery = fixtureQueryString(resolvedSearchParams, locale);
   if (!allowedIds.has(id)) notFound();
   const den25Fixture = id.startsWith('result-den-25');
   const longVisualFixture = den25Fixture && visualCase === 'long';
@@ -578,33 +599,33 @@ export default async function FixtureReadinessPage({
   if (id === 'result-den-25-public' && result) {
     return (
       <main className="result-public-page">
-        <p className="result-public-notice">
-          {resultMessages.en.publicViewShared}
-        </p>
+        <p className="result-public-notice">{resultCopy.publicViewShared}</p>
         <FixtureResultWorkspace
           mode="public"
           initialModel={normalizeResultWorkspace(intake, result, null)}
           fixturePlayerStartMs={0}
+          copy={resultCopy}
         />
       </main>
     );
   }
   return (
     <AppShell
-      copy={appMessages.en}
+      copy={appMessages[locale]}
       identity={{
         displayName: 'Test User',
         email: 'test@example.com',
         initials: 'TU',
       }}
-      locale="en"
-      localeSwitcherCopy={sharedMessages.en}
+      locale={locale}
+      localeSwitcherCopy={sharedMessages[locale]}
       usage={unavailableUsage}
       pathnameOverride="/app"
     >
       {result ? (
         <FixtureResultWorkspace
           favoriteSaveFails={favoriteSave === 'failure'}
+          copy={resultCopy}
           initialModel={normalizeResultWorkspace(
             intake,
             result,
@@ -622,7 +643,9 @@ export default async function FixtureReadinessPage({
         />
       ) : snapshot ? (
         <AnalysisProcessingFixtureScreen
-          copy={appMessages.en}
+          copy={appMessages[locale]}
+          resultCopy={resultCopy}
+          resultQuery={resultQuery}
           intake={intake}
           initialSnapshot={snapshot}
           retrySnapshot={retrySnapshot}
@@ -640,7 +663,11 @@ export default async function FixtureReadinessPage({
           }
         />
       ) : (
-        <IntakeReadiness copy={appMessages.en} intake={intake} locale="en" />
+        <IntakeReadiness
+          copy={appMessages[locale]}
+          intake={intake}
+          locale={locale}
+        />
       )}
     </AppShell>
   );

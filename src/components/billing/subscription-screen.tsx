@@ -53,6 +53,7 @@ export function SubscriptionScreen({
   if (presentation === null) {
     return (
       <BillingPage
+        locale={locale}
         eyebrow={copy.subscription.eyebrow}
         title={copy.subscription.title}
         description={copy.subscription.description}
@@ -96,6 +97,7 @@ export function SubscriptionScreen({
 
   return (
     <BillingPage
+      locale={locale}
       eyebrow={copy.subscription.eyebrow}
       title={copy.subscription.title}
       description={copy.subscription.description}

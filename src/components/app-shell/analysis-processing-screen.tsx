@@ -20,9 +20,11 @@ import { ResultWorkspace } from '@/components/result-workspace/result-workspace'
 
 import { AnalyzeProcessingVisual } from './analyze-processing-visual';
 import type { AppMessages } from '@/lib/i18n/messages/app';
+import type { ResultMessages } from '@/lib/i18n/messages/results';
 
 type Props = Readonly<{
   copy: AppMessages;
+  resultCopy: ResultMessages;
   intake: AnalysisIntake;
   initialSnapshot: AnalysisSnapshot;
   retryAction(formData: FormData): Promise<RetryActionResult>;
@@ -35,6 +37,7 @@ const pollingIntervalMs = 3_000;
 
 export function AnalysisProcessingScreen({
   copy,
+  resultCopy,
   intake,
   initialSnapshot,
   retryAction,
@@ -217,6 +220,7 @@ export function AnalysisProcessingScreen({
           ) : null}
           <ResultWorkspace
             model={normalizeResultWorkspace(intake, snapshot)}
+            copy={resultCopy}
             saveTitle={saveResultTitle}
             saveArtifact={saveResultArtifact}
             saveFlashcardReview={saveFlashcardReview}

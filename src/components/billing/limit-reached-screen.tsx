@@ -115,6 +115,7 @@ export function LimitReachedScreen({
 
   return (
     <BillingPage
+      locale={locale}
       eyebrow={copy.limitReached.eyebrow}
       title={copy.limitReached.title}
       description={copy.limitReached.description}

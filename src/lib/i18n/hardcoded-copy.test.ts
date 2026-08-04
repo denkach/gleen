@@ -30,6 +30,7 @@ const reviewedEnglishPhrases = new Set([
   'Loading…',
   'New analysis',
   'History',
+  'History fixture — Gleen',
   'Subscription',
   'Settings',
   'Plan',

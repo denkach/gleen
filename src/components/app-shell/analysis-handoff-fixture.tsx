@@ -114,10 +114,12 @@ export function AnalysisHandoffFixture({
   copy,
   journey,
   requestedAnalysisId = null,
+  resultQuery,
 }: Readonly<{
   copy: import('@/lib/i18n/messages/app').AppMessages;
   journey: Journey;
   requestedAnalysisId?: string | null;
+  resultQuery: string;
 }>) {
   const [recovered, setRecovered] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
@@ -177,6 +179,7 @@ export function AnalysisHandoffFixture({
         copy={copy}
         initialSnapshot={initial}
         resultPathPrefix="/app-shell-fixture/app/video"
+        preservedQuery={resultQuery}
         enableRealtime={false}
         retryAction={async () => ({ ok: true, attempt: 2 })}
         refreshAction={async () => {
@@ -212,7 +215,7 @@ export function AnalysisHandoffFixture({
         data-settled={settled ? 'true' : 'false'}
       />
       {journey === 'recover' ? (
-        <Link href="/app-shell-fixture/history">
+        <Link href={`/app-shell-fixture/history?${resultQuery}`}>
           {copy.shell.navigation.history.label}
         </Link>
       ) : null}
