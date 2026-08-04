@@ -79,7 +79,7 @@ export function LocaleSwitcher({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          aria-label={copy.localeSwitcher.menuLabel}
+          aria-label={copy.localeSwitcher.panelDescription}
           className={`locale-switcher__menu locale-switcher__menu--${variant}`}
           align="end"
         >
@@ -105,9 +105,11 @@ export function LocaleSwitcher({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <p aria-live="polite" className="locale-switcher__status">
-        {pending ? copy.localeSwitcher.saving : error}
-      </p>
+      {error ? (
+        <p aria-live="polite" className="locale-switcher__status">
+          {error}
+        </p>
+      ) : null}
     </form>
   );
 }

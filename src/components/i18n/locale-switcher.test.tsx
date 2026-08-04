@@ -19,11 +19,16 @@ import { LocaleSwitcher } from './locale-switcher';
 const copy = {
   localeSwitcher: {
     label: 'Language',
-    menuLabel: 'Choose interface language',
-    saving: 'Saving language…',
+    panelTitle: 'Language',
+    panelDescription: 'Choose your interface language',
+    close: 'Close language selector',
+    selected: 'Selected',
+    quickSwitch: 'Quick switch',
+    changedTemplate: 'Language changed to {language}',
     errors: {
       invalidLocale: 'Choose a supported language.',
-      profileUpdateFailed: 'We could not save your language. Try again.',
+      profileUpdateFailed:
+        'Your language was changed on this device, but could not be synchronized with your profile. Try again.',
     },
   },
 };
@@ -43,6 +48,11 @@ describe('LocaleSwitcher', () => {
     render(<LocaleSwitcher locale="en" copy={copy} variant="landing" />);
 
     await user.click(screen.getByRole('button', { name: /English/i }));
+
+    expect(screen.getByRole('menu')).toHaveAttribute(
+      'aria-label',
+      'Choose your interface language',
+    );
 
     expect(screen.getByRole('menuitem', { name: 'English' })).toHaveAttribute(
       'aria-current',
