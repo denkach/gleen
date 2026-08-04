@@ -21,7 +21,10 @@ import type {
 export { historyVisualCases } from './fixture-history-contract';
 export type { HistoryVisualCase } from './fixture-history-contract';
 
-function ActiveAnalysisRecoveryLink({ label }: Readonly<{ label: string }>) {
+function ActiveAnalysisRecoveryLink({
+  label,
+  locale,
+}: Readonly<{ label: string; locale: Locale }>) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,7 +42,7 @@ function ActiveAnalysisRecoveryLink({ label }: Readonly<{ label: string }>) {
     { app: '/app-shell-fixture', result: '/app-shell-fixture/app/video' },
   );
 
-  return <Link href={presentation.href}>{label}</Link>;
+  return <Link href={`${presentation.href}&locale=${locale}`}>{label}</Link>;
 }
 
 const fixtureRows = [
@@ -342,6 +345,7 @@ export function FixtureHistory({
     <>
       <ActiveAnalysisRecoveryLink
         label={appMessages[locale].processing.fixture.resume}
+        locale={locale}
       />
       <HistoryWorkspace
         locale={locale}

@@ -26,6 +26,9 @@ vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
 import FixtureHistoryPage, {
   generateMetadata,
 } from '@/app/app-shell-fixture/history/page';
+import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
+import { createSessionRecoveryRepositories } from '@/lib/analysis-pipeline/session-recovery-repository';
+import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 import {
   FixtureHistory,
   historyVisualCases,
@@ -45,6 +48,7 @@ function stubDesktopViewport() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.sessionStorage.clear();
   getRequestLocale.mockResolvedValue('en');
   stubDesktopViewport();
 });
@@ -52,6 +56,31 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('FixtureHistory', () => {
+  it('preserves the active locale in the analysis recovery link', async () => {
+    await createSessionRecoveryRepositories(window.sessionStorage).saveActive({
+      intake: {
+        id: 'active-analysis',
+        userId: 'fixture-user',
+      } as AnalysisIntake,
+      snapshot: {
+        job: {
+          analysisId: 'active-analysis',
+          userId: 'fixture-user',
+          status: 'running',
+        },
+      } as AnalysisSnapshot,
+    });
+
+    render(<FixtureHistory visualCase="default" locale="de" />);
+
+    expect(
+      await screen.findByRole('link', { name: 'Aktive Analyse fortsetzen' }),
+    ).toHaveAttribute(
+      'href',
+      '/app-shell-fixture?analysis=active-analysis&locale=de',
+    );
+  });
+
   it('freezes the supported deterministic visual cases', () => {
     expect(historyVisualCases).toEqual([
       'default',
