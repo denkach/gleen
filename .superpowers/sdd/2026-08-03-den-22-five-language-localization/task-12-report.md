@@ -156,6 +156,44 @@
   gate passed 212/212 in 4.4 minutes, with only the known color-environment and
   non-failing LCP development warnings.
 
+### Whole-branch review: History RSC boundary RED / GREEN
+
+- Final branch review found that both production `/app/history` returns passed
+  the complete function-valued `HistoryMessages` catalog from the async Server
+  Component into the client `HistoryWorkspace`. Dynamic formatters for sort,
+  filters, empty states, thumbnails, actions, load-more announcements, and
+  toasts therefore crossed React Flight in both the successful repository and
+  safe load-error branches.
+- Strict boundary RED:
+  `npx vitest run src/app/app/history/page-boundary.test.tsx` — 2/2 tests failed.
+  Both captured production branches contained a top-level `copy` object with
+  functions instead of a serializable catalog source.
+- GREEN: production now passes only exact
+  `{ kind: 'catalog', locale }`. The client resolves
+  `historyMessages[locale]` locally with no fallback. A discriminated
+  `{ kind: 'injected', locale, copy }` source remains available only for direct
+  workspace tests that exercise real dynamic formatters. The fixture workspace
+  also uses the catalog source, so no nested server-to-client copy prop contains
+  functions.
+- Boundary and integrated GREEN:
+  `npx vitest run src/app/app/history/page-boundary.test.tsx src/app/app/history/page.test.tsx src/components/history/history-workspace.test.tsx src/components/app-shell/fixture-history.test.tsx`
+  — 4 files and 62 tests passed. Both production returns have no top-level
+  `copy` or `locale`; their catalog source and all non-action client props pass
+  `structuredClone`. The six intentional server-action references remain the
+  only function-valued boundary props.
+- Full History inventory GREEN: all 15 History catalog, query, database,
+  repository, action, presentation, style, component, fixture, page, and new
+  boundary test files passed, totaling 197 tests.
+- The authenticated profile localization journey now visits the real
+  `/app/history`, requires a successful response and localized `Historial`
+  heading, and explicitly rejects the React Flight function-prop error text
+  before continuing to the deterministic fixture routes. Its existing
+  `@localization` tag collects in both desktop Chromium and mobile-chrome.
+- Final whole-branch GREEN: the combined desktop/mobile localization suite
+  passed 22/22 in 1.4 minutes. The subsequent full browser gate passed 212/212
+  in 4.4 minutes, with only the known color-environment and non-failing LCP
+  development warnings.
+
 ### Current 3086 test-fixture findings
 
 - Keyboard trace showed the third iteration sent two arrow keys only a few
@@ -411,6 +449,13 @@
   `CI=1 PLAYWRIGHT_PORT=3103 npm run test:e2e` — PASS, 212/212 tests in 4.4
   minutes across Chromium and mobile-chrome. Output contained only the known
   `NO_COLOR`/`FORCE_COLOR` warning and non-failing LCP development suggestions.
+- History RSC whole-branch localization rerun:
+  `CI=1 PLAYWRIGHT_PORT=3105 npx playwright test tests/e2e/localization.spec.ts --project=chromium --project=mobile-chrome`
+  — PASS, 22/22 tests in 1.4 minutes.
+- History RSC post-fix full browser gate:
+  `CI=1 PLAYWRIGHT_PORT=3106 npm run test:e2e` — PASS, 212/212 tests in 4.4
+  minutes across Chromium and mobile-chrome. Output contained only the known
+  `NO_COLOR`/`FORCE_COLOR` warning and non-failing LCP development suggestions.
 - The 42 full-page captures are evidence for the automated semantic locale and
   overflow checks, not pixel-baseline approvals. Some auth and desktop/tablet
   billing captures freeze the approved finite entrance animation before its
@@ -452,6 +497,15 @@
   profile-backed restoration without `gleen_locale`, exact five-item keyboard
   coverage, deterministic responsive profile setup, and no cross-suite
   regression.
+- History whole-branch review verification: the focused production boundary
+  and workspace suite passes 62/62, and the complete 15-file History inventory
+  passes 197/197. The revised desktop/mobile localization suite passes 22/22,
+  and the subsequent full browser gate passes 212/212.
+- Fresh whole-branch review quality gates: ESLint, strict type checking,
+  repository formatting, explicit report formatting, and both whitespace diff
+  checks pass. Dual-project Playwright collection lists 22/22 localization
+  tests without starting a server, including the authenticated production
+  History smoke in both Chromium and mobile-chrome.
 - The next full Chromium plus mobile-chrome gate confirmed the earlier
   billing/History/intake corrections while reaching 204 passed and 8 failed.
   The approved snapshot then passed 1/1, and the following full rerun confirmed
@@ -511,6 +565,10 @@
   screens and tests, `BillingPage`, `BillingMobileNavigation`, the billing
   fixture screen, existing limit-reached page coverage, and the new six-route
   boundary test.
+- Production History RSC boundary: `src/app/app/history/page.tsx`,
+  `src/components/history/history-copy-source.ts`, `HistoryWorkspace`, its
+  existing behavior tests, the fixture call site, the new two-branch page
+  boundary test, and the authenticated `/app/history` localization smoke.
 - Evidence: this Task 12 report.
 
 ## Remaining risks
@@ -518,7 +576,8 @@
 - The final full gate passes 212/212 and confirms the approved visual update,
   corrected processing behavior, and stacked-only containment scope across all
   four geometry viewports. The post-review full gate also passes 212/212 after
-  the authenticated-profile persistence correction.
+  the authenticated-profile persistence correction, and the final
+  post-History-boundary gate again passes 212/212.
 - Full-page evidence capture can land mid-way through finite entrance motion;
   those files document semantic and overflow automation, while the separately
   reviewed stable billing snapshot is the pixel-level visual evidence. No

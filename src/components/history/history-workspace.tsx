@@ -7,6 +7,10 @@ import { useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { HistoryFilters } from '@/components/history/history-filters';
 import { HistoryList } from '@/components/history/history-list';
 import { HistoryToolbar } from '@/components/history/history-toolbar';
+import {
+  resolveHistoryCopySource,
+  type HistoryCopySource,
+} from '@/components/history/history-copy-source';
 import type { HistoryActionResult } from '@/lib/history/actions';
 import {
   historyResultCount,
@@ -42,8 +46,7 @@ export type HistoryWorkspaceActions = Readonly<{
 }>;
 
 export type HistoryWorkspaceProps = Readonly<{
-  locale: Locale;
-  copy: HistoryMessages;
+  copySource: HistoryCopySource;
   initialPage: HistoryPage;
   query: HistoryQuery;
   facets: HistoryFacets;
@@ -107,8 +110,7 @@ function serverHydrationSnapshot() {
 }
 
 export function HistoryWorkspace({
-  locale,
-  copy,
+  copySource,
   initialPage,
   query,
   facets,
@@ -120,6 +122,7 @@ export function HistoryWorkspace({
   navigationPath = '/app/history',
   actions,
 }: HistoryWorkspaceProps) {
+  const { locale, copy } = resolveHistoryCopySource(copySource);
   return (
     <HistoryWorkspaceState
       key={`${locale}:${serializeHistoryQuery(query).toString()}`}
@@ -142,8 +145,6 @@ export function HistoryWorkspace({
 type HistoryWorkspaceStateProps = Pick<
   HistoryWorkspaceProps,
   | 'initialPage'
-  | 'locale'
-  | 'copy'
   | 'query'
   | 'facets'
   | 'verifiedDuplicate'
@@ -153,7 +154,11 @@ type HistoryWorkspaceStateProps = Pick<
   | 'filterPresentationCountOverride'
   | 'actions'
 > &
-  Readonly<{ navigationPath: string }>;
+  Readonly<{
+    locale: Locale;
+    copy: HistoryMessages;
+    navigationPath: string;
+  }>;
 
 function HistoryWorkspaceState({
   locale,

@@ -303,6 +303,17 @@ test('@localization authenticated profile keeps Spanish across new page, reload,
   ).toBeVisible();
   await clearGuestLocaleCookie(restoredPage);
 
+  const productionHistoryResponse = await restoredPage.goto('/app/history', {
+    waitUntil: 'domcontentloaded',
+  });
+  expect(productionHistoryResponse?.ok()).toBe(true);
+  await expect(
+    restoredPage.getByRole('heading', { level: 1, name: 'Historial' }),
+  ).toBeVisible();
+  await expect(restoredPage.locator('body')).not.toContainText(
+    'Functions cannot be passed directly to Client Components',
+  );
+
   await restoredPage.goto('/app-shell-fixture/history?visualCase=default');
   await expect(restoredPage).toHaveURL(
     /\/app-shell-fixture\/history\?visualCase=default$/,

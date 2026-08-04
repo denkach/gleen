@@ -41,6 +41,14 @@ const actions: HistoryWorkspaceProps['actions'] = {
   loadMoreHistory: vi.fn(),
 };
 
+function injectedHistoryCopy(locale: Locale) {
+  return {
+    kind: 'injected' as const,
+    locale,
+    copy: historyMessages[locale],
+  };
+}
+
 const historyItem: HistoryItem = {
   id: '22222222-2222-4222-8222-222222222222',
   sourceId: 'video-1',
@@ -69,8 +77,7 @@ const historyItem: HistoryItem = {
 function renderWorkspace(queryOverride: HistoryQuery = query) {
   return render(
     <HistoryWorkspace
-      locale="en"
-      copy={historyMessages.en}
+      copySource={injectedHistoryCopy('en')}
       initialPage={{ items: [], nextCursor: null }}
       query={queryOverride}
       facets={{ languages: ['en', 'sk'], sources: ['YouTube'] }}
@@ -152,8 +159,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
-        locale="en"
-        copy={historyMessages.en}
+        copySource={injectedHistoryCopy('en')}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -215,8 +221,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
-        locale="en"
-        copy={historyMessages.en}
+        copySource={injectedHistoryCopy('en')}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -270,8 +275,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
-        locale="en"
-        copy={historyMessages.en}
+        copySource={injectedHistoryCopy('en')}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -324,8 +328,7 @@ describe('HistoryWorkspace URL state', () => {
 
     render(
       <HistoryWorkspace
-        locale="en"
-        copy={historyMessages.en}
+        copySource={injectedHistoryCopy('en')}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -366,8 +369,7 @@ describe('HistoryWorkspace URL state', () => {
   it('omits unavailable duplicate metadata instead of inventing copy', () => {
     render(
       <HistoryWorkspace
-        locale="en"
-        copy={historyMessages.en}
+        copySource={injectedHistoryCopy('en')}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -389,8 +391,7 @@ describe('HistoryWorkspace URL state', () => {
   it('renders the safe load error under the same approved page heading', () => {
     render(
       <HistoryWorkspace
-        locale="en"
-        copy={historyMessages.en}
+        copySource={injectedHistoryCopy('en')}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: [], sources: [] }}
@@ -561,8 +562,7 @@ describe('HistoryWorkspace URL state', () => {
     };
     view.rerender(
       <HistoryWorkspace
-        locale="en"
-        copy={historyMessages.en}
+        copySource={injectedHistoryCopy('en')}
         initialPage={{ items: [], nextCursor: null }}
         query={restoredQuery}
         facets={{ languages: ['en', 'sk'], sources: ['YouTube'] }}
@@ -606,8 +606,7 @@ describe('HistoryWorkspace URL state', () => {
     (locale, count, expected) => {
       render(
         <HistoryWorkspace
-          locale={locale}
-          copy={historyMessages[locale]}
+          copySource={injectedHistoryCopy(locale)}
           initialPage={{
             items: Array.from({ length: count }, (_, index) => ({
               ...historyItem,
@@ -634,8 +633,7 @@ describe('HistoryWorkspace URL state', () => {
     });
     render(
       <HistoryWorkspace
-        locale="en"
-        copy={historyMessages.en}
+        copySource={injectedHistoryCopy('en')}
         initialPage={{ items: [historyItem], nextCursor: null }}
         query={{ ...query, q: '', status: [], cursor: null }}
         facets={{ languages: [], sources: [] }}
@@ -691,8 +689,7 @@ describe('HistoryWorkspace URL state', () => {
 
       const view = render(
         <HistoryWorkspace
-          locale="en"
-          copy={historyMessages.en}
+          copySource={injectedHistoryCopy('en')}
           initialPage={{ items: [historyItem], nextCursor: 'en-cursor' }}
           query={{ ...query, cursor: null }}
           facets={{ languages: [], sources: [] }}
@@ -702,8 +699,7 @@ describe('HistoryWorkspace URL state', () => {
 
       view.rerender(
         <HistoryWorkspace
-          locale={locale}
-          copy={targetCopy}
+          copySource={{ kind: 'injected', locale, copy: targetCopy }}
           initialPage={{ items: [targetItem], nextCursor: 'localized-cursor' }}
           query={{ ...query, cursor: null }}
           facets={{ languages: [], sources: [] }}
@@ -739,8 +735,7 @@ describe('HistoryWorkspace URL state', () => {
       data: undefined,
     });
     const props = {
-      locale: 'en' as const,
-      copy: historyMessages.en,
+      copySource: injectedHistoryCopy('en'),
       initialPage: { items: [historyItem], nextCursor: null },
       query: { ...query, q: '', status: [], cursor: null },
       facets: { languages: [], sources: [] },
@@ -772,8 +767,7 @@ describe('HistoryWorkspace URL state', () => {
     const user = userEvent.setup();
     render(
       <HistoryWorkspace
-        locale="de"
-        copy={historyMessages.de}
+        copySource={injectedHistoryCopy('de')}
         initialPage={{ items: [], nextCursor: null }}
         query={query}
         facets={{ languages: ['en'], sources: ['YouTube'] }}

@@ -9,7 +9,6 @@ import { historyEntryPresentation } from '@/lib/analysis-pipeline/recovery';
 import { createSessionRecoveryRepositories } from '@/lib/analysis-pipeline/session-recovery-repository';
 import { parseHistoryQuery } from '@/lib/history/query';
 import type { HistoryItem } from '@/lib/history/repository';
-import { historyMessages } from '@/lib/i18n/messages/history';
 import { appMessages } from '@/lib/i18n/messages/app';
 import type { Locale } from '@/lib/i18n/locales';
 
@@ -348,8 +347,7 @@ export function FixtureHistory({
         locale={locale}
       />
       <HistoryWorkspace
-        locale={locale}
-        copy={historyMessages[locale]}
+        copySource={{ kind: 'catalog', locale }}
         initialPage={{
           items: itemsFor(visualCase, query),
           nextCursor:
