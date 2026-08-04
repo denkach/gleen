@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { unavailableUsage } from '@/lib/app-shell';
@@ -99,6 +99,45 @@ describe('AppShell', () => {
     ).toBeGreaterThan(0);
     expect(screen.getByRole('main')).toHaveAttribute('id', 'app-content');
   });
+
+  test.each([
+    ['Meta+K', { metaKey: true }],
+    ['Control+K', { ctrlKey: true }],
+  ])(
+    'opens only the visible language panel with %s and focuses its selection',
+    (_shortcut, modifier) => {
+      const emptyRects = { length: 0 } as DOMRectList;
+      const visibleRects = { length: 1 } as DOMRectList;
+      vi.spyOn(HTMLElement.prototype, 'getClientRects').mockImplementation(
+        function getClientRects(this: HTMLElement) {
+          return this.classList.contains('locale-switcher__trigger--compact')
+            ? emptyRects
+            : visibleRects;
+        },
+      );
+
+      render(
+        <AppShell
+          copy={appMessages.de}
+          identity={identity}
+          locale="de"
+          localeSwitcherCopy={sharedMessages.de}
+          usage={unavailableUsage}
+        >
+          <h1>Verlaufsseite</h1>
+        </AppShell>,
+      );
+
+      fireEvent.keyDown(window, { key: 'k', ...modifier });
+
+      expect(screen.getAllByRole('dialog', { name: 'Sprache' })).toHaveLength(
+        1,
+      );
+      expect(
+        screen.getByRole('radio', { name: 'Deutsch German' }),
+      ).toHaveFocus();
+    },
+  );
 
   test('preserves the approved responsive geometry and motion contracts', () => {
     const css = fs.readFileSync(
