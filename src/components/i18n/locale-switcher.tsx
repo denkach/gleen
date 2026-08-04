@@ -25,6 +25,11 @@ type LocaleSwitcherProps = Readonly<{
 const initialActionState: LocaleActionState = { status: 'idle' };
 const successToastDuration = 2200;
 
+type OptimisticLocale = Readonly<{
+  baseLocale: Locale;
+  selectedLocale: Locale;
+}>;
+
 export function LocaleSwitcher({
   compact = false,
   locale,
@@ -38,7 +43,10 @@ export function LocaleSwitcher({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [selectedLocale, setSelectedLocale] = useState(locale);
+  const [optimisticLocale, setOptimisticLocale] = useState<OptimisticLocale>({
+    baseLocale: locale,
+    selectedLocale: locale,
+  });
   const [dismissedSuccess, setDismissedSuccess] =
     useState<LocaleActionState | null>(null);
   const [state, formAction] = useActionState(
@@ -66,7 +74,7 @@ export function LocaleSwitcher({
   }, []);
 
   useEffect(() => {
-    if (state.status !== 'success') return;
+    if (state.status !== 'success' || panelOpen) return;
 
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => {
@@ -77,7 +85,7 @@ export function LocaleSwitcher({
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
-  }, [state]);
+  }, [panelOpen, state]);
 
   function selectLocale(candidate: Locale) {
     const parsed = localeSchema.safeParse(candidate);
@@ -88,7 +96,10 @@ export function LocaleSwitcher({
       toastTimerRef.current = null;
     }
     setDismissedSuccess(state);
-    setSelectedLocale(parsed.data);
+    setOptimisticLocale({
+      baseLocale: locale,
+      selectedLocale: parsed.data,
+    });
     document.documentElement.lang = toBcp47(parsed.data);
     writeBrowserLocaleCookie(parsed.data);
     router.refresh();
@@ -97,6 +108,17 @@ export function LocaleSwitcher({
     if (submitter) formRef.current?.requestSubmit(submitter);
   }
 
+  if (optimisticLocale.baseLocale !== locale) {
+    setOptimisticLocale({
+      baseLocale: locale,
+      selectedLocale: locale,
+    });
+  }
+
+  const selectedLocale =
+    optimisticLocale.baseLocale === locale
+      ? optimisticLocale.selectedLocale
+      : locale;
   const error =
     state.status === 'error'
       ? state.code === 'invalid_locale'
@@ -105,7 +127,7 @@ export function LocaleSwitcher({
       : null;
   const selectedMetadata = localeMetadata[selectedLocale];
   const toastMessage =
-    state.status === 'success' && dismissedSuccess !== state
+    state.status === 'success' && !panelOpen && dismissedSuccess !== state
       ? copy.localeSwitcher.changedTemplate.replace(
           '{language}',
           localeMetadata[state.locale].nativeName,
@@ -169,7 +191,7 @@ export function LocaleSwitcher({
           value={candidate}
         />
       ))}
-      {error ? (
+      {error && !panelOpen ? (
         <p aria-live="polite" className="locale-switcher__status">
           {error}
         </p>

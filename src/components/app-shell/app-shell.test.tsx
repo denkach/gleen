@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { unavailableUsage } from '@/lib/app-shell';
 import { appMessages } from '@/lib/i18n/messages/app';
@@ -25,6 +25,7 @@ const identity = {
 
 describe('AppShell', () => {
   beforeEach(() => usePathname.mockReturnValue('/app/history'));
+  afterEach(() => vi.restoreAllMocks());
 
   test('renders the responsive navigation and account shell in German', () => {
     render(
@@ -138,6 +139,85 @@ describe('AppShell', () => {
       ).toHaveFocus();
     },
   );
+
+  test('reconciles both desktop and compact switchers when the server locale changes', () => {
+    vi.spyOn(HTMLFormElement.prototype, 'requestSubmit').mockImplementation(
+      () => undefined,
+    );
+    const { rerender } = render(
+      <AppShell
+        copy={appMessages.en}
+        identity={identity}
+        locale="en"
+        localeSwitcherCopy={sharedMessages.en}
+        usage={unavailableUsage}
+      >
+        <h1>History page</h1>
+      </AppShell>,
+    );
+
+    expect(
+      screen.getAllByRole('button', { name: 'Language: English' }),
+    ).toHaveLength(2);
+
+    const desktopTopbar = document.querySelector('.app-topbar') as HTMLElement;
+    const mobileTopbar = document.querySelector(
+      '.mobile-topbar',
+    ) as HTMLElement;
+    fireEvent.click(
+      within(desktopTopbar).getByRole('button', {
+        name: 'Language: English',
+      }),
+    );
+    fireEvent.click(screen.getByRole('radio', { name: 'Español Spanish' }));
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    expect(
+      within(desktopTopbar).getByRole('button', {
+        name: 'Language: Español',
+      }),
+    ).toBeVisible();
+    expect(
+      within(mobileTopbar).getByRole('button', {
+        name: 'Language: English',
+      }),
+    ).toHaveClass('locale-switcher__trigger--compact');
+
+    rerender(
+      <AppShell
+        copy={appMessages.de}
+        identity={identity}
+        locale="de"
+        localeSwitcherCopy={sharedMessages.de}
+        usage={unavailableUsage}
+      >
+        <h1>Verlaufsseite</h1>
+      </AppShell>,
+    );
+
+    expect(
+      screen.getAllByRole('button', { name: 'Sprache: Deutsch' }),
+    ).toHaveLength(2);
+    expect(
+      within(mobileTopbar).getByRole('button', { name: 'Sprache: Deutsch' }),
+    ).toHaveClass('locale-switcher__trigger--compact');
+
+    rerender(
+      <AppShell
+        copy={appMessages.en}
+        identity={identity}
+        locale="en"
+        localeSwitcherCopy={sharedMessages.en}
+        usage={unavailableUsage}
+      >
+        <h1>History page</h1>
+      </AppShell>,
+    );
+
+    expect(
+      screen.getAllByRole('button', { name: 'Language: English' }),
+    ).toHaveLength(2);
+  });
 
   test('preserves the approved responsive geometry and motion contracts', () => {
     const css = fs.readFileSync(

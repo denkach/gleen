@@ -1,4 +1,11 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -154,7 +161,8 @@ describe('LocaleSwitcher', () => {
     expect(screen.queryByText('Saving language…')).not.toBeInTheDocument();
   });
 
-  it('announces success after synchronization and dismisses it after 2200 ms', async () => {
+  it('starts the accessible 2200 ms success announcement after the panel closes', async () => {
+    vi.useFakeTimers();
     let resolveAction!: (value: LocaleActionState) => void;
     setInterfaceLocale.mockImplementationOnce(
       () =>
@@ -162,7 +170,6 @@ describe('LocaleSwitcher', () => {
           resolveAction = resolve;
         }),
     );
-    const user = userEvent.setup();
     const tokenCopy = {
       localeSwitcher: {
         ...copy.localeSwitcher,
@@ -171,25 +178,30 @@ describe('LocaleSwitcher', () => {
     };
     render(<LocaleSwitcher locale="en" copy={tokenCopy} variant="landing" />);
 
-    await user.click(screen.getByRole('button', { name: /English/i }));
-    await user.click(screen.getByRole('radio', { name: 'Deutsch German' }));
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
-    await waitFor(() => expect(setInterfaceLocale).toHaveBeenCalledTimes(1));
-    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: /English/i }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Deutsch German' }));
+    await act(async () => Promise.resolve());
+    expect(setInterfaceLocale).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       resolveAction({ status: 'success', locale: 'de' });
     });
 
-    expect(screen.getByRole('status', { hidden: true })).toHaveTextContent(
-      'Language changed to Deutsch; keep {languageName}',
-    );
-    act(() => vi.advanceTimersByTime(2199));
-    expect(screen.getByRole('status', { hidden: true })).toBeInTheDocument();
-    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('status', { hidden: true }),
     ).not.toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(209));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Language changed to Deutsch; keep {languageName}',
+    );
+    act(() => vi.advanceTimersByTime(2199));
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 });
