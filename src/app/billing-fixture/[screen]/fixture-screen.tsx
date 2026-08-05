@@ -143,6 +143,22 @@ export function BillingFixtureScreen({
             presentation={fixture.presentation}
             initialInterval="month"
             copySource={{ kind: 'catalog', locale }}
+            recoveryControls={
+              fixture.presentation === null
+                ? {
+                    now: () => new Date(fixture.now),
+                    retryAction: async () => {
+                      await new Promise((resolve) =>
+                        window.setTimeout(resolve, 80),
+                      );
+                      return {
+                        status: 'error',
+                        code: 'snapshot_unavailable',
+                      } as const;
+                    },
+                  }
+                : undefined
+            }
           />
           {boundaryEvidence}
         </>

@@ -38,6 +38,7 @@ export const billingFixtureStates = [
   'empty-usage',
   'failed-invoice',
   'limit-reached',
+  'error',
 ] as const;
 
 export type BillingFixtureScreen = (typeof billingFixtureScreens)[number];
@@ -332,7 +333,7 @@ const invoiceSummary = {
 } as const satisfies InvoiceSummary;
 
 const allowedFixtureStates = {
-  subscription: ['free', 'active', 'past-due', 'scheduled-cancel'],
+  subscription: ['free', 'active', 'past-due', 'scheduled-cancel', 'error'],
   usage: ['active', 'empty-usage'],
   checkout: ['active'],
   portal: ['active', 'past-due', 'scheduled-cancel'],
@@ -379,23 +380,26 @@ function shellFor(snapshot: BillingSnapshot) {
 }
 
 function subscriptionFixture(state: BillingFixtureState, locale: Locale) {
-  const snapshot = snapshotFor(state);
+  const snapshot = snapshotFor(state === 'error' ? 'active' : state);
   const options = presentationOptions(locale);
   return {
     screen: 'subscription',
     state,
     now,
     shell: shellFor(snapshot),
-    presentation: toSubscriptionPresentation(snapshot, {
-      ...options,
-      paymentMethod: {
-        status: 'available',
-        brand: 'visa',
-        last4: '4242',
-        expMonth: 8,
-        expYear: 2028,
-      },
-    }),
+    presentation:
+      state === 'error'
+        ? null
+        : toSubscriptionPresentation(snapshot, {
+            ...options,
+            paymentMethod: {
+              status: 'available',
+              brand: 'visa',
+              last4: '4242',
+              expMonth: 8,
+              expYear: 2028,
+            },
+          }),
   } as const;
 }
 

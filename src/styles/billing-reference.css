@@ -760,6 +760,110 @@
   color: var(--billing-muted);
 }
 
+.billing-experience .billing-recovery-card {
+  min-height: 315px;
+  display: grid;
+  grid-template-columns: minmax(170px, 0.28fr) minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.billing-experience .billing-recovery-symbol {
+  display: grid;
+  place-items: center;
+  padding: 38px;
+  border-right: 1px solid var(--line);
+  background: radial-gradient(
+    circle at center,
+    rgba(173, 131, 255, 0.08),
+    transparent 68%
+  );
+}
+
+.billing-experience .billing-recovery-symbol > span {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(173, 131, 255, 0.2);
+  border-radius: 50%;
+  background: rgba(173, 131, 255, 0.055);
+  color: #b994ff;
+  box-shadow: 0 0 34px rgba(173, 131, 255, 0.08);
+}
+
+.billing-experience .billing-recovery-symbol svg {
+  width: 30px;
+  height: 30px;
+}
+
+.billing-experience .billing-recovery-copy {
+  min-width: 0;
+  align-self: center;
+  padding: 42px 46px 34px;
+}
+
+.billing-experience .billing-recovery-copy h2 {
+  margin: 0 0 9px;
+  font-size: 23px;
+  line-height: 1.3;
+}
+
+.billing-experience .billing-recovery-copy > p:first-of-type {
+  max-width: 630px;
+  margin: 0;
+  color: var(--billing-muted);
+  font-size: 14px;
+}
+
+.billing-experience .billing-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 23px;
+}
+
+.billing-experience .billing-recovery-status {
+  min-height: 18px;
+  margin: 9px 0 0;
+  color: #ff9ca4;
+  font-size: 12px;
+}
+
+.billing-experience .billing-recovery-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  margin-top: 20px;
+  padding-top: 17px;
+  border-top: 1px solid var(--line);
+  color: var(--billing-muted-2);
+  font-size: 11px;
+}
+
+.billing-experience .billing-recovery-meta span {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.billing-experience .billing-recovery-meta svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.billing-experience .billing-recovery-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(21, 19, 27, 0.25);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: billing-recovery-spin 0.7s linear infinite;
+}
+
 .billing-experience .billing-checkout-state {
   display: flex;
   align-items: center;
@@ -1434,6 +1538,12 @@
   }
 }
 
+@keyframes billing-recovery-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 1120px) {
   .billing-experience .billing-subscription-layout,
   .billing-experience .billing-usage-layout,
@@ -1582,6 +1692,44 @@
 
   .billing-experience .billing-page-title {
     font-size: 37px;
+  }
+
+  .billing-experience .billing-recovery-card {
+    min-height: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .billing-experience .billing-recovery-symbol {
+    padding: 27px 20px 23px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .billing-experience .billing-recovery-symbol > span {
+    width: 58px;
+    height: 58px;
+  }
+
+  .billing-experience .billing-recovery-copy {
+    padding: 25px 20px 23px;
+    text-align: center;
+  }
+
+  .billing-experience .billing-recovery-copy h2 {
+    font-size: 21px;
+  }
+
+  .billing-experience .billing-recovery-actions {
+    display: grid;
+  }
+
+  .billing-experience .billing-recovery-actions .billing-button {
+    width: 100%;
+  }
+
+  .billing-experience .billing-recovery-meta {
+    display: grid;
+    text-align: left;
   }
 
   .billing-experience .billing-plan-overview,
