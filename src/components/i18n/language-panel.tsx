@@ -59,6 +59,7 @@ export function LanguagePanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keyboardModalityRef = useRef(false);
   const browserPlatform = useSyncExternalStore(
     subscribeToPlatform,
     getBrowserPlatform,
@@ -83,10 +84,20 @@ export function LanguagePanel({
   const setPanelRef = useCallback(
     (node: HTMLDivElement | null) => {
       panelRef.current = node;
-      if (node) positionPanelFromTrigger(node);
+      if (node) {
+        node.dataset.focusModality = keyboardModalityRef.current
+          ? 'keyboard'
+          : 'pointer';
+        positionPanelFromTrigger(node);
+      }
     },
     [positionPanelFromTrigger],
   );
+
+  const setFocusModality = useCallback((modality: 'keyboard' | 'pointer') => {
+    keyboardModalityRef.current = modality === 'keyboard';
+    if (panelRef.current) panelRef.current.dataset.focusModality = modality;
+  }, []);
 
   useEffect(
     () => () => {
@@ -94,6 +105,17 @@ export function LanguagePanel({
     },
     [],
   );
+
+  useEffect(() => {
+    const handleKeyboard = () => setFocusModality('keyboard');
+    const handlePointer = () => setFocusModality('pointer');
+    document.addEventListener('keydown', handleKeyboard, true);
+    document.addEventListener('pointerdown', handlePointer, true);
+    return () => {
+      document.removeEventListener('keydown', handleKeyboard, true);
+      document.removeEventListener('pointerdown', handlePointer, true);
+    };
+  }, [setFocusModality]);
 
   useEffect(() => {
     if (!open) return;
@@ -178,6 +200,9 @@ export function LanguagePanel({
           ref={setPanelRef}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
+            setFocusModality(
+              keyboardModalityRef.current ? 'keyboard' : 'pointer',
+            );
             selectedRef.current?.focus();
           }}
         >

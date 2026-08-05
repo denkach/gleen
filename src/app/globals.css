@@ -1383,7 +1383,8 @@ p {
 }
 
 .locale-language-panel__option:hover::before,
-.locale-language-panel__option:focus-visible::before {
+.locale-language-panel[data-focus-modality='keyboard']
+  .locale-language-panel__option:focus::before {
   opacity: 1;
   transform: scale(1);
 }

@@ -72,6 +72,14 @@ const allNativeLanguageNames = [
   'Deutsch',
 ] as const;
 
+const removedSavingMessages = [
+  'Saving language…',
+  'Зберігаємо мову…',
+  'Сохраняем язык…',
+  'Guardando idioma…',
+  'Sprache wird gespeichert…',
+] as const;
+
 const panelLocales = [
   {
     code: 'uk',
@@ -139,6 +147,20 @@ async function waitForPanelMotion(page: Page) {
         .map((animation) => animation.finished.catch(() => undefined)),
     );
   });
+}
+
+async function hideLocalVisualOverlays(page: Page) {
+  await page
+    .locator('.motion-cursor, nextjs-portal')
+    .evaluateAll((elements) => {
+      for (const element of elements) {
+        (element as HTMLElement).style.setProperty(
+          'display',
+          'none',
+          'important',
+        );
+      }
+    });
 }
 
 function getResultNavigationControl(page: Page, name: string) {
@@ -295,6 +317,27 @@ test.beforeEach(async ({ context }) => {
 test('@localization guest selection is immediate, route-stable, quiet, and durable', async ({
   page,
 }) => {
+  let markLocaleActionPending!: () => void;
+  let releaseLocaleAction!: () => void;
+  const localeActionPending = new Promise<void>((resolve) => {
+    markLocaleActionPending = resolve;
+  });
+  const localeActionGate = new Promise<void>((resolve) => {
+    releaseLocaleAction = resolve;
+  });
+
+  await page.route('**/*', async (route) => {
+    const request = route.request();
+    if (
+      request.method() === 'POST' &&
+      request.headers()['next-action'] !== undefined
+    ) {
+      markLocaleActionPending();
+      await localeActionGate;
+    }
+    await route.continue();
+  });
+
   await page.goto('/');
   const originalUrl = page.url();
 
@@ -302,34 +345,43 @@ test('@localization guest selection is immediate, route-stable, quiet, and durab
   await expect(page.getByRole('dialog')).toBeVisible();
   await expectCanonicalLanguageRadios(page);
   await getLanguageRadio(page, 'Deutsch').click();
+  await localeActionPending;
 
-  const immediateState = await page.evaluate((cookieName) => {
-    const trigger = document.querySelector<HTMLElement>(
-      '.locale-switcher__trigger',
-    );
-    const savingMessage = [...document.querySelectorAll<HTMLElement>('body *')]
-      .filter((element) => element.offsetParent !== null)
-      .some((element) =>
-        /saving (?:the )?(?:interface )?language/i.test(element.innerText),
+  try {
+    const immediateState = await page.evaluate((cookieName) => {
+      const trigger = document.querySelector<HTMLElement>(
+        '.locale-switcher__trigger',
       );
-    return {
-      cookie: document.cookie
-        .split('; ')
-        .find((cookie) => cookie.startsWith(`${cookieName}=`)),
-      htmlLanguage: document.documentElement.lang,
-      savingMessage,
-      triggerText: trigger?.innerText.replace(/\s+/g, ' ').trim(),
-      url: window.location.href,
-    };
-  }, localeCookie);
+      return {
+        cookie: document.cookie
+          .split('; ')
+          .find((cookie) => cookie.startsWith(`${cookieName}=`)),
+        htmlLanguage: document.documentElement.lang,
+        triggerText: trigger?.innerText.replace(/\s+/g, ' ').trim(),
+        url: window.location.href,
+      };
+    }, localeCookie);
 
-  expect(immediateState).toEqual({
-    cookie: 'gleen_locale=de',
-    htmlLanguage: 'de-DE',
-    savingMessage: false,
-    triggerText: 'Deutsch ›',
-    url: originalUrl,
-  });
+    expect(immediateState).toEqual({
+      cookie: 'gleen_locale=de',
+      htmlLanguage: 'de-DE',
+      triggerText: 'Deutsch ›',
+      url: originalUrl,
+    });
+    for (const savingMessage of removedSavingMessages) {
+      await expect(page.getByText(savingMessage, { exact: true })).toHaveCount(
+        0,
+      );
+    }
+  } finally {
+    releaseLocaleAction();
+  }
+
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: 'Sprache wurde auf Deutsch geändert' }),
+  ).toBeVisible();
 
   await page.reload();
   await expect(page).toHaveURL(originalUrl);
@@ -520,7 +572,15 @@ test('@localization shortcut, radio keys, focus trap, Escape, and focus return w
   await page.keyboard.press('Meta+K');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await expect(getLanguageRadio(page, 'English')).toBeFocused();
+  const keyboardFocusedEnglish = getLanguageRadio(page, 'English');
+  await expect(keyboardFocusedEnglish).toBeFocused();
+  await expect
+    .poll(() =>
+      keyboardFocusedEnglish.evaluate(
+        (element) => getComputedStyle(element, '::before').opacity,
+      ),
+    )
+    .toBe('1');
 
   for (let step = 0; step < panelLocales.length + 2; step += 1) {
     await page.keyboard.press('Tab');
@@ -677,9 +737,9 @@ test('@localization open panel matches approved desktop and mobile geometry', as
 
   const desktopGeometry = await desktopPanel.evaluate((element) => {
     const panel = element.getBoundingClientRect();
-    const firstRow = element
-      .querySelector('.locale-language-panel__option')!
-      .getBoundingClientRect();
+    const rowHeights = [
+      ...element.querySelectorAll('.locale-language-panel__option'),
+    ].map((row) => row.getBoundingClientRect().height);
     const style = getComputedStyle(element);
     const edgeStyle = getComputedStyle(element, '::before');
     const scrimStyle = getComputedStyle(
@@ -690,7 +750,7 @@ test('@localization open panel matches approved desktop and mobile geometry', as
       borderRadius: Number.parseFloat(style.borderRadius),
       edgeWidth: Number.parseFloat(edgeStyle.width),
       panelRight: panel.right,
-      rowHeight: firstRow.height,
+      rowHeights,
       scrimBackdrop: scrimStyle.backdropFilter,
       width: panel.width,
     };
@@ -698,7 +758,7 @@ test('@localization open panel matches approved desktop and mobile geometry', as
   expect(desktopGeometry.width).toBe(390);
   expect(desktopGeometry.borderRadius).toBe(18);
   expect(desktopGeometry.edgeWidth).toBe(2);
-  expect(desktopGeometry.rowHeight).toBeGreaterThanOrEqual(88);
+  expect(desktopGeometry.rowHeights).toEqual([88, 88, 88, 88, 88]);
   expect(
     Math.abs(
       desktopGeometry.panelRight -
@@ -707,6 +767,22 @@ test('@localization open panel matches approved desktop and mobile geometry', as
   ).toBeLessThanOrEqual(1);
   expect(desktopGeometry.background).toContain('linear-gradient');
   expect(desktopGeometry.scrimBackdrop).toContain('blur(2px)');
+  expect(
+    await getLanguageRadio(page, 'English').evaluate(
+      (element) => getComputedStyle(element, '::before').opacity,
+    ),
+  ).toBe('0');
+  await hideLocalVisualOverlays(page);
+  await expect(desktopPanel).toHaveScreenshot(
+    'den-22-1600x900-desktop-language-panel-open.png',
+    {
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: 0.001,
+      scale: 'css',
+      threshold: 0.1,
+    },
+  );
   await page.screenshot({
     animations: 'disabled',
     caret: 'hide',
@@ -723,15 +799,15 @@ test('@localization open panel matches approved desktop and mobile geometry', as
   await waitForPanelMotion(page);
   const mobileGeometry = await mobilePanel.evaluate((element) => {
     const panel = element.getBoundingClientRect();
-    const firstRow = element
-      .querySelector('.locale-language-panel__option')!
-      .getBoundingClientRect();
+    const rowHeights = [
+      ...element.querySelectorAll('.locale-language-panel__option'),
+    ].map((row) => row.getBoundingClientRect().height);
     return {
       bottom: window.innerHeight - panel.bottom,
       borderRadius: Number.parseFloat(getComputedStyle(element).borderRadius),
       left: panel.left,
       right: window.innerWidth - panel.right,
-      rowHeight: firstRow.height,
+      rowHeights,
       width: panel.width,
     };
   });
@@ -740,9 +816,25 @@ test('@localization open panel matches approved desktop and mobile geometry', as
     borderRadius: 24,
     left: 12,
     right: 12,
-    rowHeight: 78,
+    rowHeights: [78, 78, 78, 78, 78],
     width: 366,
   });
+  expect(
+    await getLanguageRadio(page, 'English').evaluate(
+      (element) => getComputedStyle(element, '::before').opacity,
+    ),
+  ).toBe('0');
+  await hideLocalVisualOverlays(page);
+  await expect(mobilePanel).toHaveScreenshot(
+    'den-22-390x844-mobile-language-panel-open.png',
+    {
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: 0.001,
+      scale: 'css',
+      threshold: 0.1,
+    },
+  );
   await page.screenshot({
     animations: 'disabled',
     caret: 'hide',
