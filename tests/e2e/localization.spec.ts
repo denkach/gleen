@@ -42,6 +42,12 @@ const viewports = [
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
 
+const workflowCardViewports = [
+  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'tablet', width: 900, height: 768 },
+  { name: 'mobile', width: 390, height: 844 },
+] as const;
+
 const responsiveScreens = [
   { name: 'landing', route: '/' },
   {
@@ -851,7 +857,7 @@ test('@localization open panel matches approved desktop and mobile geometry', as
 test('@localization workflow cards keep one height across all locales and viewports', async ({
   page,
 }) => {
-  for (const viewport of viewports) {
+  for (const viewport of workflowCardViewports) {
     await page.setViewportSize({
       width: viewport.width,
       height: viewport.height,

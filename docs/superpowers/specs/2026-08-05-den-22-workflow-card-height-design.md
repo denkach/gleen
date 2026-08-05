@@ -45,5 +45,8 @@ reading order, reduced motion, and semantic heading structure are unchanged.
 - Verify all four card heights are equal and at least 200 px, and that text is
   not clipped, for `uk`, `ru`, `en`, `es`, and `de` at desktop, tablet, and
   mobile viewports.
+- The focused viewport set is `1440x900` desktop, `900x768` tablet (inside the
+  `max-width: 980px` two-column breakpoint), and `390x844` mobile. It is
+  intentionally separate from the shared localization viewport fixture.
 - Run the affected marketing/style tests, formatting, lint, type checking,
   production build, and focused browser coverage.

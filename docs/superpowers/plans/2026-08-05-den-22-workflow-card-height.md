@@ -35,6 +35,11 @@
 - Consumes: `.landing-reference .process-steps`, `.process-step`, the existing `panelLocales`, `viewports`, and `localeCookie` browser fixtures.
 - Produces: a 200 px minimum workflow-card contract and browser evidence that every locale renders four equal-height, unclipped cards.
 
+**Focused viewports:** `1440x900` desktop, `900x768` tablet (inside the
+two-column breakpoint), and `390x844` mobile. Keep this set local to the
+workflow-card scenario; the shared localization `viewports` fixture remains
+unchanged for unrelated coverage.
+
 - [ ] **Step 1: Add the failing CSS contract**
 
 Append this test to `src/styles/landing-reference.test.ts`:
@@ -57,10 +62,16 @@ describe('localized workflow card geometry', () => {
 Add this scenario to `tests/e2e/localization.spec.ts` before the panel-overflow loop:
 
 ```ts
+const workflowCardViewports = [
+  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'tablet', width: 900, height: 768 },
+  { name: 'mobile', width: 390, height: 844 },
+] as const;
+
 test('@localization workflow cards keep one height across all locales and viewports', async ({
   page,
 }) => {
-  for (const viewport of viewports) {
+  for (const viewport of workflowCardViewports) {
     await page.setViewportSize({
       width: viewport.width,
       height: viewport.height,
