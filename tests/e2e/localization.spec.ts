@@ -866,7 +866,9 @@ test('@localization workflow cards keep one height across all locales and viewpo
           sameSite: 'Lax',
         },
       ]);
-      await page.goto('/#how');
+      await page.goto(
+        `/?workflowLocale=${locale.code}&workflowViewport=${viewport.name}#how`,
+      );
       await expect(page.locator('html')).toHaveAttribute('lang', locale.bcp47);
 
       const metrics = await page.locator('.process-step').evaluateAll((cards) =>
