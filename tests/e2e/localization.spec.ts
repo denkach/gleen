@@ -72,6 +72,19 @@ const allNativeLanguageNames = [
   'Deutsch',
 ] as const;
 
+const panelLocales = [
+  {
+    code: 'uk',
+    bcp47: 'uk-UA',
+    nativeName: 'Українська',
+    englishName: 'Ukrainian',
+  },
+  { code: 'ru', bcp47: 'ru-RU', nativeName: 'Русский', englishName: 'Russian' },
+  { code: 'en', bcp47: 'en-GB', nativeName: 'English', englishName: 'English' },
+  { code: 'es', bcp47: 'es-ES', nativeName: 'Español', englishName: 'Spanish' },
+  { code: 'de', bcp47: 'de-DE', nativeName: 'Deutsch', englishName: 'German' },
+] as const;
+
 async function setLocaleCookie(page: Page, locale: keyof typeof localeCases) {
   await page.context().addCookies([
     {
@@ -90,8 +103,41 @@ function getLocaleTrigger(page: Page, nativeName: string) {
 }
 
 function getAnyLocaleTrigger(page: Page) {
-  return page.getByRole('button', {
-    name: new RegExp(`: (${allNativeLanguageNames.join('|')})$`),
+  return page
+    .getByRole('button', {
+      name: new RegExp(`: (${allNativeLanguageNames.join('|')})$`),
+    })
+    .filter({ visible: true });
+}
+
+function getLanguageRadio(page: Page, nativeName: string) {
+  const locale = panelLocales.find(
+    (candidate) => candidate.nativeName === nativeName,
+  );
+  if (!locale) throw new Error(`Unknown locale label: ${nativeName}`);
+  return page.getByRole('radio', {
+    name: `${locale.nativeName} ${locale.englishName}`,
+    exact: true,
+  });
+}
+
+async function expectCanonicalLanguageRadios(page: Page) {
+  const radios = page.getByRole('radio');
+  await expect(radios).toHaveCount(panelLocales.length);
+  for (const [index, locale] of panelLocales.entries()) {
+    await expect(radios.nth(index)).toHaveAccessibleName(
+      `${locale.nativeName} ${locale.englishName}`,
+    );
+  }
+}
+
+async function waitForPanelMotion(page: Page) {
+  await page.getByRole('dialog').evaluate(async (element) => {
+    await Promise.all(
+      element
+        .getAnimations({ subtree: true })
+        .map((animation) => animation.finished.catch(() => undefined)),
+    );
   });
 }
 
@@ -246,27 +292,50 @@ test.beforeEach(async ({ context }) => {
   });
 });
 
-test('@localization guest locale keeps the auth route and query and persists after reload', async ({
+test('@localization guest selection is immediate, route-stable, quiet, and durable', async ({
   page,
 }) => {
-  const route = '/sign-in?next=%2Fapp%2Fhistory%3Fstatus%3Dready';
-  await page.goto(route);
+  await page.goto('/');
   const originalUrl = page.url();
 
   await getLocaleTrigger(page, 'English').click();
-  await page.getByRole('menuitem', { name: 'Deutsch' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expectCanonicalLanguageRadios(page);
+  await getLanguageRadio(page, 'Deutsch').click();
 
-  await expect(page).toHaveURL(originalUrl);
-  await expect(page.locator('html')).toHaveAttribute('lang', 'de-DE');
-  await expect(
-    page.getByRole('heading', { name: 'Bei Gleen anmelden' }),
-  ).toBeVisible();
+  const immediateState = await page.evaluate((cookieName) => {
+    const trigger = document.querySelector<HTMLElement>(
+      '.locale-switcher__trigger',
+    );
+    const savingMessage = [...document.querySelectorAll<HTMLElement>('body *')]
+      .filter((element) => element.offsetParent !== null)
+      .some((element) =>
+        /saving (?:the )?(?:interface )?language/i.test(element.innerText),
+      );
+    return {
+      cookie: document.cookie
+        .split('; ')
+        .find((cookie) => cookie.startsWith(`${cookieName}=`)),
+      htmlLanguage: document.documentElement.lang,
+      savingMessage,
+      triggerText: trigger?.innerText.replace(/\s+/g, ' ').trim(),
+      url: window.location.href,
+    };
+  }, localeCookie);
+
+  expect(immediateState).toEqual({
+    cookie: 'gleen_locale=de',
+    htmlLanguage: 'de-DE',
+    savingMessage: false,
+    triggerText: 'Deutsch ›',
+    url: originalUrl,
+  });
 
   await page.reload();
   await expect(page).toHaveURL(originalUrl);
   await expect(page.locator('html')).toHaveAttribute('lang', 'de-DE');
   await expect(
-    page.getByRole('heading', { name: 'Bei Gleen anmelden' }),
+    page.getByRole('heading', { name: 'Weniger schauen. Mehr verstehen.' }),
   ).toBeVisible();
 });
 
@@ -279,7 +348,7 @@ test('@localization authenticated profile keeps Spanish across new page, reload,
   const originalUrl = page.url();
 
   await getAnyLocaleTrigger(page).click();
-  await page.getByRole('menuitem', { name: 'Español' }).click();
+  await getLanguageRadio(page, 'Español').click();
   await expect(page).toHaveURL(originalUrl);
   await expect(page.locator('html')).toHaveAttribute('lang', 'es-ES');
   await expect(
@@ -288,18 +357,25 @@ test('@localization authenticated profile keeps Spanish across new page, reload,
   await expect(
     page.getByRole('link', { name: 'Historial', exact: true }).first(),
   ).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Idioma cambiado a Español' }),
+  ).toBeVisible();
 
   await clearGuestLocaleCookie(page);
   const restoredPage = await page.context().newPage();
-  await restoredPage.goto('/app/settings/profile');
+  await restoredPage.goto('/app');
   await expect(restoredPage.locator('html')).toHaveAttribute('lang', 'es-ES');
   await expect(
-    restoredPage.getByRole('heading', { level: 1, name: 'Ajustes' }),
+    restoredPage.getByRole('heading', {
+      name: 'Convierte un vídeo en algo útil.',
+    }),
   ).toBeVisible();
   await restoredPage.reload();
   await expect(restoredPage.locator('html')).toHaveAttribute('lang', 'es-ES');
   await expect(
-    restoredPage.getByRole('heading', { level: 1, name: 'Ajustes' }),
+    restoredPage.getByRole('heading', {
+      name: 'Convierte un vídeo en algo útil.',
+    }),
   ).toBeVisible();
   await clearGuestLocaleCookie(restoredPage);
 
@@ -378,7 +454,7 @@ test('@localization interface switching leaves the Ukrainian output locale selec
   await page.getByRole('button', { name: 'Done' }).click();
 
   await getLocaleTrigger(page, 'English').click();
-  await page.getByRole('menuitem', { name: 'Deutsch' }).click();
+  await getLanguageRadio(page, 'Deutsch').click();
 
   await expect(page).toHaveURL(originalUrl);
   await expect(page.locator('html')).toHaveAttribute('lang', 'de-DE');
@@ -387,46 +463,95 @@ test('@localization interface switching leaves the Ukrainian output locale selec
   await expect(page.locator('input[name="outputLocale"]')).toHaveValue('uk');
 });
 
-test('@localization all five native locale labels work by keyboard with visible focus and no flags', async ({
+for (const entryPoint of [
+  { name: 'landing desktop', route: '/', width: 1600, compact: false },
+  { name: 'landing mobile', route: '/', width: 390, compact: false },
+  { name: 'auth desktop', route: '/sign-in', width: 1600, compact: false },
+  { name: 'auth mobile', route: '/sign-in', width: 390, compact: false },
+  { name: 'app desktop', route: '/app', width: 1600, compact: false },
+  { name: 'app mobile', route: '/app', width: 390, compact: true },
+] as const) {
+  test(`@localization ${entryPoint.name} entry point opens the shared five-radio panel`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: entryPoint.width, height: 844 });
+    await page.context().addCookies([
+      {
+        name: localeCookie,
+        value: 'en',
+        url: origin,
+        sameSite: 'Lax',
+      },
+    ]);
+    if (entryPoint.route === '/app') await addAuthenticatedFixtureCookie(page);
+    const response = await page.goto(entryPoint.route, {
+      waitUntil: 'domcontentloaded',
+    });
+    expect(response?.ok()).toBe(true);
+    await page.waitForLoadState('networkidle');
+
+    const trigger = getAnyLocaleTrigger(page);
+    await expect(trigger).toBeVisible();
+    if (entryPoint.compact) {
+      await expect(
+        trigger.locator('.locale-switcher__compact-icon'),
+      ).toBeVisible();
+    } else {
+      await expect(trigger).toContainText('English');
+    }
+    await trigger.click();
+
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expectCanonicalLanguageRadios(page);
+    await expectNoFlags(page);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toBeHidden();
+    await expect(trigger).toBeFocused();
+  });
+}
+
+test('@localization shortcut, radio keys, focus trap, Escape, and focus return work', async ({
   page,
 }) => {
   await page.goto('/');
-  let selectedNativeName = 'English';
+  const trigger = getLocaleTrigger(page, 'English');
+  await trigger.focus();
 
-  for (const [index, nativeName] of allNativeLanguageNames.entries()) {
-    const trigger = getLocaleTrigger(page, selectedNativeName);
-    await trigger.focus();
-    await expect(trigger).toBeFocused();
-    await trigger.press('Enter');
-    const menuItems = page.getByRole('menuitem');
-    await expect(menuItems).toHaveCount(5);
-    await expect(menuItems).toHaveText([...allNativeLanguageNames]);
-    await page.keyboard.press('Home');
-    await expect(
-      page.getByRole('menuitem', { name: allNativeLanguageNames[0] }),
-    ).toBeFocused();
-    for (let step = 0; step < index; step += 1) {
-      await page.keyboard.press('ArrowDown');
-      await expect(
-        page.getByRole('menuitem', {
-          name: allNativeLanguageNames[step + 1],
-        }),
-      ).toBeFocused();
-    }
-    const option = page.getByRole('menuitem', { name: nativeName });
-    await expect(option).toBeFocused();
-    const focus = await option.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return style.boxShadow;
-    });
-    await expect(option).toHaveAttribute('data-highlighted', '');
-    expect(focus).not.toBe('none');
-    await page.keyboard.press('Enter');
-    await expect(getLocaleTrigger(page, nativeName)).toBeVisible();
-    selectedNativeName = nativeName;
+  await page.keyboard.press('Meta+K');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(getLanguageRadio(page, 'English')).toBeFocused();
+
+  for (let step = 0; step < panelLocales.length + 2; step += 1) {
+    await page.keyboard.press('Tab');
+    expect(
+      await dialog.evaluate((element) =>
+        element.contains(document.activeElement),
+      ),
+    ).toBe(true);
   }
 
-  await expectNoFlags(page);
+  await getLanguageRadio(page, 'English').focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(getLanguageRadio(page, 'Español')).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(getLanguageRadio(page, 'Deutsch')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(getLanguageRadio(page, 'Українська')).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(getLanguageRadio(page, 'Українська')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(getLanguageRadio(page, 'Deutsch')).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(dialog).toBeHidden();
+  await expect(getLocaleTrigger(page, 'Deutsch')).toBeFocused();
+
+  await page.keyboard.press('Control+K');
+  await expect(dialog).toBeVisible();
+  await expect(getLanguageRadio(page, 'Deutsch')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(getLocaleTrigger(page, 'Deutsch')).toBeFocused();
 });
 
 for (const [localeKey, locale] of Object.entries(localeCases) as Array<
@@ -448,7 +573,7 @@ for (const [localeKey, locale] of Object.entries(localeCases) as Array<
         });
         if (screen.name === 'settings') {
           await getAnyLocaleTrigger(page).click();
-          await page.getByRole('menuitem', { name: locale.nativeName }).click();
+          await getLanguageRadio(page, locale.nativeName).click();
           await expect(page.locator('html')).toHaveAttribute(
             'lang',
             locale.bcp47,
@@ -490,21 +615,33 @@ test('@localization reduced motion keeps locale switching and existing motion re
 
   const trigger = getLocaleTrigger(page, 'English');
   await trigger.click();
-  const menu = page.getByRole('menu');
-  const menuMotion = await menu.evaluate((element) => {
-    const style = getComputedStyle(element);
+  const panel = page.getByRole('dialog');
+  await expect(panel).toBeVisible();
+  const reducedDurations = await panel.evaluate((element) => {
+    const toMilliseconds = (value: string) =>
+      value.split(',').map((part) => {
+        const duration = Number.parseFloat(part);
+        return part.trim().endsWith('ms') ? duration : duration * 1000;
+      });
+    const read = (target: Element, pseudo?: string) => {
+      const style = getComputedStyle(target, pseudo);
+      return [
+        ...toMilliseconds(style.animationDuration),
+        ...toMilliseconds(style.transitionDuration),
+      ];
+    };
+    const row = element.querySelector('.locale-language-panel__option');
+    if (!row) throw new Error('Language row was not rendered');
     return {
-      animationDuration: style.animationDuration,
-      transitionDuration: style.transitionDuration,
+      edge: read(element, '::before'),
+      panel: read(element),
+      row: read(row),
     };
   });
-  expect(Number.parseFloat(menuMotion.animationDuration)).toBeLessThanOrEqual(
-    0.001,
-  );
-  expect(Number.parseFloat(menuMotion.transitionDuration)).toBeLessThanOrEqual(
-    0.001,
-  );
-  await page.getByRole('menuitem', { name: 'Deutsch' }).click();
+  for (const durations of Object.values(reducedDurations)) {
+    expect(Math.max(...durations)).toBeLessThanOrEqual(0.01);
+  }
+  await getLanguageRadio(page, 'Deutsch').click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'de-DE');
   const triggerMotion = await getLocaleTrigger(page, 'Deutsch').evaluate(
     (element) => {
@@ -524,3 +661,141 @@ test('@localization reduced motion keeps locale switching and existing motion re
     Number.parseFloat(triggerMotion.transitionDuration),
   ).toBeLessThanOrEqual(0.001);
 });
+
+test('@localization open panel matches approved desktop and mobile geometry', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto('/');
+  const desktopTrigger = getLocaleTrigger(page, 'English');
+  const desktopTriggerBox = await desktopTrigger.boundingBox();
+  if (!desktopTriggerBox) throw new Error('Desktop locale trigger has no box');
+  await desktopTrigger.click();
+  const desktopPanel = page.getByRole('dialog');
+  await expect(desktopPanel).toBeVisible();
+  await waitForPanelMotion(page);
+
+  const desktopGeometry = await desktopPanel.evaluate((element) => {
+    const panel = element.getBoundingClientRect();
+    const firstRow = element
+      .querySelector('.locale-language-panel__option')!
+      .getBoundingClientRect();
+    const style = getComputedStyle(element);
+    const edgeStyle = getComputedStyle(element, '::before');
+    const scrimStyle = getComputedStyle(
+      document.querySelector('.locale-language-panel__scrim')!,
+    );
+    return {
+      background: style.backgroundImage,
+      borderRadius: Number.parseFloat(style.borderRadius),
+      edgeWidth: Number.parseFloat(edgeStyle.width),
+      panelRight: panel.right,
+      rowHeight: firstRow.height,
+      scrimBackdrop: scrimStyle.backdropFilter,
+      width: panel.width,
+    };
+  });
+  expect(desktopGeometry.width).toBe(390);
+  expect(desktopGeometry.borderRadius).toBe(18);
+  expect(desktopGeometry.edgeWidth).toBe(2);
+  expect(desktopGeometry.rowHeight).toBeGreaterThanOrEqual(88);
+  expect(
+    Math.abs(
+      desktopGeometry.panelRight -
+        (desktopTriggerBox.x + desktopTriggerBox.width),
+    ),
+  ).toBeLessThanOrEqual(1);
+  expect(desktopGeometry.background).toContain('linear-gradient');
+  expect(desktopGeometry.scrimBackdrop).toContain('blur(2px)');
+  await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    path: testInfo.outputPath('den-22-language-panel-desktop-1600x900.png'),
+    style: '.motion-cursor, nextjs-portal { display: none !important; }',
+  });
+
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileTrigger = getLocaleTrigger(page, 'English');
+  await mobileTrigger.click();
+  const mobilePanel = page.getByRole('dialog');
+  await expect(mobilePanel).toBeVisible();
+  await waitForPanelMotion(page);
+  const mobileGeometry = await mobilePanel.evaluate((element) => {
+    const panel = element.getBoundingClientRect();
+    const firstRow = element
+      .querySelector('.locale-language-panel__option')!
+      .getBoundingClientRect();
+    return {
+      bottom: window.innerHeight - panel.bottom,
+      borderRadius: Number.parseFloat(getComputedStyle(element).borderRadius),
+      left: panel.left,
+      right: window.innerWidth - panel.right,
+      rowHeight: firstRow.height,
+      width: panel.width,
+    };
+  });
+  expect(mobileGeometry).toEqual({
+    bottom: 12,
+    borderRadius: 24,
+    left: 12,
+    right: 12,
+    rowHeight: 78,
+    width: 366,
+  });
+  await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    path: testInfo.outputPath('den-22-language-panel-mobile-390x844.png'),
+    style: '.motion-cursor, nextjs-portal { display: none !important; }',
+  });
+});
+
+for (const locale of panelLocales) {
+  test(`@localization ${locale.nativeName} panel copy fits at 320px without horizontal overflow`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.context().addCookies([
+      {
+        name: localeCookie,
+        value: locale.code,
+        url: origin,
+        sameSite: 'Lax',
+      },
+    ]);
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('lang', locale.bcp47);
+    await getLocaleTrigger(page, locale.nativeName).click();
+    const panel = page.getByRole('dialog');
+    await expect(panel).toBeVisible();
+    await waitForPanelMotion(page);
+    await expectCanonicalLanguageRadios(page);
+    await expectNoHorizontalOverflow(page);
+
+    const clipping = await panel.evaluate((element) => {
+      const panelRect = element.getBoundingClientRect();
+      const copy = [
+        ...element.querySelectorAll<HTMLElement>(
+          '.locale-language-panel__title, .locale-language-panel__description, .locale-language-panel__native-name, .locale-language-panel__english-name, .locale-language-panel__footer',
+        ),
+      ];
+      return {
+        copyFits: copy.every(
+          (node) =>
+            node.scrollWidth <= node.clientWidth &&
+            node.getBoundingClientRect().left >= panelRect.left &&
+            node.getBoundingClientRect().right <= panelRect.right,
+        ),
+        panelLeft: panelRect.left,
+        panelRight: window.innerWidth - panelRect.right,
+        panelScrollWidth: element.scrollWidth,
+        panelWidth: element.clientWidth,
+      };
+    });
+    expect(clipping.copyFits).toBe(true);
+    expect(clipping.panelLeft).toBeCloseTo(12, 0);
+    expect(clipping.panelRight).toBeCloseTo(12, 0);
+    expect(clipping.panelScrollWidth).toBe(clipping.panelWidth);
+  });
+}

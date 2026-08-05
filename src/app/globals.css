@@ -1205,7 +1205,7 @@ p {
 @supports (position-anchor: --locale-language-trigger) {
   .locale-language-panel {
     top: calc(anchor(bottom) + 32px);
-    right: calc(100vw - anchor(right));
+    right: anchor(right);
   }
 }
 

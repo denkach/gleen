@@ -11,6 +11,10 @@ import {
   createSupabaseBillingRepository,
   type SupabaseBillingClient,
 } from './supabase-repository';
+import {
+  createSupabaseAnalysisRepository,
+  type SupabaseAnalysisClient,
+} from '@/lib/analysis-pipeline/supabase-repository';
 import { readInterfaceLocale } from '@/lib/onboarding/repository';
 import { createSupabaseOnboardingStorage } from '@/lib/onboarding/supabase-storage';
 
@@ -111,6 +115,16 @@ describe('authenticated billing E2E boundary', () => {
     expect(() => client.from('profiles_archive')).toThrow(
       'Authenticated billing fixture rejected unknown table',
     );
+  });
+
+  it('supports the empty active-analysis lookup used by the authenticated app entry point', async () => {
+    const repository = createSupabaseAnalysisRepository(
+      createAuthenticatedBillingE2eClient() as unknown as SupabaseAnalysisClient,
+    );
+
+    await expect(
+      repository.findMostRecentOwnedActive(billingE2eOwnerId),
+    ).resolves.toBeNull();
   });
 
   it('persists the exact owner-scoped interface locale across fixture clients', async () => {

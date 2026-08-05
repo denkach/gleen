@@ -49,6 +49,7 @@ export function resetAuthenticatedBillingE2eProfiles() {
 
 const ownerRows = {
   profiles: profileRows,
+  analysis_jobs: [] as readonly Record<string, unknown>[],
   billing_plan_catalog: billingFixtureCatalogRows,
   billing_subscription_overview: [
     {
@@ -272,6 +273,10 @@ class BoundaryQuery implements PromiseLike<{
     this.filters.push((row) =>
       String(row[column]).toLowerCase().includes(needle),
     );
+    return this;
+  }
+  in(column: string, values: readonly unknown[]) {
+    this.filters.push((row) => values.includes(row[column]));
     return this;
   }
   order() {
