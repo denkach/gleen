@@ -657,13 +657,14 @@
   inset: 0;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  align-items: end;
+  align-content: end;
+  align-items: stretch;
   padding: 0 8% 80px;
   gap: 26px;
 }
 .landing-reference .process-step {
   position: relative;
-  min-height: 118px;
+  min-height: 200px;
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 16px;

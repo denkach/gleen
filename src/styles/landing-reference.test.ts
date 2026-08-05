@@ -35,3 +35,14 @@ describe('landing reference compact header layout', () => {
     expect(compactHeader).toContain('min-width: 0');
   });
 });
+
+describe('localized workflow card geometry', () => {
+  it('keeps every translated workflow card on the shared 200px rhythm', () => {
+    expect(styles).toMatch(
+      /\.landing-reference \.process-steps\s*\{[^}]*align-content:\s*end[^}]*align-items:\s*stretch/,
+    );
+    expect(styles).toMatch(
+      /\.landing-reference \.process-step\s*\{[^}]*min-height:\s*200px/,
+    );
+  });
+});

@@ -848,6 +848,46 @@ test('@localization open panel matches approved desktop and mobile geometry', as
   });
 });
 
+test('@localization workflow cards keep one height across all locales and viewports', async ({
+  page,
+}) => {
+  for (const viewport of viewports) {
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+
+    for (const locale of panelLocales) {
+      await page.context().addCookies([
+        {
+          name: localeCookie,
+          value: locale.code,
+          url: origin,
+          sameSite: 'Lax',
+        },
+      ]);
+      await page.goto('/#how');
+      await expect(page.locator('html')).toHaveAttribute('lang', locale.bcp47);
+
+      const metrics = await page.locator('.process-step').evaluateAll((cards) =>
+        cards.map((card) => {
+          const element = card as HTMLElement;
+          return {
+            height: Math.round(element.getBoundingClientRect().height),
+            copyFits:
+              element.scrollHeight <= element.clientHeight &&
+              element.scrollWidth <= element.clientWidth,
+          };
+        }),
+      );
+
+      expect(metrics).toHaveLength(4);
+      expect(metrics.map(({ height }) => height)).toEqual([200, 200, 200, 200]);
+      expect(metrics.every(({ copyFits }) => copyFits)).toBe(true);
+    }
+  }
+});
+
 for (const locale of panelLocales) {
   test(`@localization ${locale.nativeName} panel copy fits at 320px without horizontal overflow`, async ({
     page,
