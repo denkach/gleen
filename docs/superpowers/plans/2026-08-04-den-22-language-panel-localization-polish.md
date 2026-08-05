@@ -42,12 +42,14 @@
 ### Task 1: Immediate browser locale and request precedence
 
 **Files:**
+
 - Create: `src/lib/i18n/browser-locale-cookie.ts`
 - Create: `src/lib/i18n/browser-locale-cookie.test.ts`
 - Modify: `src/lib/i18n/request-locale.ts`
 - Modify: `src/lib/i18n/request-locale.test.ts`
 
 **Interfaces:**
+
 - Consumes: `localeSchema`, `Locale` from `src/lib/i18n/locales.ts`.
 - Produces: `writeBrowserLocaleCookie(locale: Locale): void`; request resolution order `cookie -> profile -> Accept-Language -> en`.
 
@@ -130,6 +132,7 @@ git commit -m "fix(den-22): prioritize immediate interface locale"
 ### Task 2: Panel metadata and localized copy contract
 
 **Files:**
+
 - Modify: `src/lib/i18n/locales.ts`
 - Modify: `src/lib/i18n/locales.test.ts`
 - Modify: `src/lib/i18n/messages/shared.ts`
@@ -138,6 +141,7 @@ git commit -m "fix(den-22): prioritize immediate interface locale"
 - Create: `src/lib/i18n/locale-switcher-copy.test.ts`
 
 **Interfaces:**
+
 - Consumes: the five-locale `defineMessages` catalog.
 - Produces: `localeMetadata[locale].englishName`; serializable `LocaleSwitcherCopy` fields `label`, `panelTitle`, `panelDescription`, `close`, `selected`, `quickSwitch`, `changedTemplate`, and `errors`.
 
@@ -223,12 +227,14 @@ git commit -m "feat(den-22): define localized language panel copy"
 ### Task 3: Accessible shared language panel
 
 **Files:**
+
 - Create: `src/components/i18n/language-panel.tsx`
 - Create: `src/components/i18n/language-panel.test.tsx`
 - Modify: `src/components/ui/dialog.tsx`
 - Modify: `src/components/ui/navigation-primitives.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `Locale`, `localeMetadata`, `supportedLocales`, and materialized `LocaleSwitcherCopy`.
 - Produces: `LanguagePanel({ copy, locale, onSelect, open, onOpenChange, trigger, variant })` with Radix-managed modal focus and radio keyboard behavior.
 
@@ -253,7 +259,9 @@ expect(screen.getByRole('radio', { name: 'English English' })).toHaveAttribute(
   'aria-checked',
   'true',
 );
-expect(screen.getByRole('radio', { name: 'Українська Ukrainian' })).not.toHaveAccessibleName(/Selected/);
+expect(
+  screen.getByRole('radio', { name: 'Українська Ukrainian' }),
+).not.toHaveAccessibleName(/Selected/);
 expect(screen.getByRole('radio', { name: 'English English' })).toHaveFocus();
 ```
 
@@ -294,7 +302,8 @@ const nextIndex =
     ? 0
     : event.key === 'End'
       ? supportedLocales.length - 1
-      : (currentIndex + delta + supportedLocales.length) % supportedLocales.length;
+      : (currentIndex + delta + supportedLocales.length) %
+        supportedLocales.length;
 ```
 
 Do not reproduce the prototype's bug where opacity-hidden `Selected` text is
@@ -318,11 +327,13 @@ git commit -m "feat(den-22): add accessible language panel"
 ### Task 4: Optimistic switcher integration, toast, and shortcut
 
 **Files:**
+
 - Modify: `src/components/i18n/locale-switcher.tsx`
 - Modify: `src/components/i18n/locale-switcher.test.tsx`
 - Modify: `src/components/app-shell/app-shell.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `LanguagePanel`, `writeBrowserLocaleCookie`, `setInterfaceLocale`, `router.refresh()`.
 - Produces: immediate local selection plus concurrent authenticated profile synchronization, a localized success toast, and visible-trigger-only `⌘/Ctrl+K` handling.
 
@@ -385,7 +396,7 @@ Mount desktop and compact switchers as `AppShell` does. Dispatch Meta+K and
 Control+K. A switcher handles the shortcut only when:
 
 ```ts
-triggerRef.current !== null && triggerRef.current.getClientRects().length > 0
+triggerRef.current !== null && triggerRef.current.getClientRects().length > 0;
 ```
 
 Assert only one dialog opens and focus reaches its selected radio.
@@ -408,6 +419,7 @@ git commit -m "fix(den-22): switch interface locale immediately"
 ### Task 5: Prototype-exact responsive styling and motion
 
 **Files:**
+
 - Modify: `src/app/globals.css`
 - Modify: `src/styles/landing-reference.css`
 - Modify: `src/styles/auth-reference.css`
@@ -417,6 +429,7 @@ git commit -m "fix(den-22): switch interface locale immediately"
 - Create: `src/styles/language-panel-reference.test.ts`
 
 **Interfaces:**
+
 - Consumes: `.locale-language-panel*`, `.locale-switcher*`, and `.locale-language-toast*` class names from Tasks 3–4.
 - Produces: the approved 390 px desktop dialog, 12 px-gutter bottom sheet, spectral edge, staggered rows, selected-state motion, and reduced-motion override.
 
@@ -485,6 +498,7 @@ git commit -m "feat(den-22): match animated language panel prototype"
 ### Task 6: Canonical plans and five-language editorial audit
 
 **Files:**
+
 - Modify: `src/data/pricing.ts`
 - Modify: `src/data/pricing.test.ts`
 - Modify: `src/data/marketing.ts`
@@ -496,6 +510,7 @@ git commit -m "feat(den-22): match animated language panel prototype"
 - Create: `docs/localization/den-22-editorial-audit.md`
 
 **Interfaces:**
+
 - Consumes: typed locale catalogs and data-driven pricing amounts/features.
 - Produces: exact plan-name tuple `['Free', 'Prism', 'Spectrum']` for every locale and a reviewed audit ledger for every catalog/locale pair.
 
@@ -577,11 +592,13 @@ git commit -m "fix(den-22): polish five-language product copy"
 ### Task 7: End-to-end panel, persistence, and visual verification
 
 **Files:**
+
 - Modify: `tests/e2e/localization.spec.ts`
 - Modify: `tests/e2e/result-workspace.visual.spec.ts` only if an existing shared-header snapshot intentionally includes the new panel.
 - Update generated snapshots only after direct comparison with `design/prototypes/gleen-language-panel-animated-v1/{desktop-open,mobile-open}.png`.
 
 **Interfaces:**
+
 - Consumes: complete Tasks 1–6.
 - Produces: browser evidence for all entry points, responsive panel geometry, immediate selection, durable persistence, keyboard access, and reduced motion.
 
@@ -640,10 +657,12 @@ git commit -m "test(den-22): verify animated locale panel flow"
 ### Task 8: Full verification and handoff
 
 **Files:**
+
 - Modify only files required by a failing regression, with a failing focused test added first.
 - Update: `.superpowers/sdd/2026-08-03-den-22-five-language-localization/progress.md` if the ignored execution ledger is still present.
 
 **Interfaces:**
+
 - Consumes: completed Tasks 1–7.
 - Produces: a clean, reviewed DEN-22 branch ready for integration.
 
