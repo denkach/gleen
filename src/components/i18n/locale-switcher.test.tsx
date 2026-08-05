@@ -186,7 +186,9 @@ describe('LocaleSwitcher', () => {
           }),
       );
     const user = userEvent.setup();
-    render(<LocaleSwitcher locale="en" copy={copy} variant="auth" />);
+    const { rerender } = render(
+      <LocaleSwitcher locale="en" copy={copy} variant="auth" />,
+    );
 
     await user.click(screen.getByRole('button', { name: /English/i }));
     await user.click(screen.getByRole('radio', { name: 'Deutsch German' }));
@@ -221,9 +223,12 @@ describe('LocaleSwitcher', () => {
       });
     });
 
-    expect(
-      await screen.findByText(copy.localeSwitcher.errors.profileUpdateFailed),
-    ).toBeVisible();
+    const profileError = await screen.findByText(
+      copy.localeSwitcher.errors.profileUpdateFailed,
+    );
+    rerender(<LocaleSwitcher locale="de" copy={copy} variant="auth" />);
+
+    expect(profileError).toBeVisible();
     expect(screen.getByLabelText('Language: Español')).toBeVisible();
     expect(document.documentElement).toHaveAttribute('lang', 'es-ES');
     expect(document.cookie).toContain('gleen_locale=es');

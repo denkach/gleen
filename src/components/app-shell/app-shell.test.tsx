@@ -5,6 +5,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { unavailableUsage } from '@/lib/app-shell';
+import { writeBrowserLocaleCookie } from '@/lib/i18n/browser-locale-cookie';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
 
@@ -183,6 +184,7 @@ describe('AppShell', () => {
       }),
     ).toHaveClass('locale-switcher__trigger--compact');
 
+    writeBrowserLocaleCookie('de');
     rerender(
       <AppShell
         copy={appMessages.de}

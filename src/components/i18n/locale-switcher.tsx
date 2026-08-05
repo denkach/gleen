@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation';
 
 import { LanguagePanel } from '@/components/i18n/language-panel';
 import { setInterfaceLocale, type LocaleActionState } from '@/lib/i18n/actions';
-import { writeBrowserLocaleCookie } from '@/lib/i18n/browser-locale-cookie';
+import {
+  readBrowserLocaleCookie,
+  writeBrowserLocaleCookie,
+} from '@/lib/i18n/browser-locale-cookie';
 import {
   localeMetadata,
   localeSchema,
@@ -29,6 +32,7 @@ const successToastExitDuration = 240;
 
 type OptimisticLocale = Readonly<{
   baseLocale: Locale;
+  hasLocalSelection: boolean;
   selectedLocale: Locale;
 }>;
 
@@ -50,6 +54,7 @@ export function LocaleSwitcher({
   const [panelOpen, setPanelOpen] = useState(false);
   const [optimisticLocale, setOptimisticLocale] = useState<OptimisticLocale>({
     baseLocale: locale,
+    hasLocalSelection: false,
     selectedLocale: locale,
   });
   const [dismissedSuccess, setDismissedSuccess] =
@@ -61,13 +66,22 @@ export function LocaleSwitcher({
       const attempt = formData.get('localeAttempt');
       const result = await setInterfaceLocale(previousState, formData);
       const latestSelection = latestSelectionRef.current;
+      const isLatestAttempt = attempt === String(latestSelection.attempt);
+      const browserLocale = readBrowserLocaleCookie();
+
+      if (
+        isLatestAttempt &&
+        browserLocale !== null &&
+        browserLocale !== latestSelection.locale
+      ) {
+        latestSelectionRef.current = { attempt: 0, locale: browserLocale };
+        return previousState;
+      }
 
       document.documentElement.lang = toBcp47(latestSelection.locale);
       writeBrowserLocaleCookie(latestSelection.locale);
 
-      return attempt === String(latestSelection.attempt)
-        ? result
-        : previousState;
+      return isLatestAttempt ? result : previousState;
     },
     initialActionState,
   );
@@ -131,6 +145,7 @@ export function LocaleSwitcher({
     if (attemptRef.current) attemptRef.current.value = String(attempt);
     setOptimisticLocale({
       baseLocale: locale,
+      hasLocalSelection: true,
       selectedLocale: parsed.data,
     });
     document.documentElement.lang = toBcp47(parsed.data);
@@ -141,17 +156,22 @@ export function LocaleSwitcher({
     if (submitter) formRef.current?.requestSubmit(submitter);
   }
 
+  let selectedLocale = optimisticLocale.selectedLocale;
   if (optimisticLocale.baseLocale !== locale) {
-    setOptimisticLocale({
-      baseLocale: locale,
-      selectedLocale: locale,
-    });
-  }
-
-  const selectedLocale =
-    optimisticLocale.baseLocale === locale
+    const browserLocale = readBrowserLocaleCookie();
+    const preserveLatestSelection =
+      optimisticLocale.hasLocalSelection &&
+      browserLocale === optimisticLocale.selectedLocale &&
+      locale !== browserLocale;
+    selectedLocale = preserveLatestSelection
       ? optimisticLocale.selectedLocale
       : locale;
+    setOptimisticLocale({
+      baseLocale: locale,
+      hasLocalSelection: preserveLatestSelection,
+      selectedLocale,
+    });
+  }
   const error =
     state.status === 'error'
       ? state.code === 'invalid_locale'
