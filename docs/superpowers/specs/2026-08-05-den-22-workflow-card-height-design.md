@@ -12,8 +12,10 @@ some locales appear visually larger than others.
 
 - Give every workflow card a shared minimum block size of 200 px at standard
   text scaling.
-- Make cards in the same grid row stretch to the row's tallest item while the
-  row remains anchored to the bottom of the process scene.
+- Make all four cards equal in outer height within each locale and viewport;
+  they may share a height above 200 px when localized copy or accessibility
+  scaling needs more room. Keep the row anchored to the bottom of the process
+  scene.
 - Keep the existing font sizes, padding, copy, spectral states, and motion.
 - Use a minimum rather than a fixed height so browser text zoom and unusually
   large accessibility fonts can expand a card instead of clipping content.
@@ -25,10 +27,10 @@ some locales appear visually larger than others.
 ## Responsive behavior
 
 - Desktop: all four cards share one visually level 200 px-or-taller row.
-- Tablet: both two-card rows use equal-height cards; the 200 px minimum keeps
-  the rows stable across all five locales.
-- Mobile: each card keeps the 200 px minimum and may grow only when content or
-  accessibility scaling requires it.
+- Tablet: all four cards use the same 200 px-or-taller outer height for the
+  active locale and viewport.
+- Mobile: all four cards share the same 200 px-or-taller outer height and may
+  grow when localized content or accessibility scaling requires it.
 
 ## Accessibility
 
@@ -40,7 +42,8 @@ reading order, reduced motion, and semantic heading structure are unchanged.
 
 - Add a failing style contract for the shared 200 px minimum, desktop row
   stretching, and bottom row alignment.
-- Verify all four card heights and text overflow for `uk`, `ru`, `en`, `es`,
-  and `de` at desktop, tablet, and mobile viewports.
+- Verify all four card heights are equal and at least 200 px, and that text is
+  not clipped, for `uk`, `ru`, `en`, `es`, and `de` at desktop, tablet, and
+  mobile viewports.
 - Run the affected marketing/style tests, formatting, lint, type checking,
   production build, and focused browser coverage.

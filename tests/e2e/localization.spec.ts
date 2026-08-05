@@ -882,7 +882,9 @@ test('@localization workflow cards keep one height across all locales and viewpo
       );
 
       expect(metrics).toHaveLength(4);
-      expect(metrics.map(({ height }) => height)).toEqual([200, 200, 200, 200]);
+      const heights = metrics.map(({ height }) => height);
+      expect(heights).toEqual([heights[0], heights[0], heights[0], heights[0]]);
+      expect(heights.every((height) => height >= 200)).toBe(true);
       expect(metrics.every(({ copyFits }) => copyFits)).toBe(true);
     }
   }

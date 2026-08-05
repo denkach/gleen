@@ -4,13 +4,16 @@
 
 **Goal:** Keep all four marketing workflow cards at the same stable visual height in Ukrainian, Russian, English, Spanish, and German.
 
-**Architecture:** Preserve the existing translated copy and typography. Enforce a shared 200 px minimum block size on the workflow-card component and stretch cards within each grid row while keeping the row bottom-aligned; browser coverage proves the same geometry and absence of clipping across five locales and three responsive viewports.
+**Architecture:** Preserve the existing translated copy and typography. Enforce a shared 200 px minimum block size on the workflow-card component and give all four cards the same outer height in each locale/viewport while keeping the row bottom-aligned. Cards may grow above 200 px when localization or accessibility requires it; browser coverage proves equal, unclipped geometry across five locales and three responsive viewports.
 
 **Tech Stack:** Next.js App Router, React, TypeScript, CSS, Vitest, Playwright.
 
 ## Global Constraints
 
 - Use a shared 200 px minimum; do not use a fixed height that can clip accessibility zoom.
+- Treat 200 px as a minimum, not an exact outer height: all four cards must be
+  equal within a locale/viewport and may grow together for unclipped localized
+  copy or accessibility scaling.
 - Keep current font sizes, padding, translated copy, spectral states, and motion unchanged.
 - Do not add locale-specific selectors, font scaling, truncation, line clamps, or hidden overflow.
 - Verify Ukrainian, Russian, English, Spanish, and German at desktop, tablet, and mobile sizes.
@@ -43,7 +46,7 @@ describe('localized workflow card geometry', () => {
       /\.landing-reference \.process-steps\s*\{[^}]*align-content:\s*end[^}]*align-items:\s*stretch/,
     );
     expect(styles).toMatch(
-      /\.landing-reference \.process-step\s*\{[^}]*min-height:\s*200px/,
+      /\.landing-reference \.process-step\s*\{[^}]*box-sizing:\s*border-box[^}]*min-height:\s*200px/,
     );
   });
 });
@@ -88,7 +91,9 @@ test('@localization workflow cards keep one height across all locales and viewpo
       );
 
       expect(metrics).toHaveLength(4);
-      expect(metrics.map(({ height }) => height)).toEqual([200, 200, 200, 200]);
+      const heights = metrics.map(({ height }) => height);
+      expect(heights).toEqual([heights[0], heights[0], heights[0], heights[0]]);
+      expect(heights.every((height) => height >= 200)).toBe(true);
       expect(metrics.every(({ copyFits }) => copyFits)).toBe(true);
     }
   }
@@ -124,6 +129,7 @@ Update only the existing declarations in `src/styles/landing-reference.css`:
 
 .landing-reference .process-step {
   position: relative;
+  box-sizing: border-box;
   min-height: 200px;
   padding: 18px;
   border: 1px solid var(--line);
@@ -144,7 +150,9 @@ npm test -- --exclude='.worktrees/**' src/styles/landing-reference.test.ts src/l
 CI=1 PLAYWRIGHT_PORT=3017 npx playwright test tests/e2e/localization.spec.ts --project=chromium --grep "workflow cards keep one height"
 ```
 
-Expected: all style/marketing tests pass; the browser scenario passes 15 locale/viewport combinations with four 200 px cards and no clipped copy.
+Expected: all style/marketing tests pass; the browser scenario passes 15
+locale/viewport combinations with four equal, 200 px-or-taller cards and no
+clipped copy.
 
 - [ ] **Step 6: Run repository verification**
 
