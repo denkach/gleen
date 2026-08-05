@@ -725,6 +725,11 @@ test('@localization reduced motion keeps locale switching and existing motion re
 test('@localization open panel matches approved desktop and mobile geometry', async ({
   page,
 }, testInfo) => {
+  test.skip(
+    testInfo.project.name !== 'chromium',
+    'Cross-viewport visual baselines are owned by desktop Chromium.',
+  );
+
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto('/');
   const desktopTrigger = getLocaleTrigger(page, 'English');

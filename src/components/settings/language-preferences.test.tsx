@@ -87,15 +87,20 @@ describe('language preferences', () => {
         copy={settingsMessages.en}
       />,
     );
-
-    await user.selectOptions(
-      screen.getByLabelText('Future generated content language'),
-      'es',
+    const outputSelect = screen.getByLabelText(
+      'Future generated content language',
     );
+
+    await user.selectOptions(outputSelect, 'es');
     await user.click(
       screen.getByRole('button', { name: 'Save output language' }),
     );
     await waitFor(() => expect(screen.getByText('Saved.')).toBeVisible());
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText('Future generated content language'),
+      ).not.toBe(outputSelect),
+    );
 
     await user.selectOptions(
       screen.getByLabelText('Future generated content language'),
