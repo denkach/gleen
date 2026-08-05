@@ -90,7 +90,7 @@ export const billingMessages = defineMessages({
         title: 'Billing details are temporarily unavailable.',
         description:
           'Please try again. Your application access is not affected.',
-        retry: 'Try subscription again',
+        retry: 'Reload subscription details',
       },
       currentPlan: 'Current plan',
       includedAnalyses: 'Included analyses',
@@ -185,7 +185,7 @@ export const billingMessages = defineMessages({
       error: {
         title: 'Usage details are temporarily unavailable.',
         description: 'Please try again. No usage data has been changed.',
-        retry: 'Try usage again',
+        retry: 'Reload usage',
       },
       metrics: {
         current: 'Current period usage',
@@ -260,7 +260,7 @@ export const billingMessages = defineMessages({
         title: 'Invoice history is temporarily unavailable.',
         description:
           'Please try again. Your billing records have not been changed.',
-        retry: 'Try invoices again',
+        retry: 'Reload invoices',
       },
       metrics: {
         yearToDate: 'Year-to-date spend',
@@ -337,7 +337,7 @@ export const billingMessages = defineMessages({
       error: {
         title: 'Billing details are temporarily unavailable.',
         description: 'Please try again. No billing settings have been changed.',
-        retry: 'Try billing again',
+        retry: 'Reload billing details',
         action: 'We couldn’t update your billing settings. Please try again.',
       },
       scheduled: {
@@ -451,7 +451,7 @@ export const billingMessages = defineMessages({
     },
     presentation: {
       entitlement: {
-        free: 'Безкоштовний',
+        free: 'Free',
         trial: 'Пробний',
         active: 'Активна',
         pastDue: 'Потрібна оплата — доступ залишається активним',
@@ -564,7 +564,7 @@ export const billingMessages = defineMessages({
         authenticationRequired: 'Сеанс завершився.',
         confirming: 'Підтверджуємо підписку',
         confirmingDetail:
-          'Доступ зміниться лише після отримання Gleen перевіреного оновлення оплати.',
+          'Доступ зміниться лише після того, як Gleen отримає підтверджене оновлення платежу.',
         canceled: 'Оформлення скасовано.',
         retryableError: 'Не вдалося завантажити оформлення.',
       },
@@ -751,7 +751,7 @@ export const billingMessages = defineMessages({
       details: {
         title: 'Платіжні дані',
         description:
-          'Платіжна особа, компанія та податкові дані безпечно керуються в Stripe.',
+          'Платіжні реквізити, дані компанії та податкова інформація безпечно зберігаються в Stripe.',
         edit: 'Редагувати дані',
         receiptTitle: 'Потрібна офіційна квитанція?',
         receiptDescription: 'Квитанції містять платіжні та податкові дані.',
@@ -771,7 +771,7 @@ export const billingMessages = defineMessages({
       },
       scheduled: {
         downgrade: (plan: string, date: string, currentPlan: string) =>
-          `Перехід на ${plan} заплановано на ${date}. Доступ ${currentPlan} діятиме до цієї дати.`,
+          `Перехід на ${plan} заплановано на ${date}. Доступ за планом ${currentPlan} діятиме до цієї дати.`,
         canceled:
           'Заплановане зниження скасовано. Поточний план залишається активним.',
       },
@@ -795,7 +795,7 @@ export const billingMessages = defineMessages({
         detailsTitle: 'Платіжні дані',
         detailsDescription: 'Переглядайте й оновлюйте платіжну інформацію.',
         detailsFootnote:
-          'Платіжна особа та податкові дані залишаються в Stripe.',
+          'Платіжні реквізити й податкові дані зберігаються в Stripe.',
         teamTitle: 'Місця команди',
         teamDescription: 'Запрошуйте учасників і керуйте місцями.',
         teamUnavailable: 'Керування місцями команди поки недоступне.',
@@ -842,7 +842,7 @@ export const billingMessages = defineMessages({
       detail:
         'Ви досягли місячного ліміту аналізів плану. Нові аналізи заблоковано до дати скидання або оновлення плану. Збережені результати залишаються доступними.',
       actions: {
-        upgrade: (plan: string) => `Оновити до ${plan}`,
+        upgrade: (plan: string) => `Перейти на ${plan}`,
         buyCredits: 'Придбати додаткові кредити',
         openLedger: 'Відкрити журнал використання',
       },
@@ -850,7 +850,7 @@ export const billingMessages = defineMessages({
         `Придбання додаткових кредитів недоступне для плану ${plan}.`,
       yourPlan: 'Ваш план',
       currentPlan: 'Поточний план',
-      free: 'Безкоштовно',
+      free: 'Free',
       perMonth: '/ місяць',
       perYear: '/ рік',
       analyses: 'Аналізи',
@@ -884,7 +884,7 @@ export const billingMessages = defineMessages({
     },
     presentation: {
       entitlement: {
-        free: 'Бесплатный',
+        free: 'Free',
         trial: 'Пробный',
         active: 'Активна',
         pastDue: 'Требуется оплата — доступ остаётся активным',
@@ -999,7 +999,7 @@ export const billingMessages = defineMessages({
         authenticationRequired: 'Сеанс истёк.',
         confirming: 'Подтверждаем подписку',
         confirmingDetail:
-          'Доступ изменится только после получения Gleen проверенного обновления оплаты.',
+          'Доступ изменится только после того, как Gleen получит подтверждённое обновление платежа.',
         canceled: 'Оформление отменено.',
         retryableError: 'Не удалось загрузить оформление.',
       },
@@ -1184,7 +1184,7 @@ export const billingMessages = defineMessages({
       details: {
         title: 'Платёжные данные',
         description:
-          'Платёжная личность, компания и налоговые данные безопасно управляются в Stripe.',
+          'Платёжные реквизиты, данные компании и налоговая информация безопасно хранятся в Stripe.',
         edit: 'Изменить данные',
         receiptTitle: 'Нужна официальная квитанция?',
         receiptDescription: 'Квитанции содержат платёжные и налоговые данные.',
@@ -1204,7 +1204,7 @@ export const billingMessages = defineMessages({
       },
       scheduled: {
         downgrade: (plan: string, date: string, currentPlan: string) =>
-          `Переход на ${plan} запланирован на ${date}. Доступ ${currentPlan} останется активным до этой даты.`,
+          `Переход на ${plan} запланирован на ${date}. Доступ по плану ${currentPlan} останется активным до этой даты.`,
         canceled:
           'Запланированное снижение отменено. Текущий план остаётся активным.',
       },
@@ -1228,7 +1228,7 @@ export const billingMessages = defineMessages({
         detailsTitle: 'Платёжные данные',
         detailsDescription: 'Просматривайте и обновляйте платёжную информацию.',
         detailsFootnote:
-          'Платёжная личность и налоговые данные остаются в Stripe.',
+          'Платёжные реквизиты и налоговые данные хранятся в Stripe.',
         teamTitle: 'Места команды',
         teamDescription: 'Приглашайте участников и управляйте местами.',
         teamUnavailable: 'Управление местами команды пока недоступно.',
@@ -1275,7 +1275,7 @@ export const billingMessages = defineMessages({
       detail:
         'Вы достигли месячного лимита анализов плана. Новые анализы заблокированы до даты сброса или обновления плана. Сохранённые результаты остаются доступными.',
       actions: {
-        upgrade: (plan: string) => `Обновить до ${plan}`,
+        upgrade: (plan: string) => `Перейти на ${plan}`,
         buyCredits: 'Купить дополнительные кредиты',
         openLedger: 'Открыть журнал использования',
       },
@@ -1283,7 +1283,7 @@ export const billingMessages = defineMessages({
         `Покупка дополнительных кредитов недоступна для плана ${plan}.`,
       yourPlan: 'Ваш план',
       currentPlan: 'Текущий план',
-      free: 'Бесплатно',
+      free: 'Free',
       perMonth: '/ месяц',
       perYear: '/ год',
       analyses: 'Анализы',
@@ -1317,7 +1317,7 @@ export const billingMessages = defineMessages({
     },
     presentation: {
       entitlement: {
-        free: 'Gratis',
+        free: 'Free',
         trial: 'Prueba',
         active: 'Activa',
         pastDue: 'Pago pendiente — el acceso sigue activo',
@@ -1718,7 +1718,7 @@ export const billingMessages = defineMessages({
         `La compra de créditos extra no está disponible para el plan ${plan}.`,
       yourPlan: 'Tu plan',
       currentPlan: 'Plan actual',
-      free: 'Gratis',
+      free: 'Free',
       perMonth: '/ mes',
       perYear: '/ año',
       analyses: 'Análisis',
@@ -1732,7 +1732,7 @@ export const billingMessages = defineMessages({
     metadata: {
       subscription: 'Abonnement — Gleen',
       usage: 'Nutzungsprotokoll — Gleen',
-      checkout: 'Kasse — Gleen',
+      checkout: 'Bezahlvorgang — Gleen',
       portal: 'Abrechnungsportal — Gleen',
       invoices: 'Rechnungen — Gleen',
       limitReached: 'Analyselimit erreicht — Gleen',
@@ -1743,7 +1743,7 @@ export const billingMessages = defineMessages({
       usage: 'Nutzung',
       more: 'Mehr',
       moreLabel: 'Weitere Abrechnungsseiten',
-      checkout: '03 · Stripe-Kasse',
+      checkout: '03 · Stripe Checkout',
       portal: '04 · Abrechnungsportal',
       invoices: '05 · Rechnungen',
       limitReached: '06 · Limit erreicht',
@@ -1751,7 +1751,7 @@ export const billingMessages = defineMessages({
     },
     presentation: {
       entitlement: {
-        free: 'Kostenlos',
+        free: 'Free',
         trial: 'Testphase',
         active: 'Aktiv',
         pastDue: 'Zahlung fällig — Zugriff bleibt aktiv',
@@ -1827,8 +1827,8 @@ export const billingMessages = defineMessages({
       remaining: (count: number) => `${count} Analysen verbleiben`,
       scheduled: {
         cancellation: 'Kündigung ist geplant',
-        planChange: (plan: string) => `${plan} ist geplant`,
-        effective: (date: string) => `Wirksam am ${date}.`,
+        planChange: (plan: string) => `Wechsel zu ${plan} ist geplant`,
+        effective: (date: string) => `Die Änderung gilt ab ${date}.`,
       },
       billingPeriod: 'Abrechnungszeitraum',
       monthlyBilling: 'Monatliche Abrechnung',
@@ -1859,7 +1859,7 @@ export const billingMessages = defineMessages({
     },
     checkout: {
       eyebrow: 'Sicheres Upgrade',
-      title: 'Kasse',
+      title: 'Bezahlvorgang',
       description:
         'Führe dein Upgrade sicher mit einer transparenten Bestellübersicht durch.',
       states: {
@@ -1868,11 +1868,11 @@ export const billingMessages = defineMessages({
         confirmingDetail:
           'Der Zugriff ändert sich erst, wenn Gleen das verifizierte Zahlungsupdate erhält.',
         canceled: 'Der Bezahlvorgang wurde abgebrochen.',
-        retryableError: 'Die Kasse konnte nicht geladen werden.',
+        retryableError: 'Der Bezahlvorgang konnte nicht geladen werden.',
       },
       actions: {
-        retry: 'Kasse erneut versuchen',
-        loading: 'Sichere Kasse wird geladen…',
+        retry: 'Bezahlvorgang erneut laden',
+        loading: 'Sicherer Bezahlvorgang wird geladen…',
         processing: 'Wird verarbeitet…',
         submit: (plan: string) => `${plan} starten`,
         back: '← Zurück zu den Tarifen',
@@ -2053,7 +2053,7 @@ export const billingMessages = defineMessages({
       details: {
         title: 'Abrechnungsdaten',
         description:
-          'Rechnungsidentität, Unternehmen und Steuerdaten werden sicher in Stripe verwaltet.',
+          'Rechnungs-, Unternehmens- und Steuerdaten werden sicher in Stripe verwaltet.',
         edit: 'Daten bearbeiten',
         receiptTitle: 'Benötigst du einen offiziellen Beleg?',
         receiptDescription: 'Belege enthalten Zahlungs- und Steuerdaten.',
@@ -2099,8 +2099,7 @@ export const billingMessages = defineMessages({
         detailsTitle: 'Abrechnungsdaten',
         detailsDescription:
           'Abrechnungsinformationen ansehen und aktualisieren.',
-        detailsFootnote:
-          'Rechnungsidentität und Steuerdaten verbleiben in Stripe.',
+        detailsFootnote: 'Rechnungs- und Steuerdaten verbleiben in Stripe.',
         teamTitle: 'Teamplätze',
         teamDescription: 'Mitglieder einladen und Plätze verwalten.',
         teamUnavailable:
@@ -2156,7 +2155,7 @@ export const billingMessages = defineMessages({
         `Zusätzliche Credits sind für den Tarif ${plan} nicht verfügbar.`,
       yourPlan: 'Dein Tarif',
       currentPlan: 'Aktueller Tarif',
-      free: 'Kostenlos',
+      free: 'Free',
       perMonth: '/ Monat',
       perYear: '/ Jahr',
       analyses: 'Analysen',
@@ -2164,7 +2163,7 @@ export const billingMessages = defineMessages({
         `${used} von ${limit} verbraucht`,
       resets: 'Zurücksetzung',
       includes: 'Dein Tarif enthält',
-      changes: (plan: string) => `Änderungen mit ${plan}`,
+      changes: (plan: string) => `Was sich mit ${plan} ändert`,
     },
   },
 });

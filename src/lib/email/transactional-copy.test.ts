@@ -29,8 +29,8 @@ const expectedLocaleMarkers = {
       actionLabel: 'Підтвердити адресу',
     },
     password_reset: {
-      heading: 'Скиньте пароль',
-      actionLabel: 'Скинути пароль',
+      heading: 'Відновіть пароль',
+      actionLabel: 'Відновити пароль',
     },
     analysis_ready: {
       heading: 'Ваш аналіз готовий',

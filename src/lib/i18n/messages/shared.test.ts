@@ -63,4 +63,10 @@ describe('shared localization messages', () => {
       );
     }
   });
+
+  it('uses natural German grammar in the language-change announcement', () => {
+    expect(sharedMessages.de.localeSwitcher.changedTemplate).toBe(
+      'Sprache wurde auf {language} geändert',
+    );
+  });
 });

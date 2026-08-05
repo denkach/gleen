@@ -40,4 +40,27 @@ describe('emailMessages', () => {
       ),
     ).toBe(`Dein Abonnement wechselt am 03.08.2026 zu ${planName}.`);
   });
+
+  it('uses consistent native terminology in audited transactional copy', () => {
+    expect(emailMessages.uk.passwordReset).toMatchObject({
+      subject: 'Відновіть пароль Gleen',
+      heading: 'Відновіть пароль',
+      actionLabel: 'Відновити пароль',
+    });
+    expect(emailMessages.uk.analysisReady.paragraphs.artifacts).toBe(
+      'Ваші конспект, картки, часові мітки, транскрипт і експорти готові.',
+    );
+    expect(emailMessages.uk.paymentFailed.paragraphs.intro('Prism')).toBe(
+      'Не вдалося обробити платіж за підписку Prism.',
+    );
+    expect(emailMessages.ru.analysisReady.paragraphs.artifacts).toBe(
+      'Ваши конспект, карточки, временные метки, транскрипт и экспорты готовы.',
+    );
+    expect(emailMessages.ru.paymentFailed.paragraphs.intro('Spectrum')).toBe(
+      'Не удалось обработать платёж за подписку Spectrum.',
+    );
+    expect(emailMessages.de.magicLink.paragraphs.intro).toBe(
+      'Melde dich über die Schaltfläche unten in deinem Konto an.',
+    );
+  });
 });

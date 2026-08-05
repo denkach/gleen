@@ -350,7 +350,7 @@ export const historyMessages = defineMessages({
         label: 'Доступний збережений аналіз',
         title: 'Ви вже аналізували це відео',
         reassurance: (details: string) =>
-          `Відкрийте збережену версію${details ? `: ${details}` : ''}. Аналізи не буде витрачено.`,
+          `Відкрийте збережену версію${details ? `: ${details}` : ''}. Новий аналіз не буде використано.`,
         openSaved: 'Відкрити збережений результат',
         analyzeAnother: 'Проаналізувати іншу версію',
         starting: 'Запуск іншого аналізу…',
@@ -728,7 +728,7 @@ export const historyMessages = defineMessages({
         label: 'Análisis guardado disponible',
         title: 'Ya analizaste este vídeo',
         reassurance: (details: string) =>
-          `Abre la versión guardada${details ? ` ${details}` : ''}. No se gastarán análisis.`,
+          `Abre la versión guardada${details ? `: ${details}` : ''}. No se consumirá otro análisis.`,
         openSaved: 'Abrir resultado guardado',
         analyzeAnother: 'Analizar otra versión',
         starting: 'Iniciando otro análisis…',
@@ -740,7 +740,7 @@ export const historyMessages = defineMessages({
     loadMore: {
       loading: 'Cargando…',
       action: 'Cargar más',
-      retry: 'Intentar cargar más de nuevo',
+      retry: 'Volver a intentar cargar más',
       rejected:
         'No pudimos cargar más análisis guardados. Vuelve a intentarlo.',
       more: (count: number) =>
@@ -925,7 +925,7 @@ export const historyMessages = defineMessages({
         label: 'Gespeicherte Analyse verfügbar',
         title: 'Du hast dieses Video bereits analysiert',
         reassurance: (details: string) =>
-          `Öffne die gespeicherte${details ? ` ${details}` : ''} Version. Es werden keine Analysen verbraucht.`,
+          `Öffne die gespeicherte Version${details ? `: ${details}` : ''}. Es wird keine weitere Analyse verbraucht.`,
         openSaved: 'Gespeichertes Ergebnis öffnen',
         analyzeAnother: 'Andere Version analysieren',
         starting: 'Weitere Analyse wird gestartet…',

@@ -102,16 +102,16 @@ export const emailMessages = defineMessages({
       actionLabel: 'Підтвердити адресу',
     },
     passwordReset: {
-      subject: 'Скиньте пароль Gleen',
+      subject: 'Відновіть пароль Gleen',
       preview: 'Скористайтеся безпечним посиланням, щоб вибрати новий пароль.',
-      heading: 'Скиньте пароль',
+      heading: 'Відновіть пароль',
       paragraphs: {
         intro:
           'Натисніть кнопку нижче, щоб вибрати новий пароль для свого облікового запису.',
         security:
           'Якщо ви не запитували скидання пароля, можете проігнорувати цей лист.',
       },
-      actionLabel: 'Скинути пароль',
+      actionLabel: 'Відновити пароль',
     },
     analysisReady: {
       subject: (title: string) => `Ваш аналіз готовий: ${title}`,
@@ -120,7 +120,7 @@ export const emailMessages = defineMessages({
       paragraphs: {
         intro: (title: string) => `Ваш аналіз відео ${title} готовий.`,
         artifacts:
-          'Ваші резюме, картки, часові мітки, транскрипт і експорти готові.',
+          'Ваші конспект, картки, часові мітки, транскрипт і експорти готові.',
       },
       actionLabel: 'Відкрити аналіз',
     },
@@ -131,7 +131,7 @@ export const emailMessages = defineMessages({
       heading: 'Не вдалося обробити платіж',
       paragraphs: {
         intro: (planName: string) =>
-          `Не вдалося обробити платіж за план ${planName}.`,
+          `Не вдалося обробити платіж за підписку ${planName}.`,
         guidance:
           'Перевірте спосіб оплати, щоб ваша підписка залишалася активною.',
       },
@@ -195,7 +195,7 @@ export const emailMessages = defineMessages({
       paragraphs: {
         intro: (title: string) => `Ваш анализ видео ${title} готов.`,
         artifacts:
-          'Ваши резюме, карточки, временные метки, транскрипт и экспорты готовы.',
+          'Ваши конспект, карточки, временные метки, транскрипт и экспорты готовы.',
       },
       actionLabel: 'Открыть анализ',
     },
@@ -206,7 +206,7 @@ export const emailMessages = defineMessages({
       heading: 'Не удалось обработать платёж',
       paragraphs: {
         intro: (planName: string) =>
-          `Не удалось обработать платёж за план ${planName}.`,
+          `Не удалось обработать платёж за подписку ${planName}.`,
         guidance:
           'Проверьте способ оплаты, чтобы ваша подписка оставалась активной.',
       },
@@ -307,7 +307,7 @@ export const emailMessages = defineMessages({
       preview: 'Melde dich über diesen sicheren Link bei Gleen an.',
       heading: 'Bei Gleen anmelden',
       paragraphs: {
-        intro: 'Melde dich über die Schaltfläche unten bei deinem Konto an.',
+        intro: 'Melde dich über die Schaltfläche unten in deinem Konto an.',
         security:
           'Wenn du diesen Link nicht angefordert hast, kannst du diese E-Mail ignorieren.',
       },

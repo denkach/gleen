@@ -34,8 +34,8 @@ describe('billingMessages', () => {
 
   it('localizes representative billing states and preserves supplied data', () => {
     expect(billingMessages.de.subscription.title).toBe('Abonnement');
-    expect(billingMessages.es.checkout.actions.submit('Prism Pro')).toBe(
-      'Contratar Prism Pro',
+    expect(billingMessages.es.checkout.actions.submit('Prism')).toBe(
+      'Contratar Prism',
     );
     expect(billingMessages.uk.invoices.actions.downloadPdf('GLEEN-1042')).toBe(
       'Завантажити PDF GLEEN-1042',
@@ -47,7 +47,7 @@ describe('billingMessages', () => {
       billingMessages.en.portal.scheduled.downgrade(
         'Starter',
         '1 August 2026',
-        'Prism Pro',
+        'Prism',
       ),
     ).toContain('Starter');
   });
@@ -97,6 +97,83 @@ describe('billingMessages', () => {
   ] as const)('pluralizes %s reset day count %d', (locale, count, expected) => {
     expect(billingMessages[locale].limitReached.resetIn(count, 'DATE')).toBe(
       expected,
+    );
+  });
+
+  it('keeps canonical Free identity and audited billing copy in native register', () => {
+    for (const locale of supportedLocales) {
+      expect(billingMessages[locale].presentation.entitlement.free).toBe(
+        'Free',
+      );
+      expect(billingMessages[locale].limitReached.free).toBe('Free');
+    }
+
+    expect(billingMessages.en).toMatchObject({
+      subscription: { error: { retry: 'Reload subscription details' } },
+      usage: { error: { retry: 'Reload usage' } },
+      invoices: { error: { retry: 'Reload invoices' } },
+      portal: { error: { retry: 'Reload billing details' } },
+    });
+    expect(billingMessages.uk.checkout.states.confirmingDetail).toBe(
+      'Доступ зміниться лише після того, як Gleen отримає підтверджене оновлення платежу.',
+    );
+    expect(billingMessages.uk.invoices.details.description).toBe(
+      'Платіжні реквізити, дані компанії та податкова інформація безпечно зберігаються в Stripe.',
+    );
+    expect(billingMessages.uk.portal.cards.detailsFootnote).toBe(
+      'Платіжні реквізити й податкові дані зберігаються в Stripe.',
+    );
+    expect(
+      billingMessages.uk.portal.scheduled.downgrade('Free', 'DATE', 'Prism'),
+    ).toBe(
+      'Перехід на Free заплановано на DATE. Доступ за планом Prism діятиме до цієї дати.',
+    );
+    expect(billingMessages.uk.limitReached.actions.upgrade('Spectrum')).toBe(
+      'Перейти на Spectrum',
+    );
+    expect(billingMessages.ru.checkout.states.confirmingDetail).toBe(
+      'Доступ изменится только после того, как Gleen получит подтверждённое обновление платежа.',
+    );
+    expect(billingMessages.ru.invoices.details.description).toBe(
+      'Платёжные реквизиты, данные компании и налоговая информация безопасно хранятся в Stripe.',
+    );
+    expect(billingMessages.ru.portal.cards.detailsFootnote).toBe(
+      'Платёжные реквизиты и налоговые данные хранятся в Stripe.',
+    );
+    expect(
+      billingMessages.ru.portal.scheduled.downgrade('Free', 'DATE', 'Prism'),
+    ).toBe(
+      'Переход на Free запланирован на DATE. Доступ по плану Prism останется активным до этой даты.',
+    );
+    expect(billingMessages.ru.limitReached.actions.upgrade('Spectrum')).toBe(
+      'Перейти на Spectrum',
+    );
+    expect(billingMessages.de.metadata.checkout).toBe('Bezahlvorgang — Gleen');
+    expect(billingMessages.de.navigation.checkout).toBe('03 · Stripe Checkout');
+    expect(billingMessages.de.checkout).toMatchObject({
+      title: 'Bezahlvorgang',
+      states: {
+        retryableError: 'Der Bezahlvorgang konnte nicht geladen werden.',
+      },
+      actions: {
+        retry: 'Bezahlvorgang erneut laden',
+        loading: 'Sicherer Bezahlvorgang wird geladen…',
+      },
+    });
+    expect(
+      billingMessages.de.subscription.scheduled.planChange('Spectrum'),
+    ).toBe('Wechsel zu Spectrum ist geplant');
+    expect(billingMessages.de.subscription.scheduled.effective('DATE')).toBe(
+      'Die Änderung gilt ab DATE.',
+    );
+    expect(billingMessages.de.invoices.details.description).toBe(
+      'Rechnungs-, Unternehmens- und Steuerdaten werden sicher in Stripe verwaltet.',
+    );
+    expect(billingMessages.de.portal.cards.detailsFootnote).toBe(
+      'Rechnungs- und Steuerdaten verbleiben in Stripe.',
+    );
+    expect(billingMessages.de.limitReached.changes('Spectrum')).toBe(
+      'Was sich mit Spectrum ändert',
     );
   });
 });

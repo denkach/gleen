@@ -735,7 +735,7 @@ export const appMessages = defineMessages({
       advanced: {
         trigger: 'Opciones avanzadas',
         title: 'Opciones avanzadas',
-        description: 'Elige los materiales de conocimiento para este análisis.',
+        description: 'Elige los materiales de aprendizaje para este análisis.',
         outputLanguage: 'Idioma de salida',
         artifacts: 'Materiales',
         summaryPreset: 'Estilo del resumen',
@@ -837,7 +837,7 @@ export const appMessages = defineMessages({
         },
         artifacts: {
           title: 'Separando el espectro',
-          subtitle: 'Creando tus materiales de conocimiento.',
+          subtitle: 'Creando tus materiales de aprendizaje.',
         },
         complete: {
           title: 'Tus materiales están listos',
@@ -852,7 +852,7 @@ export const appMessages = defineMessages({
         validating: 'Validando el vídeo',
         transcript: 'Buscando la transcripción',
         structuring: 'Estructurando las ideas clave',
-        artifacts: 'Creando materiales de conocimiento',
+        artifacts: 'Creando materiales de aprendizaje',
       },
       artifactStates: {
         summary: {
@@ -992,7 +992,7 @@ export const appMessages = defineMessages({
       },
       duplicate: {
         title: 'Du hast dieses Video bereits analysiert.',
-        noCredits: 'Es werden keine Guthaben verbraucht.',
+        noCredits: 'Es wird kein Guthaben verbraucht.',
         openSaved: 'Gespeichertes Ergebnis öffnen',
         analyzeAgain: 'Erneut analysieren',
         dialogTitle: 'Dieses Video erneut analysieren?',
@@ -1131,7 +1131,7 @@ export const appMessages = defineMessages({
         refreshUnavailable:
           'Die Statusaktualisierung ist vorübergehend nicht verfügbar. Neuer Versuch…',
         stopped:
-          'Die Analyse wurde sicher beendet. Fertige Arbeit wurde beibehalten.',
+          'Die Analyse wurde sicher beendet. Fertige Ergebnisse wurden gespeichert.',
         partial:
           'Einige Materialien sind bereit. Versuche nur die unfertige Arbeit erneut.',
         restart:
@@ -1163,7 +1163,7 @@ export const appMessages = defineMessages({
         other: '{count} Karten',
       },
       note: 'Video und Originaltranskript wurden validiert. Die Verarbeitung wird in der nächsten Aufgabe umgesetzt; es gibt noch keine erstellten Materialien.',
-      back: '← Zurück zu Neue Analyse',
+      back: '← Zurück zur neuen Analyse',
     },
   },
 });

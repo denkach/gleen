@@ -58,6 +58,7 @@ export function getMarketingContent(
     copy.pricing.spectrum,
   ].map((card, index) => ({
     ...card,
+    label: pricingPlans[index]!.label,
     price: formatCurrency({
       amountMinor: pricingPlans[index]!.amountMinor,
       currency: pricingPlans[index]!.currency,

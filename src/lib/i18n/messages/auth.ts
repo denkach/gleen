@@ -324,7 +324,7 @@ export const authMessages = defineMessages({
       signUpDescription:
         'Ваше первое видео станет структурированным пространством за несколько понятных шагов.',
       verifyTitle: 'Следуйте за лучом.',
-      verifyDescription: 'Ссылка для безопасного входа уже отправляется.',
+      verifyDescription: 'Ссылка для безопасного входа уже отправлена.',
       forgotTitle: 'Восстановите сигнал.',
       forgotDescription:
         'Безопасная ссылка для восстановления вернёт вас в рабочее пространство.',
@@ -530,7 +530,8 @@ export const authMessages = defineMessages({
     },
     successes: {
       magic_link_sent: 'Revisa tu correo para ver el enlace de acceso seguro.',
-      verification_required: 'Revisa tu correo para confirmar la dirección.',
+      verification_required:
+        'Revisa tu correo para confirmar tu dirección de correo electrónico.',
       reset_sent: 'Revisa tu correo para ver el enlace de restablecimiento.',
       password_updated: 'Tu contraseña se ha actualizado.',
     },
@@ -561,14 +562,14 @@ export const authMessages = defineMessages({
       sessionExpired: 'Sitzung abgelaufen — Gleen',
     },
     shell: {
-      visualLabel: 'Gleen Wissensarbeitsbereich',
-      homeLabel: 'Gleen Startseite',
+      visualLabel: 'Gleen-Wissensarbeitsbereich',
+      homeLabel: 'Gleen-Startseite',
       eyebrow: 'Dein Wissensarbeitsbereich',
     },
     visual: {
       signInTitle: 'Zurück zum Signal.',
       signInDescription:
-        'Jede Analyse, Karte, Zeitmarke und jeder Export ist noch genau dort, wo du aufgehört hast.',
+        'Jede Analyse, Lernkarte, Zeitmarke und jeder Export sind noch genau dort, wo du aufgehört hast.',
       signUpTitle: 'Beginne mit einem Link.',
       signUpDescription:
         'Dein erstes Video wird in wenigen klaren Schritten zu einem strukturierten Arbeitsbereich.',
@@ -655,10 +656,11 @@ export const authMessages = defineMessages({
       },
     },
     successes: {
-      magic_link_sent: 'Prüfe dein Postfach für den sicheren Anmeldelink.',
+      magic_link_sent:
+        'In deinem Postfach findest du deinen sicheren Anmeldelink.',
       verification_required:
         'Prüfe dein Postfach, um deine E-Mail-Adresse zu bestätigen.',
-      reset_sent: 'Prüfe dein Postfach für den Link zum Zurücksetzen.',
+      reset_sent: 'In deinem Postfach findest du den Link zum Zurücksetzen.',
       password_updated: 'Dein Passwort wurde aktualisiert.',
     },
     errors: {

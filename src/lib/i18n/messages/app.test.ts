@@ -100,4 +100,23 @@ describe('appMessages', () => {
       },
     });
   });
+
+  it('uses native product language in audited intake and recovery copy', () => {
+    expect(appMessages.es.newAnalysis.advanced.description).toBe(
+      'Elige los materiales de aprendizaje para este análisis.',
+    );
+    expect(appMessages.es.processing.presentations.artifacts.subtitle).toBe(
+      'Creando tus materiales de aprendizaje.',
+    );
+    expect(appMessages.es.processing.stages.artifacts).toBe(
+      'Creando materiales de aprendizaje',
+    );
+    expect(appMessages.de.newAnalysis.duplicate.noCredits).toBe(
+      'Es wird kein Guthaben verbraucht.',
+    );
+    expect(appMessages.de.processing.errors.stopped).toBe(
+      'Die Analyse wurde sicher beendet. Fertige Ergebnisse wurden gespeichert.',
+    );
+    expect(appMessages.de.readiness.back).toBe('← Zurück zur neuen Analyse');
+  });
 });

@@ -86,7 +86,7 @@ export const onboardingMessages = defineMessages({
     shell: {
       visualTitle: 'Налаштуйте спектр.',
       visualDescription:
-        'Виберіть мову й стандартні результати, щоб Gleen працював для вас.',
+        'Встановіть мову та налаштування результатів за замовчуванням, щоб Gleen працював для вас.',
     },
     eyebrow: 'Налаштуйте Gleen',
     progress: {
@@ -103,13 +103,14 @@ export const onboardingMessages = defineMessages({
       },
       output: {
         title: 'Мова результатів',
-        description: 'Окремо виберіть стандартну мову для створеного контенту.',
+        description:
+          'Окремо виберіть мову за замовчуванням для створеного контенту.',
         choicesLabel: 'Мова створеного контенту',
       },
       preferences: {
         title: 'Налаштування результатів',
         description:
-          'Виберіть стандартні параметри нового аналізу. Їх можна змінювати для кожного відео.',
+          'Виберіть налаштування за замовчуванням для нового аналізу. Їх можна змінювати для кожного відео.',
       },
     },
     presets: {
@@ -153,7 +154,7 @@ export const onboardingMessages = defineMessages({
     shell: {
       visualTitle: 'Настройте спектр.',
       visualDescription:
-        'Выберите язык и стандартные результаты, чтобы Gleen работал для вас.',
+        'Задайте язык и параметры результатов по умолчанию, чтобы настроить Gleen под себя.',
     },
     eyebrow: 'Настройте Gleen',
     progress: {
@@ -170,13 +171,13 @@ export const onboardingMessages = defineMessages({
       output: {
         title: 'Язык результатов',
         description:
-          'Отдельно выберите стандартный язык создаваемого контента.',
+          'Отдельно выберите язык создаваемого контента по умолчанию.',
         choicesLabel: 'Язык создаваемого контента',
       },
       preferences: {
         title: 'Настройки результатов',
         description:
-          'Выберите стандартные параметры нового анализа. Их можно менять для каждого видео.',
+          'Выберите параметры по умолчанию для нового анализа. Их можно менять для каждого видео.',
       },
     },
     presets: {
@@ -219,7 +220,7 @@ export const onboardingMessages = defineMessages({
     shell: {
       visualTitle: 'Ajusta el espectro.',
       visualDescription:
-        'Define el idioma y los resultados predeterminados que hacen Gleen tuyo.',
+        'Configura el idioma y los resultados predeterminados para adaptar Gleen a tus necesidades.',
     },
     eyebrow: 'Personaliza Gleen',
     progress: {
@@ -252,11 +253,11 @@ export const onboardingMessages = defineMessages({
       },
       summaryDetailed: {
         title: 'Resumen detallado',
-        description: 'Más contexto y notas de capítulos más profundas',
+        description: 'Más contexto y notas de capítulos más completas',
       },
       flashcards18: {
         title: '18 tarjetas',
-        description: 'Una baraja de estudio enfocada',
+        description: 'Una baraja de estudio bien estructurada',
       },
       flashcards30: {
         title: '30 tarjetas',
@@ -287,7 +288,7 @@ export const onboardingMessages = defineMessages({
     shell: {
       visualTitle: 'Stimme das Spektrum ab.',
       visualDescription:
-        'Lege Sprache und Ausgabestandards fest, die Gleen zu deinem Werkzeug machen.',
+        'Lege Sprache und Standardeinstellungen für Ergebnisse fest, damit Gleen zu deinem Werkzeug wird.',
     },
     eyebrow: 'Gleen personalisieren',
     progress: {
@@ -324,7 +325,7 @@ export const onboardingMessages = defineMessages({
       },
       flashcards18: {
         title: '18 Lernkarten',
-        description: 'Ein fokussierter Lernkartenstapel',
+        description: 'Ein kompakter Lernkartenstapel',
       },
       flashcards30: {
         title: '30 Lernkarten',

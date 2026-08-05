@@ -598,7 +598,7 @@ export const sharedMessages = defineMessages({
       close: 'Sprachauswahl schließen',
       selected: 'Ausgewählt',
       quickSwitch: 'Schnellwechsel',
-      changedTemplate: 'Sprache wurde zu {language} geändert',
+      changedTemplate: 'Sprache wurde auf {language} geändert',
       errors: {
         invalidLocale: 'Wähle eine unterstützte Sprache.',
         profileUpdateFailed:

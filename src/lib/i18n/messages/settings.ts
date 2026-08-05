@@ -122,7 +122,7 @@ export const settingsMessages = defineMessages({
     page: {
       eyebrow: 'Tu cuenta',
       title: 'Ajustes',
-      description: 'Elige idiomas para Gleen y los nuevos materiales.',
+      description: 'Elige idiomas para Gleen y para los nuevos materiales.',
     },
     language: {
       title: 'Preferencias de idioma',
@@ -167,7 +167,7 @@ export const settingsMessages = defineMessages({
       interface: {
         title: 'Sprache der Oberfläche',
         description:
-          'Ändert die Sprache der Gleen-Steuerelemente und Navigation.',
+          'Ändert die Sprache der Gleen-Steuerelemente und der Navigation.',
         label: 'Sprache der Gleen-Steuerelemente',
         save: 'Oberflächensprache speichern',
       },

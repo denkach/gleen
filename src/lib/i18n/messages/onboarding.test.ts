@@ -38,4 +38,40 @@ describe('onboardingMessages', () => {
       'Не вдалося зберегти налаштування. Спробуйте ще раз.',
     );
   });
+
+  it('describes independent defaults in native onboarding language', () => {
+    expect(onboardingMessages.uk.shell.visualDescription).toBe(
+      'Встановіть мову та налаштування результатів за замовчуванням, щоб Gleen працював для вас.',
+    );
+    expect(onboardingMessages.uk.steps.output.description).toBe(
+      'Окремо виберіть мову за замовчуванням для створеного контенту.',
+    );
+    expect(onboardingMessages.uk.steps.preferences.description).toBe(
+      'Виберіть налаштування за замовчуванням для нового аналізу. Їх можна змінювати для кожного відео.',
+    );
+    expect(onboardingMessages.ru.shell.visualDescription).toBe(
+      'Задайте язык и параметры результатов по умолчанию, чтобы настроить Gleen под себя.',
+    );
+    expect(onboardingMessages.ru.steps.output.description).toBe(
+      'Отдельно выберите язык создаваемого контента по умолчанию.',
+    );
+    expect(onboardingMessages.ru.steps.preferences.description).toBe(
+      'Выберите параметры по умолчанию для нового анализа. Их можно менять для каждого видео.',
+    );
+    expect(onboardingMessages.es.shell.visualDescription).toBe(
+      'Configura el idioma y los resultados predeterminados para adaptar Gleen a tus necesidades.',
+    );
+    expect(onboardingMessages.es.presets.summaryDetailed.description).toBe(
+      'Más contexto y notas de capítulos más completas',
+    );
+    expect(onboardingMessages.es.presets.flashcards18.description).toBe(
+      'Una baraja de estudio bien estructurada',
+    );
+    expect(onboardingMessages.de.shell.visualDescription).toBe(
+      'Lege Sprache und Standardeinstellungen für Ergebnisse fest, damit Gleen zu deinem Werkzeug wird.',
+    );
+    expect(onboardingMessages.de.presets.flashcards18.description).toBe(
+      'Ein kompakter Lernkartenstapel',
+    );
+  });
 });

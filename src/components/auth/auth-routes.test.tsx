@@ -180,7 +180,7 @@ describe('account access and recovery routes', () => {
 
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent(
-        'Prüfe dein Postfach für den sicheren Anmeldelink.',
+        'In deinem Postfach findest du deinen sicheren Anmeldelink.',
       ),
     );
   });

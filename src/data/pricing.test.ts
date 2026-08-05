@@ -6,9 +6,12 @@ describe('pricingPlans', () => {
   it('keeps the three approved plans as visual configuration', () => {
     expect(pricingPlans.map(({ label }) => label)).toEqual([
       'Free',
-      'Prism · Best fit',
+      'Prism',
       'Spectrum',
     ]);
+    expect(pricingPlans.every(({ cta, label }) => cta.includes(label))).toBe(
+      true,
+    );
     expect(pricingPlans.every(({ ctaHref }) => ctaHref === '#product')).toBe(
       true,
     );

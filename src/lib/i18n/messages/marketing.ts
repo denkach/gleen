@@ -133,10 +133,10 @@ export const marketingMessages = defineMessages({
           export: 'Markdown export',
           history: 'Saved history',
         },
-        cta: 'Start free',
+        cta: 'Start Free',
       },
       prism: {
-        label: 'Prism · Best fit',
+        label: 'Prism',
         name: 'Build a habit',
         description: 'For students, researchers, and continuous learners.',
         features: {
@@ -226,7 +226,7 @@ export const marketingMessages = defineMessages({
       },
       signal: {
         phase: 'СИГНАЛ',
-        title: 'Прочитайте відео',
+        title: 'Опрацюйте відео',
         body: 'Транскрипт, метадані, розділи та мова джерела нанесені на карту.',
       },
       refraction: {
@@ -288,7 +288,7 @@ export const marketingMessages = defineMessages({
       export: {
         kicker: 'Знання для експорту',
         title: 'Нехай результат увійде у вашу систему.',
-        body: 'Оберіть призначення та збережіть структуру. Прозоро експортуйте в Notion, Obsidian, NotebookLM або чистий Markdown.',
+        body: 'Оберіть призначення та збережіть структуру. Експортуйте в Notion, Obsidian, NotebookLM або чистий Markdown без зайвих кроків.',
         cta: 'Переглянути експорт',
         demoTopbar: 'ЕКСПОРТ / ГОТОВО',
         demoTitle: 'Навчання через відтворення',
@@ -301,7 +301,7 @@ export const marketingMessages = defineMessages({
         'Почніть безкоштовно, зберігайте кожен результат в історії та оновлюйте план лише тоді, коли вашому процесу потрібно більше можливостей.',
       period: '/ місяць',
       free: {
-        label: 'Безкоштовно',
+        label: 'Free',
         name: 'Спробуйте',
         description: 'Щоб випробувати Gleen на кількох важливих відео.',
         features: {
@@ -310,22 +310,23 @@ export const marketingMessages = defineMessages({
           export: 'Експорт Markdown',
           history: 'Збережена історія',
         },
-        cta: 'Почати безкоштовно',
+        cta: 'Обрати Free',
       },
       prism: {
-        label: 'Призма · Найкращий вибір',
+        label: 'Prism',
         name: 'Створіть звичку',
-        description: 'Для студентів, дослідників і безперервного навчання.',
+        description:
+          'Для студентів, дослідників і тих, хто навчається постійно.',
         features: {
           analyses: '25 аналізів відео',
           videos: 'Довші відео',
           export: 'Експорт у Notion та Obsidian',
           priority: 'Пріоритетна обробка',
         },
-        cta: 'Обрати Призму',
+        cta: 'Обрати Prism',
       },
       spectrum: {
-        label: 'Спектр',
+        label: 'Spectrum',
         name: 'Зануртеся глибше',
         description: 'Для інтенсивної роботи зі знаннями та великих бібліотек.',
         features: {
@@ -334,7 +335,7 @@ export const marketingMessages = defineMessages({
           priority: 'Найвищий пріоритет обробки',
           history: 'Розширене керування історією',
         },
-        cta: 'Обрати Спектр',
+        cta: 'Обрати Spectrum',
       },
     },
     footer: {
@@ -383,7 +384,8 @@ export const marketingMessages = defineMessages({
       placeholder: 'Вставьте ссылку YouTube',
       submit: 'Преобразовать видео',
       invalidUrl: 'Введите поддерживаемый URL YouTube.',
-      caption: 'Карта не нужна · Попробуйте пример · Первый анализ бесплатный',
+      caption:
+        'Банковская карта не нужна · Попробуйте пример · Первый анализ бесплатный',
       scrollCue: 'Двигайтесь по спектру',
       summaryFloat: 'Резюме',
       flashcardsFloat: 'Карточки',
@@ -402,7 +404,7 @@ export const marketingMessages = defineMessages({
       },
       signal: {
         phase: 'СИГНАЛ',
-        title: 'Прочитайте видео',
+        title: 'Разберите видео',
         body: 'Расшифровка, метаданные, главы и язык источника нанесены на карту.',
       },
       refraction: {
@@ -424,7 +426,7 @@ export const marketingMessages = defineMessages({
         'У каждого артефакта есть собственная модель взаимодействия и спектральная идентичность, а весь опыт остаётся сдержанным и последовательным.',
       summary: {
         kicker: 'Структурированное резюме',
-        title: 'Увидьте форму аргумента.',
+        title: 'Увидьте структуру аргумента.',
         body: 'Раскрывающиеся главы, выделенные ключевые идеи, практические выводы и прямые ссылки на точный момент видео.',
         cta: 'Открыть резюме',
         demoTopbar: 'РЕЗЮМЕ / СОХРАНЕНО АВТОМАТИЧЕСКИ',
@@ -440,7 +442,7 @@ export const marketingMessages = defineMessages({
       flashcards: {
         kicker: 'Интерактивные карточки',
         title: 'Превратите понимание в память.',
-        body: 'Изучайте важнейшие понятия видео в сфокусированной колоде. Переворачивайте, оценивайте, редактируйте и переходите прямо к источнику.',
+        body: 'Изучайте важнейшие понятия видео в удобной колоде. Переворачивайте, оценивайте, редактируйте и переходите прямо к источнику.',
         cta: 'Открыть режим обучения',
         demoMeta: 'Карточка 04 / 18',
         demoQuestion:
@@ -455,7 +457,7 @@ export const marketingMessages = defineMessages({
         cta: 'Открыть шкалу времени',
         demoTopbar: 'ШКАЛА ВРЕМЕНИ / 12 ГЛАВ',
         firstTitle: 'Пассивное восприятие',
-        firstBody: 'Почему знакомство можно принять за понимание.',
+        firstBody: 'Почему ощущение знакомости можно спутать с пониманием.',
         secondTitle: 'Желательная трудность',
         secondBody: 'Как усилие меняет прочность памяти.',
         thirdTitle: 'Практическая рутина',
@@ -464,7 +466,7 @@ export const marketingMessages = defineMessages({
       export: {
         kicker: 'Знания для экспорта',
         title: 'Пусть результат войдёт в вашу систему.',
-        body: 'Выберите назначение и сохраните структуру. Прозрачно экспортируйте в Notion, Obsidian, NotebookLM или чистый Markdown.',
+        body: 'Выберите назначение и сохраните структуру. Экспортируйте в Notion, Obsidian, NotebookLM или чистый Markdown без лишних шагов.',
         cta: 'Предпросмотр экспорта',
         demoTopbar: 'ЭКСПОРТ / ГОТОВО',
         demoTitle: 'Обучение через воспроизведение',
@@ -474,10 +476,10 @@ export const marketingMessages = defineMessages({
       eyebrow: 'Простые планы',
       title: 'Выберите, сколько света вам нужно.',
       description:
-        'Начните бесплатно, храните каждый результат в истории и обновляйте план, только когда вашему процессу нужна большая ёмкость.',
+        'Начните бесплатно, храните каждый результат в истории и обновляйте план, только когда вашему процессу нужно больше возможностей.',
       period: '/ месяц',
       free: {
-        label: 'Бесплатно',
+        label: 'Free',
         name: 'Попробовать',
         description: 'Чтобы попробовать Gleen на нескольких важных видео.',
         features: {
@@ -486,23 +488,24 @@ export const marketingMessages = defineMessages({
           export: 'Экспорт Markdown',
           history: 'Сохранённая история',
         },
-        cta: 'Начать бесплатно',
+        cta: 'Выбрать Free',
       },
       prism: {
-        label: 'Призма · Лучший выбор',
+        label: 'Prism',
         name: 'Создайте привычку',
-        description: 'Для студентов, исследователей и непрерывного обучения.',
+        description:
+          'Для студентов, исследователей и тех, кто постоянно учится.',
         features: {
           analyses: '25 анализов видео',
           videos: 'Более длинные видео',
           export: 'Экспорт в Notion и Obsidian',
           priority: 'Приоритетная обработка',
         },
-        cta: 'Выбрать Призму',
+        cta: 'Выбрать Prism',
       },
       spectrum: {
-        label: 'Спектр',
-        name: 'Погрузиться глубже',
+        label: 'Spectrum',
+        name: 'Погрузитесь глубже',
         description: 'Для интенсивной работы со знаниями и больших библиотек.',
         features: {
           analyses: '100 анализов видео',
@@ -510,7 +513,7 @@ export const marketingMessages = defineMessages({
           priority: 'Наивысший приоритет обработки',
           history: 'Расширенное управление историей',
         },
-        cta: 'Выбрать Спектр',
+        cta: 'Выбрать Spectrum',
       },
     },
     footer: {
@@ -579,7 +582,7 @@ export const marketingMessages = defineMessages({
       },
       signal: {
         phase: 'SEÑAL',
-        title: 'Lee el vídeo',
+        title: 'Analiza el vídeo',
         body: 'Se mapean la transcripción, los metadatos, los capítulos y el idioma de origen.',
       },
       refraction: {
@@ -602,7 +605,7 @@ export const marketingMessages = defineMessages({
       summary: {
         kicker: 'Resumen estructurado',
         title: 'Ve la forma del argumento.',
-        body: 'Capítulos desplegables, ideas clave destacadas, conclusiones accionables y enlaces directos al momento exacto del vídeo.',
+        body: 'Capítulos desplegables, ideas clave destacadas, conclusiones prácticas y enlaces directos al momento exacto del vídeo.',
         cta: 'Explorar el resumen',
         demoTopbar: 'RESUMEN / GUARDADO AUTOMÁTICAMENTE',
         demoTitle: 'La idea central',
@@ -617,7 +620,7 @@ export const marketingMessages = defineMessages({
       flashcards: {
         kicker: 'Tarjetas interactivas',
         title: 'Convierte la comprensión en memoria.',
-        body: 'Estudia los conceptos más importantes del vídeo en una baraja enfocada. Voltea, valora, edita y salta directamente a la fuente.',
+        body: 'Estudia los conceptos más importantes del vídeo en una baraja bien estructurada. Da la vuelta a las tarjetas, valóralas, edítalas y salta directamente a la fuente.',
         cta: 'Abrir modo de estudio',
         demoMeta: 'Tarjeta 04 / 18',
         demoQuestion:
@@ -654,7 +657,7 @@ export const marketingMessages = defineMessages({
         'Empieza gratis, guarda cada resultado en el historial y mejora solo cuando tu flujo de trabajo necesite más capacidad.',
       period: '/ mes',
       free: {
-        label: 'Gratis',
+        label: 'Free',
         name: 'Explorar',
         description: 'Para probar Gleen con algunos vídeos importantes.',
         features: {
@@ -663,10 +666,10 @@ export const marketingMessages = defineMessages({
           export: 'Exportación Markdown',
           history: 'Historial guardado',
         },
-        cta: 'Empezar gratis',
+        cta: 'Elegir Free',
       },
       prism: {
-        label: 'Prisma · Mejor opción',
+        label: 'Prism',
         name: 'Crea un hábito',
         description:
           'Para estudiantes, investigadores y personas que aprenden continuamente.',
@@ -676,10 +679,10 @@ export const marketingMessages = defineMessages({
           export: 'Exportación a Notion y Obsidian',
           priority: 'Procesamiento prioritario',
         },
-        cta: 'Elegir Prisma',
+        cta: 'Elegir Prism',
       },
       spectrum: {
-        label: 'Espectro',
+        label: 'Spectrum',
         name: 'Profundiza',
         description:
           'Para trabajo intensivo con conocimiento y bibliotecas más grandes.',
@@ -689,7 +692,7 @@ export const marketingMessages = defineMessages({
           priority: 'Máxima prioridad de procesamiento',
           history: 'Controles ampliados del historial',
         },
-        cta: 'Elegir Espectro',
+        cta: 'Elegir Spectrum',
       },
     },
     footer: {
@@ -758,7 +761,7 @@ export const marketingMessages = defineMessages({
       },
       signal: {
         phase: 'SIGNAL',
-        title: 'Video lesen',
+        title: 'Video auswerten',
         body: 'Transkript, Metadaten, Kapitel und Quellsprache werden abgebildet.',
       },
       refraction: {
@@ -796,7 +799,7 @@ export const marketingMessages = defineMessages({
       flashcards: {
         kicker: 'Interaktive Karteikarten',
         title: 'Mache aus Einsicht Erinnerung.',
-        body: 'Lerne die wichtigsten Konzepte des Videos in einem fokussierten Stapel. Drehe um, bewerte, bearbeite und springe direkt zur Quelle.',
+        body: 'Lerne die wichtigsten Konzepte des Videos mit einem übersichtlichen Kartensatz. Drehe die Karten um, bewerte und bearbeite sie und springe direkt zur Quelle.',
         cta: 'Lernmodus öffnen',
         demoMeta: 'Karte 04 / 18',
         demoQuestion:
@@ -806,7 +809,7 @@ export const marketingMessages = defineMessages({
       },
       timestamps: {
         kicker: 'Klickbare Zeitstempel',
-        title: 'Bewege dich durch Bedeutung, nicht Minuten.',
+        title: 'Navigiere nach Inhalten statt nach Minuten.',
         body: 'Eine quellenverknüpfte Zeitleiste bringt dich sofort zur richtigen Passage, statt das ganze Video zu durchsuchen.',
         cta: 'Zeitleiste ansehen',
         demoTopbar: 'ZEITLEISTE / 12 KAPITEL',
@@ -821,7 +824,7 @@ export const marketingMessages = defineMessages({
       export: {
         kicker: 'Wissen für den Export',
         title: 'Lass das Ergebnis in dein System fließen.',
-        body: 'Wähle das Ziel und behalte die Struktur. Exportiere transparent zu Notion, Obsidian, NotebookLM oder sauberem Markdown.',
+        body: 'Wähle das Ziel und behalte die Struktur. Exportiere direkt nach Notion, Obsidian oder NotebookLM – oder als sauberes Markdown.',
         cta: 'Exporte ansehen',
         demoTopbar: 'EXPORT / BEREIT',
         demoTitle: 'Lernen durch Abrufen',
@@ -834,7 +837,7 @@ export const marketingMessages = defineMessages({
         'Starte kostenlos, behalte jedes Ergebnis im Verlauf und wechsle erst, wenn dein Arbeitsablauf mehr Kapazität braucht.',
       period: '/ Monat',
       free: {
-        label: 'Kostenlos',
+        label: 'Free',
         name: 'Entdecken',
         description: 'Um Gleen mit einigen wichtigen Videos auszuprobieren.',
         features: {
@@ -843,10 +846,10 @@ export const marketingMessages = defineMessages({
           export: 'Markdown-Export',
           history: 'Gespeicherter Verlauf',
         },
-        cta: 'Kostenlos starten',
+        cta: 'Free wählen',
       },
       prism: {
-        label: 'Prisma · Beste Wahl',
+        label: 'Prism',
         name: 'Gewohnheit aufbauen',
         description: 'Für Studierende, Forschende und kontinuierlich Lernende.',
         features: {
@@ -855,10 +858,10 @@ export const marketingMessages = defineMessages({
           export: 'Notion- und Obsidian-Export',
           priority: 'Priorisierte Verarbeitung',
         },
-        cta: 'Prisma wählen',
+        cta: 'Prism wählen',
       },
       spectrum: {
-        label: 'Spektrum',
+        label: 'Spectrum',
         name: 'Tiefer einsteigen',
         description: 'Für intensive Wissensarbeit und größere Bibliotheken.',
         features: {
@@ -867,7 +870,7 @@ export const marketingMessages = defineMessages({
           priority: 'Höchste Verarbeitungspriorität',
           history: 'Erweiterte Verlaufssteuerung',
         },
-        cta: 'Spektrum wählen',
+        cta: 'Spectrum wählen',
       },
     },
     footer: {

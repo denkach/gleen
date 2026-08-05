@@ -36,4 +36,26 @@ describe('authMessages', () => {
       'Die Anfrage konnte nicht abgeschlossen werden. Bitte versuche es erneut.',
     );
   });
+
+  it('uses native grammar in audited authentication status copy', () => {
+    expect(authMessages.ru.visual.verifyDescription).toBe(
+      'Ссылка для безопасного входа уже отправлена.',
+    );
+    expect(authMessages.es.successes.verification_required).toBe(
+      'Revisa tu correo para confirmar tu dirección de correo electrónico.',
+    );
+    expect(authMessages.de.shell).toMatchObject({
+      visualLabel: 'Gleen-Wissensarbeitsbereich',
+      homeLabel: 'Gleen-Startseite',
+    });
+    expect(authMessages.de.visual.signInDescription).toBe(
+      'Jede Analyse, Lernkarte, Zeitmarke und jeder Export sind noch genau dort, wo du aufgehört hast.',
+    );
+    expect(authMessages.de.successes.magic_link_sent).toBe(
+      'In deinem Postfach findest du deinen sicheren Anmeldelink.',
+    );
+    expect(authMessages.de.successes.reset_sent).toBe(
+      'In deinem Postfach findest du den Link zum Zurücksetzen.',
+    );
+  });
 });

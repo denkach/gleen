@@ -107,7 +107,7 @@ describe('three-step onboarding', () => {
     ).toBeVisible();
     expect(
       screen.getByText(
-        'Окремо виберіть стандартну мову для створеного контенту.',
+        'Окремо виберіть мову за замовчуванням для створеного контенту.',
       ),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Назад' })).toBeVisible();

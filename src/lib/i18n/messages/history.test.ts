@@ -139,4 +139,21 @@ describe('historyMessages', () => {
       );
     },
   );
+
+  it('uses native quota and retry language without moving interpolated data', () => {
+    expect(historyMessages.uk.actions.duplicate.reassurance('Докладний')).toBe(
+      'Відкрийте збережену версію: Докладний. Новий аналіз не буде використано.',
+    );
+    expect(historyMessages.es.actions.duplicate.reassurance('Detallado')).toBe(
+      'Abre la versión guardada: Detallado. No se consumirá otro análisis.',
+    );
+    expect(historyMessages.es.loadMore.retry).toBe(
+      'Volver a intentar cargar más',
+    );
+    expect(
+      historyMessages.de.actions.duplicate.reassurance('Detailliert'),
+    ).toBe(
+      'Öffne die gespeicherte Version: Detailliert. Es wird keine weitere Analyse verbraucht.',
+    );
+  });
 });

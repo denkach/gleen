@@ -66,4 +66,39 @@ describe('resultMessages', () => {
       );
     },
   );
+
+  test('uses consistent native artifact terminology in audited result copy', () => {
+    expect(resultMessages.en.exportIncludeMetadata).toBe(
+      'AI-generated title & metadata',
+    );
+    expect(resultMessages.uk).toMatchObject({
+      tabSummary: 'Конспект',
+      overviewSummarySections: 'Розділи конспекту',
+      overviewStartSummary: 'Почати з конспекту',
+      summaryCopyFailed: 'Не вдалося скопіювати конспект',
+      summaryEdit: 'Редагувати конспект',
+      summaryOneSentence: 'Конспект одним реченням',
+      summaryTitleField: 'Назва конспекту',
+      summaryOverviewField: 'Огляд конспекту',
+      summaryPointField: 'Пункт конспекту {count}',
+      exportIncludeSummary: 'Конспект',
+      exportIncludeSummaryDescription: 'Огляд і структурований конспект',
+    });
+    expect(resultMessages.ru.overviewRecommended).toBe('Рекомендуем далее');
+    expect(resultMessages.es.summarySource).toBe('Abrir momento en el vídeo');
+    expect(resultMessages.de).toMatchObject({
+      overviewReviewed: 'Wiederholt',
+      artifactNotRequestedTitle: 'Artefakt nicht angefordert',
+      artifactNotRequestedBody:
+        'Dieses Artefakt wurde für diese Analyse nicht ausgewählt.',
+      artifactMissingTitle: 'Kein Artefaktinhalt',
+      artifactMissingBody:
+        'Diese Analyse hat keinen verwendbaren Inhalt für dieses Artefakt erzeugt.',
+      artifactPendingTitle: 'Artefakt wird noch verarbeitet',
+      artifactPendingBody:
+        'Dieses Artefakt ist noch nicht fertig. Andere verfügbare Ergebnisse können weiter genutzt werden.',
+      artifactMalformedTitle: 'Artefakt konnte nicht gelesen werden',
+      artifactFailedTitle: 'Dieses Artefakt konnte nicht erstellt werden',
+    });
+  });
 });

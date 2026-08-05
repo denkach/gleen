@@ -398,7 +398,7 @@ describe('ResultWorkspace', () => {
     );
     expect(
       screen.getByRole('heading', {
-        name: 'Dieses Material konnte nicht erstellt werden',
+        name: 'Dieses Artefakt konnte nicht erstellt werden',
       }),
     ).toBeVisible();
     expect(

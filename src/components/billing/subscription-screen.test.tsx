@@ -380,7 +380,7 @@ describe('SubscriptionScreen', () => {
       'Billing details are temporarily unavailable.',
     );
     expect(
-      screen.getByRole('link', { name: 'Try subscription again' }),
+      screen.getByRole('link', { name: 'Reload subscription details' }),
     ).toHaveAttribute('href', '/app/subscription');
   });
 });

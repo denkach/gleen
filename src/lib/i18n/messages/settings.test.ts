@@ -14,4 +14,13 @@ describe('settings messages', () => {
       );
     }
   });
+
+  it('uses natural Spanish and German language-setting descriptions', () => {
+    expect(settingsMessages.es.page.description).toBe(
+      'Elige idiomas para Gleen y para los nuevos materiales.',
+    );
+    expect(settingsMessages.de.language.interface.description).toBe(
+      'Ändert die Sprache der Gleen-Steuerelemente und der Navigation.',
+    );
+  });
 });
