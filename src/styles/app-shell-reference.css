@@ -377,18 +377,68 @@
   color: var(--text-secondary);
 }
 
-.settings-content {
-  overflow: hidden;
+.settings-account-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, 0.36fr);
+  align-items: start;
+  gap: 18px;
+}
+.settings-language-column,
+.settings-preference-row,
+.settings-preference-copy,
+.settings-section-head,
+.settings-preference-control {
+  min-width: 0;
+}
+.settings-language-card,
+.settings-note-card {
   border: 1px solid var(--border-default);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.012);
+  background: linear-gradient(
+    145deg,
+    rgba(17, 22, 32, 0.72),
+    rgba(11, 14, 21, 0.64)
+  );
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.14);
 }
-.settings-section {
-  padding: 28px;
+.settings-language-card {
+  overflow: hidden;
+}
+.settings-preference-row {
+  display: grid;
+  grid-template-columns: minmax(270px, 1fr) minmax(190px, 230px) minmax(
+      190px,
+      auto
+    );
+  align-items: center;
+  gap: 22px;
+  padding: 27px 28px;
   border-bottom: 1px solid var(--border-default);
 }
-.settings-section:last-child {
+.settings-preference-row:last-child {
   border-bottom: 0;
+}
+.settings-preference-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+.settings-preference-icon,
+.settings-note-card__icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-secondary);
+}
+.settings-preference-icon .app-icon,
+.settings-note-card__icon .app-icon {
+  width: 19px;
+  height: 19px;
 }
 .settings-load-error {
   display: flex;
@@ -397,7 +447,9 @@
   flex-wrap: wrap;
   gap: 12px;
   padding: 16px 28px;
-  border-bottom: 1px solid var(--border-default);
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 180, 84, 0.18);
+  border-radius: 14px;
   background: rgba(255, 180, 84, 0.05);
 }
 .settings-load-error p {
@@ -406,8 +458,7 @@
   font-size: 13px;
 }
 .settings-section-head {
-  max-width: 650px;
-  margin-bottom: 18px;
+  max-width: 560px;
 }
 .settings-section-head h2 {
   margin: 0 0 8px;
@@ -420,14 +471,13 @@
   line-height: 1.55;
 }
 .language-preferences__field {
-  display: grid;
-  max-width: 420px;
-  gap: 8px;
+  display: block;
   color: var(--text-secondary);
   font: 11px var(--font-mono);
   letter-spacing: 0.04em;
 }
 .language-preferences__field select {
+  width: 100%;
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--border-default);
@@ -440,21 +490,57 @@
   outline: var(--focus-ring-width) solid var(--color-focus);
   outline-offset: 2px;
 }
-.language-preferences__actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 16px;
+.settings-preference-save {
+  width: 100%;
+  min-height: 44px;
+  white-space: normal;
 }
 .language-preferences__status {
   min-height: 18px;
-  margin: 0;
+  margin: 7px 0 -1px;
   color: var(--text-secondary);
   font-size: 12px;
 }
 .language-preferences__status[role='alert'] {
   color: var(--artifact-summary);
+}
+.settings-note-card {
+  position: sticky;
+  top: 88px;
+  padding: 24px;
+}
+.settings-note-card__icon {
+  margin-bottom: 18px;
+  border-color: rgba(168, 224, 99, 0.18);
+  background: rgba(168, 224, 99, 0.055);
+  color: var(--artifact-export);
+}
+.settings-note-card__copy h2 {
+  margin: 0 0 9px;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.settings-note-card__copy p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.settings-note-card__privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-default);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.settings-note-card__privacy .app-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
 }
 
 .app-loading {
@@ -1052,6 +1138,25 @@
   }
 }
 
+@media (max-width: 1100px) {
+  .settings-account-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .settings-note-card {
+    position: static;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 18px;
+  }
+  .settings-note-card__icon {
+    grid-row: 1 / span 2;
+    margin-bottom: 0;
+  }
+  .settings-note-card__privacy {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 82px 1fr;
@@ -1183,17 +1288,36 @@
     min-height: 220px;
     padding: 24px 18px;
   }
-  .settings-content {
+  .settings-language-card,
+  .settings-note-card {
     border-radius: 14px;
   }
-  .settings-section {
-    padding: 22px 16px;
+  .settings-preference-row {
+    display: block;
+    min-width: 0;
+    padding: 23px 18px;
   }
   .settings-load-error {
     padding: 16px;
   }
+  .settings-preference-copy {
+    margin-bottom: 19px;
+  }
   .language-preferences__field {
     max-width: none;
+  }
+  .settings-preference-save {
+    margin-top: 12px;
+  }
+  .settings-note-card {
+    display: block;
+    padding: 21px 19px;
+  }
+  .settings-note-card__icon {
+    margin-bottom: 16px;
+  }
+  .settings-note-card__privacy {
+    grid-column: auto;
   }
   .app-loading-head {
     margin-bottom: 6px;

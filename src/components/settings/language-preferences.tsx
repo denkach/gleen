@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { AppIcon } from '@/components/app-shell/app-icon';
 import { setInterfaceLocale, type LocaleActionState } from '@/lib/i18n/actions';
 import {
   localeMetadata,
@@ -78,64 +79,81 @@ export function LanguagePreferences({
           <p>{copy.page.description}</p>
         </div>
       </div>
-      <div className="settings-content">
-        {unavailable ? (
-          <div className="settings-load-error" role="alert">
-            <p>{copy.language.loadError}</p>
-            <a
-              className="ui-button"
-              data-variant="ghost"
-              href="/app/settings/profile"
-            >
-              {copy.language.retry}
-            </a>
+      <div className="settings-account-layout">
+        <div className="settings-language-column">
+          {unavailable ? (
+            <div className="settings-load-error" role="alert">
+              <p>{copy.language.loadError}</p>
+              <a
+                className="ui-button"
+                data-variant="ghost"
+                href="/app/settings/profile"
+              >
+                {copy.language.retry}
+              </a>
+            </div>
+          ) : null}
+          <article className="settings-language-card">
+            <PreferenceForm
+              action={interfaceAction}
+              description={copy.language.interface.description}
+              error={
+                interfaceState.status === 'error'
+                  ? settingsErrorMessage(copy, interfaceState.code)
+                  : null
+              }
+              icon="globe"
+              label={copy.language.interface.label}
+              onChange={setInterfaceLocaleValue}
+              pending={interfacePending}
+              saved={
+                interfaceState.status === 'success' &&
+                interfaceState.locale === interfaceLocale
+              }
+              saveLabel={copy.language.interface.save}
+              title={copy.language.interface.title}
+              value={interfaceLocale}
+              savedLabel={copy.language.saved}
+              unavailable={unavailable}
+            />
+            <PreferenceForm
+              action={outputAction}
+              description={copy.language.output.description}
+              error={
+                outputState.status === 'error'
+                  ? settingsErrorMessage(copy, outputState.code)
+                  : null
+              }
+              icon="language"
+              label={copy.language.output.label}
+              onChange={setOutputLocaleValue}
+              pending={outputPending}
+              revision={outputRevision}
+              saved={
+                outputState.status === 'success' &&
+                outputState.locale === outputLocale
+              }
+              saveLabel={copy.language.output.save}
+              title={copy.language.output.title}
+              value={outputLocale}
+              savedLabel={copy.language.saved}
+              unavailable={unavailable}
+            />
+          </article>
+        </div>
+        <aside className="settings-note-card">
+          <span className="settings-note-card__icon">
+            <AppIcon name="check" />
+          </span>
+          <div className="settings-note-card__copy">
+            <h2>{copy.language.note.title}</h2>
+            <p>{copy.language.note.description}</p>
           </div>
-        ) : null}
-        <PreferenceForm
-          action={interfaceAction}
-          description={copy.language.interface.description}
-          error={
-            interfaceState.status === 'error'
-              ? settingsErrorMessage(copy, interfaceState.code)
-              : null
-          }
-          label={copy.language.interface.label}
-          onChange={setInterfaceLocaleValue}
-          pending={interfacePending}
-          saved={
-            interfaceState.status === 'success' &&
-            interfaceState.locale === interfaceLocale
-          }
-          saveLabel={copy.language.interface.save}
-          title={copy.language.interface.title}
-          value={interfaceLocale}
-          savingLabel={copy.language.saving}
-          savedLabel={copy.language.saved}
-          unavailable={unavailable}
-        />
-        <PreferenceForm
-          action={outputAction}
-          description={copy.language.output.description}
-          error={
-            outputState.status === 'error'
-              ? settingsErrorMessage(copy, outputState.code)
-              : null
-          }
-          label={copy.language.output.label}
-          onChange={setOutputLocaleValue}
-          pending={outputPending}
-          revision={outputRevision}
-          saved={
-            outputState.status === 'success' &&
-            outputState.locale === outputLocale
-          }
-          saveLabel={copy.language.output.save}
-          title={copy.language.output.title}
-          value={outputLocale}
-          savingLabel={copy.language.saving}
-          savedLabel={copy.language.saved}
-          unavailable={unavailable}
-        />
+          <div className="settings-note-card__privacy">
+            <AppIcon name="lock" />
+            <span>{copy.language.note.privacy}</span>
+          </div>
+        </aside>
       </div>
     </section>
   );
@@ -145,6 +163,7 @@ type PreferenceFormProps = Readonly<{
   action: (formData: FormData) => void;
   description: string;
   error: string | null;
+  icon: 'globe' | 'language';
   label: string;
   onChange(locale: Locale): void;
   pending: boolean;
@@ -152,7 +171,6 @@ type PreferenceFormProps = Readonly<{
   saved: boolean;
   saveLabel: string;
   savedLabel: string;
-  savingLabel: string;
   title: string;
   unavailable: boolean;
   value: Locale;
@@ -162,6 +180,7 @@ function PreferenceForm({
   action,
   description,
   error,
+  icon,
   label,
   onChange,
   pending,
@@ -169,7 +188,6 @@ function PreferenceForm({
   saved,
   saveLabel,
   savedLabel,
-  savingLabel,
   title,
   unavailable,
   value,
@@ -177,38 +195,36 @@ function PreferenceForm({
   return (
     <form
       action={action}
-      className="settings-section"
+      aria-busy={pending}
+      className="settings-preference-row"
       onReset={(event) => event.preventDefault()}
     >
-      <div className="settings-section-head">
-        <h2>{title}</h2>
-        <p>{description}</p>
+      <div className="settings-preference-copy">
+        <span className="settings-preference-icon">
+          <AppIcon name={icon} />
+        </span>
+        <div className="settings-section-head">
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
       </div>
-      <label className="language-preferences__field">
-        <span>{label}</span>
-        <select
-          disabled={unavailable || pending}
-          key={revision}
-          name="locale"
-          onChange={(event) => onChange(event.target.value as Locale)}
-          value={value}
-        >
-          {supportedLocales.map((locale) => (
-            <option key={locale} value={locale}>
-              {localeMetadata[locale].nativeName}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="language-preferences__actions">
-        <button
-          className="ui-button"
-          data-variant="primary"
-          disabled={unavailable || pending}
-          type="submit"
-        >
-          {pending ? savingLabel : saveLabel}
-        </button>
+      <div className="settings-preference-control">
+        <label className="language-preferences__field">
+          <span className="app-visually-hidden">{label}</span>
+          <select
+            disabled={unavailable || pending}
+            key={revision}
+            name="locale"
+            onChange={(event) => onChange(event.target.value as Locale)}
+            value={value}
+          >
+            {supportedLocales.map((locale) => (
+              <option key={locale} value={locale}>
+                {localeMetadata[locale].nativeName}
+              </option>
+            ))}
+          </select>
+        </label>
         <p
           aria-live="polite"
           className="language-preferences__status"
@@ -217,6 +233,14 @@ function PreferenceForm({
           {error ?? (saved ? savedLabel : '')}
         </p>
       </div>
+      <button
+        className="ui-button settings-preference-save"
+        data-variant="primary"
+        disabled={unavailable || pending}
+        type="submit"
+      >
+        {saveLabel}
+      </button>
     </form>
   );
 }
