@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+  usePathname: () => '/app/subscription',
+}));
 
 import {
   billingMessages,
@@ -376,11 +381,16 @@ describe('SubscriptionScreen', () => {
   it('renders a truthful unavailable state', () => {
     render(<SubscriptionScreen presentation={null} initialInterval="month" />);
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Billing details are temporarily unavailable.',
-    );
     expect(
-      screen.getByRole('link', { name: 'Reload subscription details' }),
-    ).toHaveAttribute('href', '/app/subscription');
+      screen.getByRole('heading', {
+        name: 'Billing details are temporarily unavailable.',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Reload subscription details' }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('link', { name: 'Contact support' }),
+    ).toHaveAttribute('href', 'mailto:gleen_support@gmail.com');
   });
 });
