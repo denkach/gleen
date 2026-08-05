@@ -162,7 +162,7 @@ describe('billingMessages', () => {
     });
     expect(
       billingMessages.de.subscription.scheduled.planChange('Spectrum'),
-    ).toBe('Wechsel zu Spectrum ist geplant');
+    ).toBe('Ein Wechsel zu Spectrum ist geplant');
     expect(billingMessages.de.subscription.scheduled.effective('DATE')).toBe(
       'Die Änderung gilt ab DATE.',
     );

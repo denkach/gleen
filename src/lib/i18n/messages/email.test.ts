@@ -48,13 +48,13 @@ describe('emailMessages', () => {
       actionLabel: 'Відновити пароль',
     });
     expect(emailMessages.uk.analysisReady.paragraphs.artifacts).toBe(
-      'Ваші конспект, картки, часові мітки, транскрипт і експорти готові.',
+      'Ваші матеріали — конспект, картки, часові мітки, транскрипт і експорти — готові.',
     );
     expect(emailMessages.uk.paymentFailed.paragraphs.intro('Prism')).toBe(
       'Не вдалося обробити платіж за підписку Prism.',
     );
     expect(emailMessages.ru.analysisReady.paragraphs.artifacts).toBe(
-      'Ваши конспект, карточки, временные метки, транскрипт и экспорты готовы.',
+      'Ваши материалы — конспект, карточки, временные метки, транскрипт и экспорты — готовы.',
     );
     expect(emailMessages.ru.paymentFailed.paragraphs.intro('Spectrum')).toBe(
       'Не удалось обработать платёж за подписку Spectrum.',

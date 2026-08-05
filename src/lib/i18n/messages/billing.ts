@@ -1827,7 +1827,7 @@ export const billingMessages = defineMessages({
       remaining: (count: number) => `${count} Analysen verbleiben`,
       scheduled: {
         cancellation: 'Kündigung ist geplant',
-        planChange: (plan: string) => `Wechsel zu ${plan} ist geplant`,
+        planChange: (plan: string) => `Ein Wechsel zu ${plan} ist geplant`,
         effective: (date: string) => `Die Änderung gilt ab ${date}.`,
       },
       billingPeriod: 'Abrechnungszeitraum',

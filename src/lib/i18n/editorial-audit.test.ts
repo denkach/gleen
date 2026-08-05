@@ -46,6 +46,19 @@ const auditPath = resolve(
   'docs/localization/den-22-editorial-audit.md',
 );
 
+const canonicalPlanNames = new Set(['free', 'prism', 'spectrum']);
+const translatedPlanWordStem =
+  /^(?:безкоштовн|бесплатн|gratis$|gratuit|kostenlos|kostenfrei|призм|спектр|prism|espectr|spektr)/u;
+
+function containsTranslatedPlanWord(value: string): boolean {
+  const words = value.toLocaleLowerCase().match(/\p{L}+/gu) ?? [];
+
+  return words.some(
+    (word) =>
+      !canonicalPlanNames.has(word) && translatedPlanWordStem.test(word),
+  );
+}
+
 function messageLeaves(
   value: unknown,
   path = '',
@@ -60,6 +73,26 @@ function messageLeaves(
 }
 
 describe('DEN-22 editorial audit inventory', () => {
+  it.each([
+    ['Ukrainian adjective', marketingMessages.uk.facets.description],
+    ['Russian adjective', marketingMessages.ru.facets.description],
+    ['Spanish adjective', marketingMessages.es.facets.description],
+    ['German adjective', marketingMessages.de.facets.description],
+    ['Russian prism case', 'идентичность, преломлённая призмой'],
+    ['Russian spectrum case', 'грани спектра'],
+    ['Spanish prism plural', 'identidades prismas'],
+    ['Spanish spectrum plural', 'varios espectros'],
+    ['German spectrum case', 'Identität des Spektrums'],
+  ])('recognizes translated optical morphology: %s', (_case, value) => {
+    expect(containsTranslatedPlanWord(value)).toBe(true);
+  });
+
+  it('does not flag exact canonical plan names', () => {
+    for (const canonicalName of ['Free', 'Prism', 'Spectrum']) {
+      expect(containsTranslatedPlanWord(canonicalName)).toBe(false);
+    }
+  });
+
   it('records an approved or revised ledger row for all 50 locale/catalog pairs', () => {
     const audit = readFileSync(auditPath, 'utf8');
     const rows = [
@@ -84,12 +117,10 @@ describe('DEN-22 editorial audit inventory', () => {
         /^\|\s*(uk|ru|en|es|de)\s*\|\s*(shared|marketing|auth|onboarding|app|history|results|billing|settings|email)\s*\|\s*([a-zA-Z0-9.-]+)\s*\|\s*[^|]+\|$/gm,
       ),
     ].map(([, locale, catalog, path]) => `${locale}/${catalog}/${path}`);
-    const translatedPlanName =
-      /(?:^|[^\p{L}])(безкоштовн\p{L}*|бесплатн\p{L}*|gratis|gratuit\p{L}*|kostenlos\p{L}*|kostenfrei\p{L}*|призма|призму|призмы|призми|спектр|спектром|спектру|prisma|espectro|spektrum)(?:$|[^\p{L}])/iu;
     const found = supportedLocales.flatMap((locale) =>
       catalogNames.flatMap((catalog) =>
         messageLeaves(catalogs[catalog][locale])
-          .filter(({ value }) => translatedPlanName.test(value))
+          .filter(({ value }) => containsTranslatedPlanWord(value))
           .map(({ path }) => `${locale}/${catalog}/${path}`),
       ),
     );

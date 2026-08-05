@@ -198,7 +198,7 @@ export const authMessages = defineMessages({
       signUpDescription:
         'Ваше перше відео стане структурованим простором за кілька зрозумілих кроків.',
       verifyTitle: 'Ідіть за променем.',
-      verifyDescription: 'Посилання для безпечного входу вже надсилається.',
+      verifyDescription: 'Посилання для безпечного входу вже надіслано.',
       forgotTitle: 'Відновіть сигнал.',
       forgotDescription:
         'Безпечне посилання для відновлення поверне вас до робочого простору.',

@@ -38,6 +38,9 @@ describe('authMessages', () => {
   });
 
   it('uses native grammar in audited authentication status copy', () => {
+    expect(authMessages.uk.visual.verifyDescription).toBe(
+      'Посилання для безпечного входу вже надіслано.',
+    );
     expect(authMessages.ru.visual.verifyDescription).toBe(
       'Ссылка для безопасного входа уже отправлена.',
     );

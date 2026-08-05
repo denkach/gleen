@@ -142,7 +142,7 @@ describe('historyMessages', () => {
 
   it('uses native quota and retry language without moving interpolated data', () => {
     expect(historyMessages.uk.actions.duplicate.reassurance('Докладний')).toBe(
-      'Відкрийте збережену версію: Докладний. Новий аналіз не буде використано.',
+      'Відкрийте збережену версію: Докладний. Відкриття збереженого результату не зараховується до вашого ліміту як новий аналіз.',
     );
     expect(historyMessages.es.actions.duplicate.reassurance('Detallado')).toBe(
       'Abre la versión guardada: Detallado. No se consumirá otro análisis.',
