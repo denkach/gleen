@@ -267,7 +267,7 @@ describe('LocaleSwitcher', () => {
     expect(
       screen.queryByRole('status', { hidden: true }),
     ).not.toBeInTheDocument();
-    act(() => vi.advanceTimersByTime(209));
+    act(() => vi.advanceTimersByTime(59));
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     act(() => vi.advanceTimersByTime(1));
 

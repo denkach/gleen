@@ -38,7 +38,7 @@ type LanguagePanelProps = Readonly<{
   variant: 'landing' | 'auth' | 'app';
 }>;
 
-const selectionCloseDelay = 210;
+const selectionCloseDelay = 60;
 const subscribeToPlatform = () => () => {};
 const getBrowserPlatform = () => window.navigator.platform;
 const getServerPlatform = () => '';

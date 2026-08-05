@@ -167,7 +167,7 @@ describe('LanguagePanel', () => {
   });
 
   it.each(['Enter', ' '] as const)(
-    'selects the focused locale with %s and closes after 210 ms',
+    'selects the focused locale with %s and closes after 60 ms',
     (key) => {
       vi.useFakeTimers();
       const onOpenChange = vi.fn();
@@ -190,7 +190,7 @@ describe('LanguagePanel', () => {
 
       expect(onSelect).toHaveBeenCalledWith('de');
       expect(onOpenChange).not.toHaveBeenCalledWith(false);
-      act(() => vi.advanceTimersByTime(209));
+      act(() => vi.advanceTimersByTime(59));
       expect(onOpenChange).not.toHaveBeenCalledWith(false);
       act(() => vi.advanceTimersByTime(1));
       expect(onOpenChange).toHaveBeenCalledWith(false);

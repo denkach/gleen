@@ -38,11 +38,15 @@ export function resolveInterfaceLocale({
 }
 
 export const getRequestLocale = cache(async (): Promise<Locale> => {
-  const [cookieStore, requestHeaders, supabase] = await Promise.all([
+  const [cookieStore, requestHeaders] = await Promise.all([
     cookies(),
     headers(),
-    createServerSupabaseClient(),
   ]);
+  const cookie = cookieStore.get('gleen_locale')?.value;
+  const cookieLocale = parseLocale(cookie);
+  if (cookieLocale) return cookieLocale;
+
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -55,7 +59,7 @@ export const getRequestLocale = cache(async (): Promise<Locale> => {
 
   return resolveInterfaceLocale({
     profile,
-    cookie: cookieStore.get('gleen_locale')?.value,
+    cookie,
     header: requestHeaders.get('accept-language'),
   });
 });
