@@ -27,7 +27,7 @@
 **Files:**
 
 - Create unchanged: `design/prototypes/gleen-account-pages-cb-v1/gleen-account-pages-cb-v1.html`
-- Create unchanged: `design/prototypes/gleen-account-pages-cb-v1/gleen-account-pages-cb-v1/gleen-account-pages-cb-v1.html`
+- Create unchanged: `design/prototypes/gleen-account-pages-cb-v1/gleen-account-pages-cb-v1/gleen-account-pages.html`
 - Create unchanged: `design/prototypes/gleen-account-pages-cb-v1/gleen-account-pages-cb-v1/desktop-settings.png`
 - Create unchanged: `design/prototypes/gleen-account-pages-cb-v1/gleen-account-pages-cb-v1/mobile-settings.png`
 - Create unchanged: `design/prototypes/gleen-account-pages-cb-v1/gleen-account-pages-cb-v1/desktop-subscription.png`
@@ -90,9 +90,7 @@ for (const locale of supportedLocales) {
   expect(error.retryFailed).not.toHaveLength(0);
   expect(error.secure).not.toHaveLength(0);
   expect(error.notRetried).not.toHaveLength(0);
-  expect(error.lastAttempt(new Date('2026-08-05T12:32:00Z'))).not.toHaveLength(
-    0,
-  );
+  expect(error.lastAttempt('14:32')).toContain('14:32');
 }
 
 expect(supportEmailHref).toBe('mailto:gleen_support@gmail.com');
@@ -123,7 +121,7 @@ note: {
 }
 ```
 
-Add subscription recovery fields `support`, `retrying`, `retryFailed`, `secure`, `notRetried`, and locale-aware `lastAttempt(date)` without exposing diagnostics.
+Add subscription recovery fields `support`, `retrying`, `retryFailed`, `secure`, `notRetried`, and `lastAttempt(time)` without exposing diagnostics. The client formats the time with the active locale before supplying it to the copy function.
 
 - [ ] **Step 4: Run focused tests and verify GREEN**
 

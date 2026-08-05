@@ -31,6 +31,11 @@ export const settingsMessages = defineMessages({
         label: 'Future generated content language',
         save: 'Save output language',
       },
+      note: {
+        title: 'Settings apply only to new materials',
+        description: 'Previous analyses and documents remain unchanged.',
+        privacy: 'Language preferences are stored only for your account.',
+      },
       saving: 'Saving…',
       saved: 'Saved.',
       loadError: 'We could not load your language preferences.',
@@ -67,6 +72,12 @@ export const settingsMessages = defineMessages({
         label: 'Мова майбутнього створеного контенту',
         save: 'Зберегти мову результатів',
       },
+      note: {
+        title: 'Налаштування застосовуються лише до нових матеріалів',
+        description: 'Попередні аналізи й документи залишаться без змін.',
+        privacy:
+          'Мовні налаштування зберігаються лише для вашого облікового запису.',
+      },
       saving: 'Зберігаємо…',
       saved: 'Збережено.',
       loadError: 'Не вдалося завантажити мовні налаштування.',
@@ -102,6 +113,11 @@ export const settingsMessages = defineMessages({
           'Влияет только на будущий создаваемый контент. Элементы управления Gleen не меняются.',
         label: 'Язык будущего создаваемого контента',
         save: 'Сохранить язык результатов',
+      },
+      note: {
+        title: 'Настройки применяются только к новым материалам',
+        description: 'Предыдущие анализы и документы останутся без изменений.',
+        privacy: 'Языковые настройки сохраняются только для вашего аккаунта.',
       },
       saving: 'Сохраняем…',
       saved: 'Сохранено.',
@@ -140,6 +156,12 @@ export const settingsMessages = defineMessages({
         label: 'Idioma del contenido generado futuro',
         save: 'Guardar idioma de salida',
       },
+      note: {
+        title: 'Los ajustes se aplican solo a los materiales nuevos',
+        description:
+          'Los análisis y documentos anteriores no sufrirán cambios.',
+        privacy: 'Las preferencias de idioma se guardan solo para tu cuenta.',
+      },
       saving: 'Guardando…',
       saved: 'Guardado.',
       loadError: 'No hemos podido cargar tus preferencias de idioma.',
@@ -177,6 +199,11 @@ export const settingsMessages = defineMessages({
           'Beeinflusst nur künftig generierte Inhalte. Gleen-Steuerelemente ändern sich nicht.',
         label: 'Sprache künftig generierter Inhalte',
         save: 'Ausgabesprache speichern',
+      },
+      note: {
+        title: 'Einstellungen gelten nur für neue Inhalte',
+        description: 'Vorhandene Analysen und Dokumente bleiben unverändert.',
+        privacy: 'Spracheinstellungen werden nur für dein Konto gespeichert.',
       },
       saving: 'Speichern…',
       saved: 'Gespeichert.',

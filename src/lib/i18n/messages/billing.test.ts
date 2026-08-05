@@ -11,6 +11,13 @@ describe('billingMessages', () => {
 
     for (const locale of supportedLocales) {
       expect(billingMessages[locale].subscription.title).not.toHaveLength(0);
+      const recovery = billingMessages[locale].subscription.error;
+      expect(recovery.support).not.toHaveLength(0);
+      expect(recovery.retrying).not.toHaveLength(0);
+      expect(recovery.retryFailed).not.toHaveLength(0);
+      expect(recovery.secure).not.toHaveLength(0);
+      expect(recovery.notRetried).not.toHaveLength(0);
+      expect(recovery.lastAttempt('14:32')).toContain('14:32');
       expect(billingMessages[locale].checkout.actions.retry).not.toHaveLength(
         0,
       );
