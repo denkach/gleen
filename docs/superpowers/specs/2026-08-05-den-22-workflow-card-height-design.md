@@ -21,6 +21,9 @@ some locales appear visually larger than others.
   large accessibility fonts can expand a card instead of clipping content.
 - Apply the same minimum on desktop, tablet, and mobile. Mobile cards remain a
   single-column stack.
+- Keep the card grid intrinsically sized and bottom-anchored, with every
+  implicit row sharing the same flexible track size. Do not stretch a
+  multi-row grid to fill the process scene.
 - Do not add locale-specific selectors, font scaling, truncation, line clamps,
   hidden overflow, or shortened translations.
 
@@ -45,6 +48,11 @@ reading order, reduced motion, and semantic heading structure are unchanged.
 - Verify all four card heights are equal and at least 200 px, and that text is
   not clipped, for `uk`, `ru`, `en`, `es`, and `de` at desktop, tablet, and
   mobile viewports.
+- Add deterministic browser coverage at tablet and mobile sizes that enlarges
+  one card's text until its intrinsic requirement exceeds 200 px, then verify
+  all four cards grow equally without clipping.
+- Measure the layout-height contract with `offsetHeight`; transformed visual
+  bounds are unsuitable while entrance motion is active.
 - The focused viewport set is `1440x900` desktop, `900x768` tablet (inside the
   `max-width: 980px` two-column breakpoint), and `390x844` mobile. It is
   intentionally separate from the shared localization viewport fixture.

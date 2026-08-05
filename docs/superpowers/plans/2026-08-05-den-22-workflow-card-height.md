@@ -4,7 +4,7 @@
 
 **Goal:** Keep all four marketing workflow cards at the same stable visual height in Ukrainian, Russian, English, Spanish, and German.
 
-**Architecture:** Preserve the existing translated copy and typography. Enforce a shared 200 px minimum block size on the workflow-card component and give all four cards the same outer height in each locale/viewport while keeping the row bottom-aligned. Cards may grow above 200 px when localization or accessibility requires it; browser coverage proves equal, unclipped geometry across five locales and three responsive viewports.
+**Architecture:** Preserve the existing translated copy and typography. Enforce a shared 200 px minimum block size on the workflow-card component and use an intrinsically sized, bottom-anchored grid whose implicit rows share one flexible track size. This propagates the tallest required card height across tablet and mobile rows without stretching the grid to fill the scene. Cards may grow above 200 px when localization or accessibility requires it; browser coverage proves equal, unclipped geometry across five locales and three responsive viewports.
 
 **Tech Stack:** Next.js App Router, React, TypeScript, CSS, Vitest, Playwright.
 
@@ -14,6 +14,8 @@
 - Treat 200 px as a minimum, not an exact outer height: all four cards must be
   equal within a locale/viewport and may grow together for unclipped localized
   copy or accessibility scaling.
+- Keep the multi-row grid intrinsic and bottom-anchored; do not let fractional
+  tracks consume the definite process-scene height.
 - Keep current font sizes, padding, translated copy, spectral states, and motion unchanged.
 - Do not add locale-specific selectors, font scaling, truncation, line clamps, or hidden overflow.
 - Verify Ukrainian, Russian, English, Spanish, and German at desktop, tablet, and mobile sizes.
@@ -33,7 +35,7 @@
 **Interfaces:**
 
 - Consumes: `.landing-reference .process-steps`, `.process-step`, the existing `panelLocales`, `viewports`, and `localeCookie` browser fixtures.
-- Produces: a 200 px minimum workflow-card contract and browser evidence that every locale renders four equal-height, unclipped cards.
+- Produces: a 200 px minimum workflow-card contract and browser evidence that every locale renders four equal-height, unclipped cards, including deterministic accessibility growth at tablet and mobile widths.
 
 **Focused viewports:** `1440x900` desktop, `900x768` tablet (inside the
 two-column breakpoint), and `390x844` mobile. Keep this set local to the
@@ -53,6 +55,21 @@ describe('localized workflow card geometry', () => {
     expect(styles).toMatch(
       /\.landing-reference \.process-step\s*\{[^}]*box-sizing:\s*border-box[^}]*min-height:\s*200px/,
     );
+  });
+
+  it('shares the tallest intrinsic card height across every responsive row', () => {
+    const processScene = styles.match(
+      /\.landing-reference \.process-scene\s*\{[^}]*\}/,
+    )?.[0];
+    const processSteps = styles.match(
+      /\.landing-reference \.process-steps\s*\{[^}]*\}/,
+    )?.[0];
+
+    expect(processScene).toContain('display: flex');
+    expect(processScene).toContain('align-items: flex-end');
+    expect(processSteps).toContain('position: relative');
+    expect(processSteps).toContain('width: 100%');
+    expect(processSteps).toContain('grid-auto-rows: 1fr');
   });
 });
 ```
@@ -93,7 +110,7 @@ test('@localization workflow cards keep one height across all locales and viewpo
         cards.map((card) => {
           const element = card as HTMLElement;
           return {
-            height: Math.round(element.getBoundingClientRect().height),
+            height: element.offsetHeight,
             copyFits:
               element.scrollHeight <= element.clientHeight &&
               element.scrollWidth <= element.clientWidth,
@@ -111,27 +128,44 @@ test('@localization workflow cards keep one height across all locales and viewpo
 });
 ```
 
+Add a second real-browser scenario at the tablet and mobile viewports. Inject
+test-only enlarged paragraph typography into the first card, verify its
+content-driven required height exceeds 200 px, and assert all four
+`offsetHeight` values grow equally with no overflow.
+
 - [ ] **Step 3: Run both tests and verify RED**
 
 Run:
 
 ```bash
 npm test -- --exclude='.worktrees/**' src/styles/landing-reference.test.ts
-CI=1 PLAYWRIGHT_PORT=3017 npx playwright test tests/e2e/localization.spec.ts --project=chromium --grep "workflow cards keep one height"
+CI=1 PLAYWRIGHT_PORT=3017 npx playwright test tests/e2e/localization.spec.ts --project=chromium --grep "workflow cards"
 ```
 
-Expected: the Vitest contract fails because the grid still uses `align-items: end` and the cards still use `min-height: 118px`; the Playwright scenario reports unequal 154–199 px heights.
+Expected for the final-review regression: the Vitest contract fails because
+the grid is not an intrinsic in-flow child with shared implicit row sizing; the
+forced tablet browser scenario first reports `[372, 372, 200, 200]`, then
+exposes scene clipping if fractional rows are added without making the grid
+participate in layout.
 
 - [ ] **Step 4: Implement the minimal shared CSS geometry**
 
 Update only the existing declarations in `src/styles/landing-reference.css`:
 
 ```css
+.landing-reference .process-scene {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 570px;
+}
+
 .landing-reference .process-steps {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 1fr;
   align-content: end;
   align-items: stretch;
   padding: 0 8% 80px;
@@ -158,19 +192,19 @@ Run:
 
 ```bash
 npm test -- --exclude='.worktrees/**' src/styles/landing-reference.test.ts src/lib/i18n/messages/marketing.test.ts src/data/marketing.test.ts
-CI=1 PLAYWRIGHT_PORT=3017 npx playwright test tests/e2e/localization.spec.ts --project=chromium --grep "workflow cards keep one height"
+CI=1 PLAYWRIGHT_PORT=3017 npx playwright test tests/e2e/localization.spec.ts --project=chromium --grep "workflow cards"
 ```
 
 Expected: all style/marketing tests pass; the browser scenario passes 15
 locale/viewport combinations with four equal, 200 px-or-taller cards and no
-clipped copy.
+clipped copy, and the forced-growth scenario passes at tablet and mobile sizes.
 
 - [ ] **Step 6: Run repository verification**
 
 Run:
 
 ```bash
-npx prettier --write src/styles/landing-reference.css src/styles/landing-reference.test.ts tests/e2e/localization.spec.ts
+npx prettier --write src/styles/landing-reference.css src/styles/landing-reference.test.ts tests/e2e/localization.spec.ts docs/superpowers/specs/2026-08-05-den-22-workflow-card-height-design.md docs/superpowers/plans/2026-08-05-den-22-workflow-card-height.md
 npm run lint -- --ignore-pattern '.worktrees/**'
 npm run typecheck
 npm test -- --exclude='.worktrees/**'

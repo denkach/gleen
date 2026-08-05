@@ -583,6 +583,8 @@
 }
 .landing-reference .process-scene {
   position: relative;
+  display: flex;
+  align-items: flex-end;
   min-height: 570px;
   border: 1px solid var(--line);
   border-radius: 24px;
@@ -653,10 +655,11 @@
   filter: drop-shadow(0 0 32px rgba(255, 255, 255, 0.12));
 }
 .landing-reference .process-steps {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 1fr;
   align-content: end;
   align-items: stretch;
   padding: 0 8% 80px;

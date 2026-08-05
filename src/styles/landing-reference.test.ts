@@ -45,4 +45,19 @@ describe('localized workflow card geometry', () => {
       /\.landing-reference \.process-step\s*\{[^}]*box-sizing:\s*border-box[^}]*min-height:\s*200px/,
     );
   });
+
+  it('shares the tallest intrinsic card height across every responsive row', () => {
+    const processScene = styles.match(
+      /\.landing-reference \.process-scene\s*\{[^}]*\}/,
+    )?.[0];
+    const processSteps = styles.match(
+      /\.landing-reference \.process-steps\s*\{[^}]*\}/,
+    )?.[0];
+
+    expect(processScene).toContain('display: flex');
+    expect(processScene).toContain('align-items: flex-end');
+    expect(processSteps).toContain('position: relative');
+    expect(processSteps).toContain('width: 100%');
+    expect(processSteps).toContain('grid-auto-rows: 1fr');
+  });
 });

@@ -48,6 +48,10 @@ const workflowCardViewports = [
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
 
+const workflowCardGrowthViewports = workflowCardViewports.filter(
+  ({ name }) => name !== 'desktop',
+);
+
 const responsiveScreens = [
   { name: 'landing', route: '/' },
   {
@@ -881,7 +885,7 @@ test('@localization workflow cards keep one height across all locales and viewpo
         cards.map((card) => {
           const element = card as HTMLElement;
           return {
-            height: Math.round(element.getBoundingClientRect().height),
+            height: element.offsetHeight,
             copyFits:
               element.scrollHeight <= element.clientHeight &&
               element.scrollWidth <= element.clientWidth,
@@ -895,6 +899,80 @@ test('@localization workflow cards keep one height across all locales and viewpo
       expect(heights.every((height) => height >= 200)).toBe(true);
       expect(metrics.every(({ copyFits }) => copyFits)).toBe(true);
     }
+  }
+});
+
+test('@localization workflow cards grow together under accessibility text pressure', async ({
+  page,
+}) => {
+  for (const viewport of workflowCardGrowthViewports) {
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await page.context().addCookies([
+      {
+        name: localeCookie,
+        value: 'en',
+        url: origin,
+        sameSite: 'Lax',
+      },
+    ]);
+    await page.goto(`/?workflowGrowth=${viewport.name}#how`);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+    await page.addStyleTag({
+      content: `
+        .landing-reference .process-step:first-child p {
+          font-size: 32px !important;
+          line-height: 2 !important;
+        }
+      `,
+    });
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+
+    const layout = await page.locator('.process-step').evaluateAll((cards) => {
+      const grid = cards[0]?.parentElement as HTMLElement | undefined;
+      const scene = grid?.parentElement as HTMLElement | undefined;
+
+      return {
+        gridFitsScene:
+          grid !== undefined &&
+          scene !== undefined &&
+          grid.offsetTop >= 0 &&
+          grid.offsetTop + grid.offsetHeight <= scene.clientHeight,
+        cards: cards.map((card) => {
+          const element = card as HTMLElement;
+          const copy = element.querySelector<HTMLElement>('p');
+          const styles = getComputedStyle(element);
+          const requiredHeight = copy
+            ? Math.ceil(
+                copy.offsetTop +
+                  copy.offsetHeight +
+                  Number.parseFloat(styles.paddingBottom) +
+                  Number.parseFloat(styles.borderBottomWidth),
+              )
+            : 0;
+
+          return {
+            height: element.offsetHeight,
+            requiredHeight,
+            copyFits:
+              element.scrollHeight <= element.clientHeight &&
+              element.scrollWidth <= element.clientWidth,
+          };
+        }),
+      };
+    });
+
+    expect(layout.cards).toHaveLength(4);
+    expect(layout.cards[0]?.requiredHeight).toBeGreaterThan(200);
+    const heights = layout.cards.map(({ height }) => height);
+    expect(heights).toEqual([heights[0], heights[0], heights[0], heights[0]]);
+    expect(heights.every((height) => height > 200)).toBe(true);
+    expect(layout.cards.every(({ copyFits }) => copyFits)).toBe(true);
+    expect(layout.gridFitsScene).toBe(true);
   }
 });
 
