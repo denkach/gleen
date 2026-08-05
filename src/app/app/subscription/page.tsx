@@ -40,6 +40,23 @@ function parsePeriod(raw: Record<string, string | string[] | undefined>) {
   return result.success ? result.data.period : 'month';
 }
 
+async function resolvePaymentMethod(
+  paymentResultPromise: ReturnType<typeof getPaymentMethodSummary>,
+): Promise<BillingPaymentMethod> {
+  try {
+    const paymentResult = await paymentResultPromise;
+    if (paymentResult.ok) return paymentResult.paymentMethod;
+  } catch {
+    // The subscription snapshot remains usable when Stripe is unavailable.
+  }
+
+  console.error({
+    event: 'billing_subscription_payment_method_unavailable',
+    route: '/app/subscription',
+  });
+  return { status: 'unavailable' };
+}
+
 export default async function SubscriptionPage({
   searchParams,
 }: SubscriptionPageProps) {
@@ -57,14 +74,13 @@ export default async function SubscriptionPage({
   );
 
   let presentation: SubscriptionPresentation | null = null;
+  const snapshotPromise = repository.getOwnedSnapshot(user.id);
+  const paymentMethodPromise = resolvePaymentMethod(getPaymentMethodSummary());
   try {
-    const [snapshot, paymentResult] = await Promise.all([
-      repository.getOwnedSnapshot(user.id),
-      getPaymentMethodSummary(),
+    const [snapshot, paymentMethod] = await Promise.all([
+      snapshotPromise,
+      paymentMethodPromise,
     ]);
-    const paymentMethod: BillingPaymentMethod = paymentResult.ok
-      ? paymentResult.paymentMethod
-      : { status: 'unavailable' };
 
     presentation = toSubscriptionPresentation(snapshot, {
       locale,
@@ -72,7 +88,10 @@ export default async function SubscriptionPage({
       paymentMethod,
     });
   } catch {
-    // The screen keeps navigation available and renders its explicit error state.
+    console.error({
+      event: 'billing_subscription_snapshot_unavailable',
+      route: '/app/subscription',
+    });
   }
 
   return (

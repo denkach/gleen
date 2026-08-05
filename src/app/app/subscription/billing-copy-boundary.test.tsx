@@ -1,7 +1,14 @@
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getRequestLocale, getUser, repository } = vi.hoisted(() => ({
+const {
+  getPaymentMethodSummary,
+  getRequestLocale,
+  getUser,
+  repository,
+  toSubscriptionPresentation,
+} = vi.hoisted(() => ({
+  getPaymentMethodSummary: vi.fn(),
   getRequestLocale: vi.fn(),
   getUser: vi.fn(),
   repository: {
@@ -10,6 +17,7 @@ const { getRequestLocale, getUser, repository } = vi.hoisted(() => ({
     listOwnedInvoices: vi.fn(),
     listOwnedUsage: vi.fn(),
   },
+  toSubscriptionPresentation: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -36,10 +44,7 @@ vi.mock('@/lib/billing/actions', () => ({
   exportInvoicesCsv: vi.fn(),
   exportUsageCsv: vi.fn(),
   getCheckoutConfirmation: vi.fn(),
-  getPaymentMethodSummary: vi.fn(async () => ({
-    ok: false,
-    code: 'fixture-unavailable',
-  })),
+  getPaymentMethodSummary,
 }));
 
 const subscriptionPresentation = {
@@ -70,7 +75,7 @@ vi.mock('@/lib/billing/presentation', () => ({
   toLimitReachedPresentation: () => ({
     usage: { used: 10, reserved: 0, remaining: 0, limit: 10 },
   }),
-  toSubscriptionPresentation: () => subscriptionPresentation,
+  toSubscriptionPresentation,
   toUsagePresentation: () => ({ items: [], nextCursor: null, totalCount: 0 }),
 }));
 
@@ -106,6 +111,8 @@ import SubscriptionPage from './page';
 import PortalPage from './portal/page';
 import UsagePage from './usage/page';
 
+const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
 function expectCatalogCopyBoundary(element: ReactElement) {
   const props = element.props as Readonly<Record<string, unknown>>;
 
@@ -121,8 +128,13 @@ function expectCatalogCopyBoundary(element: ReactElement) {
 describe('production billing copy boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getPaymentMethodSummary.mockResolvedValue({
+      ok: false,
+      code: 'fixture-unavailable',
+    });
     getRequestLocale.mockResolvedValue('de');
     getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } } });
+    toSubscriptionPresentation.mockReturnValue(subscriptionPresentation);
     repository.getOwnedSnapshot.mockResolvedValue({
       availablePlans: [
         {
@@ -153,6 +165,30 @@ describe('production billing copy boundary', () => {
   it('keeps subscription catalog functions behind the client boundary', async () => {
     expectCatalogCopyBoundary(
       await SubscriptionPage({ searchParams: Promise.resolve({}) }),
+    );
+  });
+
+  it('keeps the subscription snapshot when payment-method lookup rejects', async () => {
+    getPaymentMethodSummary.mockRejectedValueOnce(
+      new Error('sentinel-stripe-secret'),
+    );
+
+    const element = await SubscriptionPage({
+      searchParams: Promise.resolve({}),
+    });
+    const props = element.props as Readonly<Record<string, unknown>>;
+
+    expect(props.presentation).toBe(subscriptionPresentation);
+    expect(toSubscriptionPresentation).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ paymentMethod: { status: 'unavailable' } }),
+    );
+    expect(consoleError).toHaveBeenCalledWith({
+      event: 'billing_subscription_payment_method_unavailable',
+      route: '/app/subscription',
+    });
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain(
+      'sentinel-stripe-secret',
     );
   });
 
