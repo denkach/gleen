@@ -42,7 +42,7 @@ describe('localized workflow card geometry', () => {
       /\.landing-reference \.process-steps\s*\{[^}]*align-content:\s*end[^}]*align-items:\s*stretch/,
     );
     expect(styles).toMatch(
-      /\.landing-reference \.process-step\s*\{[^}]*min-height:\s*200px/,
+      /\.landing-reference \.process-step\s*\{[^}]*box-sizing:\s*border-box[^}]*min-height:\s*200px/,
     );
   });
 });

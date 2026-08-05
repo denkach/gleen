@@ -664,6 +664,7 @@
 }
 .landing-reference .process-step {
   position: relative;
+  box-sizing: border-box;
   min-height: 200px;
   padding: 18px;
   border: 1px solid var(--line);
