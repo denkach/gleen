@@ -52,6 +52,8 @@ function expireLocaleCookie() {
 describe('LocaleSwitcher', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setInterfaceLocale.mockReset();
+    setInterfaceLocale.mockResolvedValue({ status: 'success', locale: 'de' });
     document.documentElement.lang = 'en-GB';
     expireLocaleCookie();
   });
@@ -165,6 +167,69 @@ describe('LocaleSwitcher', () => {
       screen.queryByText(copy.localeSwitcher.errors.invalidLocale),
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Saving language…')).not.toBeInTheDocument();
+  });
+
+  it('keeps the latest locale authoritative when an older persistence attempt settles first', async () => {
+    let resolveGerman!: (value: LocaleActionState) => void;
+    let resolveSpanish!: (value: LocaleActionState) => void;
+    setInterfaceLocale
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveGerman = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSpanish = resolve;
+          }),
+      );
+    const user = userEvent.setup();
+    render(<LocaleSwitcher locale="en" copy={copy} variant="auth" />);
+
+    await user.click(screen.getByRole('button', { name: /English/i }));
+    await user.click(screen.getByRole('radio', { name: 'Deutsch German' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Language' })).toBeNull(),
+    );
+    await user.click(screen.getByRole('button', { name: /Deutsch/i }));
+    await user.click(screen.getByRole('radio', { name: 'Español Spanish' }));
+
+    expect(screen.getByLabelText('Language: Español')).toBeVisible();
+    expect(document.documentElement).toHaveAttribute('lang', 'es-ES');
+    expect(document.cookie).toContain('gleen_locale=es');
+
+    document.documentElement.lang = 'de-DE';
+    document.cookie = 'gleen_locale=de; Path=/; Max-Age=31536000; SameSite=Lax';
+    await act(async () => {
+      resolveGerman({ status: 'success', locale: 'de' });
+    });
+
+    await waitFor(() => expect(setInterfaceLocale).toHaveBeenCalledTimes(2));
+    expect(screen.getByLabelText('Language: Español')).toBeVisible();
+    expect(document.documentElement).toHaveAttribute('lang', 'es-ES');
+    expect(document.cookie).toContain('gleen_locale=es');
+    expect(
+      screen.queryByText('Language changed to Deutsch'),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveSpanish({
+        status: 'error',
+        code: 'profile_update_failed',
+      });
+    });
+
+    expect(
+      await screen.findByText(copy.localeSwitcher.errors.profileUpdateFailed),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Language: Español')).toBeVisible();
+    expect(document.documentElement).toHaveAttribute('lang', 'es-ES');
+    expect(document.cookie).toContain('gleen_locale=es');
+    expect(
+      screen.queryByText('Language changed to Deutsch'),
+    ).not.toBeInTheDocument();
   });
 
   it('starts the accessible 2200 ms success announcement after the panel closes', async () => {

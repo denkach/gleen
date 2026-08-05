@@ -41,8 +41,10 @@ export function LocaleSwitcher({
   const formId = useId();
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const attemptRef = useRef<HTMLInputElement>(null);
   const submitterRefs = useRef<Partial<Record<Locale, HTMLButtonElement>>>({});
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const latestSelectionRef = useRef({ attempt: 0, locale });
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -55,7 +57,18 @@ export function LocaleSwitcher({
   const [exitingSuccess, setExitingSuccess] =
     useState<LocaleActionState | null>(null);
   const [state, formAction] = useActionState(
-    setInterfaceLocale,
+    async (previousState: LocaleActionState, formData: FormData) => {
+      const attempt = formData.get('localeAttempt');
+      const result = await setInterfaceLocale(previousState, formData);
+      const latestSelection = latestSelectionRef.current;
+
+      document.documentElement.lang = toBcp47(latestSelection.locale);
+      writeBrowserLocaleCookie(latestSelection.locale);
+
+      return attempt === String(latestSelection.attempt)
+        ? result
+        : previousState;
+    },
     initialActionState,
   );
 
@@ -113,6 +126,9 @@ export function LocaleSwitcher({
     }
     setDismissedSuccess(state);
     setExitingSuccess(null);
+    const attempt = latestSelectionRef.current.attempt + 1;
+    latestSelectionRef.current = { attempt, locale: parsed.data };
+    if (attemptRef.current) attemptRef.current.value = String(attempt);
     setOptimisticLocale({
       baseLocale: locale,
       selectedLocale: parsed.data,
@@ -203,6 +219,12 @@ export function LocaleSwitcher({
         className="locale-switcher"
         ref={formRef}
       >
+        <input
+          defaultValue="0"
+          name="localeAttempt"
+          ref={attemptRef}
+          type="hidden"
+        />
         <LanguagePanel
           copy={copy}
           locale={selectedLocale}
