@@ -33,6 +33,7 @@ const fixtureBoundaries = [
   'portal-cancel',
   'portal-error',
   'invoice-actions',
+  'subscription-retry',
 ] as const;
 type FixtureBoundary = (typeof fixtureBoundaries)[number];
 

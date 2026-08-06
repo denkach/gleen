@@ -36,7 +36,7 @@ const authenticatedOwner = {
 async function openFixture(
   page: Page,
   screen: (typeof billingFixtures)[number][0],
-  state: (typeof billingFixtures)[number][1] | 'free',
+  state: (typeof billingFixtures)[number][1] | 'error' | 'free',
   boundary?: string,
   locale?: 'uk' | 'ru' | 'en' | 'es' | 'de',
 ) {
@@ -51,6 +51,92 @@ async function openFixture(
   await expect(page.locator('.billing-experience')).toBeVisible();
   await expect(page.getByTestId('billing-fixture-hydrated')).toHaveText('true');
 }
+
+test('DEN-29 subscription recovery stays safe, single-flight, and accessible', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openFixture(page, 'subscription', 'error', 'subscription-retry', 'en');
+
+  await expect(
+    page.getByRole('heading', {
+      level: 2,
+      name: 'Billing details are temporarily unavailable.',
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Contact support' }),
+  ).toHaveAttribute('href', 'mailto:gleen_support@gmail.com');
+  await expect(page.getByText('Not retried yet')).toBeVisible();
+
+  await expect(
+    page.getByRole('button', {
+      name: 'Reload subscription details',
+    }),
+  ).toBeVisible();
+  const retry = page.locator('.billing-recovery-actions button');
+  await retry.focus();
+  await retry.evaluate((button) => {
+    if (!(button instanceof HTMLButtonElement))
+      throw new Error('Retry control was not a button');
+    button.click();
+    button.click();
+  });
+  await expect(retry).toBeDisabled();
+  await expect(page.getByTestId('billing-boundary-count')).toHaveText('1');
+  await expect(page.locator('.billing-recovery-status')).toHaveText(
+    'We still could not load billing details. Try again.',
+  );
+  await expect(retry).toBeFocused();
+  await expect(page.getByText(/Last attempt: \d{2}:\d{2}/)).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(
+    /stack|exception|supabase/i,
+  );
+});
+
+test('@localization DEN-29 subscription recovery copy fits all supported locales', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+
+  for (const locale of ['uk', 'ru', 'en', 'es', 'de'] as const) {
+    await openFixture(page, 'subscription', 'error', undefined, locale);
+    await expect(page.locator('.billing-recovery-card')).toBeVisible();
+    await expect(page.locator('.billing-recovery-card a')).toHaveAttribute(
+      'href',
+      'mailto:gleen_support@gmail.com',
+    );
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth ===
+          document.documentElement.clientWidth,
+      ),
+      `${locale} recovery state overflowed at 320px`,
+    ).toBe(true);
+  }
+});
+
+test('DEN-29 subscription recovery removes retry motion when reduced motion is requested', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openFixture(page, 'subscription', 'error', undefined, 'en');
+  await expect(
+    page.getByRole('button', {
+      name: 'Reload subscription details',
+    }),
+  ).toBeVisible();
+  const retry = page.locator('.billing-recovery-actions button');
+  await retry.click();
+  await expect(retry).toBeDisabled();
+  expect(
+    await page
+      .locator('.billing-recovery-spinner')
+      .evaluate((element) => getComputedStyle(element).animationName),
+  ).toBe('none');
+  await expect(page.locator('.billing-recovery-status')).toBeVisible();
+});
 
 async function focusOrder(page: Page, count: number) {
   const order: string[] = [];

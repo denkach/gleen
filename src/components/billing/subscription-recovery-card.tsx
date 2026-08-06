@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import {
@@ -43,6 +43,10 @@ export function SubscriptionRecoveryCard({
   const [failedAgain, setFailedAgain] = useState(false);
   const [lastAttempt, setLastAttempt] = useState<Date | null>(null);
 
+  useEffect(() => {
+    if (failedAgain) retryButtonRef.current?.focus();
+  }, [failedAgain]);
+
   async function retry() {
     if (pendingRef.current) return;
 
@@ -66,7 +70,6 @@ export function SubscriptionRecoveryCard({
     }
 
     setFailedAgain(true);
-    retryButtonRef.current?.focus();
   }
 
   const attemptLabel =

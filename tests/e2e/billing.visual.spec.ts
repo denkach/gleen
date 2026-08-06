@@ -4,6 +4,7 @@ import { expect, test } from './fixtures';
 
 const screens = [
   ['subscription', 'active', 'Subscription'],
+  ['subscription', 'error', 'Subscription'],
   ['usage', 'empty-usage', 'Usage ledger'],
   ['checkout', 'active', 'Checkout'],
   ['portal', 'past-due', 'Billing portal'],
@@ -86,7 +87,9 @@ for (const [screen, state, heading] of screens) {
       state,
       heading,
       { width: 1440, height: 900 },
-      `den-20-1440x900-desktop-${screen}-${state}.png`,
+      state === 'error'
+        ? 'den-29-1440x900-desktop-subscription-error.png'
+        : `den-20-1440x900-desktop-${screen}-${state}.png`,
     );
   });
 
@@ -97,7 +100,9 @@ for (const [screen, state, heading] of screens) {
       state,
       heading,
       { width: 412, height: 839 },
-      `den-20-412x839-pixel7-${screen}-${state}.png`,
+      state === 'error'
+        ? 'den-29-412x839-pixel7-subscription-error.png'
+        : `den-20-412x839-pixel7-${screen}-${state}.png`,
     );
   });
 }

@@ -57,6 +57,7 @@ export function BillingFixtureScreen({
     | 'portal-cancel'
     | 'portal-error'
     | 'invoice-actions'
+    | 'subscription-retry'
     | null;
   routeQuery: Readonly<{
     search: string;
@@ -148,8 +149,10 @@ export function BillingFixtureScreen({
                 ? {
                     now: () => new Date(fixture.now),
                     retryAction: async () => {
+                      if (testBoundary === 'subscription-retry')
+                        setPortalCount((count) => count + 1);
                       await new Promise((resolve) =>
-                        window.setTimeout(resolve, 80),
+                        window.setTimeout(resolve, 240),
                       );
                       return {
                         status: 'error',

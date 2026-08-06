@@ -204,6 +204,26 @@ async function clearGuestLocaleCookie(page: Page) {
   );
 }
 
+async function openAuthenticatedSettingsInRussian(page: Page) {
+  await addAuthenticatedFixtureCookie(page);
+  await page.context().addCookies([
+    {
+      name: localeCookie,
+      value: 'ru',
+      url: origin,
+      sameSite: 'Lax',
+    },
+  ]);
+  const response = await page.goto('/app/settings/profile', {
+    waitUntil: 'networkidle',
+  });
+  expect(response?.ok()).toBe(true);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ru-RU');
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Настройки' }),
+  ).toBeVisible();
+}
+
 async function expectNoHorizontalOverflow(page: Page) {
   expect(
     await page.evaluate(
@@ -323,6 +343,55 @@ test.beforeEach(async ({ context }) => {
     Object.assign(window, { YT: { Player } });
   });
 });
+
+test('DEN-29 settings keeps keyboard order and responsive copy without overflow', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 1249 });
+  await openAuthenticatedSettingsInRussian(page);
+
+  await expectNoHorizontalOverflow(page);
+  await expect(page.getByText('Сохраняем…')).toHaveCount(0);
+  const interfaceSelect = page.getByLabel('Язык элементов управления Gleen');
+  const interfaceSave = page.getByRole('button', {
+    name: 'Сохранить язык интерфейса',
+  });
+  const outputSelect = page.getByLabel('Язык будущего создаваемого контента');
+  const outputSave = page.getByRole('button', {
+    name: 'Сохранить язык результатов',
+  });
+
+  await interfaceSelect.focus();
+  await page.keyboard.press('Tab');
+  await expect(interfaceSave).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(outputSelect).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(outputSave).toBeFocused();
+});
+
+for (const viewport of [
+  { name: '1600x1000-desktop', width: 1600, height: 1000 },
+  { name: '390x1249-mobile', width: 390, height: 1249 },
+] as const) {
+  test(`DEN-29 ${viewport.name} Russian settings visual`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openAuthenticatedSettingsInRussian(page);
+    await expectNoHorizontalOverflow(page);
+    await hideLocalVisualOverlays(page);
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      window.scrollTo(0, 0);
+    });
+    await expect(page).toHaveScreenshot(
+      `den-29-${viewport.name}-settings-ru.png`,
+      {
+        animations: 'disabled',
+        caret: 'hide',
+      },
+    );
+  });
+}
 
 test('@localization guest selection is immediate, route-stable, quiet, and durable', async ({
   page,
