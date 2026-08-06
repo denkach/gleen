@@ -2473,7 +2473,7 @@ body:has(.billing-experience[data-account-reference='true']) {
   }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1450px) {
   .language-preferences .settings-account-layout {
     grid-template-columns: 1fr;
   }

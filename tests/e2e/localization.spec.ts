@@ -373,6 +373,7 @@ test('DEN-29 settings keeps keyboard order and responsive copy without overflow'
 for (const viewport of [
   { name: 'tablet-portrait', width: 768, height: 1024 },
   { name: 'tablet-landscape', width: 1024, height: 768 },
+  { name: 'compact-desktop', width: 1440, height: 900 },
 ] as const) {
   test(`DEN-29 settings keeps controls inside cards at ${viewport.name}`, async ({
     page,
