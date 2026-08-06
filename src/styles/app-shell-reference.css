@@ -496,7 +496,7 @@
   white-space: normal;
 }
 .language-preferences__status {
-  min-height: 34px;
+  min-height: 51px;
   margin: 7px 0 -1px;
   color: var(--text-secondary);
   font-size: 12px;

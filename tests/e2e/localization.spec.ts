@@ -418,6 +418,23 @@ for (const viewport of [
         ),
       ).toBe(true);
     }
+
+    const failureStatuses = page.locator('.language-preferences__status');
+    await failureStatuses.evaluateAll((statuses) => {
+      for (const status of statuses) {
+        status.textContent =
+          'Diese Sprache konnte nicht gespeichert werden. Versuche es erneut.';
+        status.setAttribute('role', 'alert');
+      }
+    });
+    expect(
+      await failureStatuses.evaluateAll((statuses) =>
+        statuses.every(
+          (status) => status.scrollHeight <= status.clientHeight,
+        ),
+      ),
+      `German failure copy exceeded its reserved status area at ${viewport.name}`,
+    ).toBe(true);
   });
 }
 

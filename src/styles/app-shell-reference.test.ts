@@ -40,7 +40,7 @@ describe('app shell locale switcher layout', () => {
       /@media\s*\(min-width:\s*721px\)\s*and\s*\(max-width:\s*1100px\)[\s\S]*\.settings-preference-row\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(190px,\s*230px\)/,
     );
     expect(styles).toMatch(
-      /\.language-preferences__status\s*\{[^}]*min-height:\s*34px/,
+      /\.language-preferences__status\s*\{[^}]*min-height:\s*51px/,
     );
   });
 });
