@@ -10,5 +10,6 @@ supabase/.temp/**
 design/reference-v3/**
 design/screenshots/**
 design/prototypes/analyze-processing/index.html
+design/prototypes/gleen-account-pages-cb-v1/**
 docs/design-system.md
 package-lock.json
