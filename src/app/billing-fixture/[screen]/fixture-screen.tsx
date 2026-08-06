@@ -46,9 +46,11 @@ export function BillingFixtureScreen({
   testBoundary,
   routeQuery,
   locale,
+  accountReference,
 }: Readonly<{
   fixture: BillingFixture;
   locale: Locale;
+  accountReference?: boolean;
   testBoundary:
     | 'usage-actions'
     | 'checkout-action'
@@ -148,6 +150,9 @@ export function BillingFixtureScreen({
               fixture.presentation === null
                 ? {
                     now: () => new Date(fixture.now),
+                    initialLastAttempt: accountReference
+                      ? new Date('2026-08-06T12:32:00.000Z')
+                      : undefined,
                     retryAction: async () => {
                       if (testBoundary === 'subscription-retry')
                         setPortalCount((count) => count + 1);

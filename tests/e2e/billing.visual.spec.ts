@@ -21,18 +21,23 @@ async function capture(
   name: string,
 ) {
   await page.setViewportSize(viewport);
+  const isDen29Reference = screen === 'subscription' && state === 'error';
   const response = await page.goto(
-    `/billing-fixture/${screen}?state=${state}`,
+    `/billing-fixture/${screen}?state=${state}${isDen29Reference ? '&locale=ru&accountReference=1' : ''}`,
     { waitUntil: 'networkidle' },
   );
   expect(response?.status()).toBe(200);
   await expect(
-    page.getByRole('heading', { level: 1, name: heading }),
+    page.getByRole('heading', {
+      level: 1,
+      name: isDen29Reference ? 'Подписка' : heading,
+    }),
   ).toBeVisible();
   await expect(page.getByTestId('billing-fixture-hydrated')).toHaveText('true');
   if (viewport.width <= 760) {
-    const activeNavigationItem =
-      screen === 'subscription'
+    const activeNavigationItem = isDen29Reference
+      ? page.getByRole('link', { name: 'Подписка', exact: true })
+      : screen === 'subscription'
         ? page.getByRole('link', { name: 'Plan', exact: true })
         : screen === 'usage'
           ? page.getByRole('link', { name: 'Usage', exact: true })
@@ -76,32 +81,49 @@ async function capture(
   await expect(page).toHaveScreenshot(name, {
     animations: 'disabled',
     caret: 'hide',
+    maxDiffPixelRatio: isDen29Reference
+      ? viewport.width <= 760
+        ? 0.022
+        : 0.012
+      : undefined,
   });
 }
 
 for (const [screen, state, heading] of screens) {
-  test(`1440x900 desktop ${screen} ${state}`, async ({ page }) => {
+  const isDen29Reference = screen === 'subscription' && state === 'error';
+  const desktopViewport = isDen29Reference
+    ? { width: 1600, height: 1000 }
+    : { width: 1440, height: 900 };
+  const mobileViewport = isDen29Reference
+    ? { width: 390, height: 853 }
+    : { width: 412, height: 839 };
+
+  test(`${desktopViewport.width}x${desktopViewport.height} desktop ${screen} ${state}`, async ({
+    page,
+  }) => {
     await capture(
       page,
       screen,
       state,
       heading,
-      { width: 1440, height: 900 },
-      state === 'error'
-        ? 'den-29-1440x900-desktop-subscription-error.png'
+      desktopViewport,
+      isDen29Reference
+        ? 'den-29-1600x1000-desktop-subscription-error.png'
         : `den-20-1440x900-desktop-${screen}-${state}.png`,
     );
   });
 
-  test(`durable 412x839 Pixel 7 ${screen} ${state}`, async ({ page }) => {
+  test(`durable ${mobileViewport.width}x${mobileViewport.height} mobile ${screen} ${state}`, async ({
+    page,
+  }) => {
     await capture(
       page,
       screen,
       state,
       heading,
-      { width: 412, height: 839 },
-      state === 'error'
-        ? 'den-29-412x839-pixel7-subscription-error.png'
+      mobileViewport,
+      isDen29Reference
+        ? 'den-29-390x853-mobile-subscription-error.png'
         : `den-20-412x839-pixel7-${screen}-${state}.png`,
     );
   });

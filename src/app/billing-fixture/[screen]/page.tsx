@@ -81,18 +81,43 @@ export default async function BillingFixturePage({
   if (!isBillingFixtureSelection(screen, state)) notFound();
 
   const fixture = getBillingFixture(screen, state, locale);
+  const accountReference =
+    screen === 'subscription' &&
+    state === 'error' &&
+    query.accountReference === '1';
   return (
     <AppShell
+      accountReferenceOverride={accountReference}
       copy={appMessages[locale]}
-      identity={fixture.shell.identity}
+      identity={
+        accountReference
+          ? {
+              displayName: 'Denys Cherneha',
+              email: 'denkach2211@gmail.com',
+              initials: 'DC',
+            }
+          : fixture.shell.identity
+      }
       locale={locale}
       localeSwitcherCopy={materializeLocaleSwitcherCopy(sharedMessages[locale])}
-      usage={fixture.shell.usage}
+      usage={
+        accountReference
+          ? {
+              status: 'available',
+              planName: 'Prism',
+              used: 1,
+              remaining: 24,
+              limit: 25,
+              resetAt: '2026-09-01T00:00:00.000Z',
+            }
+          : fixture.shell.usage
+      }
       pathnameOverride="/app/subscription"
     >
       <BillingFixtureScreen
         fixture={fixture}
         locale={locale}
+        accountReference={accountReference}
         testBoundary={testBoundary}
         routeQuery={{
           search: typeof query.search === 'string' ? query.search : '',

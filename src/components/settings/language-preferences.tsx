@@ -124,7 +124,7 @@ export function LanguagePreferences({
                   ? settingsErrorMessage(copy, outputState.code)
                   : null
               }
-              icon="language"
+              icon="content-language"
               label={copy.language.output.label}
               onChange={setOutputLocaleValue}
               pending={outputPending}
@@ -163,7 +163,7 @@ type PreferenceFormProps = Readonly<{
   action: (formData: FormData) => void;
   description: string;
   error: string | null;
-  icon: 'globe' | 'language';
+  icon: 'content-language' | 'globe';
   label: string;
   onChange(locale: Locale): void;
   pending: boolean;

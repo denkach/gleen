@@ -65,6 +65,8 @@ export function SubscriptionScreen({
         eyebrow={copy.subscription.eyebrow}
         title={copy.subscription.title}
         description={copy.subscription.description}
+        accountReference
+        mobileNavigation="app"
       >
         <SubscriptionRecoveryCard
           copy={copy.subscription.error}

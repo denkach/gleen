@@ -20,6 +20,7 @@ type RecoveryCopy = BillingMessages['subscription']['error'];
 export type SubscriptionRecoveryCardControls = Readonly<{
   retryAction?: () => Promise<SubscriptionRecoveryResult>;
   now?: () => Date;
+  initialLastAttempt?: Date;
 }>;
 
 type SubscriptionRecoveryCardProps = Readonly<{
@@ -35,13 +36,16 @@ export function SubscriptionRecoveryCard({
   supportHref = supportEmailHref,
   retryAction = retrySubscriptionSnapshot,
   now = () => new Date(),
+  initialLastAttempt,
 }: SubscriptionRecoveryCardProps) {
   const router = useRouter();
   const retryButtonRef = useRef<HTMLButtonElement>(null);
   const pendingRef = useRef(false);
   const [pending, setPending] = useState(false);
   const [failedAgain, setFailedAgain] = useState(false);
-  const [lastAttempt, setLastAttempt] = useState<Date | null>(null);
+  const [lastAttempt, setLastAttempt] = useState<Date | null>(
+    initialLastAttempt ?? null,
+  );
 
   useEffect(() => {
     if (failedAgain) retryButtonRef.current?.focus();

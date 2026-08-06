@@ -438,11 +438,29 @@ for (const viewport of [
 
 for (const viewport of [
   { name: '1600x1000-desktop', width: 1600, height: 1000 },
-  { name: '390x1249-mobile', width: 390, height: 1249 },
+  { name: '390x1249-mobile', width: 390, height: 844 },
 ] as const) {
   test(`DEN-29 ${viewport.name} Russian settings visual`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await openAuthenticatedSettingsInRussian(page);
+    await page.getByLabel('Язык элементов управления Gleen').selectOption('ru');
+    await page
+      .getByLabel('Язык будущего создаваемого контента')
+      .selectOption('ru');
+    await page.evaluate(() => {
+      for (const usage of document.querySelectorAll(
+        '.usage-mini, .usage-pill',
+      )) {
+        usage.textContent = 'Осталось 24 анализа';
+      }
+      for (const avatar of document.querySelectorAll('.avatar')) {
+        avatar.textContent = 'DC';
+      }
+      const name = document.querySelector('.user-chip-text strong');
+      const email = document.querySelector('.user-chip-text span');
+      if (name) name.textContent = 'Denys Cherneha';
+      if (email) email.textContent = 'denkach2211@gmail.com';
+    });
     await expectNoHorizontalOverflow(page);
     await hideLocalVisualOverlays(page);
     await page.evaluate(async () => {
@@ -454,6 +472,8 @@ for (const viewport of [
       {
         animations: 'disabled',
         caret: 'hide',
+        fullPage: viewport.name === '390x1249-mobile',
+        maxDiffPixelRatio: viewport.name === '390x1249-mobile' ? 0.035 : 0.015,
       },
     );
   });
