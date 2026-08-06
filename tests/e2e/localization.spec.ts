@@ -429,9 +429,7 @@ for (const viewport of [
     });
     expect(
       await failureStatuses.evaluateAll((statuses) =>
-        statuses.every(
-          (status) => status.scrollHeight <= status.clientHeight,
-        ),
+        statuses.every((status) => status.scrollHeight <= status.clientHeight),
       ),
       `German failure copy exceeded its reserved status area at ${viewport.name}`,
     ).toBe(true);
