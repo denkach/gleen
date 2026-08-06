@@ -14,13 +14,13 @@ export type SubscriptionRecoveryResult =
     }>;
 
 export async function retrySubscriptionSnapshot(): Promise<SubscriptionRecoveryResult> {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { status: 'error', code: 'session_expired' };
-
   try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { status: 'error', code: 'session_expired' };
+
     const repository = createSupabaseBillingRepository(
       supabase as unknown as SupabaseBillingClient,
     );

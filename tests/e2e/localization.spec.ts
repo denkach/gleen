@@ -371,6 +371,57 @@ test('DEN-29 settings keeps keyboard order and responsive copy without overflow'
 });
 
 for (const viewport of [
+  { name: 'tablet-portrait', width: 768, height: 1024 },
+  { name: 'tablet-landscape', width: 1024, height: 768 },
+] as const) {
+  test(`DEN-29 settings keeps controls inside cards at ${viewport.name}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await openAuthenticatedSettingsInRussian(page);
+    await expectNoHorizontalOverflow(page);
+
+    const rows = page.locator('.settings-preference-row');
+    await expect(rows).toHaveCount(2);
+    for (const row of await rows.all()) {
+      const bounds = await row.evaluate((element) => {
+        const rowRect = element.getBoundingClientRect();
+        const controls = [
+          ...element.querySelectorAll<HTMLElement>('select, button'),
+        ].map((control) => {
+          const rect = control.getBoundingClientRect();
+          return {
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+          };
+        });
+        return {
+          row: {
+            left: rowRect.left,
+            right: rowRect.right,
+            top: rowRect.top,
+            bottom: rowRect.bottom,
+          },
+          controls,
+        };
+      });
+      expect(bounds.controls).toHaveLength(2);
+      expect(
+        bounds.controls.every(
+          (control) =>
+            control.left >= bounds.row.left &&
+            control.right <= bounds.row.right &&
+            control.top >= bounds.row.top &&
+            control.bottom <= bounds.row.bottom,
+        ),
+      ).toBe(true);
+    }
+  });
+}
+
+for (const viewport of [
   { name: '1600x1000-desktop', width: 1600, height: 1000 },
   { name: '390x1249-mobile', width: 390, height: 1249 },
 ] as const) {

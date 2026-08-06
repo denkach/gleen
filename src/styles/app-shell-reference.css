@@ -496,10 +496,11 @@
   white-space: normal;
 }
 .language-preferences__status {
-  min-height: 18px;
+  min-height: 34px;
   margin: 7px 0 -1px;
   color: var(--text-secondary);
   font-size: 12px;
+  line-height: 1.4;
 }
 .language-preferences__status[role='alert'] {
   color: var(--artifact-summary);
@@ -1182,6 +1183,16 @@
   }
   .app-content {
     padding-inline: 28px;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1100px) {
+  .settings-preference-row {
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 230px);
+    align-items: start;
+  }
+  .settings-preference-copy {
+    grid-column: 1 / -1;
   }
 }
 
