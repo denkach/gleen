@@ -44,8 +44,10 @@ describe('LandingAnalysisForm', () => {
     fireEvent.submit(input.closest('form')!);
 
     expect(push).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Gib eine unterstützte YouTube-URL ein.',
-    );
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Gib eine unterstützte YouTube-URL ein.');
+    expect(alert).toHaveClass('beam-form-error');
+    expect(alert).not.toHaveClass('sr-only');
+    expect(input).toHaveAttribute('aria-describedby', alert.id);
   });
 });

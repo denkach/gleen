@@ -6,7 +6,7 @@ export type PricingPlan = Readonly<{
   currency: string;
   features: readonly string[];
   cta: string;
-  ctaHref: '#product';
+  ctaHref: '#product' | '/sign-up';
   recommended: boolean;
 }>;
 
@@ -24,7 +24,7 @@ export const pricingPlans = Object.freeze([
       'Saved history',
     ],
     cta: 'Start Free',
-    ctaHref: '#product',
+    ctaHref: '/sign-up',
     recommended: false,
   },
   {

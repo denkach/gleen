@@ -362,6 +362,12 @@
   min-height: 48px;
   border-radius: 12px;
 }
+.landing-reference .beam-form-error {
+  margin: 10px 8px 0;
+  color: var(--artifact-summary);
+  font-size: 13px;
+  line-height: 1.45;
+}
 .landing-reference .prism-stage {
   min-height: 650px;
   position: relative;

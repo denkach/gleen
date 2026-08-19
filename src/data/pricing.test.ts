@@ -12,9 +12,7 @@ describe('pricingPlans', () => {
     expect(pricingPlans.every(({ cta, label }) => cta.includes(label))).toBe(
       true,
     );
-    expect(pricingPlans.every(({ ctaHref }) => ctaHref === '#product')).toBe(
-      true,
-    );
+    expect(pricingPlans[0]!.ctaHref).toBe('/sign-up');
   });
 
   it('keeps prices as semantic minor amounts and ISO currencies', () => {
