@@ -34,6 +34,9 @@ describe('marketingMessages', () => {
       closeMenu: 'Close menu',
     });
     expect(marketingMessages.ru.header.closeMenu).toBe('Закрыть меню');
+    expect(marketingMessages.ru.header.menuDescription).toBe(
+      'Перемещайтесь по Gleen и получайте доступ к своему аккаунту.',
+    );
     expect(marketingMessages.uk.hero.titleStart).toBe('Дивіться менше.');
     expect(marketingMessages.uk.hero.titleEnd).toBe('Розумійте більше.');
     expect(

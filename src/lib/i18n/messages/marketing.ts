@@ -381,7 +381,7 @@ export const marketingMessages = defineMessages({
       openMenu: 'Открыть меню',
       menuTitle: 'Меню',
       menuDescription:
-        'Переходите по Gleen и получайте доступ к своему аккаунту.',
+        'Перемещайтесь по Gleen и получайте доступ к своему аккаунту.',
       closeMenu: 'Закрыть меню',
     },
     hero: {
