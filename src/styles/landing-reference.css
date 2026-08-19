@@ -2094,6 +2094,14 @@ body:has(.landing-mobile-menu[data-state='closed']) > .ui-dialog-overlay {
   .landing-reference .header-inner {
     grid-template-columns: 1fr auto;
   }
+  .landing-reference .header-actions .btn-sm {
+    min-height: 44px;
+  }
+  .landing-reference .header-actions .btn-icon.mobile-only {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
   .landing-reference .hero-grid {
     grid-template-columns: 1fr;
   }
@@ -2228,7 +2236,7 @@ body:has(.landing-mobile-menu[data-state='closed']) > .ui-dialog-overlay {
     position: absolute;
     inset-inline-end: 0;
     top: 12px;
-    width: 42px;
+    width: 44px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

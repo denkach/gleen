@@ -74,6 +74,21 @@ for (const viewport of mobileMenuViewports) {
     await page.goto('/');
 
     const trigger = page.getByRole('button', { name: 'Open menu' });
+    const headerControls = [
+      page.locator('.site-header .locale-switcher__trigger'),
+      page
+        .locator('.site-header')
+        .getByRole('link', { name: 'Start free', exact: true }),
+      trigger,
+    ];
+    for (const control of headerControls) {
+      await expect(control).toBeVisible();
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+    }
+
     await trigger.click();
 
     const dialog = page.getByRole('dialog', { name: 'Menu' });
@@ -87,6 +102,16 @@ for (const viewport of mobileMenuViewports) {
         element.contains(document.activeElement),
       ),
     ).toBe(true);
+
+    const focusableControls = dialog.locator('a[href], button:not([disabled])');
+    const firstFocusable = focusableControls.first();
+    const lastFocusable = focusableControls.last();
+    await firstFocusable.focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(lastFocusable).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(firstFocusable).toBeFocused();
+
     await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
 
     const linkHeights = await dialog
