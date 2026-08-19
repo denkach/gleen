@@ -6,6 +6,11 @@ const viewports = [
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
 
+const mobileMenuViewports = [
+  { name: 'compact mobile', width: 320, height: 568 },
+  { name: 'mobile', width: 390, height: 844 },
+] as const;
+
 for (const viewport of viewports) {
   test(`renders the approved landing at ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize(viewport);
@@ -59,6 +64,87 @@ test('aligns the BeamInput with its action on mobile', async ({ page }) => {
   expect(buttonBox?.x).toBe((inputBox?.x ?? 0) + 6);
   expect(buttonBox?.width).toBe((inputBox?.width ?? 0) - 12);
   expect(inputBox?.x).toBe((formBox?.x ?? 0) + 8);
+});
+
+for (const viewport of mobileMenuViewports) {
+  test(`@localization opens and dismisses the landing menu at ${viewport.name}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+
+    const trigger = page.getByRole('button', { name: 'Open menu' });
+    await trigger.click();
+
+    const dialog = page.getByRole('dialog', { name: 'Menu' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      '/sign-in',
+    );
+    expect(
+      await dialog.evaluate((element) =>
+        element.contains(document.activeElement),
+      ),
+    ).toBe(true);
+    await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
+
+    const linkHeights = await dialog
+      .getByRole('link')
+      .evaluateAll((links) =>
+        links.map((link) => link.getBoundingClientRect().height),
+      );
+    expect(linkHeights.every((height) => height >= 44)).toBe(true);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
+
+    await trigger.click();
+    await page.mouse.click(2, viewport.height - 2);
+    await expect(dialog).toBeHidden();
+  });
+}
+
+test('@localization closes the landing menu after navigating to Pricing', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Menu' });
+  await dialog.getByRole('link', { name: 'Pricing' }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(page).toHaveURL(/#pricing$/);
+  await expect(page.locator('#pricing')).toBeInViewport();
+});
+
+test('@localization keeps landing menu state changes immediate with reduced motion', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Open menu' }).click();
+
+  await expect(page.getByRole('dialog', { name: 'Menu' })).toBeVisible();
+  for (const selector of [
+    '.landing-mobile-menu',
+    'body:has(.landing-mobile-menu) > .ui-dialog-overlay',
+  ]) {
+    expect(['0.001ms', '1e-06s']).toContain(
+      await page
+        .locator(selector)
+        .evaluate((element) => getComputedStyle(element).animationDuration),
+    );
+  }
 });
 
 test('routes a valid BeamInput through the secure sign-in continuation', async ({
