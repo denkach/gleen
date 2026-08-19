@@ -25,10 +25,12 @@
 ### Task 1: Localized mobile-menu contract
 
 **Files:**
+
 - Modify: `src/lib/i18n/messages/marketing.ts`
 - Modify: `src/lib/i18n/messages/marketing.test.ts`
 
 **Interfaces:**
+
 - Consumes: `defineMessages()` locale-shape enforcement.
 - Produces: `MarketingMessages['header']` fields `menuTitle`, `menuDescription`, and `closeMenu` for `MobileMarketingMenu`.
 
@@ -73,11 +75,13 @@ git commit -m "feat(den-26): localize mobile landing menu"
 ### Task 2: Accessible mobile marketing menu
 
 **Files:**
+
 - Create: `src/components/marketing/mobile-marketing-menu.tsx`
 - Create: `src/components/marketing/mobile-marketing-menu.test.tsx`
 - Modify: `src/app/page.tsx`
 
 **Interfaces:**
+
 - Consumes: `readonly MarketingLink[]`, `MarketingMessages['header']`, `Dialog`, `DialogTrigger`, `DialogContent`, and `DialogClose`.
 - Produces: `MobileMarketingMenu({ navigation, copy })` rendered in the header; its trigger has the existing localized `openMenu` accessible name.
 
@@ -95,8 +99,14 @@ render(
 const trigger = screen.getByRole('button', { name: 'Open menu' });
 await user.click(trigger);
 expect(screen.getByRole('dialog', { name: 'Menu' })).toBeVisible();
-expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in');
-expect(screen.getByRole('link', { name: 'Start free' })).toHaveAttribute('href', '/sign-up');
+expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+  'href',
+  '/sign-in',
+);
+expect(screen.getByRole('link', { name: 'Start free' })).toHaveAttribute(
+  'href',
+  '/sign-up',
+);
 await user.keyboard('{Escape}');
 expect(trigger).toHaveFocus();
 ```
@@ -118,7 +128,10 @@ export function MobileMarketingMenu({ navigation, copy }: Props) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="btn btn-icon btn-ghost mobile-only" aria-label={copy.openMenu}>
+      <DialogTrigger
+        className="btn btn-icon btn-ghost mobile-only"
+        aria-label={copy.openMenu}
+      >
         <MenuIcon />
       </DialogTrigger>
       <DialogContent
@@ -134,8 +147,12 @@ export function MobileMarketingMenu({ navigation, copy }: Props) {
             </DialogClose>
           ))}
         </nav>
-        <DialogClose asChild><a href="/sign-in">{copy.signIn}</a></DialogClose>
-        <DialogClose asChild><a href="/sign-up">{copy.startFree}</a></DialogClose>
+        <DialogClose asChild>
+          <a href="/sign-in">{copy.signIn}</a>
+        </DialogClose>
+        <DialogClose asChild>
+          <a href="/sign-up">{copy.startFree}</a>
+        </DialogClose>
       </DialogContent>
     </Dialog>
   );
@@ -170,6 +187,7 @@ git commit -m "fix(den-26): activate mobile landing navigation"
 ### Task 3: Functional Start Free and visible Transform video validation
 
 **Files:**
+
 - Modify: `src/data/pricing.ts`
 - Modify: `src/data/pricing.test.ts`
 - Modify: `src/components/marketing/landing-analysis-form.tsx`
@@ -177,6 +195,7 @@ git commit -m "fix(den-26): activate mobile landing navigation"
 - Modify: `src/styles/landing-reference.css`
 
 **Interfaces:**
+
 - Consumes: existing `buildAnalysisContinuation(rawUrl)` and `MarketingPricingCard.ctaHref`.
 - Produces: the Free plan CTA routes to `/sign-up`; `LandingAnalysisForm` exposes an inline `<p id="youtube-url-error">` linked through `aria-describedby`.
 
@@ -185,7 +204,9 @@ git commit -m "fix(den-26): activate mobile landing navigation"
 Replace the pricing expectation that every CTA equals `#product` with explicit truthful destinations:
 
 ```ts
-expect(pricingPlans.find((plan) => plan.id === 'free')?.ctaHref).toBe('/sign-up');
+expect(pricingPlans.find((plan) => plan.id === 'free')?.ctaHref).toBe(
+  '/sign-up',
+);
 ```
 
 Extend the form test:
@@ -238,11 +259,13 @@ git commit -m "fix(den-26): expose mobile auth entry points"
 ### Task 4: Responsive menu styling and end-to-end regression coverage
 
 **Files:**
+
 - Modify: `src/styles/landing-reference.css`
 - Modify: `tests/e2e/home.spec.ts`
 - Modify: `tests/e2e/auth.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `.landing-mobile-menu`, localized menu names, `/sign-up`, `/sign-in?next=...`.
 - Produces: a 320–980 px menu matching The Prism design and browser coverage for every reported mobile failure.
 
@@ -253,7 +276,10 @@ Add focused tests at 390×844 and 320×568:
 ```ts
 await page.getByRole('button', { name: 'Open menu' }).click();
 await expect(page.getByRole('dialog', { name: 'Menu' })).toBeVisible();
-await expect(page.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in');
+await expect(page.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+  'href',
+  '/sign-in',
+);
 await page.keyboard.press('Escape');
 await expect(page.getByRole('button', { name: 'Open menu' })).toBeFocused();
 ```

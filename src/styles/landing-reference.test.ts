@@ -21,7 +21,7 @@ describe('landing reference compact header layout', () => {
     );
   });
 
-  it('moves full locale and CTA controls below the brand at 320px while retaining the 42px menu', () => {
+  it('moves full locale and CTA controls below the brand at 320px with a 44px menu target', () => {
     const compactHeader = styles.slice(
       styles.indexOf('@media (max-width: 420px)'),
     );
@@ -31,7 +31,7 @@ describe('landing reference compact header layout', () => {
     expect(compactHeader).toContain(
       'grid-template-columns: minmax(0, 1fr) auto',
     );
-    expect(compactHeader).toContain('width: 42px');
+    expect(compactHeader).toContain('width: 44px');
     expect(compactHeader).toContain('min-width: 0');
   });
 });
