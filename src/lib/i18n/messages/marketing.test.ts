@@ -28,6 +28,12 @@ describe('marketingMessages', () => {
   });
 
   it('keeps representative native marketing copy available', () => {
+    expect(marketingMessages.en.header).toMatchObject({
+      menuTitle: 'Menu',
+      menuDescription: 'Navigate Gleen and access your account.',
+      closeMenu: 'Close menu',
+    });
+    expect(marketingMessages.ru.header.closeMenu).toBe('Закрыть меню');
     expect(marketingMessages.uk.hero.titleStart).toBe('Дивіться менше.');
     expect(marketingMessages.uk.hero.titleEnd).toBe('Розумійте більше.');
     expect(
