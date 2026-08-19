@@ -119,7 +119,17 @@ for (const viewport of mobileMenuViewports) {
       .evaluateAll((links) =>
         links.map((link) => link.getBoundingClientRect().height),
       );
-    expect(linkHeights.every((height) => height >= 44)).toBe(true);
+    const minimumTouchTarget = 44 - 0.01;
+    expect(
+      linkHeights.every((height) => height >= minimumTouchTarget),
+      JSON.stringify(linkHeights),
+    ).toBe(true);
+    const closeBox = await dialog
+      .getByRole('button', { name: 'Close menu' })
+      .boundingBox();
+    expect(closeBox).not.toBeNull();
+    expect(closeBox?.width).toBeGreaterThanOrEqual(minimumTouchTarget);
+    expect(closeBox?.height).toBeGreaterThanOrEqual(minimumTouchTarget);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

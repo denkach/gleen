@@ -1328,6 +1328,10 @@ body:has(.landing-mobile-menu[data-state='closed']) > .ui-dialog-overlay {
   color: var(--color-background-deep);
   font-weight: 600;
 }
+.landing-mobile-menu .ui-dialog-close {
+  min-width: var(--control-touch-target-min);
+  min-height: var(--control-touch-target-min);
+}
 .landing-mobile-menu .ui-dialog-body a:focus-visible,
 .landing-mobile-menu .ui-dialog-close:focus-visible {
   outline: 2px solid var(--color-artifact-timestamps);
