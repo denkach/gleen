@@ -70,7 +70,7 @@ export function LandingAnalysisForm({ copy }: LandingAnalysisFormProps) {
         </button>
       </form>
       {error ? (
-        <p className="sr-only" id="youtube-url-error" role="alert">
+        <p className="beam-form-error" id="youtube-url-error" role="alert">
           {error}
         </p>
       ) : null}

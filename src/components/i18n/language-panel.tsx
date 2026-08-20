@@ -30,6 +30,7 @@ import type { LocaleSwitcherCopy } from '@/lib/i18n/messages/shared';
 type LanguagePanelProps = Readonly<{
   copy: LocaleSwitcherCopy;
   locale: Locale;
+  onClosed?: () => void;
   onSelect: (locale: Locale) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,6 +40,7 @@ type LanguagePanelProps = Readonly<{
 }>;
 
 const selectionCloseDelay = 60;
+const closedLifecyclePollInterval = 16;
 const subscribeToPlatform = () => () => {};
 const getBrowserPlatform = () => window.navigator.platform;
 const getServerPlatform = () => '';
@@ -46,6 +48,7 @@ const getServerPlatform = () => '';
 export function LanguagePanel({
   copy,
   locale,
+  onClosed,
   onSelect,
   open,
   onOpenChange,
@@ -59,6 +62,7 @@ export function LanguagePanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keyboardModalityRef = useRef(false);
   const browserPlatform = useSyncExternalStore(
     subscribeToPlatform,
@@ -102,6 +106,7 @@ export function LanguagePanel({
   useEffect(
     () => () => {
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+      if (closedTimerRef.current) clearTimeout(closedTimerRef.current);
     },
     [],
   );
@@ -131,8 +136,38 @@ export function LanguagePanel({
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     closeTimerRef.current = setTimeout(() => {
       closeTimerRef.current = null;
-      onOpenChange(false);
+      changeOpen(false);
     }, selectionCloseDelay);
+  }
+
+  function changeOpen(nextOpen: boolean) {
+    if (nextOpen) positionPanelFromTrigger();
+    onOpenChange(nextOpen);
+
+    if (nextOpen) {
+      if (closedTimerRef.current) clearTimeout(closedTimerRef.current);
+      return;
+    }
+
+    if (closedTimerRef.current) clearTimeout(closedTimerRef.current);
+    waitForPanelToUnmount();
+  }
+
+  function waitForPanelToUnmount() {
+    const panelIsConnected = panelRef.current?.isConnected === true;
+    const modalAccessibilityCleanupPending = document.querySelector(
+      '[data-aria-hidden="true"]',
+    );
+    if (panelIsConnected || modalAccessibilityCleanupPending) {
+      closedTimerRef.current = setTimeout(
+        waitForPanelToUnmount,
+        closedLifecyclePollInterval,
+      );
+      return;
+    }
+
+    closedTimerRef.current = null;
+    onClosed?.();
   }
 
   function handleOptionKeyDown(
@@ -175,15 +210,8 @@ export function LanguagePanel({
       return optionRefs.current[selectedIndex] ?? null;
     },
   };
-
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (nextOpen) positionPanelFromTrigger();
-        onOpenChange(nextOpen);
-      }}
-    >
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogTrigger asChild ref={triggerRef}>
         {trigger}
       </DialogTrigger>
