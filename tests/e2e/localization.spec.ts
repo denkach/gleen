@@ -139,6 +139,17 @@ function getLanguageRadio(page: Page, nativeName: string) {
   });
 }
 
+async function openLanguagePanel(page: Page) {
+  const dialog = page.getByRole('dialog');
+
+  await expect(async () => {
+    if (!(await dialog.isVisible())) {
+      await getAnyLocaleTrigger(page).click();
+    }
+    await expect(dialog).toBeVisible({ timeout: 3_000 });
+  }).toPass({ timeout: 10_000 });
+}
+
 async function expectCanonicalLanguageRadios(page: Page) {
   const radios = page.getByRole('radio');
   await expect(radios).toHaveCount(panelLocales.length);
@@ -340,7 +351,7 @@ test('@localization guest selection is immediate, route-stable, quiet, and durab
     const request = route.request();
     if (
       request.method() === 'POST' &&
-      request.headers()['next-action'] !== undefined
+      new URL(request.url()).pathname === '/api/interface-locale'
     ) {
       markLocaleActionPending();
       await localeActionGate;
@@ -642,11 +653,16 @@ for (const [localeKey, locale] of Object.entries(localeCases) as Array<
           waitUntil: 'domcontentloaded',
         });
         if (screen.name === 'settings') {
-          await getAnyLocaleTrigger(page).click();
+          await openLanguagePanel(page);
           await getLanguageRadio(page, locale.nativeName).click();
           await expect(page.locator('html')).toHaveAttribute(
             'lang',
             locale.bcp47,
+          );
+          await expect(page.getByRole('dialog')).toHaveCount(0);
+          await expect(page.locator('.locale-language-toast')).toBeVisible();
+          await expect(page.locator('[data-aria-hidden="true"]')).toHaveCount(
+            0,
           );
           await clearGuestLocaleCookie(page);
           response = await page.reload({ waitUntil: 'domcontentloaded' });
@@ -793,9 +809,7 @@ test('@localization open panel matches approved desktop and mobile geometry', as
     {
       animations: 'disabled',
       caret: 'hide',
-      maxDiffPixelRatio: 0.001,
       scale: 'css',
-      threshold: 0.1,
     },
   );
   await page.screenshot({
@@ -845,9 +859,7 @@ test('@localization open panel matches approved desktop and mobile geometry', as
     {
       animations: 'disabled',
       caret: 'hide',
-      maxDiffPixelRatio: 0.001,
       scale: 'css',
-      threshold: 0.1,
     },
   );
   await page.screenshot({
