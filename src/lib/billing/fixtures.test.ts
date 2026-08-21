@@ -28,6 +28,7 @@ describe('billing visual fixtures', () => {
       'empty-usage',
       'failed-invoice',
       'limit-reached',
+      'error',
     ]);
   });
 
@@ -36,6 +37,7 @@ describe('billing visual fixtures', () => {
     ['subscription', 'active'],
     ['subscription', 'past-due'],
     ['subscription', 'scheduled-cancel'],
+    ['subscription', 'error'],
     ['usage', 'empty-usage'],
     ['checkout', 'active'],
     ['portal', 'active'],
@@ -52,6 +54,17 @@ describe('billing visual fixtures', () => {
       });
     },
   );
+
+  it('builds the subscription recovery fixture without fabricated presentation data', () => {
+    expect(getBillingFixture('subscription', 'error')).toMatchObject({
+      screen: 'subscription',
+      state: 'error',
+      presentation: null,
+      shell: {
+        usage: { status: 'available', planName: 'Starter' },
+      },
+    });
+  });
 
   it('rejects invalid screen/state combinations', () => {
     expect(isBillingFixtureSelection('other', 'active')).toBe(false);

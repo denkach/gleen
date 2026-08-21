@@ -9,6 +9,7 @@ const {
   renderFixture,
   renderShell,
   usePathname,
+  refresh,
 } = vi.hoisted(() => ({
   getRequestLocale: vi.fn(async () => 'en'),
   isUiPreviewEnabled: vi.fn(),
@@ -18,9 +19,14 @@ const {
   renderFixture: vi.fn(),
   renderShell: vi.fn(),
   usePathname: vi.fn(() => '/billing-fixture/checkout'),
+  refresh: vi.fn(),
 }));
 
-vi.mock('next/navigation', () => ({ notFound, usePathname }));
+vi.mock('next/navigation', () => ({
+  notFound,
+  usePathname,
+  useRouter: () => ({ refresh }),
+}));
 vi.mock('@/lib/ui-preview', () => ({ isUiPreviewEnabled }));
 vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
 vi.mock('./fixture-screen', () => ({
@@ -237,5 +243,42 @@ describe('BillingFixturePage guard', () => {
     expect(
       testingScreen.getByRole('link', { name: '04 · Abrechnungsportal' }),
     ).toHaveAttribute('href', '/billing-fixture/portal?locale=de');
+  });
+
+  it('renders a deterministic subscription recovery with working support and retry feedback', async () => {
+    const user = userEvent.setup();
+    const { BillingFixtureScreen } =
+      await vi.importActual<typeof import('./fixture-screen')>(
+        './fixture-screen',
+      );
+
+    render(
+      <BillingFixtureScreen
+        fixture={getBillingFixture('subscription', 'error', 'en')}
+        locale="en"
+        testBoundary={null}
+        routeQuery={{
+          search: '',
+          eventType: null,
+          range: 'current',
+          status: null,
+          year: null,
+          cursor: null,
+        }}
+      />,
+    );
+
+    expect(
+      testingScreen.getByRole('link', { name: 'Contact support' }),
+    ).toHaveAttribute('href', 'mailto:gleen_support@gmail.com');
+    await user.click(
+      testingScreen.getByRole('button', {
+        name: 'Reload subscription details',
+      }),
+    );
+    expect(await testingScreen.findByRole('alert')).toHaveTextContent(
+      'We still could not load billing details. Try again.',
+    );
+    expect(refresh).not.toHaveBeenCalled();
   });
 });

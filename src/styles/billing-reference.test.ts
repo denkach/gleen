@@ -18,6 +18,11 @@ describe('billing reference stylesheet', () => {
     expect(css).toMatch(/@media\s*\(max-width:\s*1120px\)/);
     expect(css).toMatch(/@media\s*\(max-width:\s*760px\)/);
     expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+    expect(css).toMatch(/\.billing-experience \.billing-recovery-card\s*\{/);
+    expect(css).toMatch(/@keyframes\s+billing-recovery-spin/);
+    expect(css).toMatch(
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*animation:\s*none\s*!important/,
+    );
     expect(css).not.toMatch(/(^|})\s*\.(?!billing-experience)/);
   });
 });

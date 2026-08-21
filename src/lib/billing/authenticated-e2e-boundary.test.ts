@@ -15,7 +15,10 @@ import {
   createSupabaseAnalysisRepository,
   type SupabaseAnalysisClient,
 } from '@/lib/analysis-pipeline/supabase-repository';
-import { readInterfaceLocale } from '@/lib/onboarding/repository';
+import {
+  getOnboardingState,
+  readInterfaceLocale,
+} from '@/lib/onboarding/repository';
 import { createSupabaseOnboardingStorage } from '@/lib/onboarding/supabase-storage';
 
 const token = 'playwright-local-only-token';
@@ -144,7 +147,7 @@ describe('authenticated billing E2E boundary', () => {
     );
   });
 
-  it('rejects every profile upsert outside the locale persistence contract', () => {
+  it('supports exact account-language writes and rejects every other profile upsert', async () => {
     const client = createAuthenticatedBillingE2eClient();
     const upsert = (
       table: string,
@@ -166,7 +169,18 @@ describe('authenticated billing E2E boundary', () => {
         { user_id: billingE2eOwnerId, output_locale: 'uk' },
         { onConflict: 'user_id' },
       ),
-    ).toThrow('Authenticated billing fixture rejected profile upsert');
+    ).not.toThrow();
+    const storage = createSupabaseOnboardingStorage(
+      client as unknown as SupabaseClient,
+    );
+    await expect(
+      getOnboardingState(storage, billingE2eOwnerId),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        ok: true,
+        data: expect.objectContaining({ outputLocale: 'uk' }),
+      }),
+    );
     expect(() =>
       upsert(
         'profiles',

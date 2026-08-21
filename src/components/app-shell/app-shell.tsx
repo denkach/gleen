@@ -35,6 +35,7 @@ type AppShellProps = Readonly<{
   localeSwitcherCopy: LocaleSwitcherCopy;
   usage: AppUsage;
   pathnameOverride?: string;
+  accountReferenceOverride?: boolean;
 }>;
 
 function Brand({ label }: Readonly<{ label: string }>) {
@@ -71,6 +72,7 @@ export function AppShell({
   localeSwitcherCopy,
   usage,
   pathnameOverride,
+  accountReferenceOverride,
 }: AppShellProps) {
   const runtimePathname = usePathname();
   const pathname = pathnameOverride ?? runtimePathname;
@@ -78,6 +80,9 @@ export function AppShell({
     appNavigation.find((item) => isAppNavigationItemActive(pathname, item)) ??
     appNavigation[0];
   const resultVideoRoute = isResultVideoRoute(pathname);
+  const accountReference =
+    accountReferenceOverride ??
+    (pathname === '/app/settings/profile' || pathname === '/app/subscription');
   const usageLabel =
     usage.status === 'available'
       ? appUsageLabel(locale, copy, usage.remaining)
@@ -139,9 +144,12 @@ export function AppShell({
       <div className="app-main">
         <header className="mobile-topbar">
           <Brand label={copy.shell.brandHome} />
+          <div className="mobile-topbar-title">
+            {copy.shell.navigation[currentItem.id].label}
+          </div>
           <div className="topbar-actions">
             <LocaleSwitcher
-              compact
+              compact={!accountReference}
               locale={locale}
               copy={localeSwitcherCopy}
               variant="app"
@@ -186,7 +194,14 @@ export function AppShell({
               key={item.href}
             >
               <AppIcon name={item.icon} />
-              <span>{copy.shell.navigation[item.id].mobileLabel}</span>
+              <span className="bottom-label-default">
+                {copy.shell.navigation[item.id].mobileLabel}
+              </span>
+              <span className="bottom-label-account">
+                {item.id === 'subscription' || item.id === 'settings'
+                  ? copy.shell.navigation[item.id].label
+                  : copy.shell.navigation[item.id].mobileLabel}
+              </span>
             </Link>
           );
         })}

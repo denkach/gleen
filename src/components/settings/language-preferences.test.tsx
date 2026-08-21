@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -19,6 +19,84 @@ import { LanguagePreferences } from './language-preferences';
 describe('language preferences', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('renders the approved account hierarchy and keeps stable per-form status regions', () => {
+    render(
+      <LanguagePreferences
+        interfaceLocale="en"
+        outputLocale="uk"
+        copy={settingsMessages.en}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Settings', level: 1 }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Interface language', level: 2 }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('heading', {
+        name: 'Generated-content language',
+        level: 2,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('heading', {
+        name: 'Settings apply only to new materials',
+        level: 2,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Previous analyses and documents remain unchanged.'),
+    ).toBeVisible();
+    expect(screen.getAllByRole('status')).toHaveLength(2);
+  });
+
+  it('keeps the normal save label while only the submitted language is pending', async () => {
+    const user = userEvent.setup();
+    let resolveSave:
+      ((value: { status: 'success'; locale: 'de' }) => void) | null = null;
+    setInterfaceLocale.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    render(
+      <LanguagePreferences
+        interfaceLocale="en"
+        outputLocale="uk"
+        copy={settingsMessages.en}
+      />,
+    );
+
+    await user.selectOptions(
+      screen.getByLabelText('Gleen controls language'),
+      'de',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Save interface language' }),
+    );
+
+    expect(screen.queryByText('Saving…')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Save interface language' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Save output language' }),
+    ).toBeEnabled();
+
+    await act(async () => {
+      resolveSave?.({ status: 'success', locale: 'de' });
+    });
+    await waitFor(() => expect(refresh).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Save interface language' }),
+      ).toBeEnabled(),
+    );
   });
 
   it('keeps the generated-content selection unchanged when saving interface language', async () => {

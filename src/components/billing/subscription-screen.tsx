@@ -23,6 +23,10 @@ import {
   BillingPrism,
   BillingStatus,
 } from './billing-page';
+import {
+  SubscriptionRecoveryCard,
+  type SubscriptionRecoveryCardControls,
+} from './subscription-recovery-card';
 
 type PlanRow = SubscriptionPresentation['availablePlans'][number];
 
@@ -44,10 +48,12 @@ export function SubscriptionScreen({
   presentation,
   initialInterval,
   copySource,
+  recoveryControls,
 }: Readonly<{
   presentation: SubscriptionPresentation | null;
   initialInterval: BillingInterval;
   copySource: BillingCopySource;
+  recoveryControls?: SubscriptionRecoveryCardControls;
 }>) {
   const { locale, copy } = resolveBillingCopySource(copySource);
   const [interval, setInterval] = useState(initialInterval);
@@ -59,19 +65,14 @@ export function SubscriptionScreen({
         eyebrow={copy.subscription.eyebrow}
         title={copy.subscription.title}
         description={copy.subscription.description}
+        accountReference
+        mobileNavigation="app"
       >
-        <BillingCard className="billing-state-card">
-          <div className="billing-state-icon">
-            <BillingIcon name="alert" />
-          </div>
-          <div role="alert">
-            <h2>{copy.subscription.error.title}</h2>
-            <p>{copy.subscription.error.description}</p>
-          </div>
-          <Link className="billing-button" href="/app/subscription">
-            {copy.subscription.error.retry}
-          </Link>
-        </BillingCard>
+        <SubscriptionRecoveryCard
+          copy={copy.subscription.error}
+          locale={locale}
+          {...recoveryControls}
+        />
       </BillingPage>
     );
   }

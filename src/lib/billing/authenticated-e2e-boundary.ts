@@ -35,6 +35,11 @@ export function isAuthenticatedBillingE2eBoundaryEnabled(
 type ProfileRow = {
   user_id: typeof billingE2eOwnerId;
   interface_locale: Locale;
+  output_locale: Locale;
+  summary_preset: 'balanced';
+  flashcard_preset: 18;
+  onboarding_step: 1;
+  onboarding_completed_at: null;
 };
 
 const fixtureGlobal = globalThis as typeof globalThis & {
@@ -208,6 +213,44 @@ function isExactProfileLocaleUpsert(
   );
 }
 
+function isExactProfileOutputLocaleUpsert(
+  row: unknown,
+  options: unknown,
+): row is Pick<ProfileRow, 'user_id' | 'output_locale'> {
+  if (
+    typeof row !== 'object' ||
+    row === null ||
+    Array.isArray(row) ||
+    typeof options !== 'object' ||
+    options === null ||
+    Array.isArray(options)
+  ) {
+    return false;
+  }
+
+  const values = row as Record<string, unknown>;
+  const config = options as Record<string, unknown>;
+  return (
+    Object.keys(values).sort().join(',') === 'output_locale,user_id' &&
+    values.user_id === billingE2eOwnerId &&
+    localeSchema.safeParse(values.output_locale).success &&
+    Object.keys(config).join(',') === 'onConflict' &&
+    config.onConflict === 'user_id'
+  );
+}
+
+function createProfileRow(locale: Locale): ProfileRow {
+  return {
+    user_id: billingE2eOwnerId,
+    interface_locale: locale,
+    output_locale: 'en',
+    summary_preset: 'balanced',
+    flashcard_preset: 18,
+    onboarding_step: 1,
+    onboarding_completed_at: null,
+  };
+}
+
 class BoundaryQuery implements PromiseLike<{
   data: unknown;
   error: null;
@@ -228,23 +271,26 @@ class BoundaryQuery implements PromiseLike<{
     return this;
   }
   upsert(row: unknown, options: unknown) {
-    if (
-      this.table !== 'profiles' ||
-      !isExactProfileLocaleUpsert(row, options)
-    ) {
+    if (this.table !== 'profiles') {
       throw new Error('Authenticated billing fixture rejected profile upsert');
     }
+
+    const interfaceUpsert = isExactProfileLocaleUpsert(row, options);
+    const outputUpsert = isExactProfileOutputLocaleUpsert(row, options);
+    if (!interfaceUpsert && !outputUpsert)
+      throw new Error('Authenticated billing fixture rejected profile upsert');
 
     const existing = profileRows.find(
       (profile) => profile.user_id === billingE2eOwnerId,
     );
     if (existing) {
-      existing.interface_locale = row.interface_locale;
+      if (interfaceUpsert) existing.interface_locale = row.interface_locale;
+      if (outputUpsert) existing.output_locale = row.output_locale;
     } else {
-      profileRows.push({
-        user_id: billingE2eOwnerId,
-        interface_locale: row.interface_locale,
-      });
+      const next = createProfileRow('en');
+      if (interfaceUpsert) next.interface_locale = row.interface_locale;
+      if (outputUpsert) next.output_locale = row.output_locale;
+      profileRows.push(next);
     }
     return this;
   }

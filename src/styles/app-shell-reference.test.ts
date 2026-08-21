@@ -26,4 +26,21 @@ describe('app shell locale switcher layout', () => {
       /\.mobile-topbar \.locale-switcher__status\s*\{/,
     );
   });
+
+  it('defines the responsive account settings composition without overflow', () => {
+    expect(styles).toMatch(/\.settings-account-layout\s*\{/);
+    expect(styles).toMatch(/\.settings-language-card\s*\{/);
+    expect(styles).toMatch(/\.settings-note-card\s*\{/);
+    expect(styles).toMatch(/\.settings-preference-row\s*\{/);
+    expect(styles).toMatch(/\.settings-preference-row[^}]*min-width:\s*0/);
+    expect(styles).toMatch(
+      /@media\s*\(max-width:\s*720px\)[\s\S]*\.settings-preference-row\s*\{[^}]*display:\s*block/,
+    );
+    expect(styles).toMatch(
+      /@media\s*\(min-width:\s*721px\)\s*and\s*\(max-width:\s*1100px\)[\s\S]*\.settings-preference-row\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(190px,\s*230px\)/,
+    );
+    expect(styles).toMatch(
+      /\.language-preferences__status\s*\{[^}]*min-height:\s*51px/,
+    );
+  });
 });

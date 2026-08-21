@@ -11,6 +11,8 @@ export function BillingPage({
   description,
   ariaBusy,
   locale,
+  mobileNavigation = 'billing',
+  accountReference = false,
   children,
 }: Readonly<{
   eyebrow: string;
@@ -18,6 +20,8 @@ export function BillingPage({
   description: string;
   ariaBusy?: boolean;
   locale: Locale;
+  mobileNavigation?: 'billing' | 'app';
+  accountReference?: boolean;
   children: ReactNode;
 }>) {
   return (
@@ -25,6 +29,8 @@ export function BillingPage({
       className="billing-experience"
       aria-labelledby="billing-page-title"
       aria-busy={ariaBusy}
+      data-account-reference={accountReference || undefined}
+      data-mobile-navigation={mobileNavigation}
     >
       <header className="billing-page-head">
         <div>
@@ -36,7 +42,9 @@ export function BillingPage({
         </div>
       </header>
       {children}
-      <BillingMobileNavigation locale={locale} />
+      {mobileNavigation === 'billing' ? (
+        <BillingMobileNavigation locale={locale} />
+      ) : null}
     </section>
   );
 }

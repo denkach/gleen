@@ -46,9 +46,11 @@ export function BillingFixtureScreen({
   testBoundary,
   routeQuery,
   locale,
+  accountReference,
 }: Readonly<{
   fixture: BillingFixture;
   locale: Locale;
+  accountReference?: boolean;
   testBoundary:
     | 'usage-actions'
     | 'checkout-action'
@@ -57,6 +59,7 @@ export function BillingFixtureScreen({
     | 'portal-cancel'
     | 'portal-error'
     | 'invoice-actions'
+    | 'subscription-retry'
     | null;
   routeQuery: Readonly<{
     search: string;
@@ -143,6 +146,27 @@ export function BillingFixtureScreen({
             presentation={fixture.presentation}
             initialInterval="month"
             copySource={{ kind: 'catalog', locale }}
+            recoveryControls={
+              fixture.presentation === null
+                ? {
+                    now: () => new Date(fixture.now),
+                    initialLastAttempt: accountReference
+                      ? new Date('2026-08-06T12:32:00.000Z')
+                      : undefined,
+                    retryAction: async () => {
+                      if (testBoundary === 'subscription-retry')
+                        setPortalCount((count) => count + 1);
+                      await new Promise((resolve) =>
+                        window.setTimeout(resolve, 240),
+                      );
+                      return {
+                        status: 'error',
+                        code: 'snapshot_unavailable',
+                      } as const;
+                    },
+                  }
+                : undefined
+            }
           />
           {boundaryEvidence}
         </>

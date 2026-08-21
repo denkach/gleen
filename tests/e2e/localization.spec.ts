@@ -204,6 +204,26 @@ async function clearGuestLocaleCookie(page: Page) {
   );
 }
 
+async function openAuthenticatedSettingsInRussian(page: Page) {
+  await addAuthenticatedFixtureCookie(page);
+  await page.context().addCookies([
+    {
+      name: localeCookie,
+      value: 'ru',
+      url: origin,
+      sameSite: 'Lax',
+    },
+  ]);
+  const response = await page.goto('/app/settings/profile', {
+    waitUntil: 'networkidle',
+  });
+  expect(response?.ok()).toBe(true);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ru-RU');
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Настройки' }),
+  ).toBeVisible();
+}
+
 async function expectNoHorizontalOverflow(page: Page) {
   expect(
     await page.evaluate(
@@ -323,6 +343,142 @@ test.beforeEach(async ({ context }) => {
     Object.assign(window, { YT: { Player } });
   });
 });
+
+test('DEN-29 settings keeps keyboard order and responsive copy without overflow', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 1249 });
+  await openAuthenticatedSettingsInRussian(page);
+
+  await expectNoHorizontalOverflow(page);
+  await expect(page.getByText('Сохраняем…')).toHaveCount(0);
+  const interfaceSelect = page.getByLabel('Язык элементов управления Gleen');
+  const interfaceSave = page.getByRole('button', {
+    name: 'Сохранить язык интерфейса',
+  });
+  const outputSelect = page.getByLabel('Язык будущего создаваемого контента');
+  const outputSave = page.getByRole('button', {
+    name: 'Сохранить язык результатов',
+  });
+
+  await interfaceSelect.focus();
+  await page.keyboard.press('Tab');
+  await expect(interfaceSave).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(outputSelect).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(outputSave).toBeFocused();
+});
+
+for (const viewport of [
+  { name: 'tablet-portrait', width: 768, height: 1024 },
+  { name: 'tablet-landscape', width: 1024, height: 768 },
+  { name: 'compact-desktop', width: 1440, height: 900 },
+] as const) {
+  test(`DEN-29 settings keeps controls inside cards at ${viewport.name}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await openAuthenticatedSettingsInRussian(page);
+    await expectNoHorizontalOverflow(page);
+
+    const rows = page.locator('.settings-preference-row');
+    await expect(rows).toHaveCount(2);
+    for (const row of await rows.all()) {
+      const bounds = await row.evaluate((element) => {
+        const rowRect = element.getBoundingClientRect();
+        const controls = [
+          ...element.querySelectorAll<HTMLElement>('select, button'),
+        ].map((control) => {
+          const rect = control.getBoundingClientRect();
+          return {
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+          };
+        });
+        return {
+          row: {
+            left: rowRect.left,
+            right: rowRect.right,
+            top: rowRect.top,
+            bottom: rowRect.bottom,
+          },
+          controls,
+        };
+      });
+      expect(bounds.controls).toHaveLength(2);
+      expect(
+        bounds.controls.every(
+          (control) =>
+            control.left >= bounds.row.left &&
+            control.right <= bounds.row.right &&
+            control.top >= bounds.row.top &&
+            control.bottom <= bounds.row.bottom,
+        ),
+      ).toBe(true);
+    }
+
+    const failureStatuses = page.locator('.language-preferences__status');
+    await failureStatuses.evaluateAll((statuses) => {
+      for (const status of statuses) {
+        status.textContent =
+          'Diese Sprache konnte nicht gespeichert werden. Versuche es erneut.';
+        status.setAttribute('role', 'alert');
+      }
+    });
+    expect(
+      await failureStatuses.evaluateAll((statuses) =>
+        statuses.every((status) => status.scrollHeight <= status.clientHeight),
+      ),
+      `German failure copy exceeded its reserved status area at ${viewport.name}`,
+    ).toBe(true);
+  });
+}
+
+for (const viewport of [
+  { name: '1600x1000-desktop', width: 1600, height: 1000 },
+  { name: '390x1249-mobile', width: 390, height: 844 },
+] as const) {
+  test(`DEN-29 ${viewport.name} Russian settings visual`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openAuthenticatedSettingsInRussian(page);
+    await page.getByLabel('Язык элементов управления Gleen').selectOption('ru');
+    await page
+      .getByLabel('Язык будущего создаваемого контента')
+      .selectOption('ru');
+    await page.evaluate(() => {
+      for (const usage of document.querySelectorAll(
+        '.usage-mini, .usage-pill',
+      )) {
+        usage.textContent = 'Осталось 24 анализа';
+      }
+      for (const avatar of document.querySelectorAll('.avatar')) {
+        avatar.textContent = 'DC';
+      }
+      const name = document.querySelector('.user-chip-text strong');
+      const email = document.querySelector('.user-chip-text span');
+      if (name) name.textContent = 'Denys Cherneha';
+      if (email) email.textContent = 'denkach2211@gmail.com';
+    });
+    await expectNoHorizontalOverflow(page);
+    await hideLocalVisualOverlays(page);
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      window.scrollTo(0, 0);
+    });
+    await expect(page).toHaveScreenshot(
+      `den-29-${viewport.name}-settings-ru.png`,
+      {
+        animations: 'disabled',
+        caret: 'hide',
+        fullPage: viewport.name === '390x1249-mobile',
+        maxDiffPixelRatio: viewport.name === '390x1249-mobile' ? 0.035 : 0.015,
+      },
+    );
+  });
+}
 
 test('@localization guest selection is immediate, route-stable, quiet, and durable', async ({
   page,
