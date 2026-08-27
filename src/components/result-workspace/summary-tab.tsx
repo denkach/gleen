@@ -23,6 +23,15 @@ export function formatOffset(offsetMs: number): string {
     : `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+function hasDistinctDetails(summary: string, details: string): boolean {
+  const normalize = (value: string) =>
+    value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase();
+  const normalizedDetails = normalize(details);
+  return (
+    normalizedDetails.length > 0 && normalizedDetails !== normalize(summary)
+  );
+}
+
 function serializeSummary(content: SummaryPresentation): SummaryArtifact {
   if (content.schemaVersion === 1) {
     return {
@@ -109,6 +118,7 @@ export function SummaryTab({
     () => new Set(value.sections.length > 0 ? [0] : []),
   );
   const [copyMessage, setCopyMessage] = useState('');
+  const [editing, setEditing] = useState(false);
   const readingMinutes = useMemo(() => {
     const words = value.sections
       .flatMap((section) =>
@@ -138,23 +148,46 @@ export function SummaryTab({
       <header className="result-summary-hero">
         <div className="result-summary-hero-copy">
           <p className="result-summary-eyebrow">{copy.summaryOneSentence}</p>
-          {readOnly ? (
-            <p className="result-summary-overview">{value.overview}</p>
+          {!readOnly && editing ? (
+            <>
+              <input
+                aria-label={copy.summaryTitleField}
+                value={value.title}
+                onChange={(event) =>
+                  setValue((current) => ({
+                    ...current,
+                    title: event.target.value,
+                  }))
+                }
+                className="result-summary-title-input"
+              />
+              <textarea
+                aria-label={copy.summaryOverviewField}
+                value={value.overview}
+                onChange={(event) =>
+                  setValue((current) => ({
+                    ...current,
+                    outcome: event.target.value,
+                    overview: event.target.value,
+                  }))
+                }
+                rows={3}
+                className="result-summary-overview"
+              />
+            </>
           ) : (
-            <textarea
-              aria-label={copy.summaryOverviewField}
-              value={value.overview}
-              onChange={(event) =>
-                setValue((current) => ({
-                  ...current,
-                  outcome: event.target.value,
-                  overview: event.target.value,
-                }))
-              }
-              rows={3}
-              className="result-summary-overview"
-            />
+            <p className="result-summary-overview">{value.overview}</p>
           )}
+          {!readOnly ? (
+            <button
+              type="button"
+              className="result-artifact-edit-button"
+              aria-pressed={editing}
+              onClick={() => setEditing((current) => !current)}
+            >
+              {editing ? copy.summaryDoneEditing : copy.summaryEdit}
+            </button>
+          ) : null}
         </div>
         <svg
           className="result-summary-prism"
@@ -204,7 +237,7 @@ export function SummaryTab({
                 <span className="result-summary-index">{index + 1}</span>
                 <span>
                   <strong>{section.title}</strong>
-                  <span>{section.summary}</span>
+                  {!editing || readOnly ? <span>{section.summary}</span> : null}
                 </span>
                 <span className="result-summary-arrow" aria-hidden="true">
                   ⌄
@@ -215,24 +248,13 @@ export function SummaryTab({
                 className="result-summary-content"
                 hidden={!open}
               >
-                <p>{section.details}</p>
+                {hasDistinctDetails(section.summary, section.details) ? (
+                  <p>{section.details}</p>
+                ) : null}
                 {section.supportingQuote ? (
                   <blockquote>“{section.supportingQuote}”</blockquote>
                 ) : null}
-                {!readOnly && index === 0 ? (
-                  <input
-                    aria-label={copy.summaryTitleField}
-                    value={value.title}
-                    onChange={(event) =>
-                      setValue((current) => ({
-                        ...current,
-                        title: event.target.value,
-                      }))
-                    }
-                    className="result-summary-title-input"
-                  />
-                ) : null}
-                {!readOnly ? (
+                {!readOnly && editing ? (
                   <textarea
                     aria-label={formatResultMessage(copy.summaryPointField, {
                       count: index + 1,

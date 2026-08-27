@@ -421,6 +421,7 @@ test('persists title and summary artifact autosaves across reload', async ({
   await expect(page.getByText('Saved')).toBeVisible({ timeout: 3_000 });
 
   await page.getByRole('tab', { name: 'Summary' }).click();
+  await page.getByRole('button', { name: 'Edit summary' }).click();
   await page.getByLabel('Summary title').fill('Persisted fixture summary');
   await expect(
     page.locator('[data-artifact="summary"]').getByRole('status'),
@@ -431,6 +432,7 @@ test('persists title and summary artifact autosaves across reload', async ({
     'Edited fixture title',
   );
   await page.getByRole('tab', { name: 'Summary' }).click();
+  await page.getByRole('button', { name: 'Edit summary' }).click();
   await expect(page.getByLabel('Summary title')).toHaveValue(
     'Persisted fixture summary',
   );
@@ -552,9 +554,47 @@ test('isolates partial, corrupted, empty, and legacy fixture states', async ({
   await gotoFixture(page, '/app-shell-fixture/app/video/result-legacy');
   await page.getByRole('tab', { name: 'Summary' }).click();
   await expect(
+    page.getByRole('button', { name: 'Edit summary' }),
+  ).toBeVisible();
+  await expect(
     page.getByRole('textbox', { name: 'Summary point 1' }),
-  ).toHaveValue('Legacy point');
+  ).toHaveCount(0);
+  await expect(
+    page
+      .getByRole('tabpanel', { name: 'Summary' })
+      .locator('.result-summary-content > p'),
+  ).toHaveCount(0);
   await expect(page.getByRole('button', { name: /\d+:\d+/ })).toHaveCount(0);
+});
+
+test('renders durable legacy Summary without repeated body prose', async ({
+  isMobile,
+  page,
+}) => {
+  await gotoFixture(page, '/app-shell-fixture/app/video/result-legacy');
+  const summaryDestination = isMobile
+    ? page
+        .locator('.result-mobile-navigation')
+        .getByRole('button', { name: 'Summary' })
+    : page.getByRole('tab', { name: 'Summary' });
+  await summaryDestination.click();
+
+  const summaryPanel = page.getByRole('tabpanel', { name: 'Summary' });
+  await expect(
+    summaryPanel.getByRole('textbox', { name: 'Summary point 1' }),
+  ).toHaveCount(0);
+  await expect(summaryPanel.locator('.result-summary-content > p')).toHaveCount(
+    0,
+  );
+  await summaryPanel.getByRole('button', { name: 'Edit summary' }).click();
+  await expect(
+    summaryPanel.getByRole('textbox', { name: 'Summary point 1' }),
+  ).toHaveValue('Legacy point');
+  await expect(
+    summaryPanel
+      .locator('.result-summary-hero')
+      .getByRole('textbox', { name: 'Summary title' }),
+  ).toBeVisible();
 });
 
 test('@localization removes nonessential result motion for reduced-motion users', async ({

@@ -39,6 +39,10 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+function enterSummaryEditing() {
+  fireEvent.click(screen.getByRole('button', { name: 'Edit summary' }));
+}
+
 function stubMobileResultViewport(initialMatches: boolean) {
   let matches = initialMatches;
   const listeners = new Set<() => void>();
@@ -1033,6 +1037,7 @@ describe('ResultWorkspace', () => {
     });
     expect(window.location.hash).toBe('#summary');
 
+    enterSummaryEditing();
     const summaryTitle = screen.getByRole('textbox', { name: 'Summary title' });
     fireEvent.touchStart(summaryTitle, {
       touches: [{ identifier: 3, clientX: 180, clientY: 100 }],
@@ -1132,6 +1137,7 @@ describe('ResultWorkspace', () => {
     });
     const view = render(revisionWorkspace(model, saveTitle, saveArtifact));
     await act(() => vi.advanceTimersByTimeAsync(0));
+    enterSummaryEditing();
     fireEvent.change(screen.getByRole('textbox', { name: 'Summary title' }), {
       target: { value: 'Dirty local Summary' },
     });
@@ -1718,12 +1724,20 @@ describe('ResultWorkspace', () => {
     const user = userEvent.setup();
     renderWorkspace();
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    const disclosure = screen.getByRole('button', {
+      name: /legacy text remains readable/i,
+      expanded: true,
+    });
+    expect(disclosure).toBeVisible();
+    const contentId = disclosure.getAttribute('aria-controls');
+    expect(contentId).not.toBeNull();
+    const content = document.getElementById(contentId!);
+    expect(content).not.toBeNull();
     expect(
-      screen.getByRole('button', {
-        name: /legacy text remains readable/i,
-        expanded: true,
+      within(content!).queryByText('Legacy text remains readable.', {
+        selector: 'p',
       }),
-    ).toBeVisible();
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '0:00' })).toBeNull();
     await user.click(
       screen.getByRole('button', {
@@ -1733,6 +1747,41 @@ describe('ResultWorkspace', () => {
     );
     await user.click(screen.getByRole('button', { name: '12:35' }));
     expect(controller.seekTo).toHaveBeenCalledWith(755_000);
+  });
+
+  it('keeps Summary editors out of reading mode', async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+
+    expect(screen.getByRole('button', { name: 'Edit summary' })).toBeVisible();
+    expect(screen.queryByRole('textbox', { name: 'Summary title' })).toBeNull();
+    expect(
+      screen.queryByRole('textbox', { name: 'Summary overview' }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('textbox', { name: 'Summary point 1' }),
+    ).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Edit summary' }));
+    expect(
+      screen
+        .getByRole('textbox', { name: 'Summary title' })
+        .closest('.result-summary-hero'),
+    ).not.toBeNull();
+    expect(
+      screen.getByRole('textbox', { name: 'Summary overview' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('textbox', { name: 'Summary point 1' }),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Done editing' }));
+    expect(screen.queryByRole('textbox', { name: 'Summary title' })).toBeNull();
+    expect(
+      screen.queryByRole('textbox', { name: 'Summary point 1' }),
+    ).toBeNull();
   });
 
   it('matches the Summary hero, metrics, disclosure, copy, and grounded source interactions', async () => {
@@ -1753,10 +1802,11 @@ describe('ResultWorkspace', () => {
     const hero = document.querySelector('.result-summary-hero');
     const stats = document.querySelector('.result-summary-stats');
     expect(hero?.nextElementSibling).toBe(stats);
+    enterSummaryEditing();
     expect(
       screen
         .getByRole('textbox', { name: 'Summary title' })
-        .closest('.result-summary-content'),
+        .closest('.result-summary-hero'),
     ).not.toBeNull();
 
     const disclosure = screen.getByRole('button', {
@@ -2283,6 +2333,7 @@ describe('ResultWorkspace', () => {
     const user = userEvent.setup();
     const view = renderWorkspace();
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
     const title = screen.getByRole('textbox', { name: 'Summary title' });
     await user.clear(title);
     await user.type(title, 'Unsaved local summary');
@@ -2326,6 +2377,7 @@ describe('ResultWorkspace', () => {
       };
       const view = renderWorkspace(pendingModel);
       await user.click(screen.getByRole('tab', { name: 'Summary' }));
+      enterSummaryEditing();
       const title = screen.getByRole('textbox', { name: 'Summary title' });
       await user.clear(title);
       await user.type(title, 'Unsaved local summary');
@@ -2684,6 +2736,7 @@ describe('ResultWorkspace', () => {
     });
     renderWorkspaceWithActions({ saveArtifact });
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
 
     const overview = screen.getByRole('textbox', { name: 'Summary overview' });
     await user.clear(overview);
@@ -2747,6 +2800,7 @@ describe('ResultWorkspace', () => {
     };
     renderWorkspaceWithActions({ saveArtifact, value });
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
 
     fireEvent.change(
       screen.getByRole('textbox', { name: 'Summary overview' }),
@@ -2784,6 +2838,7 @@ describe('ResultWorkspace', () => {
     const saveArtifact = vi.fn().mockResolvedValue({ status: 'error' });
     renderWorkspaceWithActions({ saveArtifact });
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
     await user.click(
       screen.getByRole('button', {
         name: /legacy text remains readable/i,
@@ -2855,6 +2910,7 @@ describe('ResultWorkspace', () => {
     });
     const view = renderWorkspaceWithActions({ saveArtifact });
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
     fireEvent.change(
       screen.getByRole('textbox', { name: 'Summary overview' }),
       { target: { value: 'Save after navigation' } },
@@ -2971,6 +3027,7 @@ describe('ResultWorkspace', () => {
     await user.clear(title);
     await user.type(title, 'Draft export title');
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
     const overview = screen.getByRole('textbox', { name: 'Summary overview' });
     await user.clear(overview);
     await user.type(overview, 'Draft export overview');

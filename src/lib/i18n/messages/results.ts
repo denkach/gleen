@@ -63,6 +63,7 @@ export interface ResultMessages {
   readonly summaryCopied: string;
   readonly summaryCopyFailed: string;
   readonly summaryEdit: string;
+  readonly summaryDoneEditing: string;
   readonly summaryOneSentence: string;
   readonly summaryStructuredSections: string;
   readonly summaryReadingTime: string;
@@ -285,6 +286,7 @@ export const resultMessages = defineMessages({
     summaryCopied: 'Copied',
     summaryCopyFailed: 'Summary could not be copied',
     summaryEdit: 'Edit summary',
+    summaryDoneEditing: 'Done editing',
     summaryOneSentence: 'Summary in one sentence',
     summaryStructuredSections: 'Structured sections',
     summaryReadingTime: 'Reading time',
@@ -489,6 +491,7 @@ export const resultMessages = defineMessages({
     summaryCopied: 'Скопійовано',
     summaryCopyFailed: 'Не вдалося скопіювати конспект',
     summaryEdit: 'Редагувати конспект',
+    summaryDoneEditing: 'Завершити редагування',
     summaryOneSentence: 'Конспект одним реченням',
     summaryStructuredSections: 'Структуровані розділи',
     summaryReadingTime: 'Час читання',
@@ -696,6 +699,7 @@ export const resultMessages = defineMessages({
     summaryCopied: 'Скопировано',
     summaryCopyFailed: 'Не удалось скопировать конспект',
     summaryEdit: 'Редактировать конспект',
+    summaryDoneEditing: 'Завершить редактирование',
     summaryOneSentence: 'Конспект одним предложением',
     summaryStructuredSections: 'Структурированные разделы',
     summaryReadingTime: 'Время чтения',
@@ -904,6 +908,7 @@ export const resultMessages = defineMessages({
     summaryCopied: 'Copiado',
     summaryCopyFailed: 'No se pudo copiar el resumen',
     summaryEdit: 'Editar resumen',
+    summaryDoneEditing: 'Terminar edición',
     summaryOneSentence: 'Resumen en una frase',
     summaryStructuredSections: 'Secciones estructuradas',
     summaryReadingTime: 'Tiempo de lectura',
@@ -1114,6 +1119,7 @@ export const resultMessages = defineMessages({
     summaryCopied: 'Kopiert',
     summaryCopyFailed: 'Zusammenfassung konnte nicht kopiert werden',
     summaryEdit: 'Zusammenfassung bearbeiten',
+    summaryDoneEditing: 'Bearbeitung beenden',
     summaryOneSentence: 'Zusammenfassung in einem Satz',
     summaryStructuredSections: 'Strukturierte Abschnitte',
     summaryReadingTime: 'Lesezeit',
