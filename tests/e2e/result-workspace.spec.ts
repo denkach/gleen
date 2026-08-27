@@ -563,7 +563,7 @@ test('isolates partial, corrupted, empty, and legacy fixture states', async ({
     page
       .getByRole('tabpanel', { name: 'Summary' })
       .locator('.result-summary-content > p'),
-  ).toHaveCount(0);
+  ).toHaveText('Legacy point');
   await expect(page.getByRole('button', { name: /\d+:\d+/ })).toHaveCount(0);
 });
 
@@ -583,8 +583,8 @@ test('renders durable legacy Summary without repeated body prose', async ({
   await expect(
     summaryPanel.getByRole('textbox', { name: 'Summary point 1' }),
   ).toHaveCount(0);
-  await expect(summaryPanel.locator('.result-summary-content > p')).toHaveCount(
-    0,
+  await expect(summaryPanel.locator('.result-summary-content > p')).toHaveText(
+    'Legacy point',
   );
   await summaryPanel.getByRole('button', { name: 'Edit summary' }).click();
   await expect(

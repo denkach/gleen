@@ -1737,7 +1737,7 @@ describe('ResultWorkspace', () => {
       within(content!).queryByText('Legacy text remains readable.', {
         selector: 'p',
       }),
-    ).not.toBeInTheDocument();
+    ).toBeVisible();
     expect(screen.queryByRole('button', { name: '0:00' })).toBeNull();
     await user.click(
       screen.getByRole('button', {
@@ -1782,6 +1782,58 @@ describe('ResultWorkspace', () => {
     expect(
       screen.queryByRole('textbox', { name: 'Summary point 1' }),
     ).toBeNull();
+  });
+
+  it('shows each Summary chapter as its title and complete main text only', async () => {
+    const user = userEvent.setup();
+    renderWorkspace({
+      ...model,
+      tabs: {
+        ...model.tabs,
+        summary: {
+          status: 'ready',
+          data: {
+            schemaVersion: 3,
+            title: 'Complete Summary',
+            outcome: 'Complete outcome.',
+            overview: 'Complete outcome.',
+            sections: [
+              {
+                title: 'Chapter title',
+                summary: 'Short thesis.',
+                details:
+                  'Complete main information with every important argument and example.',
+                supportingQuote: 'A separate supporting quotation.',
+                sourceOffsetMs: 0,
+              },
+            ],
+            keyPoints: [{ text: 'Short thesis.', sourceOffsetMs: 0 }],
+          },
+        },
+      },
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+
+    const chapter = screen.getByRole('button', {
+      name: 'Chapter title',
+      expanded: true,
+    });
+    const contentId = chapter.getAttribute('aria-controls');
+    expect(contentId).not.toBeNull();
+    const content = document.getElementById(contentId!);
+    expect(content).not.toBeNull();
+    expect(within(content!).getAllByText(/.+/, { selector: 'p' })).toHaveLength(
+      1,
+    );
+    expect(
+      within(content!).getByText(
+        'Complete main information with every important argument and example.',
+        { selector: 'p' },
+      ),
+    ).toBeVisible();
+    expect(within(content!).queryByRole('blockquote')).toBeNull();
+    expect(screen.queryByText('Short thesis.')).toBeNull();
   });
 
   it('matches the Summary hero, metrics, disclosure, copy, and grounded source interactions', async () => {
@@ -2824,7 +2876,7 @@ describe('ResultWorkspace', () => {
           {
             title: 'Stable section title',
             summary: 'Edited section summary',
-            details: 'Preserve these details.',
+            details: 'Edited section summary',
             supportingQuote: 'A prism separates light.',
             sourceOffsetMs: 0,
           },

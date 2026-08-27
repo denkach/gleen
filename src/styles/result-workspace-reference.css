@@ -1335,19 +1335,12 @@ body:has(.result-page-layout) {
   font: 11px var(--font-mono);
 }
 
-.result-summary-disclosure strong,
-.result-summary-disclosure > span:nth-child(2) > span {
+.result-summary-disclosure strong {
   display: block;
 }
 
 .result-summary-disclosure strong {
   font-size: 12px;
-}
-
-.result-summary-disclosure > span:nth-child(2) > span {
-  margin-top: 2px;
-  color: var(--result-text-muted);
-  font-size: 10px;
 }
 
 .result-summary-arrow {
@@ -1368,14 +1361,6 @@ body:has(.result-page-layout) {
 
 .result-summary-content > p {
   margin: 0;
-}
-
-.result-summary-content blockquote {
-  margin: 11px 0 0;
-  padding-left: 12px;
-  border-left: 2px solid var(--artifact-summary);
-  color: var(--result-text);
-  font-style: italic;
 }
 
 .result-summary-point-input {

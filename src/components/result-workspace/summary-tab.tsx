@@ -23,13 +23,8 @@ export function formatOffset(offsetMs: number): string {
     : `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
-function hasDistinctDetails(summary: string, details: string): boolean {
-  const normalize = (value: string) =>
-    value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase();
-  const normalizedDetails = normalize(details);
-  return (
-    normalizedDetails.length > 0 && normalizedDetails !== normalize(summary)
-  );
+function getSectionMainText(summary: string, details: string): string {
+  return details.trim().length > 0 ? details : summary;
 }
 
 function serializeSummary(content: SummaryPresentation): SummaryArtifact {
@@ -122,7 +117,7 @@ export function SummaryTab({
   const readingMinutes = useMemo(() => {
     const words = value.sections
       .flatMap((section) =>
-        `${section.summary} ${section.details}`.split(/\s+/u),
+        getSectionMainText(section.summary, section.details).split(/\s+/u),
       )
       .filter(Boolean).length;
     return Math.max(1, Math.ceil(words / 200));
@@ -219,6 +214,10 @@ export function SummaryTab({
       <ol className="result-summary-accordions">
         {value.sections.map((section, index) => {
           const point = value.keyPoints[index];
+          const mainText = getSectionMainText(
+            point?.text ?? section.summary,
+            section.details,
+          );
           const open = openSections.has(index);
           const contentId = `${disclosurePrefix}-${index}`;
           return (
@@ -232,12 +231,12 @@ export function SummaryTab({
                 className="result-summary-disclosure"
                 aria-expanded={open}
                 aria-controls={contentId}
+                aria-label={section.title}
                 onClick={() => toggleSection(index)}
               >
                 <span className="result-summary-index">{index + 1}</span>
                 <span>
                   <strong>{section.title}</strong>
-                  {!editing || readOnly ? <span>{section.summary}</span> : null}
                 </span>
                 <span className="result-summary-arrow" aria-hidden="true">
                   ⌄
@@ -248,18 +247,12 @@ export function SummaryTab({
                 className="result-summary-content"
                 hidden={!open}
               >
-                {hasDistinctDetails(section.summary, section.details) ? (
-                  <p>{section.details}</p>
-                ) : null}
-                {section.supportingQuote ? (
-                  <blockquote>“{section.supportingQuote}”</blockquote>
-                ) : null}
                 {!readOnly && editing ? (
                   <textarea
                     aria-label={formatResultMessage(copy.summaryPointField, {
                       count: index + 1,
                     })}
-                    value={point?.text ?? section.summary}
+                    value={mainText}
                     rows={2}
                     onChange={(event) => {
                       const text = event.target.value;
@@ -267,7 +260,7 @@ export function SummaryTab({
                         ...current,
                         sections: current.sections.map((item, itemIndex) =>
                           itemIndex === index
-                            ? { ...item, summary: text }
+                            ? { ...item, summary: text, details: text }
                             : item,
                         ),
                         keyPoints: current.keyPoints.map((item, itemIndex) =>
@@ -277,11 +270,13 @@ export function SummaryTab({
                     }}
                     className="result-summary-point-input"
                   />
-                ) : null}
+                ) : (
+                  <p>{mainText}</p>
+                )}
                 <div className="result-summary-actions">
                   <button
                     type="button"
-                    onClick={() => void copySection(section.details)}
+                    onClick={() => void copySection(mainText)}
                     aria-label={`${copy.summaryCopy} ${section.title}`}
                   >
                     {copy.summaryCopy}
