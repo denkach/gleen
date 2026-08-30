@@ -7,6 +7,11 @@ import {
 } from './artifact-schemas';
 
 const nonemptyTextSchema = z.string().trim().min(1);
+const nonWhitespaceTextJsonSchema = {
+  type: 'string',
+  minLength: 1,
+  pattern: '\\S',
+} as const;
 
 const summaryIdeaSchema = z
   .object({
@@ -103,22 +108,22 @@ export const summaryIdeaMapJsonSchema = {
           'sourceOffsetsMs',
         ],
         properties: {
-          id: { type: 'string', minLength: 1 },
+          id: nonWhitespaceTextJsonSchema,
           importance: { type: 'string', enum: ['high', 'medium', 'low'] },
-          topic: { type: 'string', minLength: 1 },
-          claim: { type: 'string', minLength: 1 },
+          topic: nonWhitespaceTextJsonSchema,
+          claim: nonWhitespaceTextJsonSchema,
           evidence: {
             type: 'array',
             minItems: 1,
-            items: { type: 'string', minLength: 1 },
+            items: nonWhitespaceTextJsonSchema,
           },
           caveats: {
             type: 'array',
-            items: { type: 'string', minLength: 1 },
+            items: nonWhitespaceTextJsonSchema,
           },
           relationships: {
             type: 'array',
-            items: { type: 'string', minLength: 1 },
+            items: nonWhitespaceTextJsonSchema,
           },
           sourceOffsetsMs: {
             type: 'array',
@@ -137,8 +142,8 @@ export const composedSummaryJsonSchema = {
   required: ['schemaVersion', 'title', 'outcome', 'sections'],
   properties: {
     schemaVersion: { type: 'integer', const: 3 },
-    title: { type: 'string', minLength: 1 },
-    outcome: { type: 'string', minLength: 1 },
+    title: nonWhitespaceTextJsonSchema,
+    outcome: nonWhitespaceTextJsonSchema,
     sections: {
       type: 'array',
       minItems: 1,
@@ -155,11 +160,11 @@ export const composedSummaryJsonSchema = {
           'coveredIdeaIds',
         ],
         properties: {
-          title: { type: 'string', minLength: 1 },
-          summary: { type: 'string', minLength: 1 },
-          details: { type: 'string', minLength: 1 },
+          title: nonWhitespaceTextJsonSchema,
+          summary: nonWhitespaceTextJsonSchema,
+          details: nonWhitespaceTextJsonSchema,
           supportingQuote: {
-            anyOf: [{ type: 'string', minLength: 1 }, { type: 'null' }],
+            anyOf: [nonWhitespaceTextJsonSchema, { type: 'null' }],
           },
           sourceOffsetMs: {
             anyOf: [{ type: 'integer', minimum: 0 }, { type: 'null' }],
@@ -167,7 +172,7 @@ export const composedSummaryJsonSchema = {
           coveredIdeaIds: {
             type: 'array',
             minItems: 1,
-            items: { type: 'string', minLength: 1 },
+            items: nonWhitespaceTextJsonSchema,
           },
         },
       },
