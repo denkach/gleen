@@ -1,3 +1,4 @@
+import type { SummaryArtifactV3 } from './artifact-schemas';
 import type {
   ComposedSummary,
   SummaryIdeaMap,
@@ -150,10 +151,35 @@ function shouldReportStructuralRange(
   return false;
 }
 
+export function validateSummaryDuplicates(
+  summary: Pick<SummaryArtifactV3, 'sections'>,
+): SummaryQualityFinding[] {
+  const findings: SummaryQualityFinding[] = [];
+
+  summary.sections.forEach((section, sectionIndex) => {
+    if (isDuplicate(section.summary, section.details)) {
+      findings.push({
+        code: 'duplicate_section_text',
+        sectionIndexes: [sectionIndex],
+      });
+    }
+
+    const nextSection = summary.sections[sectionIndex + 1];
+    if (nextSection && isDuplicate(section.details, nextSection.details)) {
+      findings.push({
+        code: 'duplicate_adjacent_section',
+        sectionIndexes: [sectionIndex, sectionIndex + 1],
+      });
+    }
+  });
+
+  return findings;
+}
+
 export function validateComposedSummary(
   input: ValidateComposedSummaryInput,
 ): SummaryQualityFinding[] {
-  const findings: SummaryQualityFinding[] = [];
+  const findings = validateSummaryDuplicates(input.summary);
   const knownIdeaIds = new Set(input.ideaMap.ideas.map(({ id }) => id));
   const highImportanceIds = input.ideaMap.ideas
     .filter(({ importance }) => importance === 'high')
@@ -178,23 +204,6 @@ export function validateComposedSummary(
   if (unknownIdeaIds.length > 0) {
     findings.push({ code: 'unknown_idea', ideaIds: unknownIdeaIds });
   }
-
-  input.summary.sections.forEach((section, sectionIndex) => {
-    if (isDuplicate(section.summary, section.details)) {
-      findings.push({
-        code: 'duplicate_section_text',
-        sectionIndexes: [sectionIndex],
-      });
-    }
-
-    const nextSection = input.summary.sections[sectionIndex + 1];
-    if (nextSection && isDuplicate(section.details, nextSection.details)) {
-      findings.push({
-        code: 'duplicate_adjacent_section',
-        sectionIndexes: [sectionIndex, sectionIndex + 1],
-      });
-    }
-  });
 
   if (shouldReportStructuralRange(input, highImportanceIds)) {
     findings.push({

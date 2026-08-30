@@ -58,6 +58,7 @@ export function createOpenRouterProvider(
 
   return {
     async generate<T>(request: StructuredGenerationRequest<T>) {
+      const startedAt = performance.now();
       let response: Response;
       try {
         response = await fetchImplementation(
@@ -107,6 +108,7 @@ export function createOpenRouterProvider(
             requestId: result.requestId,
             model: result.model,
             usage: result.usage,
+            latencyMs: performance.now() - startedAt,
           },
         };
       } catch {

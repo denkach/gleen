@@ -42,7 +42,11 @@ describe('OpenRouter structured provider', () => {
 
     await expect(provider.generate(request)).resolves.toMatchObject({
       value: { title: 'Result' },
-      metadata: { requestId: 'generation-id', model: 'vendor/model' },
+      metadata: {
+        requestId: 'generation-id',
+        model: 'vendor/model',
+        latencyMs: expect.any(Number),
+      },
     });
     const init = fetch.mock.calls[0]?.[1] as RequestInit;
     const body = JSON.parse(String(init.body));

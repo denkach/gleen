@@ -18,6 +18,7 @@ export type GenerationResult<T> = Readonly<{
     requestId: string | null;
     model: string | null;
     usage: unknown;
+    latencyMs: number;
   }>;
 }>;
 

@@ -28,6 +28,7 @@ export function createDeterministicProvider(
   return {
     requests,
     async generate<T>(request: StructuredGenerationRequest<T>) {
+      const startedAt = performance.now();
       requests.push(request as StructuredGenerationRequest<unknown>);
       const failure = failures[request.name];
       const attemptsLeft = remaining.get(request.name) ?? 0;
@@ -47,6 +48,7 @@ export function createDeterministicProvider(
           requestId: `deterministic:${request.name}`,
           model: 'deterministic',
           usage: null,
+          latencyMs: performance.now() - startedAt,
         },
       };
     },

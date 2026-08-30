@@ -7,6 +7,7 @@ import {
   generateTimestamps,
   type GeneratorContext,
 } from './generators';
+import { ProviderError } from './provider';
 
 const context: GeneratorContext = {
   outputLocale: 'uk',
@@ -19,6 +20,61 @@ const context: GeneratorContext = {
     { text: 'Second idea', offsetMs: 1_000, durationMs: 1_000 },
   ],
 };
+
+const validSummaryFixture = {
+  schemaVersion: 3,
+  title: 'Title',
+  outcome: 'Outcome',
+  sections: [
+    {
+      title: 'Point',
+      summary: 'A distinct short thesis.',
+      details:
+        'A complete explanation adds evidence and context without repeating the thesis.',
+      supportingQuote: 'First idea',
+      sourceOffsetMs: 0,
+    },
+  ],
+} as const;
+
+const ideaMapFixture = {
+  ideas: [
+    {
+      id: 'idea-critical',
+      importance: 'high',
+      topic: 'Critical topic',
+      claim: 'Critical claim',
+      evidence: ['First idea'],
+      caveats: ['Keep the important caveat.'],
+      relationships: [],
+      sourceOffsetsMs: [0],
+    },
+    {
+      id: 'idea-secondary',
+      importance: 'medium',
+      topic: 'Secondary topic',
+      claim: 'Secondary claim',
+      evidence: ['Second idea'],
+      caveats: [],
+      relationships: ['Supports idea-critical'],
+      sourceOffsetsMs: [1_000],
+    },
+  ],
+} as const;
+
+const validCompositionFixture = {
+  ...validSummaryFixture,
+  sections: [
+    {
+      ...validSummaryFixture.sections[0],
+      coveredIdeaIds: ['idea-critical', 'idea-secondary'],
+    },
+  ],
+} as const;
+
+function contextWithDuration(durationSeconds: number): GeneratorContext {
+  return { ...context, durationSeconds, summaryPreset: 'balanced' };
+}
 
 describe('artifact generators', () => {
   it('passes locale and preset to focused summary generation', async () => {
@@ -116,6 +172,229 @@ describe('artifact generators', () => {
         supportingQuote: 'Second idea',
         sourceOffsetMs: null,
       }),
+    ]);
+  });
+
+  it('uses one call at 19:59 and mandatory idea-map plus composition at 20:00', async () => {
+    const shortProvider = createDeterministicProvider({
+      gleen_summary_v3: validSummaryFixture,
+    });
+    await generateSummary(shortProvider, contextWithDuration(1_199));
+    expect(shortProvider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_v3',
+    ]);
+
+    const longProvider = createDeterministicProvider({
+      gleen_summary_idea_map_v1: ideaMapFixture,
+      gleen_summary_compose_v3: validCompositionFixture,
+    });
+    const result = await generateSummary(
+      longProvider,
+      contextWithDuration(1_200),
+    );
+
+    expect(longProvider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_idea_map_v1',
+      'gleen_summary_compose_v3',
+    ]);
+    expect(result.metadata).toEqual({
+      route: 'two-pass',
+      repairCount: 0,
+      passes: [
+        {
+          name: 'gleen_summary_idea_map_v1',
+          requestId: 'deterministic:gleen_summary_idea_map_v1',
+          model: 'deterministic',
+          usage: null,
+          latencyMs: expect.any(Number),
+        },
+        {
+          name: 'gleen_summary_compose_v3',
+          requestId: 'deterministic:gleen_summary_compose_v3',
+          model: 'deterministic',
+          usage: null,
+          latencyMs: expect.any(Number),
+        },
+      ],
+    });
+    expect(JSON.stringify(result.metadata)).not.toContain('Critical claim');
+    expect(JSON.stringify(result.metadata)).not.toContain(
+      validCompositionFixture.sections[0].details,
+    );
+  });
+
+  it('asks a 90-minute Balanced composition for 14–20 complete sections', async () => {
+    const provider = createDeterministicProvider({
+      gleen_summary_idea_map_v1: ideaMapFixture,
+      gleen_summary_compose_v3: validCompositionFixture,
+    });
+
+    await generateSummary(provider, contextWithDuration(5_400));
+
+    expect(provider.requests[1]?.system).toContain('14–20');
+    expect(provider.requests[1]?.system).toContain(
+      'must not omit high-importance',
+    );
+    expect(provider.requests[1]?.system).toContain('all high-importance IDs');
+    expect(provider.requests[1]?.input).toContain('"id":"idea-critical"');
+  });
+
+  it.each([
+    [
+      'compact',
+      'Compress aggressively, but preserve every main conclusion and material caveat.',
+    ],
+    [
+      'balanced',
+      'Preserve conclusions, arguments, important context, representative examples, and caveats.',
+    ],
+    [
+      'deep',
+      'Preserve full argument structure, causal links, significant examples, exceptions, and practical implications.',
+    ],
+  ] as const)(
+    'includes the exact %s coverage promise',
+    async (mode, promise) => {
+      const provider = createDeterministicProvider({
+        gleen_summary_v3: validSummaryFixture,
+      });
+
+      await generateSummary(provider, {
+        ...context,
+        summaryPreset: mode,
+        durationSeconds: 120,
+      });
+
+      expect(provider.requests[0]?.system).toContain(promise);
+      expect(provider.requests[0]?.system).toContain('4–8');
+      expect(provider.requests[0]?.system).toContain(
+        'one complete main paragraph per section',
+      );
+      expect(provider.requests[0]?.system).toContain(
+        'must not omit high-importance',
+      );
+    },
+  );
+
+  it('repairs one-pass thesis/detail duplication before publishing', async () => {
+    const provider = createDeterministicProvider({
+      gleen_summary_v3: {
+        ...validSummaryFixture,
+        sections: [
+          {
+            ...validSummaryFixture.sections[0],
+            summary:
+              'Repeated section explanation contains enough words for duplicate comparison.',
+            details:
+              'Repeated section explanation contains enough words for duplicate comparison.',
+          },
+        ],
+      },
+      gleen_summary_repair_v3: validSummaryFixture,
+    });
+
+    const result = await generateSummary(provider, contextWithDuration(120));
+
+    expect(provider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_v3',
+      'gleen_summary_repair_v3',
+    ]);
+    expect(provider.requests[1]?.input).toContain('duplicate_section_text');
+    expect(result.metadata.repairCount).toBe(1);
+  });
+
+  it('repairs a composition that omits high-importance coverage', async () => {
+    const provider = createDeterministicProvider({
+      gleen_summary_idea_map_v1: ideaMapFixture,
+      gleen_summary_compose_v3: {
+        ...validCompositionFixture,
+        sections: [
+          {
+            ...validCompositionFixture.sections[0],
+            coveredIdeaIds: ['idea-secondary'],
+          },
+        ],
+      },
+      gleen_summary_repair_v3: validCompositionFixture,
+    });
+
+    const result = await generateSummary(provider, contextWithDuration(1_200));
+
+    expect(provider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_idea_map_v1',
+      'gleen_summary_compose_v3',
+      'gleen_summary_repair_v3',
+    ]);
+    expect(provider.requests[2]?.input).toContain('missing_high_importance');
+    expect(provider.requests[2]?.input).toContain('idea-critical');
+    expect(result.metadata.repairCount).toBe(1);
+  });
+
+  it('rejects an invalid repaired composition without making a second repair call', async () => {
+    const invalidComposition = {
+      ...validCompositionFixture,
+      sections: [
+        {
+          ...validCompositionFixture.sections[0],
+          coveredIdeaIds: ['idea-secondary'],
+        },
+      ],
+    } as const;
+    const provider = createDeterministicProvider({
+      gleen_summary_idea_map_v1: ideaMapFixture,
+      gleen_summary_compose_v3: invalidComposition,
+      gleen_summary_repair_v3: invalidComposition,
+    });
+
+    const error = await generateSummary(
+      provider,
+      contextWithDuration(1_200),
+    ).catch((value: unknown) => value);
+
+    expect(error).toBeInstanceOf(ProviderError);
+    expect(error).toMatchObject({
+      code: 'invalid_provider_response',
+      retryable: true,
+    });
+    expect(provider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_idea_map_v1',
+      'gleen_summary_compose_v3',
+      'gleen_summary_repair_v3',
+    ]);
+  });
+
+  it('rejects adjacent duplication that survives the only one-pass repair', async () => {
+    const repeatedDetails =
+      'Repeated adjacent explanation contains enough words for reliable duplicate comparison.';
+    const invalidSummary = {
+      ...validSummaryFixture,
+      sections: [
+        {
+          ...validSummaryFixture.sections[0],
+          title: 'First point',
+          details: repeatedDetails,
+        },
+        {
+          ...validSummaryFixture.sections[0],
+          title: 'Second point',
+          details: repeatedDetails,
+        },
+      ],
+    } as const;
+    const provider = createDeterministicProvider({
+      gleen_summary_v3: invalidSummary,
+      gleen_summary_repair_v3: invalidSummary,
+    });
+
+    await expect(
+      generateSummary(provider, contextWithDuration(120)),
+    ).rejects.toMatchObject({
+      code: 'invalid_provider_response',
+      retryable: true,
+    });
+    expect(provider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_v3',
+      'gleen_summary_repair_v3',
     ]);
   });
 
