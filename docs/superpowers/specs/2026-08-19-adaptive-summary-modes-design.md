@@ -22,11 +22,11 @@ The work does not change billing limits, supported languages, transcript acquisi
 
 ### Modes
 
-| Mode | User promise | Composition behavior |
-| --- | --- | --- |
-| Compact | The shortest useful version without losing the main conclusions or material caveats. | Concise outcome, compressed sections, examples included only when needed to understand a conclusion. |
-| Balanced | A complete everyday summary. This is the default. | Conclusions, arguments, important context, representative examples, and caveats. |
-| Deep | A thorough study-ready explanation. | Full argument structure, causal links, significant examples, exceptions, and practical implications. |
+| Mode     | User promise                                                                         | Composition behavior                                                                                 |
+| -------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| Compact  | The shortest useful version without losing the main conclusions or material caveats. | Concise outcome, compressed sections, examples included only when needed to understand a conclusion. |
+| Balanced | A complete everyday summary. This is the default.                                    | Conclusions, arguments, important context, representative examples, and caveats.                     |
+| Deep     | A thorough study-ready explanation.                                                  | Full argument structure, causal links, significant examples, exceptions, and practical implications. |
 
 The interface will describe depth rather than promise a fixed word count. A long information-dense video may produce a longer Compact summary than a short sparse video produces in Deep mode.
 
@@ -65,9 +65,15 @@ Before summary generation, a deterministic classifier derives non-content teleme
 
 The classifier does not call a model and does not log transcript text. Its thresholds live in a focused policy module and are covered by table-driven tests.
 
+### Routing threshold
+
+A video is long-form when its authoritative metadata duration is at least 20 minutes (`durationSeconds >= 1200`). Every long-form video uses the two-pass route, regardless of the requested mode or apparent transcript density. Videos below 20 minutes normally use the one-pass route, but the policy may still choose two passes for an unusually dense transcript or a Deep request.
+
+The duration boundary is inclusive and uses stored video metadata rather than the first and last transcript offsets, because captions may start late or end early. Boundary tests cover 19:59, 20:00, and 20:01.
+
 ### One-pass route
 
-Short or low-complexity transcripts use the current structured generation path with a mode-specific contract. The prompt states:
+Videos below 20 minutes that do not meet a density or Deep-mode escalation threshold use the current structured generation path with a mode-specific contract. The prompt states:
 
 - required coverage priorities;
 - section-count range as guidance rather than a rigid quota;
@@ -77,12 +83,23 @@ Short or low-complexity transcripts use the current structured generation path w
 
 ### Two-pass route
 
-Long or information-dense transcripts, and Deep requests above the policy threshold, use two structured calls:
+Every video of at least 20 minutes, plus shorter information-dense transcripts and Deep requests above the policy threshold, uses two structured calls:
 
 1. **Idea map:** extract grounded candidate ideas with importance, topic, supporting offsets, caveats, and relationships.
 2. **Composition:** build the requested summary from the idea map and transcript evidence.
 
 Every high-importance idea must be represented by the outcome or a section. Medium-importance ideas are selected according to the requested mode. The composer receives explicit coverage identifiers so coverage can be checked without fuzzy comparison of free text.
+
+Section-count ranges are coverage guidance rather than hard quotas:
+
+| Video duration       | Expected range                             |
+| -------------------- | ------------------------------------------ |
+| Under 20 minutes     | 4–8 sections for a typical Balanced result |
+| 20–45 minutes        | 8–12 sections                              |
+| 45–90 minutes        | 10–16 sections                             |
+| 90 minutes or longer | 14–20 sections                             |
+
+Compact may compose toward the lower end and Deep toward the upper end, but neither mode may omit high-importance ideas to satisfy a range. If the idea map contains more than 20 high-importance clusters, the composer groups related ideas into broader sections and preserves their claims, evidence, caveats, examples, and relationships in the full section text. It must not silently discard clusters to remain under the schema limit.
 
 If the idea-map call fails with a retryable provider error, normal workflow retry policy applies. The pipeline does not silently downgrade a Deep request to a cheaper mode. A final failure remains an honest partial-result or artifact-failure state.
 
@@ -103,11 +120,11 @@ Provider metadata for each pass records model, request ID, token usage, latency,
 
 ## Presentation compatibility
 
-V3 summaries render the thesis in the disclosure header and the explanation inside the expanded body. When normalized thesis and explanation are equal or substantially identical, the body omits the repeated explanation but retains quote, timestamp, edit, and copy actions.
+Each chapter renders two content blocks: its title in the disclosure header and one complete main paragraph in the expanded body. V3 uses `details` as the visible main paragraph, with `summary` only as a fallback when details are empty. The short thesis and supporting quote remain available in the stored artifact and exports but do not render as additional Summary paragraphs. Copy and editing operate on the visible full paragraph.
 
-Legacy V1 and V2 summaries currently populate title, summary, and details from one key point. The compatibility presentation will show that key point once. Saving a legacy result must not fabricate distinct prose or corrupt the original schema.
+Legacy V1 and V2 summaries currently populate title, summary, and details from one key point. The compatibility presentation shows that key point once as the full paragraph. Saving a legacy result must not fabricate additional prose or corrupt the original schema.
 
-Editing remains backward compatible. For V3, thesis and details remain separate data. For legacy schemas, existing serialization behavior remains until a separately approved content migration exists.
+Editing remains backward compatible. Editing the visible paragraph keeps `details`, `summary`, and the compatible key point synchronized so the same complete text remains visible after saving and reloading.
 
 ## Localization
 
@@ -136,8 +153,10 @@ Internal mode values remain locale-neutral. No provider prompt relies on transla
 - Migrate database constraints and `detailed` rows safely.
 - Preserve duplicate identity across compatibility mapping.
 - Verify deterministic adaptive-route thresholds.
+- Require the two-pass route at 20:00 while keeping 19:59 eligible for one pass.
 - Verify mode-specific prompt contracts.
 - Require high-importance coverage on two-pass generation.
+- Verify duration guidance for 20–45, 45–90, and 90+ minute videos without treating the ranges as omission quotas.
 - Reject exact and near-duplicate thesis/details.
 - Preserve grounding validation and safe provider metadata.
 - Render legacy repeated content once.
