@@ -104,6 +104,7 @@ describe('artifact generators', () => {
       },
     });
     expect(provider.requests[0]?.input).toContain('Output locale: uk');
+    expect(provider.requests[0]?.input).toContain('Transcript language: en');
     expect(provider.requests[0]?.input).toContain('Preset: deep');
     expect(provider.requests[0]?.input).toContain('[0ms] First idea');
     expect(provider.requests[0]?.system).toContain('sourceOffsetMs');
@@ -409,6 +410,10 @@ describe('artifact generators', () => {
     await generateFlashcards(provider, context);
 
     expect(provider.requests[0]?.input).toContain('Card count: 18');
+    expect(provider.requests[0]?.input).toContain('Output locale: uk');
+    expect(provider.requests[0]?.input).toContain('Video duration: 120s');
+    expect(provider.requests[0]?.input).toContain('[0ms] First idea');
+    expect(provider.requests[0]?.input).not.toContain('Transcript language:');
   });
 
   it('rejects chapters outside the video duration after provider parsing', async () => {
@@ -424,5 +429,9 @@ describe('artifact generators', () => {
     await expect(generateTimestamps(provider, context)).rejects.toThrow(
       'Timestamp exceeds video duration',
     );
+    expect(provider.requests[0]?.input).toContain('Output locale: uk');
+    expect(provider.requests[0]?.input).toContain('Video duration: 120s');
+    expect(provider.requests[0]?.input).toContain('[0ms] First idea');
+    expect(provider.requests[0]?.input).not.toContain('Transcript language:');
   });
 });

@@ -73,6 +73,10 @@ function transcriptInput(context: GeneratorContext): string {
 }
 
 function commonInput(context: GeneratorContext): string {
+  return `Output locale: ${context.outputLocale}\nVideo duration: ${context.durationSeconds}s\nTranscript:\n${transcriptInput(context)}`;
+}
+
+function summaryInput(context: GeneratorContext): string {
   return `Output locale: ${context.outputLocale}\nTranscript language: ${context.transcriptLanguage}\nVideo duration: ${context.durationSeconds}s\nTranscript:\n${transcriptInput(context)}`;
 }
 
@@ -118,7 +122,7 @@ function repairInput(
   ideaMap?: SummaryIdeaMap,
 ): string {
   return [
-    commonInput(context),
+    summaryInput(context),
     ideaMap === undefined ? null : `Idea map:\n${JSON.stringify(ideaMap)}`,
     `Candidate summary:\n${JSON.stringify(candidate)}`,
     `Quality findings:\n${JSON.stringify(findings)}`,
@@ -238,7 +242,7 @@ export async function generateSummary(
     const initialResult = await provider.generate({
       name: 'gleen_summary_v3',
       system: summaryInstructions(mode, policy),
-      input: `Preset: ${mode}\n${commonInput(context)}`,
+      input: `Preset: ${mode}\n${summaryInput(context)}`,
       jsonSchema: summaryJsonSchema,
       parse: (value) => summaryArtifactV3Schema.parse(value),
     });
@@ -275,7 +279,7 @@ export async function generateSummary(
   const ideaMapResult = await provider.generate({
     name: 'gleen_summary_idea_map_v1',
     system: IDEA_MAP_SYSTEM_PROMPT,
-    input: `Requested mode: ${mode}\n${commonInput(context)}`,
+    input: `Requested mode: ${mode}\n${summaryInput(context)}`,
     jsonSchema: summaryIdeaMapJsonSchema,
     parse: (value) => summaryIdeaMapSchema.parse(value),
   });
@@ -287,7 +291,7 @@ export async function generateSummary(
   const compositionResult = await provider.generate({
     name: 'gleen_summary_compose_v3',
     system: compositionInstructions(mode, policy),
-    input: `Idea map:\n${JSON.stringify(ideaMapResult.value)}\n\n${commonInput(context)}`,
+    input: `Idea map:\n${JSON.stringify(ideaMapResult.value)}\n\n${summaryInput(context)}`,
     jsonSchema: composedSummaryJsonSchema,
     parse: (value) => composedSummarySchema.parse(value),
   });
