@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { storedSummaryModeSchema } from '@/lib/summary-mode';
+
 import { artifactSchema } from './configuration';
 import type {
   AnalysisIntake,
@@ -73,7 +75,7 @@ const intakeRowSchema = z.object({
   transcript_language: z.string().trim().min(1),
   transcript_segments: z.array(transcriptSegmentSchema),
   output_locale: z.enum(['uk', 'ru', 'en', 'es', 'de']),
-  summary_preset: z.enum(['balanced', 'detailed']).nullable(),
+  summary_preset: storedSummaryModeSchema.nullable(),
   flashcard_preset: z.union([z.literal(18), z.literal(30)]).nullable(),
   selected_artifacts: z.array(artifactSchema).min(1),
   analysis_contract_version: z.literal(1),

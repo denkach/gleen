@@ -2,7 +2,10 @@ import { ZodError } from 'zod';
 
 import { normalizeIntakeConfiguration } from './configuration';
 import type { IntakeConfiguration } from './configuration';
-import { createDuplicateKey } from './fingerprint';
+import {
+  createCompatibleDuplicateKeys,
+  createDuplicateKey,
+} from './fingerprint';
 import type {
   IntakeErrorCode,
   TranscriptProvider,
@@ -79,12 +82,17 @@ export function createIntakeService(dependencies: IntakeServiceDependencies) {
       const metadataResult = await dependencies.metadata.getVideo(url.videoId);
       if (!metadataResult.ok) fail(metadataResult.code);
 
-      const duplicateKey = createDuplicateKey(url.videoId, configuration);
-      const reusable = await dependencies.repository.findReusable(
-        input.userId,
-        duplicateKey,
+      const duplicateKeys = createCompatibleDuplicateKeys(
+        url.videoId,
+        configuration,
       );
-      if (reusable) return { kind: 'duplicate', intake: reusable };
+      for (const duplicateKey of duplicateKeys) {
+        const reusable = await dependencies.repository.findReusable(
+          input.userId,
+          duplicateKey,
+        );
+        if (reusable) return { kind: 'duplicate', intake: reusable };
+      }
 
       const transcriptResult =
         await dependencies.transcript.getNativeTranscript(
@@ -104,7 +112,7 @@ export function createIntakeService(dependencies: IntakeServiceDependencies) {
         transcriptLanguage: transcriptResult.language,
         transcriptSegments: transcriptResult.segments,
         configuration,
-        duplicateKey,
+        duplicateKey: duplicateKeys[0],
       });
       if (inserted.kind === 'inserted') {
         await dependencies.pipeline.createAndStart(

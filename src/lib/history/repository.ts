@@ -3,6 +3,7 @@ import type {
   ArtifactKind,
 } from '@/lib/analysis-pipeline/domain';
 import type { HistoryQuery } from '@/lib/history/query';
+import type { SummaryMode } from '@/lib/summary-mode';
 
 export type HistoryDatabaseRow = Readonly<{
   id: string;
@@ -13,7 +14,7 @@ export type HistoryDatabaseRow = Readonly<{
   thumbnailUrl: string | null;
   transcriptLanguage: string | null;
   outputLocale: string;
-  summaryPreset: 'balanced' | 'detailed' | null;
+  summaryPreset: SummaryMode | null;
   durationSeconds: number | null;
   selectedArtifacts: readonly ArtifactKind[];
   readyArtifacts: readonly ArtifactKind[];

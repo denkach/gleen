@@ -1,12 +1,12 @@
-import { z } from 'zod';
-
 import { localeSchema } from '@/lib/i18n/locales';
+import { summaryModeSchema } from '@/lib/summary-mode';
+import { z } from 'zod';
 
 export { supportedLocales } from '@/lib/i18n/locales';
 
 export const interfaceLocaleSchema = localeSchema;
 export const outputLocaleSchema = localeSchema;
-export const summaryPresetSchema = z.enum(['balanced', 'detailed']);
+export const summaryPresetSchema = summaryModeSchema;
 export const flashcardPresetSchema = z.union([z.literal(18), z.literal(30)]);
 export const onboardingStepSchema = z.union([
   z.literal(1),

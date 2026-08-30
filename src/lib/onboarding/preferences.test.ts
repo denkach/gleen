@@ -8,6 +8,7 @@ import {
   onboardingStateSchema,
   outputLocaleSchema,
   outputPreferencesSchema,
+  summaryPresetSchema,
   supportedLocales,
 } from './preferences';
 
@@ -49,19 +50,23 @@ describe('onboarding preferences', () => {
     });
   });
 
-  it('accepts PostgreSQL timestamps with an explicit UTC offset', () => {
+  it('accepts canonical deep mode with PostgreSQL timestamps with an explicit UTC offset', () => {
     const completedAt = '2026-07-12T01:34:19.861+00:00';
 
     expect(
       onboardingStateSchema.parse({
         interfaceLocale: 'ru',
         outputLocale: 'ru',
-        summaryPreset: 'detailed',
+        summaryPreset: 'deep',
         flashcardPreset: 18,
         onboardingStep: 3,
         onboardingCompletedAt: completedAt,
       }).onboardingCompletedAt,
     ).toBe(completedAt);
+  });
+
+  it('rejects legacy detailed mode from new preference writes', () => {
+    expect(summaryPresetSchema.safeParse('detailed').success).toBe(false);
   });
 
   it('defines ownership constraints and RLS in the migration', async () => {

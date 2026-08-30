@@ -154,6 +154,18 @@ describe('Supabase intake repository', () => {
     expect(query.limit).toHaveBeenCalledWith(1);
   });
 
+  it('normalizes a stored legacy detailed summary preset to deep', async () => {
+    const query = selectQuery({
+      data: { ...row, summary_preset: 'detailed' },
+      error: null,
+    });
+    const client = { from: vi.fn().mockReturnValue(query), rpc: vi.fn() };
+
+    await expect(
+      createSupabaseIntakeRepository(client).findOwned(userId, intakeId),
+    ).resolves.toMatchObject({ configuration: { summaryPreset: 'deep' } });
+  });
+
   it('always filters owned lookup by both user and id', async () => {
     const query = selectQuery({ data: row, error: null });
     const client = { from: vi.fn().mockReturnValue(query), rpc: vi.fn() };

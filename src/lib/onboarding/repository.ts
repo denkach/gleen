@@ -6,6 +6,7 @@ import {
   type OnboardingState,
 } from './preferences';
 import { localeSchema, type Locale } from '@/lib/i18n/locales';
+import { storedSummaryModeSchema } from '@/lib/summary-mode';
 
 type StorageError = Readonly<{ message: string }>;
 type StorageResult = Readonly<{
@@ -33,7 +34,9 @@ export type PreferenceResult<T> =
       code: 'unauthorized' | 'validation' | 'storage';
     }>;
 
-const profileRowSchema = onboardingStateSchema.transform((value) => value);
+const profileRowSchema = onboardingStateSchema.extend({
+  summaryPreset: storedSummaryModeSchema,
+});
 
 export async function readInterfaceLocale(
   storage: InterfaceLocaleStorage,

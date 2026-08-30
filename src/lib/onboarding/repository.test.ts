@@ -49,6 +49,21 @@ describe('onboarding repository', () => {
     expect(client.read).toHaveBeenCalledWith('user-1');
   });
 
+  it('normalizes a stored legacy detailed summary preference to deep', async () => {
+    const client = {
+      read: vi.fn().mockResolvedValue({
+        data: { ...storedProfile, summary_preset: 'detailed' },
+        error: null,
+      }),
+      upsert: vi.fn(),
+    };
+
+    await expect(getOnboardingState(client, 'user-1')).resolves.toMatchObject({
+      ok: true,
+      data: { summaryPreset: 'deep' },
+    });
+  });
+
   it('validates a patch before upserting only the authenticated user', async () => {
     const client = {
       read: vi.fn(),
