@@ -49,10 +49,25 @@ export const appMessages = defineMessages({
         description: 'Choose the knowledge artifacts for this analysis.',
         outputLanguage: 'Output language',
         artifacts: 'Artifacts',
-        summaryPreset: 'Summary preset',
+        summaryPreset: 'Summary mode',
         flashcardCount: 'Flashcard count',
-        balanced: 'Balanced',
-        detailed: 'Detailed',
+        summaryModes: {
+          compact: {
+            title: 'Compact',
+            description:
+              'The shortest useful version with the main conclusions and important caveats.',
+          },
+          balanced: {
+            title: 'Balanced',
+            description:
+              'A complete everyday summary with arguments, examples, and context. The default.',
+          },
+          deep: {
+            title: 'Deep',
+            description:
+              'A study-ready explanation with full structure, examples, exceptions, and practical conclusions.',
+          },
+        },
         done: 'Done',
         noArtifacts: 'No artifacts selected',
         chooseArtifact: 'Choose at least one artifact.',
@@ -218,7 +233,7 @@ export const appMessages = defineMessages({
       transcriptLanguage: 'Transcript language',
       outputLanguage: 'Output language',
       selectedArtifacts: 'Selected artifacts',
-      summaryPreset: 'Summary preset',
+      summaryPreset: 'Summary mode',
       flashcardPreset: 'Flashcard preset',
       cards: {
         one: '{count} card',
@@ -278,10 +293,25 @@ export const appMessages = defineMessages({
         description: 'Виберіть навчальні матеріали для цього аналізу.',
         outputLanguage: 'Мова результатів',
         artifacts: 'Матеріали',
-        summaryPreset: 'Стиль конспекту',
+        summaryPreset: 'Режим конспекту',
         flashcardCount: 'Кількість карток',
-        balanced: 'Збалансований',
-        detailed: 'Докладний',
+        summaryModes: {
+          compact: {
+            title: 'Компактний',
+            description:
+              'Найкоротша корисна версія з головними висновками й важливими застереженнями.',
+          },
+          balanced: {
+            title: 'Збалансований',
+            description:
+              'Повний конспект на щодень з аргументами, прикладами й контекстом. Режим за замовчуванням.',
+          },
+          deep: {
+            title: 'Глибокий',
+            description:
+              'Готове до навчання пояснення з повною структурою, прикладами, винятками й практичними висновками.',
+          },
+        },
         done: 'Готово',
         noArtifacts: 'Матеріали не вибрано',
         chooseArtifact: 'Виберіть принаймні один матеріал.',
@@ -446,7 +476,7 @@ export const appMessages = defineMessages({
       transcriptLanguage: 'Мова транскрипту',
       outputLanguage: 'Мова результатів',
       selectedArtifacts: 'Вибрані матеріали',
-      summaryPreset: 'Стиль конспекту',
+      summaryPreset: 'Режим конспекту',
       flashcardPreset: 'Набір карток',
       cards: {
         one: '{count} картка',
@@ -506,10 +536,25 @@ export const appMessages = defineMessages({
         description: 'Выберите учебные материалы для этого анализа.',
         outputLanguage: 'Язык результатов',
         artifacts: 'Материалы',
-        summaryPreset: 'Стиль конспекта',
+        summaryPreset: 'Режим конспекта',
         flashcardCount: 'Количество карточек',
-        balanced: 'Сбалансированный',
-        detailed: 'Подробный',
+        summaryModes: {
+          compact: {
+            title: 'Компактный',
+            description:
+              'Самая короткая полезная версия с главными выводами и важными оговорками.',
+          },
+          balanced: {
+            title: 'Сбалансированный',
+            description:
+              'Полный конспект на каждый день с аргументами, примерами и контекстом. Режим по умолчанию.',
+          },
+          deep: {
+            title: 'Глубокий',
+            description:
+              'Готовое к изучению объяснение с полной структурой, примерами, исключениями и практическими выводами.',
+          },
+        },
         done: 'Готово',
         noArtifacts: 'Материалы не выбраны',
         chooseArtifact: 'Выберите хотя бы один материал.',
@@ -676,7 +721,7 @@ export const appMessages = defineMessages({
       transcriptLanguage: 'Язык транскрипта',
       outputLanguage: 'Язык результатов',
       selectedArtifacts: 'Выбранные материалы',
-      summaryPreset: 'Стиль конспекта',
+      summaryPreset: 'Режим конспекта',
       flashcardPreset: 'Набор карточек',
       cards: {
         one: '{count} карточка',
@@ -738,10 +783,25 @@ export const appMessages = defineMessages({
         description: 'Elige los materiales de aprendizaje para este análisis.',
         outputLanguage: 'Idioma de salida',
         artifacts: 'Materiales',
-        summaryPreset: 'Estilo del resumen',
+        summaryPreset: 'Modo del resumen',
         flashcardCount: 'Número de tarjetas',
-        balanced: 'Equilibrado',
-        detailed: 'Detallado',
+        summaryModes: {
+          compact: {
+            title: 'Compacto',
+            description:
+              'La versión útil más breve, con las conclusiones y salvedades importantes.',
+          },
+          balanced: {
+            title: 'Equilibrado',
+            description:
+              'Un resumen completo para el día a día, con argumentos, ejemplos y contexto. Es el predeterminado.',
+          },
+          deep: {
+            title: 'Profundo',
+            description:
+              'Una explicación lista para estudiar, con estructura, ejemplos, excepciones y conclusiones prácticas.',
+          },
+        },
         done: 'Listo',
         noArtifacts: 'No hay materiales seleccionados',
         chooseArtifact: 'Elige al menos un material.',
@@ -915,7 +975,7 @@ export const appMessages = defineMessages({
       transcriptLanguage: 'Idioma de la transcripción',
       outputLanguage: 'Idioma de salida',
       selectedArtifacts: 'Materiales seleccionados',
-      summaryPreset: 'Estilo del resumen',
+      summaryPreset: 'Modo del resumen',
       flashcardPreset: 'Ajuste de tarjetas',
       cards: {
         one: '{count} tarjeta',
@@ -976,10 +1036,25 @@ export const appMessages = defineMessages({
         description: 'Wähle die Wissensmaterialien für diese Analyse.',
         outputLanguage: 'Ausgabesprache',
         artifacts: 'Materialien',
-        summaryPreset: 'Zusammenfassungsstil',
+        summaryPreset: 'Zusammenfassungsmodus',
         flashcardCount: 'Anzahl der Lernkarten',
-        balanced: 'Ausgewogen',
-        detailed: 'Detailliert',
+        summaryModes: {
+          compact: {
+            title: 'Kompakt',
+            description:
+              'Die kürzeste nützliche Fassung mit den wichtigsten Schlüssen und Einschränkungen.',
+          },
+          balanced: {
+            title: 'Ausgewogen',
+            description:
+              'Eine vollständige Zusammenfassung für den Alltag mit Argumenten, Beispielen und Kontext. Der Standard.',
+          },
+          deep: {
+            title: 'Tiefgehend',
+            description:
+              'Eine lernfertige Erklärung mit vollständiger Struktur, Beispielen, Ausnahmen und praktischen Schlüssen.',
+          },
+        },
         done: 'Fertig',
         noArtifacts: 'Keine Materialien ausgewählt',
         chooseArtifact: 'Wähle mindestens ein Material aus.',
@@ -1154,7 +1229,7 @@ export const appMessages = defineMessages({
       transcriptLanguage: 'Transkriptsprache',
       outputLanguage: 'Ausgabesprache',
       selectedArtifacts: 'Ausgewählte Materialien',
-      summaryPreset: 'Zusammenfassungsstil',
+      summaryPreset: 'Zusammenfassungsmodus',
       flashcardPreset: 'Lernkartenvorgabe',
       cards: {
         one: '{count} Karte',

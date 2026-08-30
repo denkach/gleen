@@ -24,14 +24,20 @@ describe('onboardingMessages', () => {
       expect(messagePaths(onboardingMessages[locale]).sort()).toEqual(
         englishPaths,
       );
+      expect(
+        Object.keys(onboardingMessages[locale].presets.summaryModes).sort(),
+      ).toEqual(['balanced', 'compact', 'deep']);
     }
   });
 
   it('keeps representative Ukrainian onboarding copy available', () => {
     expect(onboardingMessages.uk.steps.interface.title).toBe('Мова інтерфейсу');
     expect(onboardingMessages.uk.steps.output.title).toBe('Мова результатів');
-    expect(onboardingMessages.uk.presets.summaryDetailed.title).toBe(
-      'Докладний конспект',
+    expect(onboardingMessages.uk.presets.summaryModes.compact.title).toBe(
+      'Компактний конспект',
+    );
+    expect(onboardingMessages.uk.presets.summaryModes.deep.title).toBe(
+      'Глибокий конспект',
     );
     expect(onboardingMessages.uk.actions.continue).toBe('Продовжити');
     expect(onboardingErrorMessage(onboardingMessages.uk, 'save_failed')).toBe(
@@ -61,8 +67,8 @@ describe('onboardingMessages', () => {
     expect(onboardingMessages.es.shell.visualDescription).toBe(
       'Configura el idioma y los resultados predeterminados para adaptar Gleen a tus necesidades.',
     );
-    expect(onboardingMessages.es.presets.summaryDetailed.description).toBe(
-      'Más contexto y notas de capítulos más completas',
+    expect(onboardingMessages.es.presets.summaryModes.deep.description).toBe(
+      'Una explicación completa para estudiar, con estructura y ejemplos relevantes',
     );
     expect(onboardingMessages.es.presets.flashcards18.description).toBe(
       'Una baraja de estudio bien estructurada',

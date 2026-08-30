@@ -76,7 +76,7 @@ const verifiedDuplicate: HistoryItem = {
   source: 'https://youtube.com/watch?v=video-1',
   language: 'English',
   outputLocale: 'en',
-  summaryPresetLabel: 'Detailed',
+  summaryPresetLabel: 'Deep',
   durationSeconds: 120,
   durationLabel: '2:00',
   analyzedAt: '2026-07-24T10:00:00.000Z',

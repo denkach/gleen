@@ -53,6 +53,7 @@ export default async function SettingsProfilePage() {
     <LanguagePreferences
       interfaceLocale={preferences.interfaceLocale}
       outputLocale={preferences.outputLocale}
+      summaryMode={preferences.summaryPreset}
       copy={copy}
       unavailable={unavailable}
     />

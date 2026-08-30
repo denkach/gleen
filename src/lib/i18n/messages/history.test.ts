@@ -24,6 +24,9 @@ describe('historyMessages', () => {
       expect(messagePaths(historyMessages[locale]).sort()).toEqual(
         englishPaths,
       );
+      expect(
+        Object.keys(historyMessages[locale].presentation.presets).sort(),
+      ).toEqual(['balanced', 'compact', 'deep']);
       expect(historyMessages[locale]).toMatchObject({
         presentation: {
           statuses: {
@@ -33,8 +36,9 @@ describe('historyMessages', () => {
             failed: expect.any(String),
           },
           presets: {
+            compact: expect.any(String),
             balanced: expect.any(String),
-            detailed: expect.any(String),
+            deep: expect.any(String),
           },
         },
         toolbar: {
@@ -93,9 +97,7 @@ describe('historyMessages', () => {
 
   it('keeps representative German History copy available', () => {
     expect(historyMessages.de.presentation.statuses.ready).toBe('Bereit');
-    expect(historyMessages.de.presentation.presets.detailed).toBe(
-      'Detailliert',
-    );
+    expect(historyMessages.de.presentation.presets.deep).toBe('Tiefgehend');
     expect(historyMessages.de.toolbar.sorts.recent).toBe('Zuletzt geöffnet');
     expect(historyMessages.de.filters.dates['30d']).toBe('Letzte 30 Tage');
     expect(historyMessages.de.actions.rename.save).toBe('Titel speichern');
@@ -141,19 +143,17 @@ describe('historyMessages', () => {
   );
 
   it('uses native quota and retry language without moving interpolated data', () => {
-    expect(historyMessages.uk.actions.duplicate.reassurance('Докладний')).toBe(
-      'Відкрийте збережену версію: Докладний. Відкриття збереженого результату не зараховується до вашого ліміту як новий аналіз.',
+    expect(historyMessages.uk.actions.duplicate.reassurance('Глибокий')).toBe(
+      'Відкрийте збережену версію: Глибокий. Відкриття збереженого результату не зараховується до вашого ліміту як новий аналіз.',
     );
-    expect(historyMessages.es.actions.duplicate.reassurance('Detallado')).toBe(
-      'Abre la versión guardada: Detallado. No se consumirá otro análisis.',
+    expect(historyMessages.es.actions.duplicate.reassurance('Profundo')).toBe(
+      'Abre la versión guardada: Profundo. No se consumirá otro análisis.',
     );
     expect(historyMessages.es.loadMore.retry).toBe(
       'Volver a intentar cargar más',
     );
-    expect(
-      historyMessages.de.actions.duplicate.reassurance('Detailliert'),
-    ).toBe(
-      'Öffne die gespeicherte Version: Detailliert. Es wird keine weitere Analyse verbraucht.',
+    expect(historyMessages.de.actions.duplicate.reassurance('Tiefgehend')).toBe(
+      'Öffne die gespeicherte Version: Tiefgehend. Es wird keine weitere Analyse verbraucht.',
     );
   });
 });

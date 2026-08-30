@@ -120,7 +120,7 @@ describe('history presentation', () => {
       title: 'Systems thinking',
       channel: 'Knowledge Channel',
       language: 'en',
-      summaryPresetLabel: 'Detailliert',
+      summaryPresetLabel: 'Tiefgehend',
       analyzedAtLabel: '24.07.2026, 14:35',
       status: { key: 'ready', label: 'Bereit' },
     });
@@ -160,8 +160,9 @@ describe('history presentation', () => {
   });
 
   test.each([
+    ['compact', 'Compact'],
     ['balanced', 'Balanced'],
-    ['deep', 'Detailed'],
+    ['deep', 'Deep'],
   ] as const)(
     'maps the persisted %s summary preset to safe copy',
     (preset, label) => {

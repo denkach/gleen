@@ -23,6 +23,11 @@ describe('appMessages', () => {
     );
     for (const locale of supportedLocales) {
       expect(messagePaths(appMessages[locale]).sort()).toEqual(englishPaths);
+      expect(
+        Object.keys(
+          appMessages[locale].newAnalysis.advanced.summaryModes,
+        ).sort(),
+      ).toEqual(['balanced', 'compact', 'deep']);
     }
   });
 
@@ -33,6 +38,9 @@ describe('appMessages', () => {
     );
     expect(appMessages.uk.newAnalysis.advanced.title).toBe(
       'Розширені налаштування',
+    );
+    expect(appMessages.uk.newAnalysis.advanced.summaryModes.deep.title).toBe(
+      'Глибокий',
     );
     expect(appMessages.uk.processing.stages.transcript).toBe(
       'Пошук транскрипту',

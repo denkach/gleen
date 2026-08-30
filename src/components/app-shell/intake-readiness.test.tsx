@@ -62,7 +62,7 @@ describe('IntakeReadiness', () => {
     expect(screen.getByText('12:34')).toBeInTheDocument();
     expect(screen.getByText('English')).toBeInTheDocument();
     expect(screen.getByText('Español')).toBeInTheDocument();
-    expect(screen.getByText('Докладний')).toBeInTheDocument();
+    expect(screen.getByText('Глибокий')).toBeInTheDocument();
     expect(screen.getByText('18 карток')).toBeInTheDocument();
     expect(screen.getByText('Готово до обробки')).toBeInTheDocument();
     expect(
@@ -80,5 +80,22 @@ describe('IntakeReadiness', () => {
       screen.queryByText('Private transcript content'),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/generated summary/i)).not.toBeInTheDocument();
+  });
+
+  test.each([
+    ['compact', 'Compact'],
+    ['balanced', 'Balanced'],
+    ['deep', 'Deep'],
+  ] as const)('presents the canonical %s summary mode', (mode, label) => {
+    render(
+      <IntakeReadiness
+        intake={{
+          ...readyIntake,
+          configuration: { ...readyIntake.configuration, summaryPreset: mode },
+        }}
+      />,
+    );
+
+    expect(screen.getByText(label)).toBeInTheDocument();
   });
 });
