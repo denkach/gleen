@@ -112,11 +112,11 @@ export function OnboardingFlow({ initialState, copy }: OnboardingFlowProps) {
             />
             <SelectionCard
               name="summaryPreset"
-              value="detailed"
-              selected={summaryPreset === 'detailed'}
+              value="deep"
+              selected={summaryPreset === 'deep'}
               title={copy.presets.summaryDetailed.title}
               description={copy.presets.summaryDetailed.description}
-              onSelect={() => setSummaryPreset('detailed')}
+              onSelect={() => setSummaryPreset('deep')}
             />
             <SelectionCard
               name="flashcardPreset"

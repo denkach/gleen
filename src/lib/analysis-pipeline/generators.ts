@@ -1,4 +1,5 @@
 import type { TranscriptSegment } from '@/lib/youtube-intake/providers';
+import type { SummaryMode } from '@/lib/summary-mode';
 
 import {
   flashcardsArtifactSchema,
@@ -13,7 +14,7 @@ import type { StructuredGenerationProvider } from './provider';
 export type GeneratorContext = Readonly<{
   outputLocale: 'uk' | 'ru' | 'en' | 'es' | 'de';
   transcriptLanguage: string;
-  summaryPreset: 'balanced' | 'detailed' | null;
+  summaryPreset: SummaryMode | null;
   flashcardPreset: 18 | 30 | null;
   durationSeconds: number;
   transcriptSegments: readonly TranscriptSegment[];

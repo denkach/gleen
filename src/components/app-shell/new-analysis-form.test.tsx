@@ -209,14 +209,11 @@ describe('NewAnalysisForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Advanced options' }));
     await user.click(screen.getByRole('radio', { name: 'Deutsch' }));
-    await user.selectOptions(
-      screen.getByLabelText('Summary preset'),
-      'detailed',
-    );
+    await user.selectOptions(screen.getByLabelText('Summary preset'), 'deep');
     await user.click(screen.getByRole('button', { name: 'Done' }));
     await user.click(screen.getByRole('button', { name: 'Advanced options' }));
     expect(screen.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
-    expect(screen.getByLabelText('Summary preset')).toHaveValue('detailed');
+    expect(screen.getByLabelText('Summary preset')).toHaveValue('deep');
     await user.click(screen.getByRole('button', { name: 'Done' }));
     await user.type(
       screen.getByLabelText('YouTube URL'),
@@ -230,7 +227,7 @@ describe('NewAnalysisForm', () => {
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
     const formData = action.mock.calls[0]?.[1] as FormData;
     expect(formData.getAll('outputLocale')).toEqual(['de']);
-    expect(formData.getAll('summaryPreset')).toEqual(['detailed']);
+    expect(formData.getAll('summaryPreset')).toEqual(['deep']);
   });
 
   test('enables the approved intake and starts with domain artifact defaults', async () => {
@@ -598,7 +595,7 @@ describe('NewAnalysisForm', () => {
       existingId: 'saved-123',
       duplicateConfiguration: {
         outputLocale: 'de',
-        summaryPreset: 'detailed',
+        summaryPreset: 'deep',
         flashcardPreset: null,
         artifacts: ['summary', 'transcript'],
         analysisContractVersion: 1,

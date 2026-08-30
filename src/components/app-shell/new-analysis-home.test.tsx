@@ -18,7 +18,7 @@ describe('NewAnalysisHome', () => {
         copy={appMessages.uk}
         profileDefaults={{
           outputLocale: 'de',
-          summaryPreset: 'detailed',
+          summaryPreset: 'deep',
           flashcardPreset: 30,
         }}
       />,

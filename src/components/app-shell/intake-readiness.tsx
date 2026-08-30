@@ -75,7 +75,7 @@ export function IntakeReadiness({
               <div>
                 <dt>{copy.readiness.summaryPreset}</dt>
                 <dd>
-                  {configuration.summaryPreset === 'detailed'
+                  {configuration.summaryPreset === 'deep'
                     ? copy.newAnalysis.advanced.detailed
                     : copy.newAnalysis.advanced.balanced}
                 </dd>

@@ -11,7 +11,7 @@ import {
 const context: GeneratorContext = {
   outputLocale: 'uk',
   transcriptLanguage: 'en',
-  summaryPreset: 'detailed',
+  summaryPreset: 'deep',
   flashcardPreset: 18,
   durationSeconds: 120,
   transcriptSegments: [
@@ -48,7 +48,7 @@ describe('artifact generators', () => {
       },
     });
     expect(provider.requests[0]?.input).toContain('Output locale: uk');
-    expect(provider.requests[0]?.input).toContain('Preset: detailed');
+    expect(provider.requests[0]?.input).toContain('Preset: deep');
     expect(provider.requests[0]?.input).toContain('[0ms] First idea');
     expect(provider.requests[0]?.system).toContain('sourceOffsetMs');
     expect(provider.requests[0]?.system).toContain('supportingQuote');

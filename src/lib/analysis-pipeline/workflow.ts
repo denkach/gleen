@@ -1,4 +1,5 @@
 import type { TranscriptSegment } from '@/lib/youtube-intake/providers';
+import { normalizeStoredSummaryMode } from '@/lib/summary-mode';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 import {
@@ -190,7 +191,7 @@ export async function executeAnalysisPipeline({
   }
 }
 
-async function loadGeneratorContext(
+export async function loadGeneratorContext(
   client: ReturnType<typeof createAdminSupabaseClient>,
   analysisId: string,
 ): Promise<GeneratorContext> {
@@ -205,7 +206,10 @@ async function loadGeneratorContext(
   return {
     outputLocale: data.output_locale as GeneratorContext['outputLocale'],
     transcriptLanguage: data.transcript_language as string,
-    summaryPreset: data.summary_preset as GeneratorContext['summaryPreset'],
+    summaryPreset:
+      data.summary_preset === null
+        ? null
+        : normalizeStoredSummaryMode(data.summary_preset),
     flashcardPreset:
       data.flashcard_preset as GeneratorContext['flashcardPreset'],
     durationSeconds: data.duration_seconds as number,

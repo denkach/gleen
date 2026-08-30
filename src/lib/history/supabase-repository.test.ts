@@ -530,7 +530,7 @@ describe('Supabase History repository', () => {
       ),
     ).resolves.toMatchObject({
       id: 'analysis-1',
-      summaryPresetLabel: 'Balanced',
+      summaryPresetLabel: 'Detailed',
     });
 
     expect(recorded).toContainEqual(['from', 'analysis_history']);
@@ -559,7 +559,7 @@ describe('Supabase History repository', () => {
       title: 'Systems thinking',
       channel: 'Knowledge Channel',
       language: 'en',
-      summaryPresetLabel: 'Ausgewogen',
+      summaryPresetLabel: 'Detailliert',
       analyzedAtLabel: '24.07.2026, 14:35',
       status: { key: 'ready', label: 'Bereit' },
     });

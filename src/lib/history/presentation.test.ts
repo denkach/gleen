@@ -111,7 +111,7 @@ describe('history presentation', () => {
         title: 'Systems thinking',
         channelTitle: 'Knowledge Channel',
         transcriptLanguage: 'en',
-        summaryPreset: 'detailed',
+        summaryPreset: 'deep',
       }),
       { locale: 'de', copy: historyMessages.de, timeZone: 'UTC' },
     );
@@ -161,7 +161,7 @@ describe('history presentation', () => {
 
   test.each([
     ['balanced', 'Balanced'],
-    ['detailed', 'Detailed'],
+    ['deep', 'Detailed'],
   ] as const)(
     'maps the persisted %s summary preset to safe copy',
     (preset, label) => {

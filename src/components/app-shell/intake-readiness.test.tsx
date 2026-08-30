@@ -33,7 +33,7 @@ const readyIntake: AnalysisIntake = {
   ],
   configuration: {
     outputLocale: 'es',
-    summaryPreset: 'detailed',
+    summaryPreset: 'deep',
     flashcardPreset: 18,
     artifacts: ['flashcards', 'summary', 'timestamps'],
     analysisContractVersion: 1,

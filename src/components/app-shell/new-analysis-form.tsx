@@ -329,7 +329,7 @@ export function NewAnalysisForm({
                   <option value="balanced">
                     {copy.newAnalysis.advanced.balanced}
                   </option>
-                  <option value="detailed">
+                  <option value="deep">
                     {copy.newAnalysis.advanced.detailed}
                   </option>
                 </select>
@@ -415,7 +415,7 @@ export function NewAnalysisForm({
                 <div>
                   <dt>{copy.newAnalysis.artifacts.summary}</dt>
                   <dd>
-                    {state.duplicateConfiguration.summaryPreset === 'detailed'
+                    {state.duplicateConfiguration.summaryPreset === 'deep'
                       ? copy.newAnalysis.advanced.detailed
                       : copy.newAnalysis.advanced.balanced}
                   </dd>

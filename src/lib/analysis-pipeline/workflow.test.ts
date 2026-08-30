@@ -4,7 +4,7 @@ import type { AnalysisSnapshot, ArtifactKind } from './domain';
 import { createDeterministicProvider } from './deterministic-provider';
 import type { AnalysisRepository } from './repository';
 import type { UsageLedger } from './usage-ledger';
-import { executeAnalysisPipeline } from './workflow';
+import { executeAnalysisPipeline, loadGeneratorContext } from './workflow';
 
 function harness(
   options: {
@@ -121,6 +121,34 @@ const context = {
 };
 
 describe('analysis workflow orchestration', () => {
+  it('normalizes a stored legacy detailed preset before generator execution', async () => {
+    const client = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: async () => ({
+              data: {
+                output_locale: 'en',
+                summary_preset: 'detailed',
+                flashcard_preset: 18,
+                duration_seconds: 60,
+                transcript_language: 'en',
+                transcript_segments: [
+                  { text: 'Transcript', offsetMs: 0, durationMs: 1_000 },
+                ],
+              },
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    };
+
+    await expect(
+      loadGeneratorContext(client as never, 'analysis-id'),
+    ).resolves.toMatchObject({ summaryPreset: 'deep' });
+  });
+
   it('persists a non-destructively enriched transcript v2 artifact', async () => {
     const { repository, provider, ledger } = harness();
 

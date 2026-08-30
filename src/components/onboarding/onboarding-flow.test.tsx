@@ -132,6 +132,21 @@ describe('three-step onboarding', () => {
     ).toBeVisible();
   });
 
+  it('submits the existing Detailed choice with the canonical deep value', () => {
+    const { container } = render(
+      <OnboardingFlow
+        initialState={{ ...defaultOnboardingState, onboardingStep: 3 }}
+        copy={onboardingMessages.en}
+      />,
+    );
+
+    expect(
+      container.querySelector<HTMLInputElement>(
+        'input[name="summaryPreset"][value="deep"]',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('keeps output locale unchanged when the interface locale changes', async () => {
     const user = userEvent.setup();
     const { container } = render(
