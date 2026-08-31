@@ -29,6 +29,7 @@ export type AnalyzeProcessingVisualProps = Readonly<{
   state: AnalysisVisualState;
   isExiting?: boolean;
   submittedUrl: string;
+  statusTitle?: string;
   errorMessage?: string;
   onRetry?: () => void;
   retryDisabled?: boolean;
@@ -43,6 +44,7 @@ export function AnalyzeProcessingVisual({
   state,
   isExiting = false,
   submittedUrl,
+  statusTitle,
   errorMessage,
   onRetry,
   retryDisabled = false,
@@ -116,7 +118,7 @@ export function AnalyzeProcessingVisual({
               {isError ? copy.kickerInterrupted : copy.kickerProgress}
             </div>
             <h2 ref={titleRef} tabIndex={-1} className="analyze-status-title">
-              {presentationCopy.title}
+              {statusTitle ?? presentationCopy.title}
             </h2>
             <div
               ref={terminalRef}

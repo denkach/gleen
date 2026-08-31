@@ -31,18 +31,20 @@ const rawUsageSchema = z
         cache_write_tokens: rawTokenCountSchema.optional(),
         audio_tokens: rawTokenCountSchema.optional(),
       })
-      .strict()
+      .strip()
       .optional(),
     completion_tokens_details: z
       .object({ reasoning_tokens: rawTokenCountSchema.optional() })
-      .strict()
+      .strip()
       .optional(),
     cost_details: z
-      .object({ upstream_inference_cost: rawCostSchema.optional() })
-      .strict()
+      .object({
+        upstream_inference_cost: rawCostSchema.nullable().optional(),
+      })
+      .strip()
       .optional(),
   })
-  .strict()
+  .strip()
   .transform((usage) =>
     safeProviderUsageSchema.parse({
       ...(usage.prompt_tokens === undefined
@@ -74,7 +76,7 @@ const rawUsageSchema = z
         : {
             reasoningTokens: usage.completion_tokens_details.reasoning_tokens,
           }),
-      ...(usage.cost_details?.upstream_inference_cost === undefined
+      ...(typeof usage.cost_details?.upstream_inference_cost !== 'number'
         ? {}
         : {
             upstreamInferenceCost: usage.cost_details.upstream_inference_cost,

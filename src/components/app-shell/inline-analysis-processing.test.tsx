@@ -144,6 +144,29 @@ describe('InlineAnalysisProcessing', () => {
     ).toBeInTheDocument();
   });
 
+  test('describes a partial generation failure without blaming video access', () => {
+    render(
+      <InlineAnalysisProcessing
+        analysisId={analysisId}
+        copy={appMessages.ru}
+        initialSnapshot={partialSnapshot()}
+        refreshAction={vi.fn(
+          () => new Promise<AnalysisSnapshot | null>(() => undefined),
+        )}
+        retryAction={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Создание материалов прервано.',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.queryByText('Не удалось получить доступ к видео.'),
+    ).toBeNull();
+  });
+
   test('refreshes immediately, renders one spectrum, and keeps polling every two seconds', async () => {
     vi.useFakeTimers();
     const refreshAction = vi.fn(async () => snapshot('running', 2));

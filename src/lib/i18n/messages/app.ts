@@ -209,6 +209,7 @@ export const appMessages = defineMessages({
       retryFailed: 'Retry failed artifact',
       analysisLabel: 'ANALYSIS',
       errors: {
+        generationInterruptedTitle: 'Material generation was interrupted.',
         retryStart: 'Retry could not be started. Please try again.',
         refreshUnavailable:
           'Status refresh is temporarily unavailable. Retrying…',
@@ -452,6 +453,7 @@ export const appMessages = defineMessages({
       retryFailed: 'Повторити невдалий матеріал',
       analysisLabel: 'АНАЛІЗ',
       errors: {
+        generationInterruptedTitle: 'Створення матеріалів перервано.',
         retryStart: 'Не вдалося розпочати повторну спробу. Спробуйте ще раз.',
         refreshUnavailable: 'Оновлення стану тимчасово недоступне. Повторюємо…',
         stopped: 'Аналіз безпечно зупинено. Готові матеріали збережено.',
@@ -695,6 +697,7 @@ export const appMessages = defineMessages({
       retryFailed: 'Повторить неудачный материал',
       analysisLabel: 'АНАЛИЗ',
       errors: {
+        generationInterruptedTitle: 'Создание материалов прервано.',
         retryStart: 'Не удалось начать повторную попытку. Попробуйте ещё раз.',
         refreshUnavailable:
           'Обновление состояния временно недоступно. Повторяем…',
@@ -948,6 +951,7 @@ export const appMessages = defineMessages({
       retryFailed: 'Reintentar material fallido',
       analysisLabel: 'ANÁLISIS',
       errors: {
+        generationInterruptedTitle: 'Se interrumpió la creación de materiales.',
         retryStart: 'No se pudo iniciar el reintento. Inténtalo de nuevo.',
         refreshUnavailable:
           'La actualización del estado no está disponible temporalmente. Reintentando…',
@@ -1201,6 +1205,8 @@ export const appMessages = defineMessages({
       retryFailed: 'Fehlgeschlagenes Material erneut versuchen',
       analysisLabel: 'ANALYSE',
       errors: {
+        generationInterruptedTitle:
+          'Die Erstellung der Materialien wurde unterbrochen.',
         retryStart:
           'Der neue Versuch konnte nicht gestartet werden. Bitte versuche es erneut.',
         refreshUnavailable:
