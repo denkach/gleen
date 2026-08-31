@@ -30,7 +30,7 @@ on public.analysis_intakes (
       when 'summary' = any (selected_artifacts) then
         case
           when summary_preset in ('deep', 'detailed') then 'deep'
-          else pg_catalog.coalesce(summary_preset, 'none')
+          else coalesce(summary_preset, 'none')
         end
       else 'none'
     end
@@ -38,7 +38,7 @@ on public.analysis_intakes (
   (
     case
       when 'flashcards' = any (selected_artifacts) then
-        pg_catalog.coalesce(flashcard_preset, 0)
+        coalesce(flashcard_preset, 0)
       else 0
     end
   ),
