@@ -91,6 +91,50 @@ function harness(
           },
         ],
       },
+      gleen_summary_idea_map_v1: {
+        ideas: [
+          {
+            id: 'idea-transcript',
+            importance: 'high',
+            topic: 'Transcript topic',
+            claim: 'Transcript contains the central claim.',
+            evidence: ['Transcript'],
+            caveats: [],
+            relationships: [],
+            sourceOffsetsMs: [0],
+          },
+        ],
+      },
+      gleen_summary_compose_v3: {
+        schemaVersion: 3,
+        title: 'Title',
+        outcome: 'Outcome',
+        sections: [
+          {
+            title: 'Point',
+            summary: 'A concise thesis.',
+            details: 'Details explain the central claim with grounded context.',
+            supportingQuote: 'Transcript',
+            sourceOffsetMs: 0,
+            coveredIdeaIds: ['idea-transcript'],
+          },
+        ],
+      },
+      gleen_summary_repair_v3: {
+        schemaVersion: 3,
+        title: 'Title',
+        outcome: 'Outcome',
+        sections: [
+          {
+            title: 'Point',
+            summary: 'A concise thesis.',
+            details: 'Details explain the central claim with grounded context.',
+            supportingQuote: 'Transcript',
+            sourceOffsetMs: 0,
+            coveredIdeaIds: ['idea-transcript'],
+          },
+        ],
+      },
       gleen_flashcards_v1: {
         schemaVersion: 1,
         cards: [{ front: 'Q', back: 'A' }],
@@ -276,9 +320,80 @@ describe('analysis workflow orchestration', () => {
       context,
     });
 
-    expect(repository.recordEvent).toHaveBeenCalledTimes(5);
+    expect(repository.recordEvent).toHaveBeenCalledTimes(6);
     expect(snapshot().job.status).toBe('complete');
     expect(ledger.settle).toHaveBeenCalledWith('job-id');
+  });
+
+  it('records safe two-pass metadata once before persisting the Summary', async () => {
+    const { repository, provider, ledger } = harness();
+
+    await executeAnalysisPipeline({
+      jobId: 'job-id',
+      repository,
+      provider,
+      ledger,
+      context: { ...context, durationSeconds: 1_200 },
+    });
+
+    const summaryEvents = vi
+      .mocked(repository.recordEvent)
+      .mock.calls.map(([event]) => event)
+      .filter(
+        ({ idempotencyKey }) =>
+          idempotencyKey === 'attempt-1:summary:generation',
+      );
+    expect(summaryEvents).toEqual([
+      {
+        jobId: 'job-id',
+        userId: 'user-id',
+        idempotencyKey: 'attempt-1:summary:generation',
+        stage: 'artifacts',
+        status: 'completed',
+        errorCode: null,
+        metadata: {
+          route: 'two-pass',
+          repairCount: 0,
+          passes: [
+            {
+              name: 'gleen_summary_idea_map_v1',
+              requestId: 'deterministic:gleen_summary_idea_map_v1',
+              model: 'deterministic',
+              usage: null,
+              latencyMs: expect.any(Number),
+            },
+            {
+              name: 'gleen_summary_compose_v3',
+              requestId: 'deterministic:gleen_summary_compose_v3',
+              model: 'deterministic',
+              usage: null,
+              latencyMs: expect.any(Number),
+            },
+          ],
+        },
+      },
+    ]);
+    expect(JSON.stringify(summaryEvents)).not.toMatch(
+      /Transcript|central claim|Details explain|idea-transcript/,
+    );
+
+    const eventCall = vi
+      .mocked(repository.recordEvent)
+      .mock.invocationCallOrder.find((_, index) =>
+        vi
+          .mocked(repository.recordEvent)
+          .mock.calls[index]?.[0].idempotencyKey.endsWith(
+            ':summary:generation',
+          ),
+      );
+    const summarySaveCall = vi
+      .mocked(repository.saveArtifactReady)
+      .mock.invocationCallOrder.find(
+        (_, index) =>
+          vi.mocked(repository.saveArtifactReady).mock.calls[index]?.[0]
+            .kind === 'summary',
+      );
+    expect(eventCall).toBeLessThan(summarySaveCall!);
   });
 
   it('keeps ready artifacts, marks partial, and settles its reservation', async () => {

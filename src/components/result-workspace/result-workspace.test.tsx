@@ -1786,6 +1786,11 @@ describe('ResultWorkspace', () => {
 
   it('shows each Summary chapter as its title and complete main text only', async () => {
     const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
     renderWorkspace({
       ...model,
       tabs: {
@@ -1834,6 +1839,13 @@ describe('ResultWorkspace', () => {
     ).toBeVisible();
     expect(within(content!).queryByRole('blockquote')).toBeNull();
     expect(screen.queryByText('Short thesis.')).toBeNull();
+
+    await user.click(
+      within(content!).getByRole('button', { name: 'Copy Chapter title' }),
+    );
+    expect(writeText).toHaveBeenCalledExactlyOnceWith(
+      'Complete main information with every important argument and example.',
+    );
   });
 
   it('matches the Summary hero, metrics, disclosure, copy, and grounded source interactions', async () => {
@@ -2817,7 +2829,7 @@ describe('ResultWorkspace', () => {
     expect(screen.getByText('Saved')).toBeVisible();
   });
 
-  it('autosaves normalized summary v3 without downgrade or section data loss', async () => {
+  it('autosaves and reloads normalized summary v3 with synchronized visible text', async () => {
     const user = userEvent.setup();
     const saveArtifact = vi.fn().mockResolvedValue({
       status: 'saved',
@@ -2850,7 +2862,7 @@ describe('ResultWorkspace', () => {
         },
       },
     };
-    renderWorkspaceWithActions({ saveArtifact, value });
+    const view = renderWorkspaceWithActions({ saveArtifact, value });
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
     enterSummaryEditing();
 
@@ -2864,7 +2876,8 @@ describe('ResultWorkspace', () => {
     await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
 
     const payload = saveArtifact.mock.calls.at(-1)?.[0];
-    expect(resultArtifactEditSchema.parse(payload)).toEqual({
+    const parsedPayload = resultArtifactEditSchema.parse(payload);
+    expect(parsedPayload).toEqual({
       analysisId: model.source.intakeId,
       expectedUpdatedAt: model.revisions.summary,
       kind: 'summary',
@@ -2883,6 +2896,47 @@ describe('ResultWorkspace', () => {
         ],
       },
     });
+
+    if (parsedPayload.kind !== 'summary')
+      throw new Error('Expected a Summary edit payload');
+    const savedContent = parsedPayload.content;
+    if (savedContent.schemaVersion !== 3)
+      throw new Error('Expected a Summary v3 edit payload');
+    const reloadedSummary = {
+      ...savedContent,
+      overview: savedContent.outcome,
+      keyPoints: savedContent.sections.map((section) => ({
+        text: section.summary,
+        sourceOffsetMs: section.sourceOffsetMs,
+      })),
+    };
+    view.unmount();
+    renderWorkspaceWithActions({
+      saveArtifact,
+      value: {
+        ...value,
+        revisions: {
+          ...value.revisions,
+          summary: '2026-07-18T00:02:00.000Z',
+        },
+        tabs: {
+          ...value.tabs,
+          summary: { status: 'ready', data: reloadedSummary },
+        },
+      },
+    });
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+
+    expect(
+      screen.getByRole('button', { name: 'Stable section title' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByText('Edited section summary', { selector: 'p' }),
+    ).toBeVisible();
+    enterSummaryEditing();
+    expect(
+      screen.getByRole('textbox', { name: 'Summary point 1' }),
+    ).toHaveValue('Edited section summary');
   });
 
   it('keeps Summary autosave feedback visible while editing a non-first open section', async () => {

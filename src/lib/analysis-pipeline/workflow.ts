@@ -8,6 +8,7 @@ import {
   generateTimestamps,
   type GeneratorContext,
 } from './generators';
+import type { AnalysisSnapshot } from './domain';
 import { ProviderError, type StructuredGenerationProvider } from './provider';
 import type { AnalysisRepository } from './repository';
 import { transcriptArtifactV2Schema } from './artifact-schemas';
@@ -34,6 +35,10 @@ const stages = [
   'artifacts',
 ] as const;
 
+type SummaryGenerationMetadata = Awaited<
+  ReturnType<typeof generateSummary>
+>['metadata'];
+
 async function recordStage(
   repository: AnalysisRepository,
   jobId: string,
@@ -58,6 +63,34 @@ async function recordStage(
   });
 }
 
+async function recordSummaryGeneration(
+  repository: AnalysisRepository,
+  snapshot: AnalysisSnapshot,
+  metadata: SummaryGenerationMetadata,
+) {
+  await repository.recordEvent({
+    jobId: snapshot.job.id,
+    userId: snapshot.job.userId,
+    idempotencyKey: `attempt-${snapshot.job.attempt}:summary:generation`,
+    stage: 'artifacts',
+    status: 'completed',
+    errorCode: null,
+    metadata: {
+      route: metadata.route,
+      repairCount: metadata.repairCount,
+      passes: metadata.passes.map(
+        ({ name, requestId, model, usage, latencyMs }) => ({
+          name,
+          requestId,
+          model,
+          usage,
+          latencyMs,
+        }),
+      ),
+    },
+  });
+}
+
 export async function executeAnalysisPipeline({
   jobId,
   repository,
@@ -78,7 +111,6 @@ export async function executeAnalysisPipeline({
   }
 
   const generators = {
-    summary: generateSummary,
     flashcards: generateFlashcards,
     timestamps: generateTimestamps,
   } as const;
@@ -125,10 +157,19 @@ export async function executeAnalysisPipeline({
 
   for (const artifact of snapshot.artifacts) {
     if (artifact.status === 'ready' || artifact.kind === 'transcript') continue;
-    const generate = generators[artifact.kind];
-    if (!generate) continue;
     try {
-      const result = await generate(provider, context);
+      let result;
+      if (artifact.kind === 'summary') {
+        const summaryResult = await generateSummary(provider, context);
+        await recordSummaryGeneration(
+          repository,
+          snapshot,
+          summaryResult.metadata,
+        );
+        result = summaryResult;
+      } else {
+        result = await generators[artifact.kind](provider, context);
+      }
       await repository.saveArtifactReady({
         jobId,
         analysisId: snapshot.job.analysisId,

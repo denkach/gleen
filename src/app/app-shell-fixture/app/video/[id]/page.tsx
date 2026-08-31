@@ -105,6 +105,20 @@ const den25Summary = {
   ],
 };
 
+const den25LongSummary = {
+  schemaVersion: 3 as const,
+  title: 'Lead with purpose through every chapter',
+  outcome:
+    'Clear purpose remains useful when every important claim is preserved as a complete, reusable explanation.',
+  sections: den25Chapters.map(([title, description], index) => ({
+    title,
+    summary: `Chapter ${index + 1} thesis.`,
+    details: `${description} This complete chapter preserves its supporting explanation, practical implications, and important caveats.`,
+    supportingQuote: null,
+    sourceOffsetMs: null,
+  })),
+};
+
 const den25SourceTranscriptSegments = [
   {
     text: 'Purpose gives the rest of the talk a clear frame.',
@@ -281,7 +295,10 @@ function pipelineSnapshot(
   };
 }
 
-function den25ResultSnapshot(analysisId: string): AnalysisSnapshot {
+function den25ResultSnapshot(
+  analysisId: string,
+  longSummary = false,
+): AnalysisSnapshot {
   const partial = analysisId === 'result-den-25-partial';
   const ready = (
     kind: 'summary' | 'flashcards' | 'timestamps' | 'transcript',
@@ -328,7 +345,7 @@ function den25ResultSnapshot(analysisId: string): AnalysisSnapshot {
     },
     events: [],
     artifacts: [
-      ready('summary', den25Summary),
+      ready('summary', longSummary ? den25LongSummary : den25Summary),
       ...(partial
         ? [
             pending('flashcards'),
@@ -579,7 +596,7 @@ export default async function FixtureReadinessPage({
     : null;
   const result = resultIds.has(id)
     ? den25Fixture
-      ? den25ResultSnapshot(id)
+      ? den25ResultSnapshot(id, longVisualFixture)
       : resultSnapshot(id)
     : null;
   const retrySnapshot =

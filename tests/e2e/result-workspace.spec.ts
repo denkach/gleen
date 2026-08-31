@@ -597,6 +597,87 @@ test('renders durable legacy Summary without repeated body prose', async ({
   ).toBeVisible();
 });
 
+test('renders every long-form Summary chapter as one keyboard-accessible paragraph', async ({
+  page,
+}) => {
+  const scenarios = [
+    { name: 'desktop', width: 1440, height: 900, reducedMotion: false },
+    { name: 'mobile', width: 390, height: 844, reducedMotion: false },
+    {
+      name: 'reduced-motion mobile',
+      width: 390,
+      height: 844,
+      reducedMotion: true,
+    },
+  ] as const;
+
+  for (const scenario of scenarios) {
+    await page.goto('about:blank');
+    await page.setViewportSize({
+      width: scenario.width,
+      height: scenario.height,
+    });
+    await page.emulateMedia({
+      reducedMotion: scenario.reducedMotion ? 'reduce' : 'no-preference',
+    });
+    await gotoFixture(
+      page,
+      '/app-shell-fixture/app/video/result-den-25?visualCase=long#summary',
+    );
+
+    const panel = page.getByRole('tabpanel', { name: 'Summary' });
+    const disclosures = panel.locator('.result-summary-disclosure');
+    await expect(disclosures, `${scenario.name} chapter count`).toHaveCount(18);
+
+    for (const [index, key] of [
+      [0, null],
+      [9, 'Enter'],
+      [17, 'Space'],
+    ] as const) {
+      const disclosure = disclosures.nth(index);
+      if (key !== null) {
+        await disclosure.scrollIntoViewIfNeeded();
+        await disclosure.focus();
+        await expect(disclosure).toBeFocused();
+        await page.keyboard.press(key);
+      }
+      await expect(
+        disclosure,
+        `${scenario.name} chapter ${index + 1}`,
+      ).toHaveAttribute('aria-expanded', 'true');
+      const contentId = await disclosure.getAttribute('aria-controls');
+      expect(contentId).not.toBeNull();
+      const content = panel.locator(`[id="${contentId}"]`);
+      await expect(content.locator(':scope > p')).toHaveCount(1);
+      await expect(content.locator(':scope > blockquote')).toHaveCount(0);
+    }
+
+    const firstContentId = await disclosures
+      .first()
+      .getAttribute('aria-controls');
+    expect(firstContentId).not.toBeNull();
+    const firstContent = panel.locator(`[id="${firstContentId}"]`);
+    await firstContent
+      .getByRole('button', { name: 'Copy Begin with purpose' })
+      .click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as unknown as FixtureWindow).__fixtureClipboard,
+        ),
+      )
+      .toBe(
+        'Why purpose gives every later decision context. This complete chapter preserves its supporting explanation, practical implications, and important caveats.',
+      );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+      `${scenario.name} horizontal overflow`,
+    ).toBe(true);
+  }
+});
+
 test('@localization removes nonessential result motion for reduced-motion users', async ({
   page,
 }) => {
