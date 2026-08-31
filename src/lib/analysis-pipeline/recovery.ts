@@ -31,7 +31,7 @@ function isActiveStatus(status: AnalysisSnapshot['job']['status']): boolean {
 function isResumableRequestedStatus(
   status: AnalysisSnapshot['job']['status'],
 ): boolean {
-  return isActiveStatus(status) || status === 'failed';
+  return isActiveStatus(status) || status === 'partial' || status === 'failed';
 }
 
 export async function resolveOwnedActiveAnalysis(
