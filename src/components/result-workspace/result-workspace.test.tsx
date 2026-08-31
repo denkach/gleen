@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 
+import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import { resultArtifactEditSchema } from '@/lib/result-workspace/edit-schemas';
 import { resultMessages } from '@/lib/i18n/messages/results';
 import type {
@@ -17,7 +18,11 @@ import type {
   ResultSaveState,
   ResultShareState,
 } from '@/lib/result-workspace/actions';
-import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
+import {
+  normalizeResultWorkspace,
+  type ResultWorkspaceModel,
+} from '@/lib/result-workspace/presentation';
+import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
 
 import { PlayerProvider } from './player-context';
 import type { VideoPlayerController } from './player-controller';
@@ -2902,28 +2907,86 @@ describe('ResultWorkspace', () => {
     const savedContent = parsedPayload.content;
     if (savedContent.schemaVersion !== 3)
       throw new Error('Expected a Summary v3 edit payload');
-    const reloadedSummary = {
-      ...savedContent,
-      overview: savedContent.outcome,
-      keyPoints: savedContent.sections.map((section) => ({
-        text: section.summary,
-        sourceOffsetMs: section.sourceOffsetMs,
-      })),
+    const reloadedAt = '2026-07-18T00:02:00.000Z';
+    const reloadedIntake = {
+      ...fixtureSavedIntake,
+      id: value.source.intakeId,
+      youtubeVideoId: value.source.youtubeVideoId,
+      title: value.source.title,
+      channelTitle: value.source.channelTitle,
+      durationSeconds: value.source.durationSeconds,
+      thumbnailUrl: value.source.thumbnailUrl,
+      transcriptSegments: [
+        {
+          text: 'A prism separates light.',
+          offsetMs: 0,
+          durationMs: 3_000,
+        },
+      ],
+      configuration: {
+        ...fixtureSavedIntake.configuration,
+        artifacts: ['summary'] as const,
+      },
     };
+    const reloadedSnapshot: AnalysisSnapshot = {
+      job: {
+        id: 'job-summary-reload',
+        analysisId: reloadedIntake.id,
+        userId: reloadedIntake.userId,
+        workflowRunId: null,
+        status: 'complete',
+        stage: 'complete',
+        attempt: 1,
+        revision: 2,
+        errorCode: null,
+        startedAt: '2026-07-18T00:00:00.000Z',
+        completedAt: reloadedAt,
+        createdAt: '2026-07-18T00:00:00.000Z',
+        updatedAt: reloadedAt,
+      },
+      events: [],
+      artifacts: [
+        {
+          id: 'artifact-summary-reload',
+          analysisId: reloadedIntake.id,
+          userId: reloadedIntake.userId,
+          kind: 'summary',
+          status: 'ready',
+          schemaVersion: 3,
+          content: savedContent,
+          errorCode: null,
+          generatedAt: reloadedAt,
+          updatedAt: reloadedAt,
+        },
+      ],
+      usageReservation: {
+        id: 'reservation-summary-reload',
+        jobId: 'job-summary-reload',
+        userId: reloadedIntake.userId,
+        status: 'settled',
+        updatedAt: reloadedAt,
+      },
+    };
+    const reloadedModel = normalizeResultWorkspace(
+      reloadedIntake,
+      reloadedSnapshot,
+    );
+    expect(reloadedModel.tabs.summary).toMatchObject({
+      status: 'ready',
+      data: {
+        sections: [
+          {
+            summary: 'Edited section summary',
+            details: 'Edited section summary',
+          },
+        ],
+        keyPoints: [{ text: 'Edited section summary', sourceOffsetMs: 0 }],
+      },
+    });
     view.unmount();
     renderWorkspaceWithActions({
       saveArtifact,
-      value: {
-        ...value,
-        revisions: {
-          ...value.revisions,
-          summary: '2026-07-18T00:02:00.000Z',
-        },
-        tabs: {
-          ...value.tabs,
-          summary: { status: 'ready', data: reloadedSummary },
-        },
-      },
+      value: reloadedModel,
     });
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
 

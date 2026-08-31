@@ -629,18 +629,30 @@ test('renders every long-form Summary chapter as one keyboard-accessible paragra
     const disclosures = panel.locator('.result-summary-disclosure');
     await expect(disclosures, `${scenario.name} chapter count`).toHaveCount(18);
 
+    const firstDisclosure = disclosures.first();
+    await firstDisclosure.scrollIntoViewIfNeeded();
+    await firstDisclosure.focus();
+    await expect(firstDisclosure).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(
+      firstDisclosure,
+      `${scenario.name} first chapter closes with Enter`,
+    ).toHaveAttribute('aria-expanded', 'false');
+    await page.keyboard.press('Space');
+    await expect(
+      firstDisclosure,
+      `${scenario.name} first chapter reopens with Space`,
+    ).toHaveAttribute('aria-expanded', 'true');
+
     for (const [index, key] of [
-      [0, null],
       [9, 'Enter'],
       [17, 'Space'],
     ] as const) {
       const disclosure = disclosures.nth(index);
-      if (key !== null) {
-        await disclosure.scrollIntoViewIfNeeded();
-        await disclosure.focus();
-        await expect(disclosure).toBeFocused();
-        await page.keyboard.press(key);
-      }
+      await disclosure.scrollIntoViewIfNeeded();
+      await disclosure.focus();
+      await expect(disclosure).toBeFocused();
+      await page.keyboard.press(key);
       await expect(
         disclosure,
         `${scenario.name} chapter ${index + 1}`,
