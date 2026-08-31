@@ -5,9 +5,9 @@ import {
   generateFlashcards,
   generateSummary,
   generateTimestamps,
+  SummaryGenerationError,
   type GeneratorContext,
 } from './generators';
-import { ProviderError } from './provider';
 
 const context: GeneratorContext = {
   outputLocale: 'uk',
@@ -125,28 +125,28 @@ describe('artifact generators', () => {
           {
             title: 'Point',
             summary: 'A summary',
-            details: 'Details',
+            details: 'Details for ungrounded quote handling.',
             supportingQuote: 'This was never said',
             sourceOffsetMs: 120_001,
           },
           {
             title: 'Normalized grounding',
             summary: 'A summary',
-            details: 'Details',
+            details: 'Details for normalized quote handling.',
             supportingQuote: '  SECOND   IDEA ',
             sourceOffsetMs: null,
           },
           {
             title: 'Fabricated in-range offset',
             summary: 'A summary',
-            details: 'Details',
+            details: 'Details for fabricated offset handling.',
             supportingQuote: null,
             sourceOffsetMs: 500,
           },
           {
             title: 'Quote at the wrong real segment',
             summary: 'A summary',
-            details: 'Details',
+            details: 'Details for a real but incorrect segment.',
             supportingQuote: 'Second idea',
             sourceOffsetMs: 0,
           },
@@ -352,11 +352,24 @@ describe('artifact generators', () => {
       contextWithDuration(1_200),
     ).catch((value: unknown) => value);
 
-    expect(error).toBeInstanceOf(ProviderError);
+    expect(error).toBeInstanceOf(SummaryGenerationError);
     expect(error).toMatchObject({
       code: 'invalid_provider_response',
       retryable: true,
+      metadata: {
+        route: 'two-pass',
+        repairCount: 1,
+        passes: [
+          expect.objectContaining({ name: 'gleen_summary_idea_map_v1' }),
+          expect.objectContaining({ name: 'gleen_summary_compose_v3' }),
+          expect.objectContaining({ name: 'gleen_summary_repair_v3' }),
+        ],
+        findingCounts: { missing_high_importance: 1 },
+      },
     });
+    expect(JSON.stringify(error)).not.toMatch(
+      /Critical claim|Secondary claim|complete explanation|idea-critical/i,
+    );
     expect(provider.requests.map(({ name }) => name)).toEqual([
       'gleen_summary_idea_map_v1',
       'gleen_summary_compose_v3',
@@ -387,17 +400,169 @@ describe('artifact generators', () => {
       gleen_summary_repair_v3: invalidSummary,
     });
 
-    await expect(
-      generateSummary(provider, contextWithDuration(120)),
-    ).rejects.toMatchObject({
+    const error = await generateSummary(
+      provider,
+      contextWithDuration(120),
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(SummaryGenerationError);
+    expect(error).toMatchObject({
       code: 'invalid_provider_response',
       retryable: true,
+      metadata: {
+        route: 'one-pass',
+        repairCount: 1,
+        passes: [
+          expect.objectContaining({ name: 'gleen_summary_v3' }),
+          expect.objectContaining({ name: 'gleen_summary_repair_v3' }),
+        ],
+        findingCounts: { duplicate_adjacent_section: 1 },
+      },
     });
     expect(provider.requests.map(({ name }) => name)).toEqual([
       'gleen_summary_v3',
       'gleen_summary_repair_v3',
     ]);
   });
+
+  it('carries billed pass metrics and finding counts when the bounded repair provider fails', async () => {
+    const provider = createDeterministicProvider(
+      {
+        gleen_summary_v3: {
+          ...validSummaryFixture,
+          sections: [
+            {
+              ...validSummaryFixture.sections[0],
+              summary: 'Same short text.',
+              details: 'Same short text.',
+            },
+          ],
+        },
+      },
+      {
+        gleen_summary_repair_v3: {
+          count: 1,
+          code: 'provider_unavailable',
+          retryable: true,
+        },
+      },
+    );
+
+    const error = await generateSummary(
+      provider,
+      contextWithDuration(120),
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(SummaryGenerationError);
+    expect(error).toMatchObject({
+      code: 'provider_unavailable',
+      retryable: true,
+      metadata: {
+        route: 'one-pass',
+        repairCount: 1,
+        passes: [expect.objectContaining({ name: 'gleen_summary_v3' })],
+        findingCounts: { duplicate_section_text: 1 },
+      },
+    });
+    expect(provider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_v3',
+      'gleen_summary_repair_v3',
+    ]);
+  });
+
+  it('carries completed idea-map metrics when composition fails', async () => {
+    const provider = createDeterministicProvider(
+      { gleen_summary_idea_map_v1: ideaMapFixture },
+      {
+        gleen_summary_compose_v3: {
+          count: 1,
+          code: 'provider_unavailable',
+          retryable: true,
+        },
+      },
+    );
+
+    const error = await generateSummary(
+      provider,
+      contextWithDuration(1_200),
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(SummaryGenerationError);
+    expect(error).toMatchObject({
+      code: 'provider_unavailable',
+      retryable: true,
+      metadata: {
+        route: 'two-pass',
+        repairCount: 0,
+        passes: [
+          expect.objectContaining({ name: 'gleen_summary_idea_map_v1' }),
+        ],
+        findingCounts: {},
+      },
+    });
+    expect(provider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_idea_map_v1',
+      'gleen_summary_compose_v3',
+    ]);
+  });
+
+  it.each([
+    ['one-pass', 'thesis-details', 'duplicate_section_text'],
+    ['one-pass', 'adjacent-details', 'duplicate_adjacent_section'],
+    ['two-pass', 'thesis-details', 'duplicate_section_text'],
+    ['two-pass', 'adjacent-details', 'duplicate_adjacent_section'],
+  ] as const)(
+    'repairs short exact %s %s duplication',
+    async (route, defect, findingCode) => {
+      const duplicateSection = {
+        ...validSummaryFixture.sections[0],
+        summary:
+          defect === 'thesis-details'
+            ? 'Same short text.'
+            : validSummaryFixture.sections[0].summary,
+        details: 'ＳＡＭＥ short text!',
+      };
+      const duplicateSections =
+        defect === 'adjacent-details'
+          ? [
+              { ...duplicateSection, title: 'First short section' },
+              { ...duplicateSection, title: 'Second short section' },
+            ]
+          : [duplicateSection];
+      const provider = createDeterministicProvider(
+        route === 'one-pass'
+          ? {
+              gleen_summary_v3: {
+                ...validSummaryFixture,
+                sections: duplicateSections,
+              },
+              gleen_summary_repair_v3: validSummaryFixture,
+            }
+          : {
+              gleen_summary_idea_map_v1: ideaMapFixture,
+              gleen_summary_compose_v3: {
+                ...validCompositionFixture,
+                sections: duplicateSections.map((section) => ({
+                  ...section,
+                  coveredIdeaIds: ['idea-critical', 'idea-secondary'],
+                })),
+              },
+              gleen_summary_repair_v3: validCompositionFixture,
+            },
+      );
+
+      const result = await generateSummary(
+        provider,
+        contextWithDuration(route === 'one-pass' ? 120 : 1_200),
+      );
+
+      expect(provider.requests.map(({ name }) => name).at(-1)).toBe(
+        'gleen_summary_repair_v3',
+      );
+      expect(provider.requests.at(-1)?.input).toContain(findingCode);
+      expect(result.metadata.repairCount).toBe(1);
+    },
+  );
 
   it('passes the requested card count to flashcard generation', async () => {
     const provider = createDeterministicProvider({

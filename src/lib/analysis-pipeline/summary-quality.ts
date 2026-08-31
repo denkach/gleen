@@ -51,14 +51,14 @@ function isDuplicate(leftValue: string, rightValue: string): boolean {
   const left = normalizeText(leftValue);
   const right = normalizeText(rightValue);
 
+  if (left.value !== '' && left.value === right.value) return true;
+
   if (
     left.tokens.length < MINIMUM_COMPARISON_TOKENS ||
     right.tokens.length < MINIMUM_COMPARISON_TOKENS
   ) {
     return false;
   }
-
-  if (left.value === right.value) return true;
 
   let intersectionSize = 0;
   for (const token of left.tokenSet) {

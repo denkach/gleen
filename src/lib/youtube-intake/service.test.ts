@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { IntakeConfiguration } from './configuration';
-import {
-  createCompatibleDuplicateKeys,
-  createDuplicateKey,
-} from './fingerprint';
+import { createCompatibleDuplicateKeys } from './fingerprint';
 import type { IntakeErrorCode } from './providers';
 import type { AnalysisIntake, IntakeRepository } from './repository';
 import { createIntakeService, IntakeServiceError } from './service';
@@ -276,15 +273,44 @@ describe('createIntakeService', () => {
         title: 'Fresh title',
         transcriptSegments: segments,
         configuration: existing.configuration,
-        duplicateKey: createDuplicateKey(
-          existing.youtubeVideoId,
-          existing.configuration,
-        ),
+        duplicateKey: existing.duplicateKey,
       }),
     );
     expect(dependencies.pipeline.createAndStart).toHaveBeenCalledWith(
       validInput.userId,
       '44444444-4444-4444-8444-444444444444',
+    );
+  });
+
+  test('preserves a migrated Deep source fingerprint when creating a re-analysis snapshot', async () => {
+    const dependencies = setup();
+    const migratedDeepSource: AnalysisIntake = {
+      ...existing,
+      configuration: {
+        ...existing.configuration,
+        summaryPreset: 'deep',
+      },
+      duplicateKey: createCompatibleDuplicateKeys(existing.youtubeVideoId, {
+        ...existing.configuration,
+        summaryPreset: 'deep',
+      })[1]!,
+    };
+    vi.mocked(dependencies.repository.findOwned).mockResolvedValue(
+      migratedDeepSource,
+    );
+
+    await createIntakeService(dependencies).reanalyze(
+      validInput.userId,
+      migratedDeepSource.id,
+    );
+
+    expect(dependencies.repository.createReanalysis).toHaveBeenCalledWith(
+      validInput.userId,
+      migratedDeepSource.id,
+      expect.objectContaining({
+        configuration: migratedDeepSource.configuration,
+        duplicateKey: migratedDeepSource.duplicateKey,
+      }),
     );
   });
 });

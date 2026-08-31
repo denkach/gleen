@@ -76,3 +76,27 @@ it('supports usage transitions from modern Supabase secret keys', () => {
     'grant execute on function public.transition_analysis_usage_service_role',
   );
 });
+
+it('keeps Summary generation metrics server-only and immune to owner idempotency pre-insertion', () => {
+  const sql = readMigration('202608300001_den_118_summary_modes.sql');
+
+  expect(sql).toContain(
+    'create table public.analysis_summary_generation_metrics',
+  );
+  expect(sql).toContain('unique (job_id, attempt)');
+  expect(sql).toContain(
+    'alter table public.analysis_summary_generation_metrics enable row level security',
+  );
+  expect(sql).toContain(
+    'revoke all on table public.analysis_summary_generation_metrics from PUBLIC, anon, authenticated, service_role',
+  );
+  expect(sql).toContain(
+    'grant select, insert on table public.analysis_summary_generation_metrics to service_role',
+  );
+  expect(sql).not.toMatch(
+    /create policy[\s\S]+on public\.analysis_summary_generation_metrics/i,
+  );
+  expect(sql).not.toMatch(
+    /grant (?:select|insert|update|delete)[^;]+analysis_summary_generation_metrics[^;]+authenticated/i,
+  );
+});

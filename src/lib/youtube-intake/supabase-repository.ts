@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { storedSummaryModeSchema } from '@/lib/summary-mode';
 
 import { artifactSchema } from './configuration';
+import { createCompatibleDuplicateKeys } from './fingerprint';
 import type {
   AnalysisIntake,
   IntakeRepository,
@@ -203,8 +204,14 @@ export function createSupabaseIntakeRepository(
         .single();
 
       if (result.error?.code === '23505') {
-        const winner = await findReusable(input.userId, input.duplicateKey);
-        if (winner) return { kind: 'recovered', intake: winner };
+        const compatibleKeys = createCompatibleDuplicateKeys(
+          input.youtubeVideoId,
+          input.configuration,
+        );
+        for (const duplicateKey of compatibleKeys) {
+          const winner = await findReusable(input.userId, duplicateKey);
+          if (winner) return { kind: 'recovered', intake: winner };
+        }
         throw new IntakeRepositoryError();
       }
       return { kind: 'inserted', intake: unwrapRequired(result) };

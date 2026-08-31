@@ -31,6 +31,7 @@ type LanguagePreferencesProps = Readonly<{
   summaryMode: SummaryMode;
   copy: SettingsCopy;
   unavailable?: boolean;
+  summaryModeAction?: typeof setSummaryMode;
 }>;
 
 export function LanguagePreferences({
@@ -39,6 +40,7 @@ export function LanguagePreferences({
   summaryMode: initialSummaryMode,
   copy,
   unavailable = false,
+  summaryModeAction = setSummaryMode,
 }: LanguagePreferencesProps) {
   const router = useRouter();
   const [interfaceLocale, setInterfaceLocaleValue] = useState(
@@ -64,7 +66,7 @@ export function LanguagePreferences({
   );
   const [summaryState, summaryAction, summaryPending] = useActionState(
     async (previousState: SummaryModeActionState, formData: FormData) =>
-      setSummaryMode(previousState, formData),
+      summaryModeAction(previousState, formData),
     summaryInitialState,
   );
 

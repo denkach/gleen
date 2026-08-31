@@ -1,11 +1,51 @@
 'use server';
 
+import { cookies } from 'next/headers';
+
+import type { SummaryModeActionState } from '@/lib/settings/actions';
+import { summaryModeSchema } from '@/lib/summary-mode';
+
 import type { IntakeActionState } from './action-state';
 import { createIntakeActions } from './action-factory';
 import {
   createDevelopmentIntakeFixture,
   type DevelopmentIntakeScenario,
 } from './development-fixtures';
+import {
+  fixtureAnalysisSummaryCookie,
+  fixtureSummaryDefaultCookie,
+} from './development-fixture-preferences';
+
+function ensureDevelopmentFixture() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'Development intake fixtures are unavailable in production.',
+    );
+  }
+}
+
+async function persistFixtureSummaryMode(name: string, mode: string) {
+  const cookieStore = await cookies();
+  cookieStore.set(name, mode, {
+    httpOnly: true,
+    path: '/',
+    sameSite: 'lax',
+  });
+}
+
+export async function setFixtureSummaryMode(
+  _previousState: SummaryModeActionState,
+  formData: FormData,
+): Promise<SummaryModeActionState> {
+  ensureDevelopmentFixture();
+  const parsed = summaryModeSchema.safeParse(formData.get('summaryMode'));
+  if (!parsed.success) {
+    return { status: 'error', code: 'invalid_summary_mode' };
+  }
+
+  await persistFixtureSummaryMode(fixtureSummaryDefaultCookie, parsed.data);
+  return { status: 'success', mode: parsed.data };
+}
 
 function actions(scenario: DevelopmentIntakeScenario) {
   return createIntakeActions({
@@ -27,6 +67,15 @@ async function submit(
   if (scenario === 'provider-outage')
     await new Promise((resolve) => setTimeout(resolve, 200));
   const result = await actions(scenario).submit(previous, formData);
+  if (scenario === 'ready' && result.status === 'ready') {
+    const summaryPreset = summaryModeSchema.parse(
+      formData.get('summaryPreset'),
+    );
+    await persistFixtureSummaryMode(
+      fixtureAnalysisSummaryCookie,
+      summaryPreset,
+    );
+  }
   if (scenario === 'ready' && result.redirectTo) {
     const params = new URLSearchParams({
       outputLocale: String(formData.get('outputLocale')),
@@ -83,11 +132,7 @@ export async function submitUsageLimitFixture(
   _formData: FormData,
 ) {
   void _formData;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'Development intake fixtures are unavailable in production.',
-    );
-  }
+  ensureDevelopmentFixture();
   return {
     ...previous,
     status: 'error',

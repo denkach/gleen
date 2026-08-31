@@ -151,6 +151,29 @@ describe('validateComposedSummary', () => {
     });
   });
 
+  it('flags nonempty exact normalized repetition below the similarity token floor', () => {
+    const findings = validateComposedSummary({
+      ideaMap,
+      summary: {
+        ...summary,
+        sections: [
+          {
+            ...summary.sections[0],
+            summary: 'Same short thesis.',
+            details: 'ＳＡＭＥ short thesis!',
+            coveredIdeaIds: ['idea-critical'],
+          },
+        ],
+      },
+      policy,
+    });
+
+    expect(findings).toContainEqual({
+      code: 'duplicate_section_text',
+      sectionIndexes: [0],
+    });
+  });
+
   it('flags near-duplicate thesis and details at the Jaccard threshold', () => {
     const findings = validateComposedSummary({
       ideaMap,
@@ -174,7 +197,7 @@ describe('validateComposedSummary', () => {
     });
   });
 
-  it('does not flag distinct explanations or comparisons below eight tokens', () => {
+  it('does not apply Jaccard similarity below eight tokens', () => {
     const findings = validateComposedSummary({
       ideaMap,
       summary: {
@@ -182,8 +205,8 @@ describe('validateComposedSummary', () => {
         sections: [
           {
             ...summary.sections[0],
-            summary: 'same short text repeated exactly here',
-            details: 'same short text repeated exactly here',
+            summary: 'same short text appears here',
+            details: 'same short text changes here',
             coveredIdeaIds: ['idea-critical'],
           },
           {
@@ -283,6 +306,39 @@ describe('validateComposedSummary', () => {
     ).toContainEqual({
       code: 'structural_range',
       sectionIndexes: Array.from({ length: 13 }, (_, index) => index),
+    });
+  });
+
+  it('reports an upper range when multiple retained sections jointly cover every high-importance idea', () => {
+    const setCoverIdeaMap: SummaryIdeaMap = {
+      ideas: [
+        idea('idea-high-1', 'high'),
+        idea('idea-high-2', 'high'),
+        idea('idea-high-3', 'high'),
+        idea('idea-medium', 'medium'),
+      ],
+    };
+    const setCoverSummary: ComposedSummary = {
+      ...summary,
+      sections: [
+        {
+          ...section('idea-high-1', 0),
+          coveredIdeaIds: ['idea-high-1', 'idea-high-2'],
+        },
+        section('idea-high-3', 1),
+        section('idea-medium', 2),
+      ],
+    };
+
+    expect(
+      validateComposedSummary({
+        ideaMap: setCoverIdeaMap,
+        summary: setCoverSummary,
+        policy: { ...policy, sectionRange: { min: 1, max: 2 } },
+      }),
+    ).toContainEqual({
+      code: 'structural_range',
+      sectionIndexes: [0, 1, 2],
     });
   });
 

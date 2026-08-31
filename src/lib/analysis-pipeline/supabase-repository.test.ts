@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  AnalysisRepositoryError,
   createSupabaseAnalysisRepository,
   UsageLimitReachedError,
   type ResultArtifactRepository,
@@ -502,5 +503,99 @@ describe('Supabase analysis repository', () => {
         ignoreDuplicates: true,
       },
     );
+  });
+
+  it('writes bounded generation metrics to the server-only idempotency boundary', async () => {
+    const upsert = vi.fn().mockResolvedValue({ data: null, error: null });
+    const client = {
+      from: vi.fn().mockReturnValue({ upsert }),
+      rpc: vi.fn(),
+    };
+
+    await createSupabaseAnalysisRepository(
+      client,
+    ).recordSummaryGenerationMetric({
+      jobId: 'job-id',
+      attempt: 1,
+      status: 'completed',
+      errorCode: null,
+      route: 'two-pass',
+      repairCount: 0,
+      findingCounts: {},
+      passes: [
+        {
+          name: 'gleen_summary_idea_map_v1',
+          requestId: 'generation-id',
+          model: 'vendor/model',
+          usage: {
+            promptTokens: 10,
+            completionTokens: 4,
+            totalTokens: 14,
+            cost: 0.00042,
+          },
+          latencyMs: 125,
+        },
+      ],
+    });
+
+    expect(client.from).toHaveBeenCalledWith(
+      'analysis_summary_generation_metrics',
+    );
+    expect(upsert).toHaveBeenCalledWith(
+      {
+        job_id: 'job-id',
+        attempt: 1,
+        status: 'completed',
+        error_code: null,
+        route: 'two-pass',
+        repair_count: 0,
+        finding_counts: {},
+        passes: [
+          {
+            name: 'gleen_summary_idea_map_v1',
+            requestId: 'generation-id',
+            model: 'vendor/model',
+            usage: {
+              promptTokens: 10,
+              completionTokens: 4,
+              totalTokens: 14,
+              cost: 0.00042,
+            },
+            latencyMs: 125,
+          },
+        ],
+      },
+      {
+        onConflict: 'job_id,attempt',
+        ignoreDuplicates: true,
+      },
+    );
+  });
+
+  it('rejects content-bearing generation metadata before storage', async () => {
+    const client = { from: vi.fn(), rpc: vi.fn() };
+    const repository = createSupabaseAnalysisRepository(client);
+
+    await expect(
+      repository.recordSummaryGenerationMetric({
+        jobId: 'job-id',
+        attempt: 1,
+        status: 'failed',
+        errorCode: 'invalid_provider_response',
+        route: 'one-pass',
+        repairCount: 1,
+        findingCounts: { duplicate_section_text: 1 },
+        passes: [
+          {
+            name: 'gleen_summary_v3',
+            requestId: 'generation-id',
+            model: 'vendor/model',
+            usage: { transcript: 'sensitive generated prose' },
+            latencyMs: 125,
+          },
+        ],
+      } as never),
+    ).rejects.toBeInstanceOf(AnalysisRepositoryError);
+    expect(client.from).not.toHaveBeenCalled();
   });
 });

@@ -6,7 +6,9 @@ import {
   generateFlashcards,
   generateSummary,
   generateTimestamps,
+  SummaryGenerationError,
   type GeneratorContext,
+  type SummaryGenerationMetadata,
 } from './generators';
 import type { AnalysisSnapshot } from './domain';
 import { ProviderError, type StructuredGenerationProvider } from './provider';
@@ -34,10 +36,6 @@ const stages = [
   'structuring',
   'artifacts',
 ] as const;
-
-type SummaryGenerationMetadata = Awaited<
-  ReturnType<typeof generateSummary>
->['metadata'];
 
 async function recordStage(
   repository: AnalysisRepository,
@@ -68,26 +66,15 @@ async function recordSummaryGeneration(
   snapshot: AnalysisSnapshot,
   metadata: SummaryGenerationMetadata,
 ) {
-  await repository.recordEvent({
+  await repository.recordSummaryGenerationMetric({
     jobId: snapshot.job.id,
-    userId: snapshot.job.userId,
-    idempotencyKey: `attempt-${snapshot.job.attempt}:summary:generation`,
-    stage: 'artifacts',
+    attempt: snapshot.job.attempt,
     status: 'completed',
     errorCode: null,
-    metadata: {
-      route: metadata.route,
-      repairCount: metadata.repairCount,
-      passes: metadata.passes.map(
-        ({ name, requestId, model, usage, latencyMs }) => ({
-          name,
-          requestId,
-          model,
-          usage,
-          latencyMs,
-        }),
-      ),
-    },
+    route: metadata.route,
+    repairCount: metadata.repairCount,
+    passes: metadata.passes,
+    findingCounts: {},
   });
 }
 
@@ -182,6 +169,21 @@ export async function executeAnalysisPipeline({
         error instanceof ProviderError
           ? error.code
           : 'invalid_provider_response';
+      if (
+        artifact.kind === 'summary' &&
+        error instanceof SummaryGenerationError
+      ) {
+        await repository.recordSummaryGenerationMetric({
+          jobId: snapshot.job.id,
+          attempt: snapshot.job.attempt,
+          status: 'failed',
+          errorCode,
+          route: error.metadata.route,
+          repairCount: error.metadata.repairCount,
+          passes: error.metadata.passes,
+          findingCounts: error.metadata.findingCounts,
+        });
+      }
       await repository.saveArtifactFailed({
         jobId,
         analysisId: snapshot.job.analysisId,

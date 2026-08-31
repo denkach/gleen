@@ -2,10 +2,7 @@ import { ZodError } from 'zod';
 
 import { normalizeIntakeConfiguration } from './configuration';
 import type { IntakeConfiguration } from './configuration';
-import {
-  createCompatibleDuplicateKeys,
-  createDuplicateKey,
-} from './fingerprint';
+import { createCompatibleDuplicateKeys } from './fingerprint';
 import type {
   IntakeErrorCode,
   TranscriptProvider,
@@ -149,10 +146,7 @@ export function createIntakeService(dependencies: IntakeServiceDependencies) {
         transcriptLanguage: refreshed.transcript.language,
         transcriptSegments: refreshed.transcript.segments,
         configuration: source.configuration,
-        duplicateKey: createDuplicateKey(
-          source.youtubeVideoId,
-          source.configuration,
-        ),
+        duplicateKey: source.duplicateKey,
       };
       const intake = await dependencies.repository.createReanalysis(
         userId,

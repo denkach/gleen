@@ -63,8 +63,44 @@ const IDEA_MAP_SYSTEM_PROMPT =
 
 type SummaryPassResult = Readonly<{
   name: string;
-  result: GenerationResult<unknown>;
+  metadata: GenerationResult<unknown>['metadata'];
 }>;
+
+type SummaryGenerationProgress = {
+  readonly policy: SummaryGenerationPolicy;
+  readonly passResults: SummaryPassResult[];
+  repairCount: number;
+  findings: readonly SummaryQualityFinding[];
+};
+
+export type SummaryGenerationMetadata = Readonly<{
+  route: SummaryGenerationPolicy['route'];
+  repairCount: number;
+  passes: readonly Readonly<{
+    name: string;
+    requestId: string | null;
+    model: string | null;
+    usage: GenerationResult<unknown>['metadata']['usage'];
+    latencyMs: number;
+  }>[];
+}>;
+
+export type SummaryFindingCounts = Readonly<
+  Partial<Record<SummaryQualityFinding['code'], number>>
+>;
+
+export class SummaryGenerationError extends ProviderError {
+  constructor(
+    code: ProviderError['code'],
+    retryable: boolean,
+    readonly metadata: SummaryGenerationMetadata &
+      Readonly<{ findingCounts: SummaryFindingCounts }>,
+    retryAfterMs?: number,
+  ) {
+    super(code, retryable, retryAfterMs);
+    this.name = 'SummaryGenerationError';
+  }
+}
 
 function transcriptInput(context: GeneratorContext): string {
   return context.transcriptSegments
@@ -131,20 +167,26 @@ function repairInput(
     .join('\n\n');
 }
 
-async function generateRepair<T>(
+async function generatePass<T>(
   provider: StructuredGenerationProvider,
   request: StructuredGenerationRequest<T>,
+  progress: SummaryGenerationProgress,
 ): Promise<GenerationResult<T>> {
   try {
-    return await provider.generate(request);
+    const result = await provider.generate(request);
+    progress.passResults.push({
+      name: request.name,
+      metadata: result.metadata,
+    });
+    return result;
   } catch (error) {
-    if (
-      error instanceof ProviderError &&
-      error.code !== 'invalid_provider_response'
-    ) {
-      throw error;
+    if (error instanceof ProviderError && error.generationMetadata) {
+      progress.passResults.push({
+        name: request.name,
+        metadata: error.generationMetadata,
+      });
     }
-    throw new ProviderError('invalid_provider_response', true);
+    throw error;
   }
 }
 
@@ -156,14 +198,37 @@ function summaryMetadata(
   return {
     route: policy.route,
     repairCount,
-    passes: passResults.map(({ name, result }) => ({
+    passes: passResults.map(({ name, metadata }) => ({
       name,
-      requestId: result.metadata.requestId,
-      model: result.metadata.model,
-      usage: result.metadata.usage,
-      latencyMs: result.metadata.latencyMs,
+      requestId: metadata.requestId,
+      model: metadata.model,
+      usage: metadata.usage,
+      latencyMs: metadata.latencyMs,
     })),
-  } as const;
+  } as const satisfies SummaryGenerationMetadata;
+}
+
+function findingCounts(
+  findings: readonly SummaryQualityFinding[],
+): SummaryFindingCounts {
+  return findings.reduce<
+    Partial<Record<SummaryQualityFinding['code'], number>>
+  >((counts, finding) => {
+    counts[finding.code] = (counts[finding.code] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function failSummaryQuality(
+  policy: SummaryGenerationPolicy,
+  repairCount: number,
+  passResults: readonly SummaryPassResult[],
+  findings: readonly SummaryQualityFinding[],
+): never {
+  throw new SummaryGenerationError('invalid_provider_response', true, {
+    ...summaryMetadata(policy, repairCount, passResults),
+    findingCounts: findingCounts(findings),
+  });
 }
 
 function normalizeGroundingText(value: string): string {
@@ -226,79 +291,84 @@ function sanitizeSummaryGrounding(
   };
 }
 
-export async function generateSummary(
+async function generateSummaryAttempt(
   provider: StructuredGenerationProvider,
   context: GeneratorContext,
+  progress: SummaryGenerationProgress,
 ) {
   const mode = modeForContext(context);
-  const policy = selectSummaryPolicy({
-    durationSeconds: context.durationSeconds,
-    mode,
-    transcriptSegments: context.transcriptSegments,
-  });
-  const passResults: SummaryPassResult[] = [];
+  const { policy, passResults } = progress;
 
   if (policy.route === 'one-pass') {
-    const initialResult = await provider.generate({
-      name: 'gleen_summary_v3',
-      system: summaryInstructions(mode, policy),
-      input: `Preset: ${mode}\n${summaryInput(context)}`,
-      jsonSchema: summaryJsonSchema,
-      parse: (value) => summaryArtifactV3Schema.parse(value),
-    });
-    passResults.push({ name: 'gleen_summary_v3', result: initialResult });
+    const initialResult = await generatePass(
+      provider,
+      {
+        name: 'gleen_summary_v3',
+        system: summaryInstructions(mode, policy),
+        input: `Preset: ${mode}\n${summaryInput(context)}`,
+        jsonSchema: summaryJsonSchema,
+        parse: (value) => summaryArtifactV3Schema.parse(value),
+      },
+      progress,
+    );
 
     let candidate = initialResult.value;
     const findings = validateSummaryDuplicates(candidate);
-    let repairCount = 0;
+    progress.findings = findings;
     if (requiresRepair(findings)) {
-      const repairResult = await generateRepair<SummaryArtifactV3>(provider, {
-        name: 'gleen_summary_repair_v3',
-        system: `${summaryInstructions(mode, policy)} Repair the candidate once by resolving every supplied duplicate finding while preserving all grounded evidence, conclusions, and caveats.`,
-        input: repairInput(context, findings, candidate),
-        jsonSchema: summaryJsonSchema,
-        parse: (value) => summaryArtifactV3Schema.parse(value),
-      });
-      passResults.push({
-        name: 'gleen_summary_repair_v3',
-        result: repairResult,
-      });
-      repairCount = 1;
+      progress.repairCount = 1;
+      const repairResult = await generatePass<SummaryArtifactV3>(
+        provider,
+        {
+          name: 'gleen_summary_repair_v3',
+          system: `${summaryInstructions(mode, policy)} Repair the candidate once by resolving every supplied duplicate finding while preserving all grounded evidence, conclusions, and caveats.`,
+          input: repairInput(context, findings, candidate),
+          jsonSchema: summaryJsonSchema,
+          parse: (value) => summaryArtifactV3Schema.parse(value),
+        },
+        progress,
+      );
       candidate = repairResult.value;
-      if (requiresRepair(validateSummaryDuplicates(candidate))) {
-        throw new ProviderError('invalid_provider_response', true);
-      }
+      const repairedFindings = validateSummaryDuplicates(candidate);
+      progress.findings = repairedFindings;
+      if (requiresRepair(repairedFindings))
+        failSummaryQuality(
+          policy,
+          progress.repairCount,
+          passResults,
+          repairedFindings,
+        );
     }
 
     return {
       value: sanitizeSummaryGrounding(candidate, context),
-      metadata: summaryMetadata(policy, repairCount, passResults),
+      metadata: summaryMetadata(policy, progress.repairCount, passResults),
     };
   }
 
-  const ideaMapResult = await provider.generate({
-    name: 'gleen_summary_idea_map_v1',
-    system: IDEA_MAP_SYSTEM_PROMPT,
-    input: `Requested mode: ${mode}\n${summaryInput(context)}`,
-    jsonSchema: summaryIdeaMapJsonSchema,
-    parse: (value) => summaryIdeaMapSchema.parse(value),
-  });
-  passResults.push({
-    name: 'gleen_summary_idea_map_v1',
-    result: ideaMapResult,
-  });
+  const ideaMapResult = await generatePass(
+    provider,
+    {
+      name: 'gleen_summary_idea_map_v1',
+      system: IDEA_MAP_SYSTEM_PROMPT,
+      input: `Requested mode: ${mode}\n${summaryInput(context)}`,
+      jsonSchema: summaryIdeaMapJsonSchema,
+      parse: (value) => summaryIdeaMapSchema.parse(value),
+    },
+    progress,
+  );
 
-  const compositionResult = await provider.generate({
-    name: 'gleen_summary_compose_v3',
-    system: compositionInstructions(mode, policy),
-    input: `Idea map:\n${JSON.stringify(ideaMapResult.value)}\n\n${summaryInput(context)}`,
-    jsonSchema: composedSummaryJsonSchema,
-    parse: (value) => composedSummarySchema.parse(value),
-  });
-  passResults.push({
-    name: 'gleen_summary_compose_v3',
-    result: compositionResult,
-  });
+  const compositionResult = await generatePass(
+    provider,
+    {
+      name: 'gleen_summary_compose_v3',
+      system: compositionInstructions(mode, policy),
+      input: `Idea map:\n${JSON.stringify(ideaMapResult.value)}\n\n${summaryInput(context)}`,
+      jsonSchema: composedSummaryJsonSchema,
+      parse: (value) => composedSummarySchema.parse(value),
+    },
+    progress,
+  );
 
   let candidate = compositionResult.value;
   const findings = validateComposedSummary({
@@ -306,35 +376,80 @@ export async function generateSummary(
     summary: candidate,
     policy,
   });
-  let repairCount = 0;
+  progress.findings = findings;
   if (requiresRepair(findings)) {
-    const repairResult = await generateRepair<ComposedSummary>(provider, {
-      name: 'gleen_summary_repair_v3',
-      system: `${compositionInstructions(mode, policy)} Repair the candidate once by resolving every supplied finding while preserving all transcript evidence and correctly reporting covered idea IDs.`,
-      input: repairInput(context, findings, candidate, ideaMapResult.value),
-      jsonSchema: composedSummaryJsonSchema,
-      parse: (value) => composedSummarySchema.parse(value),
-    });
-    passResults.push({ name: 'gleen_summary_repair_v3', result: repairResult });
-    repairCount = 1;
+    progress.repairCount = 1;
+    const repairResult = await generatePass<ComposedSummary>(
+      provider,
+      {
+        name: 'gleen_summary_repair_v3',
+        system: `${compositionInstructions(mode, policy)} Repair the candidate once by resolving every supplied finding while preserving all transcript evidence and correctly reporting covered idea IDs.`,
+        input: repairInput(context, findings, candidate, ideaMapResult.value),
+        jsonSchema: composedSummaryJsonSchema,
+        parse: (value) => composedSummarySchema.parse(value),
+      },
+      progress,
+    );
     candidate = repairResult.value;
-    if (
-      requiresRepair(
-        validateComposedSummary({
-          ideaMap: ideaMapResult.value,
-          summary: candidate,
-          policy,
-        }),
-      )
-    ) {
-      throw new ProviderError('invalid_provider_response', true);
-    }
+    const repairedFindings = validateComposedSummary({
+      ideaMap: ideaMapResult.value,
+      summary: candidate,
+      policy,
+    });
+    progress.findings = repairedFindings;
+    if (requiresRepair(repairedFindings))
+      failSummaryQuality(
+        policy,
+        progress.repairCount,
+        passResults,
+        repairedFindings,
+      );
   }
 
   return {
     value: sanitizeSummaryGrounding(toSummaryArtifact(candidate), context),
-    metadata: summaryMetadata(policy, repairCount, passResults),
+    metadata: summaryMetadata(policy, progress.repairCount, passResults),
   };
+}
+
+export async function generateSummary(
+  provider: StructuredGenerationProvider,
+  context: GeneratorContext,
+) {
+  const policy = selectSummaryPolicy({
+    durationSeconds: context.durationSeconds,
+    mode: modeForContext(context),
+    transcriptSegments: context.transcriptSegments,
+  });
+  const progress: SummaryGenerationProgress = {
+    policy,
+    passResults: [],
+    repairCount: 0,
+    findings: [],
+  };
+
+  try {
+    return await generateSummaryAttempt(provider, context, progress);
+  } catch (error) {
+    if (error instanceof SummaryGenerationError) throw error;
+    const providerError =
+      error instanceof ProviderError
+        ? error
+        : new ProviderError('invalid_provider_response', true);
+    throw new SummaryGenerationError(
+      providerError.code,
+      providerError.retryable,
+      {
+        ...summaryMetadata(
+          progress.policy,
+          progress.repairCount,
+          progress.passResults,
+        ),
+        findingCounts: findingCounts(progress.findings),
+      },
+      providerError.retryAfterMs,
+    );
+  }
 }
 
 export function generateFlashcards(

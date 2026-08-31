@@ -66,6 +66,7 @@ function harness(
   const repository = {
     findSnapshotByJobId: vi.fn(async () => snapshot()),
     recordEvent: vi.fn(async () => undefined),
+    recordSummaryGenerationMetric: vi.fn(async () => undefined),
     setJobState: vi.fn(async (_id, state) => {
       jobStatus = state.status;
     }),
@@ -320,12 +321,13 @@ describe('analysis workflow orchestration', () => {
       context,
     });
 
-    expect(repository.recordEvent).toHaveBeenCalledTimes(6);
+    expect(repository.recordEvent).toHaveBeenCalledTimes(5);
+    expect(repository.recordSummaryGenerationMetric).toHaveBeenCalledTimes(1);
     expect(snapshot().job.status).toBe('complete');
     expect(ledger.settle).toHaveBeenCalledWith('job-id');
   });
 
-  it('records safe two-pass metadata once before persisting the Summary', async () => {
+  it('records safe two-pass metrics outside owner-visible product events before persisting the Summary', async () => {
     const { repository, provider, ledger } = harness();
 
     await executeAnalysisPipeline({
@@ -336,56 +338,46 @@ describe('analysis workflow orchestration', () => {
       context: { ...context, durationSeconds: 1_200 },
     });
 
-    const summaryEvents = vi
-      .mocked(repository.recordEvent)
-      .mock.calls.map(([event]) => event)
-      .filter(
-        ({ idempotencyKey }) =>
-          idempotencyKey === 'attempt-1:summary:generation',
-      );
-    expect(summaryEvents).toEqual([
-      {
-        jobId: 'job-id',
-        userId: 'user-id',
-        idempotencyKey: 'attempt-1:summary:generation',
-        stage: 'artifacts',
-        status: 'completed',
-        errorCode: null,
-        metadata: {
-          route: 'two-pass',
-          repairCount: 0,
-          passes: [
-            {
-              name: 'gleen_summary_idea_map_v1',
-              requestId: 'deterministic:gleen_summary_idea_map_v1',
-              model: 'deterministic',
-              usage: null,
-              latencyMs: expect.any(Number),
-            },
-            {
-              name: 'gleen_summary_compose_v3',
-              requestId: 'deterministic:gleen_summary_compose_v3',
-              model: 'deterministic',
-              usage: null,
-              latencyMs: expect.any(Number),
-            },
-          ],
+    expect(repository.recordSummaryGenerationMetric).toHaveBeenCalledWith({
+      jobId: 'job-id',
+      status: 'completed',
+      attempt: 1,
+      errorCode: null,
+      route: 'two-pass',
+      repairCount: 0,
+      findingCounts: {},
+      passes: [
+        {
+          name: 'gleen_summary_idea_map_v1',
+          requestId: 'deterministic:gleen_summary_idea_map_v1',
+          model: 'deterministic',
+          usage: null,
+          latencyMs: expect.any(Number),
         },
-      },
-    ]);
-    expect(JSON.stringify(summaryEvents)).not.toMatch(
-      /Transcript|central claim|Details explain|idea-transcript/,
-    );
+        {
+          name: 'gleen_summary_compose_v3',
+          requestId: 'deterministic:gleen_summary_compose_v3',
+          model: 'deterministic',
+          usage: null,
+          latencyMs: expect.any(Number),
+        },
+      ],
+    });
+    expect(
+      vi
+        .mocked(repository.recordEvent)
+        .mock.calls.some(([event]) =>
+          event.idempotencyKey.includes('summary:generation'),
+        ),
+    ).toBe(false);
+    expect(
+      JSON.stringify(
+        vi.mocked(repository.recordSummaryGenerationMetric).mock.calls,
+      ),
+    ).not.toMatch(/Transcript|central claim|Details explain|idea-transcript/);
 
-    const eventCall = vi
-      .mocked(repository.recordEvent)
-      .mock.invocationCallOrder.find((_, index) =>
-        vi
-          .mocked(repository.recordEvent)
-          .mock.calls[index]?.[0].idempotencyKey.endsWith(
-            ':summary:generation',
-          ),
-      );
+    const metricCall = vi.mocked(repository.recordSummaryGenerationMetric).mock
+      .invocationCallOrder[0];
     const summarySaveCall = vi
       .mocked(repository.saveArtifactReady)
       .mock.invocationCallOrder.find(
@@ -393,7 +385,76 @@ describe('analysis workflow orchestration', () => {
           vi.mocked(repository.saveArtifactReady).mock.calls[index]?.[0]
             .kind === 'summary',
       );
-    expect(eventCall).toBeLessThan(summarySaveCall!);
+    expect(metricCall).toBeLessThan(summarySaveCall!);
+  });
+
+  it('records failed server-only metrics when the only Summary repair remains invalid', async () => {
+    const { repository, ledger } = harness();
+    const invalidSummary = {
+      schemaVersion: 3,
+      title: 'Title',
+      outcome: 'Outcome',
+      sections: [
+        {
+          title: 'Point',
+          summary: 'Same short text.',
+          details: 'Same short text.',
+          supportingQuote: null,
+          sourceOffsetMs: null,
+        },
+      ],
+    } as const;
+    const provider = createDeterministicProvider({
+      gleen_summary_v3: invalidSummary,
+      gleen_summary_repair_v3: invalidSummary,
+      gleen_flashcards_v1: {
+        schemaVersion: 1,
+        cards: [{ front: 'Q', back: 'A' }],
+      },
+      gleen_timestamps_v1: {
+        schemaVersion: 1,
+        chapters: [{ offsetMs: 0, title: 'Start', description: 'Intro' }],
+      },
+    });
+
+    await executeAnalysisPipeline({
+      jobId: 'job-id',
+      repository,
+      provider,
+      ledger,
+      context,
+    });
+
+    expect(repository.recordSummaryGenerationMetric).toHaveBeenCalledWith({
+      jobId: 'job-id',
+      attempt: 1,
+      status: 'failed',
+      errorCode: 'invalid_provider_response',
+      route: 'one-pass',
+      repairCount: 1,
+      passes: [
+        expect.objectContaining({ name: 'gleen_summary_v3' }),
+        expect.objectContaining({ name: 'gleen_summary_repair_v3' }),
+      ],
+      findingCounts: { duplicate_section_text: 1 },
+    });
+    expect(
+      JSON.stringify(
+        vi.mocked(repository.recordSummaryGenerationMetric).mock.calls,
+      ),
+    ).not.toMatch(/Same short text|Transcript|idea-/i);
+    expect(repository.saveArtifactFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'summary',
+        errorCode: 'invalid_provider_response',
+      }),
+    );
+    expect(provider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_v3',
+      'gleen_summary_repair_v3',
+      'gleen_flashcards_v1',
+      'gleen_timestamps_v1',
+    ]);
   });
 
   it('keeps ready artifacts, marks partial, and settles its reservation', async () => {

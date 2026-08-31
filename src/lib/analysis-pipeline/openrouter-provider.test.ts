@@ -30,7 +30,19 @@ describe('OpenRouter structured provider', () => {
       response(200, {
         id: 'generation-id',
         model: 'vendor/model',
-        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 4,
+          total_tokens: 14,
+          cost: 0.00042,
+          prompt_tokens_details: {
+            cached_tokens: 3,
+            cache_write_tokens: 2,
+            audio_tokens: 1,
+          },
+          completion_tokens_details: { reasoning_tokens: 2 },
+          cost_details: { upstream_inference_cost: 0.00021 },
+        },
         choices: [{ message: { content: '{"title":"Result"}' } }],
       }),
     );
@@ -45,6 +57,17 @@ describe('OpenRouter structured provider', () => {
       metadata: {
         requestId: 'generation-id',
         model: 'vendor/model',
+        usage: {
+          promptTokens: 10,
+          completionTokens: 4,
+          totalTokens: 14,
+          cost: 0.00042,
+          cachedPromptTokens: 3,
+          cacheWritePromptTokens: 2,
+          promptAudioTokens: 1,
+          reasoningTokens: 2,
+          upstreamInferenceCost: 0.00021,
+        },
         latencyMs: expect.any(Number),
       },
     });
@@ -65,6 +88,59 @@ describe('OpenRouter structured provider', () => {
     });
     expect(String(init.body)).not.toContain('secret');
     expect(init.headers).toMatchObject({ Authorization: 'Bearer secret' });
+  });
+
+  it.each([
+    [
+      'unknown content-bearing usage metadata',
+      {
+        id: 'generation-id',
+        model: 'vendor/model',
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 4,
+          total_tokens: 14,
+          transcript: 'sensitive generated prose',
+        },
+      },
+    ],
+    [
+      'an out-of-range usage metric',
+      {
+        id: 'generation-id',
+        model: 'vendor/model',
+        usage: {
+          prompt_tokens: 1_000_000_001,
+          completion_tokens: 4,
+          total_tokens: 1_000_000_005,
+        },
+      },
+    ],
+    [
+      'an unconstrained request identifier',
+      {
+        id: 'generated prose must not become an identifier',
+        model: 'vendor/model',
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      },
+    ],
+  ] as const)('rejects %s', async (_name, metadata) => {
+    const fetch = vi.fn().mockResolvedValue(
+      response(200, {
+        ...metadata,
+        choices: [{ message: { content: '{"title":"Result"}' } }],
+      }),
+    );
+    const provider = createOpenRouterProvider({
+      apiKey: 'secret',
+      model: 'vendor/model',
+      fetch,
+    });
+
+    await expect(provider.generate(request)).rejects.toMatchObject({
+      code: 'invalid_provider_response',
+      retryable: true,
+    });
   });
 
   it.each([408, 429, 502, 503])(
