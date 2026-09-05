@@ -373,11 +373,16 @@ export function NewAnalysisForm({
           <h2 id="duplicate-title">{copy.newAnalysis.duplicate.title}</h2>
           <p>{copy.newAnalysis.duplicate.noCredits}</p>
           <Link
+            className="analysis-duplicate-action analysis-duplicate-action--primary"
             href={`${resultPathPrefix}/${state.existingId}${resultQuery ? `?${resultQuery}` : ''}`}
           >
             {copy.newAnalysis.duplicate.openSaved}
           </Link>
-          <button type="button" onClick={() => setConfirmOpen(true)}>
+          <button
+            className="analysis-duplicate-action analysis-duplicate-action--secondary"
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+          >
             {copy.newAnalysis.duplicate.analyzeAgain}
           </button>
         </section>

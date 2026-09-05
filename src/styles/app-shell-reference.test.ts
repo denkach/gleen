@@ -27,3 +27,18 @@ describe('app shell locale switcher layout', () => {
     );
   });
 });
+
+describe('new analysis interaction polish', () => {
+  it('scopes hover, pressed, focus, and recent row states to the intake page', () => {
+    expect(styles).toMatch(/\.analysis-hero \.btn:not\(:disabled\):hover/);
+    expect(styles).toMatch(/\.analysis-hero \.btn:not\(:disabled\):active/);
+    expect(styles).toMatch(/\.analysis-hero \.btn:focus-visible/);
+    expect(styles).toMatch(/\.recent-analysis-row:hover/);
+  });
+
+  it('removes intake movement for reduced motion', () => {
+    expect(styles).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.analysis-hero \.btn/,
+    );
+  });
+});
