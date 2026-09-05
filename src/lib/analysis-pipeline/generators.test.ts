@@ -90,9 +90,7 @@ function compositionWithSections(sectionCount: number) {
       details: `Grounded evidence, context, and implications for distinct chapter ${index + 1}.`,
       supportingQuote: null,
       sourceOffsetMs: index % 2 === 0 ? 0 : 1_000,
-      coveredIdeaIds: [
-        index % 2 === 0 ? 'idea-critical' : 'idea-secondary',
-      ],
+      coveredIdeaIds: [index % 2 === 0 ? 'idea-critical' : 'idea-secondary'],
     })),
   };
 }

@@ -296,10 +296,7 @@ describe('validateComposedSummary', () => {
       const candidate: ComposedSummary = {
         ...summary,
         sections: Array.from({ length: sectionCount }, (_, index) =>
-          section(
-            index % 2 === 0 ? 'idea-critical' : 'idea-secondary',
-            index,
-          ),
+          section(index % 2 === 0 ? 'idea-critical' : 'idea-secondary', index),
         ),
       };
 
@@ -311,8 +308,9 @@ describe('validateComposedSummary', () => {
         }),
       ).toContainEqual({
         code: 'structural_range',
-        sectionIndexes: Array.from({ length: sectionCount }, (_, index) =>
-          index,
+        sectionIndexes: Array.from(
+          { length: sectionCount },
+          (_, index) => index,
         ),
       });
     },
@@ -327,10 +325,7 @@ describe('validateComposedSummary', () => {
     const candidate: ComposedSummary = {
       ...summary,
       sections: Array.from({ length: 14 }, (_, index) =>
-        section(
-          index % 2 === 0 ? 'idea-critical' : 'idea-secondary',
-          index,
-        ),
+        section(index % 2 === 0 ? 'idea-critical' : 'idea-secondary', index),
       ),
     };
 

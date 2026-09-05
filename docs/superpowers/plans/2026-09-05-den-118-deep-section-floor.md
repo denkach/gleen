@@ -23,10 +23,12 @@
 ### Task 1: Express strict enforcement in the policy
 
 **Files:**
+
 - Modify: `src/lib/analysis-pipeline/summary-policy.ts`
 - Test: `src/lib/analysis-pipeline/summary-policy.test.ts`
 
 **Interfaces:**
+
 - Produces: `SummaryGenerationPolicy.sectionRangeEnforcement: 'adaptive' | 'strict'`.
 - Consumes: existing `durationSeconds`, `mode`, and `sectionRange` policy inputs.
 
@@ -38,11 +40,12 @@ Add assertions equivalent to:
 it.each([2_700, 2_883, 5_399])(
   'strictly enforces the Deep long-form range at %is',
   (durationSeconds) => {
-    expect(selectSummaryPolicy(input({ durationSeconds, mode: 'deep' })))
-      .toMatchObject({
-        sectionRange: { min: 14, max: 18 },
-        sectionRangeEnforcement: 'strict',
-      });
+    expect(
+      selectSummaryPolicy(input({ durationSeconds, mode: 'deep' })),
+    ).toMatchObject({
+      sectionRange: { min: 14, max: 18 },
+      sectionRangeEnforcement: 'strict',
+    });
   },
 );
 
@@ -51,8 +54,9 @@ it.each([
   [2_883, 'balanced'],
   [5_400, 'deep'],
 ] as const)('keeps %s/%s adaptive', (durationSeconds, mode) => {
-  expect(selectSummaryPolicy(input({ durationSeconds, mode })))
-    .toMatchObject({ sectionRangeEnforcement: 'adaptive' });
+  expect(selectSummaryPolicy(input({ durationSeconds, mode }))).toMatchObject({
+    sectionRangeEnforcement: 'adaptive',
+  });
 });
 ```
 
@@ -86,10 +90,12 @@ Commit: `fix(DEN-118): mark deep long-form range strict`
 ### Task 2: Reject undersized strict compositions
 
 **Files:**
+
 - Modify: `src/lib/analysis-pipeline/summary-quality.ts`
 - Test: `src/lib/analysis-pipeline/summary-quality.test.ts`
 
 **Interfaces:**
+
 - Consumes: `SummaryGenerationPolicy.sectionRangeEnforcement`.
 - Preserves: adaptive lower-bound behavior and upper-bound set-cover behavior.
 
@@ -105,16 +111,28 @@ const strictPolicy = {
   sectionRangeEnforcement: 'strict' as const,
 };
 
-it.each([12, 13])('rejects %i sections for a strict 14-section floor', (count) => {
-  const candidate = {
-    ...summary,
-    sections: Array.from({ length: count }, (_, index) =>
-      section(index % 2 === 0 ? 'idea-critical' : 'idea-secondary', index),
-    ),
-  };
-  expect(validateComposedSummary({ ideaMap, summary: candidate, policy: strictPolicy }))
-    .toEqual(expect.arrayContaining([expect.objectContaining({ code: 'structural_range' })]));
-});
+it.each([12, 13])(
+  'rejects %i sections for a strict 14-section floor',
+  (count) => {
+    const candidate = {
+      ...summary,
+      sections: Array.from({ length: count }, (_, index) =>
+        section(index % 2 === 0 ? 'idea-critical' : 'idea-secondary', index),
+      ),
+    };
+    expect(
+      validateComposedSummary({
+        ideaMap,
+        summary: candidate,
+        policy: strictPolicy,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'structural_range' }),
+      ]),
+    );
+  },
+);
 ```
 
 Update the existing policy fixture with `sectionRangeEnforcement: 'adaptive'`
@@ -134,7 +152,8 @@ In `shouldReportStructuralRange`:
 ```ts
 if (sectionCount < min) {
   if (input.policy.sectionRangeEnforcement === 'strict') return true;
-  const distinctIdeaCount = new Set(input.ideaMap.ideas.map(({ id }) => id)).size;
+  const distinctIdeaCount = new Set(input.ideaMap.ideas.map(({ id }) => id))
+    .size;
   return distinctIdeaCount >= min;
 }
 ```
@@ -150,10 +169,12 @@ Commit: `fix(DEN-118): enforce deep section floor`
 ### Task 3: Align prompts and bounded repair with the strict contract
 
 **Files:**
+
 - Modify: `src/lib/analysis-pipeline/generators.ts`
 - Test: `src/lib/analysis-pipeline/generators.test.ts`
 
 **Interfaces:**
+
 - Consumes: `SummaryGenerationPolicy.sectionRangeEnforcement`.
 - Preserves: two-pass generation and exactly one repair request.
 
@@ -199,7 +220,9 @@ function ideaMapInstructions(policy: SummaryGenerationPolicy): string {
     policy.sectionRangeEnforcement === 'strict'
       ? `Identify at least ${floor} distinct grounded chapter candidates by separating claims, evidence, examples, caveats, consequences, and practical conclusions when the transcript supports them. Do not invent or cosmetically split ideas.`
       : null,
-  ].filter((part): part is string => part !== null).join(' ');
+  ]
+    .filter((part): part is string => part !== null)
+    .join(' ');
 }
 ```
 
@@ -223,6 +246,7 @@ Commit: `fix(DEN-118): require complete deep chapter structure`
 ### Task 4: Full verification and delivery
 
 **Files:**
+
 - Modify only if evidence requires it: existing DEN-118 fixture tests.
 
 - [ ] Run `npm run format:check` and `npm run lint`.
