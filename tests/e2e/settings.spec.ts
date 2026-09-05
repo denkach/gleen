@@ -1,11 +1,12 @@
 import { expect, test } from './fixtures';
 
-const authToken = process.env.PLAYWRIGHT_AUTH_FIXTURE_TOKEN;
+const authTokenInput = process.env.PLAYWRIGHT_AUTH_FIXTURE_TOKEN;
 const origin = `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? '3000'}`;
 
-if (authToken === undefined) {
+if (authTokenInput === undefined) {
   throw new Error('Playwright authenticated fixture token was not initialized');
 }
+const authToken: string = authTokenInput;
 
 async function authenticate(page: import('@playwright/test').Page) {
   await page.context().addCookies([
