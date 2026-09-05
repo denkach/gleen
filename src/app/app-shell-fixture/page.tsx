@@ -10,7 +10,10 @@ import { unavailableUsage } from '@/lib/app-shell';
 import { localeSchema } from '@/lib/i18n/locales';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { historyMessages } from '@/lib/i18n/messages/history';
-import { settingsMessages } from '@/lib/i18n/messages/settings';
+import {
+  materializeSettingsClientCopy,
+  settingsMessages,
+} from '@/lib/i18n/messages/settings';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
@@ -20,6 +23,7 @@ import type { HistoryItem } from '@/lib/history/repository';
 import { summaryModeSchema } from '@/lib/summary-mode';
 import {
   reanalyzeFixture,
+  setFixtureSummaryMode,
   submitDuplicateFixture,
   submitInvalidUrlFixture,
   submitProviderOutageFixture,
@@ -127,6 +131,9 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
   const storedSummaryMode = summaryModeSchema.safeParse(
     (await cookies()).get(fixtureSummaryDefaultCookie)?.value,
   ).data;
+  const settingsClientCopy = materializeSettingsClientCopy(
+    settingsMessages[locale],
+  );
   const resolvedJourney = journey ?? (analysis ? 'recover' : undefined);
   if (
     intake &&
@@ -160,14 +167,15 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
           <LanguagePreferences
             interfaceLocale={locale}
             outputLocale={defaultOnboardingState.outputLocale}
-            copy={settingsMessages[locale]}
+            copy={settingsClientCopy}
           />
           <PreferencesSettings
-            copy={settingsMessages[locale]}
+            copy={settingsClientCopy}
             flashcardPreset={defaultOnboardingState.flashcardPreset}
             summaryMode={
               storedSummaryMode ?? defaultOnboardingState.summaryPreset
             }
+            summaryModeAction={setFixtureSummaryMode}
           />
         </>
       ) : resolvedJourney ? (

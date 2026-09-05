@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
-import type { SettingsCopy } from '@/lib/i18n/messages/settings';
+import type { SettingsClientCopy } from '@/lib/i18n/messages/settings';
 import { settingsDestinations } from '@/lib/settings/account-atlas';
 
 import { SettingsIcon } from './settings-icons';
@@ -12,7 +12,7 @@ import { SettingsIcon } from './settings-icons';
 export function SettingsShell({
   children,
   copy,
-}: Readonly<{ children: ReactNode; copy: SettingsCopy }>) {
+}: Readonly<{ children: ReactNode; copy: SettingsClientCopy }>) {
   const pathname = usePathname();
   if (pathname === '/app/settings') return children;
 

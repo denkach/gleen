@@ -21,7 +21,10 @@ export function SettingsOverview({
           <p>{copy.atlas.overviewDescription}</p>
         </div>
       </header>
-      <div className="settings-atlas__grid">
+      <nav
+        aria-label={copy.atlas.navigationLabel}
+        className="settings-atlas__grid"
+      >
         {settingsDestinations.map((destination) => {
           const destinationCopy = copy.atlas.destinations[destination.key];
           const summary = summaries[destination.key];
@@ -50,7 +53,7 @@ export function SettingsOverview({
             </Link>
           );
         })}
-      </div>
+      </nav>
     </section>
   );
 }

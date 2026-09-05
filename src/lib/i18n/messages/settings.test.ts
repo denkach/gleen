@@ -2,9 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import { supportedLocales } from '@/lib/i18n/locales';
 
-import { settingsMessages } from './settings';
+import { materializeSettingsClientCopy, settingsMessages } from './settings';
 
 describe('settings messages', () => {
+  it('materializes a serializable client boundary without formatter functions', () => {
+    const copy = materializeSettingsClientCopy(settingsMessages.en);
+
+    expect(() => structuredClone(copy)).not.toThrow();
+    expect(copy.atlas).not.toHaveProperty('summaries');
+  });
+
   it('provides language-preference copy for every supported interface locale', () => {
     for (const locale of ['uk', 'ru', 'en', 'es', 'de'] as const) {
       expect(

@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 
 import {
   settingsErrorMessage,
-  type SettingsCopy,
+  type SettingsClientCopy,
 } from '@/lib/i18n/messages/settings';
 import {
   setDisplayName,
@@ -14,7 +14,7 @@ import {
 const initialState: DisplayNameActionState = { status: 'idle' };
 
 type ProfileSettingsProps = Readonly<{
-  copy: SettingsCopy;
+  copy: SettingsClientCopy;
   displayName: string;
   email: string;
   emailVerified: boolean;

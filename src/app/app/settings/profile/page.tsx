@@ -7,7 +7,10 @@ import {
   selectMessages,
   type MissingTranslationEvent,
 } from '@/lib/i18n/catalog';
-import { settingsMessages } from '@/lib/i18n/messages/settings';
+import {
+  materializeSettingsClientCopy,
+  settingsMessages,
+} from '@/lib/i18n/messages/settings';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -41,7 +44,7 @@ export default async function SettingsProfilePage() {
   const identity = deriveAppIdentity(user);
   return (
     <ProfileSettings
-      copy={copy}
+      copy={materializeSettingsClientCopy(copy)}
       displayName={identity.displayName}
       email={identity.email}
       emailVerified={Boolean(user.email_confirmed_at)}

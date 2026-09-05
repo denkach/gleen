@@ -11,11 +11,13 @@ import { PreferencesSettings } from './preferences-settings';
 
 describe('preferences settings', () => {
   it('renders independent summary and flashcard forms', () => {
+    const summaryModeAction = vi.fn();
     render(
       <PreferencesSettings
         copy={settingsMessages.en}
         flashcardPreset={18}
         summaryMode="balanced"
+        summaryModeAction={summaryModeAction}
       />,
     );
     expect(screen.getByLabelText('Default summary mode')).toHaveValue(

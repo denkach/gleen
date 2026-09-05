@@ -5,7 +5,10 @@ import {
   selectMessages,
   type MissingTranslationEvent,
 } from '@/lib/i18n/catalog';
-import { settingsMessages } from '@/lib/i18n/messages/settings';
+import {
+  materializeSettingsClientCopy,
+  settingsMessages,
+} from '@/lib/i18n/messages/settings';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 
 function reportMissingTranslation(event: MissingTranslationEvent) {
@@ -22,5 +25,9 @@ export default async function SettingsLayout({
     'settings',
     reportMissingTranslation,
   );
-  return <SettingsShell copy={copy}>{children}</SettingsShell>;
+  return (
+    <SettingsShell copy={materializeSettingsClientCopy(copy)}>
+      {children}
+    </SettingsShell>
+  );
 }

@@ -11,7 +11,7 @@ import {
 } from '@/lib/i18n/locales';
 import {
   settingsErrorMessage,
-  type SettingsCopy,
+  type SettingsClientCopy,
 } from '@/lib/i18n/messages/settings';
 import {
   setOutputLocale,
@@ -24,7 +24,7 @@ const outputInitialState: OutputLocaleActionState = { status: 'idle' };
 type LanguagePreferencesProps = Readonly<{
   interfaceLocale: Locale;
   outputLocale: Locale;
-  copy: SettingsCopy;
+  copy: SettingsClientCopy;
   unavailable?: boolean;
 }>;
 

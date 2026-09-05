@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react';
 
 import {
   settingsErrorMessage,
-  type SettingsCopy,
+  type SettingsClientCopy,
 } from '@/lib/i18n/messages/settings';
 import {
   setFlashcardPreset,
@@ -19,10 +19,18 @@ const summaryInitial: SummaryModeActionState = { status: 'idle' };
 const cardsInitial: FlashcardPresetActionState = { status: 'idle' };
 
 type PreferencesSettingsProps = Readonly<{
-  copy: SettingsCopy;
+  copy: SettingsClientCopy;
   flashcardPreset: OnboardingState['flashcardPreset'];
   summaryMode: SummaryMode;
   unavailable?: boolean;
+  summaryModeAction?: (
+    state: SummaryModeActionState,
+    formData: FormData,
+  ) => Promise<SummaryModeActionState>;
+  flashcardPresetAction?: (
+    state: FlashcardPresetActionState,
+    formData: FormData,
+  ) => Promise<FlashcardPresetActionState>;
 }>;
 
 export function PreferencesSettings({
@@ -30,15 +38,17 @@ export function PreferencesSettings({
   flashcardPreset,
   summaryMode,
   unavailable = false,
+  summaryModeAction = setSummaryMode,
+  flashcardPresetAction = setFlashcardPreset,
 }: PreferencesSettingsProps) {
   const [mode, setMode] = useState(summaryMode);
   const [cards, setCards] = useState(flashcardPreset);
   const [summaryState, summaryAction, summaryPending] = useActionState(
-    setSummaryMode,
+    summaryModeAction,
     summaryInitial,
   );
   const [cardsState, cardsAction, cardsPending] = useActionState(
-    setFlashcardPreset,
+    flashcardPresetAction,
     cardsInitial,
   );
   const summaryError =

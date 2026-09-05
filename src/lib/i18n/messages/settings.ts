@@ -859,9 +859,26 @@ export const settingsMessages = defineMessages({
 });
 
 export type SettingsCopy = (typeof settingsMessages)['en'];
+export type SettingsClientCopy = Omit<SettingsCopy, 'atlas'> &
+  Readonly<{ atlas: Omit<SettingsCopy['atlas'], 'summaries'> }>;
+
+export function materializeSettingsClientCopy(
+  copy: SettingsCopy,
+): SettingsClientCopy {
+  return {
+    ...copy,
+    atlas: {
+      navigationLabel: copy.atlas.navigationLabel,
+      back: copy.atlas.back,
+      overviewTitle: copy.atlas.overviewTitle,
+      overviewDescription: copy.atlas.overviewDescription,
+      destinations: copy.atlas.destinations,
+    },
+  };
+}
 
 export function settingsErrorMessage(
-  copy: SettingsCopy,
+  copy: Pick<SettingsCopy, 'language'>,
   code: SettingsErrorCode,
 ) {
   return copy.language.errors[code];

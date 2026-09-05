@@ -25,6 +25,9 @@ describe('SettingsOverview', () => {
     );
 
     expect(screen.getAllByTestId('settings-destination-card')).toHaveLength(6);
+    expect(
+      screen.getByRole('navigation', { name: 'Settings sections' }),
+    ).toBeVisible();
     expect(screen.getByRole('link', { name: /Profile/ })).toHaveAttribute(
       'href',
       '/app/settings/profile',

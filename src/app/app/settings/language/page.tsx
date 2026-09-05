@@ -6,7 +6,10 @@ import {
   selectMessages,
   type MissingTranslationEvent,
 } from '@/lib/i18n/catalog';
-import { settingsMessages } from '@/lib/i18n/messages/settings';
+import {
+  materializeSettingsClientCopy,
+  settingsMessages,
+} from '@/lib/i18n/messages/settings';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { defaultOnboardingState } from '@/lib/onboarding/preferences';
 import { getOnboardingState } from '@/lib/onboarding/repository';
@@ -47,7 +50,7 @@ export default async function SettingsLanguagePage() {
   const preferences = result.ok ? result.data : defaultOnboardingState;
   return (
     <LanguagePreferences
-      copy={copy}
+      copy={materializeSettingsClientCopy(copy)}
       interfaceLocale={preferences.interfaceLocale}
       outputLocale={preferences.outputLocale}
       unavailable={!result.ok}
