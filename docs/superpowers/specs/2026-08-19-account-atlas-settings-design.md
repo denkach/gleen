@@ -153,6 +153,19 @@ Server-only secrets and privileged deletion/export operations remain outside cli
 - Storage/service outages keep navigation and unaffected destinations available.
 - No raw exception, email token, Supabase identifier, or integration credential is rendered.
 
+## Scoped controls and interaction polish
+
+Settings controls follow the approved DEN-29 account-page references while the
+overview follows the Account Atlas composition. Primary save actions use the
+light Prism face with a restrained spectral edge on hover; secondary and back
+actions remain dark with a crisp tokenized border. Every actionable card,
+button, select, and link has explicit hover, pressed, visible-focus, disabled,
+and pending states. Pressed movement is limited to one pixel and all
+non-essential movement is removed under `prefers-reduced-motion: reduce`.
+
+These styles remain scoped to Settings. The implementation reuses semantic
+tokens and primitives but does not restyle unrelated authenticated pages.
+
 ## Accessibility and responsive behavior
 
 - Semantic heading hierarchy and landmarks.
