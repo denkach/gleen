@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 import { AppShell } from '@/components/app-shell/app-shell';
@@ -10,6 +11,7 @@ import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
+import { fixtureAnalysisSummaryCookie } from '@/lib/youtube-intake/development-fixture-preferences';
 import { normalizeResultWorkspace } from '@/lib/result-workspace/presentation';
 import { resultMessages } from '@/lib/i18n/messages/results';
 import { localeSchema, type Locale } from '@/lib/i18n/locales';
@@ -103,6 +105,20 @@ const den25Summary = {
       sourceOffsetMs: 900_000,
     },
   ],
+};
+
+const den25LongSummary = {
+  schemaVersion: 3 as const,
+  title: 'Lead with purpose through every chapter',
+  outcome:
+    'Clear purpose remains useful when every important claim is preserved as a complete, reusable explanation.',
+  sections: den25Chapters.map(([title, description], index) => ({
+    title,
+    summary: `Chapter ${index + 1} thesis.`,
+    details: `${description} This complete chapter preserves its supporting explanation, practical implications, and important caveats.`,
+    supportingQuote: null,
+    sourceOffsetMs: null,
+  })),
 };
 
 const den25SourceTranscriptSegments = [
@@ -281,7 +297,10 @@ function pipelineSnapshot(
   };
 }
 
-function den25ResultSnapshot(analysisId: string): AnalysisSnapshot {
+function den25ResultSnapshot(
+  analysisId: string,
+  longSummary = false,
+): AnalysisSnapshot {
   const partial = analysisId === 'result-den-25-partial';
   const ready = (
     kind: 'summary' | 'flashcards' | 'timestamps' | 'transcript',
@@ -328,7 +347,7 @@ function den25ResultSnapshot(analysisId: string): AnalysisSnapshot {
     },
     events: [],
     artifacts: [
-      ready('summary', den25Summary),
+      ready('summary', longSummary ? den25LongSummary : den25Summary),
       ...(partial
         ? [
             pending('flashcards'),
@@ -527,6 +546,9 @@ export default async function FixtureReadinessPage({
     : await getRequestLocale();
   const resultCopy = resultMessages[locale];
   const resultQuery = fixtureQueryString(resolvedSearchParams, locale);
+  const persistedSummaryPreset = summaryPresetSchema.safeParse(
+    (await cookies()).get(fixtureAnalysisSummaryCookie)?.value,
+  ).data;
   if (!allowedIds.has(id)) notFound();
   const den25Fixture = id.startsWith('result-den-25');
   const longVisualFixture = den25Fixture && visualCase === 'long';
@@ -555,6 +577,7 @@ export default async function FixtureReadinessPage({
         fixtureSavedIntake.configuration.outputLocale,
       summaryPreset:
         summaryPresetSchema.safeParse(summaryPreset).data ??
+        persistedSummaryPreset ??
         fixtureSavedIntake.configuration.summaryPreset,
       artifacts: resultIds.has(id)
         ? (['summary', 'flashcards', 'timestamps', 'transcript'] as const)
@@ -579,7 +602,7 @@ export default async function FixtureReadinessPage({
     : null;
   const result = resultIds.has(id)
     ? den25Fixture
-      ? den25ResultSnapshot(id)
+      ? den25ResultSnapshot(id, longVisualFixture)
       : resultSnapshot(id)
     : null;
   const retrySnapshot =

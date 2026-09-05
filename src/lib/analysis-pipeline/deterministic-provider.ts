@@ -1,4 +1,5 @@
 import {
+  generationMetadataSchema,
   ProviderError,
   type SafeAnalysisErrorCode,
   type StructuredGenerationProvider,
@@ -28,6 +29,7 @@ export function createDeterministicProvider(
   return {
     requests,
     async generate<T>(request: StructuredGenerationRequest<T>) {
+      const startedAt = performance.now();
       requests.push(request as StructuredGenerationRequest<unknown>);
       const failure = failures[request.name];
       const attemptsLeft = remaining.get(request.name) ?? 0;
@@ -43,11 +45,12 @@ export function createDeterministicProvider(
       }
       return {
         value: request.parse(fixtures[request.name]),
-        metadata: {
+        metadata: generationMetadataSchema.parse({
           requestId: `deterministic:${request.name}`,
           model: 'deterministic',
           usage: null,
-        },
+          latencyMs: Math.max(Math.round(performance.now() - startedAt), 0),
+        }),
       };
     },
   };

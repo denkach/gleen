@@ -5,6 +5,7 @@ import {
   createSupabaseIntakeRepository,
   IntakeRepositoryError,
 } from './supabase-repository';
+import { createCompatibleDuplicateKeys } from './fingerprint';
 
 const userId = '11111111-1111-4111-8111-111111111111';
 const intakeId = '22222222-2222-4222-8222-222222222222';
@@ -154,6 +155,18 @@ describe('Supabase intake repository', () => {
     expect(query.limit).toHaveBeenCalledWith(1);
   });
 
+  it('normalizes a stored legacy detailed summary preset to deep', async () => {
+    const query = selectQuery({
+      data: { ...row, summary_preset: 'detailed' },
+      error: null,
+    });
+    const client = { from: vi.fn().mockReturnValue(query), rpc: vi.fn() };
+
+    await expect(
+      createSupabaseIntakeRepository(client).findOwned(userId, intakeId),
+    ).resolves.toMatchObject({ configuration: { summaryPreset: 'deep' } });
+  });
+
   it('always filters owned lookup by both user and id', async () => {
     const query = selectQuery({ data: row, error: null });
     const client = { from: vi.fn().mockReturnValue(query), rpc: vi.fn() };
@@ -205,6 +218,54 @@ describe('Supabase intake repository', () => {
     );
     expect(reusable.eq).toHaveBeenCalledWith('user_id', userId);
     expect(reusable.neq).toHaveBeenCalledWith('status', 'failed');
+  });
+
+  it('recovers a cross-version Deep race when the legacy fingerprint wins the semantic unique index', async () => {
+    const deepInput: NewAnalysisIntake = {
+      ...input,
+      configuration: { ...input.configuration, summaryPreset: 'deep' },
+      duplicateKey: createCompatibleDuplicateKeys(input.youtubeVideoId, {
+        ...input.configuration,
+        summaryPreset: 'deep',
+      })[0]!,
+    };
+    const legacyKey = createCompatibleDuplicateKeys(
+      deepInput.youtubeVideoId,
+      deepInput.configuration,
+    )[1]!;
+    const insert = insertQuery({ data: null, error: { code: '23505' } });
+    const canonicalMiss = selectQuery({ data: null, error: null });
+    const legacyWinner = selectQuery({
+      data: {
+        ...row,
+        summary_preset: 'detailed',
+        duplicate_key: legacyKey,
+      },
+      error: null,
+    });
+    const client = {
+      from: vi
+        .fn()
+        .mockReturnValueOnce(insert)
+        .mockReturnValueOnce(canonicalMiss)
+        .mockReturnValueOnce(legacyWinner),
+      rpc: vi.fn(),
+    };
+
+    await expect(
+      createSupabaseIntakeRepository(client).insertReady(deepInput),
+    ).resolves.toEqual({
+      kind: 'recovered',
+      intake: expect.objectContaining({
+        duplicateKey: legacyKey,
+        configuration: expect.objectContaining({ summaryPreset: 'deep' }),
+      }),
+    });
+    expect(canonicalMiss.eq).toHaveBeenCalledWith(
+      'duplicate_key',
+      deepInput.duplicateKey,
+    );
+    expect(legacyWinner.eq).toHaveBeenCalledWith('duplicate_key', legacyKey);
   });
 
   it('passes the fresh validated snapshot to the atomic re-analysis RPC', async () => {

@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const { requestLocale, receivedLocaleSwitcherCopy } = vi.hoisted(() => ({
@@ -83,6 +84,7 @@ describe('HomePage', () => {
   );
 
   it('renders the complete German marketing surface selected on the server', async () => {
+    const user = userEvent.setup();
     render(await HomePage());
 
     expect(
@@ -103,10 +105,18 @@ describe('HomePage', () => {
     ).toBeVisible();
     expect(
       within(header).getByRole('link', { name: 'Kostenlos starten' }),
-    ).toBeVisible();
-    expect(
+    ).toHaveAttribute('href', '/sign-up');
+    await user.click(
       within(header).getByRole('button', { name: 'Menü öffnen' }),
-    ).toHaveClass('btn-icon');
+    );
+    const menu = await screen.findByRole('dialog', { name: 'Menü' });
+    expect(
+      within(menu).getByRole('link', { name: 'Anmelden' }),
+    ).toHaveAttribute('href', '/sign-in');
+    expect(
+      within(menu).getByRole('link', { name: 'Kostenlos starten' }),
+    ).toHaveAttribute('href', '/sign-up');
+    await user.keyboard('{Escape}');
     expect(screen.getByText('Der Prisma-Workflow')).toBeVisible();
     expect(screen.getByText('Zusammenfassung mit Struktur')).toBeVisible();
     expect(screen.getByText('Interaktive Karteikarten')).toBeVisible();

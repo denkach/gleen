@@ -203,6 +203,11 @@ describe('AnalysisProcessingScreen', () => {
     expect(screen.getByText('Конспект готово')).toBeVisible();
     expect(screen.getByText('Картки потрібно повторити')).toBeVisible();
     expect(
+      screen.getByRole('heading', {
+        name: 'Створення матеріалів перервано.',
+      }),
+    ).toBeVisible();
+    expect(
       screen.getByRole('button', { name: 'Спробувати ще раз' }),
     ).toBeVisible();
   });

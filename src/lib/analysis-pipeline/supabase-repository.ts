@@ -15,7 +15,10 @@ import type {
   JobStateUpdate,
   NewAnalysisEvent,
   ReadyArtifactWrite,
+  SummaryGenerationMetric,
 } from './repository';
+import { generationMetadataSchema } from './provider';
+import { z } from 'zod';
 
 type SupabaseError = Readonly<{
   code?: string;
@@ -127,6 +130,63 @@ function updatedAtOrConflict(result: SupabaseResult): string | null {
   }
   return data.updated_at;
 }
+
+const summaryPassMetricSchema = generationMetadataSchema
+  .extend({
+    name: z.enum([
+      'gleen_summary_v3',
+      'gleen_summary_idea_map_v1',
+      'gleen_summary_compose_v3',
+      'gleen_summary_repair_v3',
+    ]),
+  })
+  .strict();
+
+const findingCountsSchema = z
+  .object({
+    missing_high_importance: z.number().int().nonnegative().max(60).optional(),
+    unknown_idea: z.number().int().nonnegative().max(60).optional(),
+    duplicate_section_text: z.number().int().nonnegative().max(20).optional(),
+    duplicate_adjacent_section: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(19)
+      .optional(),
+    structural_range: z.number().int().nonnegative().max(1).optional(),
+  })
+  .strict();
+
+const summaryGenerationMetricSchema = z
+  .object({
+    jobId: z.string().min(1).max(200),
+    attempt: z.number().int().positive(),
+    status: z.enum(['completed', 'failed']),
+    errorCode: z
+      .enum([
+        'provider_unavailable',
+        'provider_configuration',
+        'provider_rejected',
+        'invalid_provider_response',
+      ])
+      .nullable(),
+    route: z.enum(['one-pass', 'two-pass']),
+    repairCount: z.number().int().min(0).max(1),
+    passes: z.array(summaryPassMetricSchema).max(3),
+    findingCounts: findingCountsSchema,
+  })
+  .strict()
+  .superRefine((metric, context) => {
+    if (
+      (metric.status === 'completed' && metric.errorCode !== null) ||
+      (metric.status === 'failed' && metric.errorCode === null)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Generation metric status and error code disagree',
+      });
+    }
+  });
 
 export function createSupabaseAnalysisRepository(
   client: SupabaseAnalysisClient,
@@ -368,6 +428,30 @@ export function createSupabaseAnalysisRepository(
           },
           {
             onConflict: 'job_id,idempotency_key',
+            ignoreDuplicates: true,
+          },
+        ),
+      );
+    },
+
+    async recordSummaryGenerationMetric(input: SummaryGenerationMetric) {
+      const parsed = summaryGenerationMetricSchema.safeParse(input);
+      if (!parsed.success) throw new AnalysisRepositoryError();
+      const metric = parsed.data;
+      ensureSuccess(
+        await client.from('analysis_summary_generation_metrics').upsert(
+          {
+            job_id: metric.jobId,
+            attempt: metric.attempt,
+            status: metric.status,
+            error_code: metric.errorCode,
+            route: metric.route,
+            repair_count: metric.repairCount,
+            passes: metric.passes,
+            finding_counts: metric.findingCounts,
+          },
+          {
+            onConflict: 'job_id,attempt',
             ignoreDuplicates: true,
           },
         ),

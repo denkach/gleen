@@ -143,6 +143,7 @@ export const timestampsArtifactSchema = z
   });
 
 export type SummaryArtifact = z.infer<typeof summaryArtifactSchema>;
+export type SummaryArtifactV3 = z.infer<typeof summaryArtifactV3Schema>;
 export type FlashcardsArtifact = z.infer<typeof flashcardsArtifactSchema>;
 export type TimestampsArtifact = z.infer<typeof timestampsArtifactSchema>;
 export type TranscriptArtifact = z.infer<typeof transcriptArtifactSchema>;

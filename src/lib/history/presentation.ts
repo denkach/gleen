@@ -80,9 +80,7 @@ export function toHistoryItem(
     summaryPresetLabel:
       row.summaryPreset === null
         ? null
-        : row.summaryPreset === 'detailed'
-          ? options.copy.presentation.presets.detailed
-          : options.copy.presentation.presets.balanced,
+        : options.copy.presentation.presets[row.summaryPreset],
     durationSeconds: row.durationSeconds,
     durationLabel: formatDuration(row.durationSeconds),
     analyzedAt: row.analyzedAt,

@@ -74,26 +74,68 @@ test('chooses artifacts, prevents double submit, and enters one processing hando
   expect(page.url()).not.toContain('/app/video/');
 });
 
-test('@localization persists output language and summary preset through options and submission', async ({
+test('@localization persists output language and canonical summary mode through options and submission', async ({
   page,
 }) => {
   await page.goto('/app-shell-fixture?intake=ready');
   await page.getByLabel('YouTube URL').fill(videoUrl);
   await page.getByRole('button', { name: 'Advanced options' }).click();
   await page.getByRole('radio', { name: 'Deutsch' }).click();
-  await page.getByLabel('Summary preset').selectOption('detailed');
+  await page.getByLabel('Summary mode').selectOption('compact');
   await page.getByRole('button', { name: 'Done' }).click();
   await page.getByRole('button', { name: 'Advanced options' }).click();
   await expect(page.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
-  await expect(page.getByLabel('Summary preset')).toHaveValue('detailed');
+  await expect(page.getByLabel('Summary mode')).toHaveValue('compact');
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.locator('input[name="outputLocale"]')).toHaveValue('de');
   await expect(page.locator('input[name="summaryPreset"]')).toHaveValue(
-    'detailed',
+    'compact',
   );
   await page.getByRole('button', { name: 'Analyze video' }).click();
   await expect(page).toHaveURL(readyProcessingHandoffUrl, { timeout: 5_000 });
   await expect(page.getByTestId('analyze-processing-visual')).toHaveCount(1);
+});
+
+test('@localization saves an account summary default while every per-analysis mode survives submit and reopen', async ({
+  page,
+}) => {
+  await page.goto('/app-shell-fixture?view=settings');
+  await page.getByLabel('Default summary mode').selectOption('deep');
+  await page.getByRole('button', { name: 'Save summary mode' }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Saved.' }),
+  ).toBeVisible();
+
+  for (const [mode, label] of [
+    ['compact', 'Compact'],
+    ['balanced', 'Balanced'],
+    ['deep', 'Deep'],
+  ] as const) {
+    await page.goto('/app-shell-fixture?intake=ready');
+    await page.getByLabel('YouTube URL').fill(videoUrl);
+    await page.getByRole('button', { name: 'Advanced options' }).click();
+    await expect(page.getByLabel('Summary mode')).toHaveValue('deep');
+    await page.getByLabel('Summary mode').selectOption(mode);
+    await page.getByRole('button', { name: 'Done' }).click();
+    await page.getByRole('button', { name: 'Analyze video' }).click();
+    await expect(page).toHaveURL(readyProcessingHandoffUrl, {
+      timeout: 5_000,
+    });
+
+    await page.goto(
+      '/app-shell-fixture/app/video/33333333-3333-4333-8333-333333333333',
+    );
+    const summaryMode = page
+      .locator('dt')
+      .filter({ hasText: 'Summary mode' })
+      .locator('..')
+      .locator('dd');
+    await expect(summaryMode).toHaveText(label);
+
+    await page.goto('/app-shell-fixture?intake=ready');
+    await page.getByRole('button', { name: 'Advanced options' }).click();
+    await expect(page.getByLabel('Summary mode')).toHaveValue('deep');
+  }
 });
 
 test('retains a 30-card preset and submits it to the processing handoff', async ({
@@ -133,7 +175,7 @@ test('detects an exact duplicate, opens existing, and confirms re-analysis', asy
   await expect(existing).toHaveAttribute('href', /\/app\/video\//);
   await page.getByRole('button', { name: 'Advanced options' }).click();
   await page.getByRole('radio', { name: 'Deutsch' }).click();
-  await page.getByLabel('Summary preset').selectOption('detailed');
+  await page.getByLabel('Summary mode').selectOption('deep');
   await page.getByRole('checkbox', { name: 'Flashcards' }).check();
   await page.getByLabel('Flashcard count').selectOption('30');
   await page.getByRole('button', { name: 'Done' }).click();

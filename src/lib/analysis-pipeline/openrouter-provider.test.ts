@@ -30,7 +30,19 @@ describe('OpenRouter structured provider', () => {
       response(200, {
         id: 'generation-id',
         model: 'vendor/model',
-        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 4,
+          total_tokens: 14,
+          cost: 0.00042,
+          prompt_tokens_details: {
+            cached_tokens: 3,
+            cache_write_tokens: 2,
+            audio_tokens: 1,
+          },
+          completion_tokens_details: { reasoning_tokens: 2 },
+          cost_details: { upstream_inference_cost: 0.00021 },
+        },
         choices: [{ message: { content: '{"title":"Result"}' } }],
       }),
     );
@@ -42,7 +54,22 @@ describe('OpenRouter structured provider', () => {
 
     await expect(provider.generate(request)).resolves.toMatchObject({
       value: { title: 'Result' },
-      metadata: { requestId: 'generation-id', model: 'vendor/model' },
+      metadata: {
+        requestId: 'generation-id',
+        model: 'vendor/model',
+        usage: {
+          promptTokens: 10,
+          completionTokens: 4,
+          totalTokens: 14,
+          cost: 0.00042,
+          cachedPromptTokens: 3,
+          cacheWritePromptTokens: 2,
+          promptAudioTokens: 1,
+          reasoningTokens: 2,
+          upstreamInferenceCost: 0.00021,
+        },
+        latencyMs: expect.any(Number),
+      },
     });
     const init = fetch.mock.calls[0]?.[1] as RequestInit;
     const body = JSON.parse(String(init.body));
@@ -63,24 +90,220 @@ describe('OpenRouter structured provider', () => {
     expect(init.headers).toMatchObject({ Authorization: 'Bearer secret' });
   });
 
-  it.each([408, 429, 502, 503])(
-    'classifies HTTP %i as retryable',
+  it('accepts documented OpenRouter usage fields while retaining only safe metrics', async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      response(200, {
+        id: 'generation-id',
+        model: 'openai/gpt-4.1-mini',
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 15,
+          total_tokens: 25,
+          cost: 0.0012,
+          is_byok: false,
+          prompt_tokens_details: { cached_tokens: 2 },
+          completion_tokens_details: { reasoning_tokens: 5 },
+          cost_details: {
+            upstream_inference_cost: null,
+            upstream_inference_prompt_cost: 0.0008,
+            upstream_inference_completions_cost: 0.0004,
+          },
+          server_tool_use_details: {
+            tool_calls_requested: 2,
+            tool_calls_executed: 2,
+          },
+        },
+        choices: [{ message: { content: '{"title":"Result"}' } }],
+      }),
+    );
+    const provider = createOpenRouterProvider({
+      apiKey: 'secret',
+      model: 'openai/gpt-4.1-mini',
+      fetch,
+    });
+
+    await expect(provider.generate(request)).resolves.toMatchObject({
+      value: { title: 'Result' },
+      metadata: {
+        usage: {
+          promptTokens: 10,
+          completionTokens: 15,
+          totalTokens: 25,
+          cost: 0.0012,
+          cachedPromptTokens: 2,
+          reasoningTokens: 5,
+        },
+      },
+    });
+  });
+
+  it('drops unknown provider usage fields instead of persisting or rejecting them', async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      response(200, {
+        id: 'generation-id',
+        model: 'vendor/model',
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 4,
+          total_tokens: 14,
+          transcript: 'sensitive generated prose',
+          is_byok: 'provider-format-changed',
+          prompt_tokens_details: {
+            cached_tokens: 3,
+            provider_note: 'not a metric we retain',
+          },
+          cost_details: {
+            upstream_inference_prompt_cost: { currency: 'USD', value: 1 },
+          },
+          server_tool_use_details: 'provider-format-changed',
+        },
+        choices: [{ message: { content: '{"title":"Result"}' } }],
+      }),
+    );
+    const provider = createOpenRouterProvider({
+      apiKey: 'secret',
+      model: 'vendor/model',
+      fetch,
+    });
+
+    const result = await provider.generate(request);
+
+    expect(result.metadata.usage).toEqual({
+      promptTokens: 10,
+      completionTokens: 4,
+      totalTokens: 14,
+      cachedPromptTokens: 3,
+    });
+    expect(result.metadata.usage).not.toHaveProperty('transcript');
+    expect(result.metadata.usage).not.toHaveProperty('providerNote');
+  });
+
+  it.each([
+    [
+      'an out-of-range usage metric',
+      {
+        id: 'generation-id',
+        model: 'vendor/model',
+        usage: {
+          prompt_tokens: 1_000_000_001,
+          completion_tokens: 4,
+          total_tokens: 1_000_000_005,
+        },
+      },
+    ],
+    [
+      'an unconstrained request identifier',
+      {
+        id: 'generated prose must not become an identifier',
+        model: 'vendor/model',
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      },
+    ],
+  ] as const)('rejects %s', async (_name, metadata) => {
+    const fetch = vi.fn().mockResolvedValue(
+      response(200, {
+        ...metadata,
+        choices: [{ message: { content: '{"title":"Result"}' } }],
+      }),
+    );
+    const provider = createOpenRouterProvider({
+      apiKey: 'secret',
+      model: 'vendor/model',
+      fetch,
+    });
+
+    await expect(provider.generate(request)).rejects.toMatchObject({
+      code: 'invalid_provider_response',
+      retryable: true,
+    });
+  });
+
+  it.each([408, 429, 500, 502, 503, 504, 524, 529])(
+    'retries transient HTTP %i once and returns the recovered result',
     async (status) => {
       const fetch = vi
         .fn()
-        .mockResolvedValue(response(status, { error: { message: 'raw' } }));
+        .mockResolvedValueOnce(
+          response(status, { error: { message: 'temporary' } }),
+        )
+        .mockResolvedValueOnce(
+          response(200, {
+            id: 'generation-id',
+            model: 'vendor/model',
+            choices: [{ message: { content: '{"title":"Recovered"}' } }],
+          }),
+        );
+      const sleep = vi.fn().mockResolvedValue(undefined);
       const provider = createOpenRouterProvider({
         apiKey: 'secret',
         model: 'vendor/model',
         fetch,
+        sleep,
       });
 
-      await expect(provider.generate(request)).rejects.toMatchObject({
-        code: 'provider_unavailable',
-        retryable: true,
+      await expect(provider.generate(request)).resolves.toMatchObject({
+        value: { title: 'Recovered' },
       });
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(sleep).toHaveBeenCalledTimes(1);
     },
   );
+
+  it('stops after one retry when a transient response persists', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(response(529, { error: { message: 'overloaded' } }));
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const provider = createOpenRouterProvider({
+      apiKey: 'secret',
+      model: 'vendor/model',
+      fetch,
+      sleep,
+    });
+
+    await expect(provider.generate(request)).rejects.toMatchObject({
+      code: 'provider_unavailable',
+      retryable: true,
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports only bounded diagnostics for rejected responses', async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      response(400, {
+        error: {
+          message: 'sensitive transcript fragment',
+          metadata: { apiKey: 'secret' },
+        },
+      }),
+    );
+    const onDiagnostic = vi.fn();
+    const provider = createOpenRouterProvider({
+      apiKey: 'secret',
+      model: 'vendor/model',
+      fetch,
+      onDiagnostic,
+    });
+
+    await expect(provider.generate(request)).rejects.toMatchObject({
+      code: 'provider_rejected',
+      retryable: false,
+    });
+    expect(onDiagnostic).toHaveBeenCalledWith({
+      event: 'analysis_provider_http_error',
+      provider: 'openrouter',
+      requestName: 'gleen_summary_v1',
+      httpStatus: 400,
+      errorCode: 'provider_rejected',
+      retryable: false,
+      attempt: 1,
+      willRetry: false,
+    });
+    expect(JSON.stringify(onDiagnostic.mock.calls)).not.toMatch(
+      /sensitive|secret/u,
+    );
+  });
 
   it('honors a numeric Retry-After header without exposing raw errors', async () => {
     const fetch = vi

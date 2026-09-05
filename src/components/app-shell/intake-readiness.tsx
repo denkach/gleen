@@ -75,9 +75,11 @@ export function IntakeReadiness({
               <div>
                 <dt>{copy.readiness.summaryPreset}</dt>
                 <dd>
-                  {configuration.summaryPreset === 'detailed'
-                    ? copy.newAnalysis.advanced.detailed
-                    : copy.newAnalysis.advanced.balanced}
+                  {
+                    copy.newAnalysis.advanced.summaryModes[
+                      configuration.summaryPreset
+                    ].title
+                  }
                 </dd>
               </div>
             ) : null}

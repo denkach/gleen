@@ -209,14 +209,11 @@ describe('NewAnalysisForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Advanced options' }));
     await user.click(screen.getByRole('radio', { name: 'Deutsch' }));
-    await user.selectOptions(
-      screen.getByLabelText('Summary preset'),
-      'detailed',
-    );
+    await user.selectOptions(screen.getByLabelText('Summary mode'), 'deep');
     await user.click(screen.getByRole('button', { name: 'Done' }));
     await user.click(screen.getByRole('button', { name: 'Advanced options' }));
     expect(screen.getByRole('radio', { name: 'Deutsch' })).toBeChecked();
-    expect(screen.getByLabelText('Summary preset')).toHaveValue('detailed');
+    expect(screen.getByLabelText('Summary mode')).toHaveValue('deep');
     await user.click(screen.getByRole('button', { name: 'Done' }));
     await user.type(
       screen.getByLabelText('YouTube URL'),
@@ -230,7 +227,26 @@ describe('NewAnalysisForm', () => {
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
     const formData = action.mock.calls[0]?.[1] as FormData;
     expect(formData.getAll('outputLocale')).toEqual(['de']);
-    expect(formData.getAll('summaryPreset')).toEqual(['detailed']);
+    expect(formData.getAll('summaryPreset')).toEqual(['deep']);
+  });
+
+  test('submits Compact as a per-analysis override', async () => {
+    const user = userEvent.setup();
+    const action = vi.fn(
+      async (state: IntakeActionState, formData: FormData) => {
+        void formData;
+        return state;
+      },
+    );
+    renderForm(action);
+
+    await user.click(screen.getByRole('button', { name: 'Advanced options' }));
+    await user.selectOptions(screen.getByLabelText('Summary mode'), 'compact');
+
+    expect(screen.getByDisplayValue('Compact')).toHaveValue('compact');
+    expect(document.querySelector('input[name="summaryPreset"]')).toHaveValue(
+      'compact',
+    );
   });
 
   test('enables the approved intake and starts with domain artifact defaults', async () => {
@@ -279,9 +295,9 @@ describe('NewAnalysisForm', () => {
     await user.click(screen.getByRole('button', { name: 'Advanced options' }));
 
     expect(screen.queryByLabelText('Flashcard count')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Summary preset')).toBeInTheDocument();
+    expect(screen.getByLabelText('Summary mode')).toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: 'Summary' }));
-    expect(screen.queryByLabelText('Summary preset')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Summary mode')).not.toBeInTheDocument();
     for (const name of ['Timestamps', 'Transcript']) {
       await user.click(screen.getByRole('checkbox', { name }));
     }
@@ -598,7 +614,7 @@ describe('NewAnalysisForm', () => {
       existingId: 'saved-123',
       duplicateConfiguration: {
         outputLocale: 'de',
-        summaryPreset: 'detailed',
+        summaryPreset: 'deep',
         flashcardPreset: null,
         artifacts: ['summary', 'transcript'],
         analysisContractVersion: 1,
@@ -631,7 +647,7 @@ describe('NewAnalysisForm', () => {
       'A new processing attempt will be created.',
     );
     expect(screen.getByRole('dialog')).toHaveTextContent('de');
-    expect(screen.getByRole('dialog')).toHaveTextContent('Detailed');
+    expect(screen.getByRole('dialog')).toHaveTextContent('Deep');
     expect(screen.getByRole('dialog')).not.toHaveTextContent('30');
     await user.click(screen.getByRole('button', { name: 'Confirm analysis' }));
     await waitFor(() => expect(reanalyze).toHaveBeenCalledTimes(1));

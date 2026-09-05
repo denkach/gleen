@@ -46,13 +46,21 @@ export const onboardingMessages = defineMessages({
       },
     },
     presets: {
-      summaryBalanced: {
-        title: 'Balanced summary',
-        description: 'Clear structure with useful detail',
-      },
-      summaryDetailed: {
-        title: 'Detailed summary',
-        description: 'More context and deeper chapter notes',
+      summaryModes: {
+        compact: {
+          title: 'Compact summary',
+          description:
+            'The shortest useful version with key conclusions and important caveats',
+        },
+        balanced: {
+          title: 'Balanced summary',
+          description: 'A complete everyday summary with arguments and context',
+        },
+        deep: {
+          title: 'Deep summary',
+          description:
+            'A study-ready explanation with full structure and relevant examples',
+        },
       },
       flashcards18: {
         title: '18 flashcards',
@@ -114,13 +122,22 @@ export const onboardingMessages = defineMessages({
       },
     },
     presets: {
-      summaryBalanced: {
-        title: 'Збалансований конспект',
-        description: 'Чітка структура з корисними деталями',
-      },
-      summaryDetailed: {
-        title: 'Докладний конспект',
-        description: 'Більше контексту й докладніші нотатки до розділів',
+      summaryModes: {
+        compact: {
+          title: 'Компактний конспект',
+          description:
+            'Найкоротша корисна версія з головними висновками й важливими застереженнями',
+        },
+        balanced: {
+          title: 'Збалансований конспект',
+          description:
+            'Повний конспект на щодень з аргументами й важливим контекстом',
+        },
+        deep: {
+          title: 'Глибокий конспект',
+          description:
+            'Готове до навчання пояснення з повною структурою й важливими прикладами',
+        },
       },
       flashcards18: {
         title: '18 карток',
@@ -181,13 +198,22 @@ export const onboardingMessages = defineMessages({
       },
     },
     presets: {
-      summaryBalanced: {
-        title: 'Сбалансированный конспект',
-        description: 'Чёткая структура с полезными подробностями',
-      },
-      summaryDetailed: {
-        title: 'Подробный конспект',
-        description: 'Больше контекста и подробные заметки к главам',
+      summaryModes: {
+        compact: {
+          title: 'Компактный конспект',
+          description:
+            'Самая короткая полезная версия с главными выводами и важными оговорками',
+        },
+        balanced: {
+          title: 'Сбалансированный конспект',
+          description:
+            'Полный конспект на каждый день с аргументами и важным контекстом',
+        },
+        deep: {
+          title: 'Глубокий конспект',
+          description:
+            'Готовое к изучению объяснение с полной структурой и важными примерами',
+        },
       },
       flashcards18: {
         title: '18 карточек',
@@ -247,13 +273,22 @@ export const onboardingMessages = defineMessages({
       },
     },
     presets: {
-      summaryBalanced: {
-        title: 'Resumen equilibrado',
-        description: 'Estructura clara con detalles útiles',
-      },
-      summaryDetailed: {
-        title: 'Resumen detallado',
-        description: 'Más contexto y notas de capítulos más completas',
+      summaryModes: {
+        compact: {
+          title: 'Resumen compacto',
+          description:
+            'La versión útil más breve, con las conclusiones y salvedades importantes',
+        },
+        balanced: {
+          title: 'Resumen equilibrado',
+          description:
+            'Un resumen completo para el día a día, con argumentos y contexto',
+        },
+        deep: {
+          title: 'Resumen profundo',
+          description:
+            'Una explicación completa para estudiar, con estructura y ejemplos relevantes',
+        },
       },
       flashcards18: {
         title: '18 tarjetas',
@@ -315,13 +350,22 @@ export const onboardingMessages = defineMessages({
       },
     },
     presets: {
-      summaryBalanced: {
-        title: 'Ausgewogene Zusammenfassung',
-        description: 'Klare Struktur mit hilfreichen Details',
-      },
-      summaryDetailed: {
-        title: 'Detaillierte Zusammenfassung',
-        description: 'Mehr Kontext und ausführlichere Kapitelnotizen',
+      summaryModes: {
+        compact: {
+          title: 'Kompakte Zusammenfassung',
+          description:
+            'Die kürzeste nützliche Fassung mit den wichtigsten Schlüssen und Einschränkungen',
+        },
+        balanced: {
+          title: 'Ausgewogene Zusammenfassung',
+          description:
+            'Eine vollständige Zusammenfassung für den Alltag mit Argumenten und Kontext',
+        },
+        deep: {
+          title: 'Tiefgehende Zusammenfassung',
+          description:
+            'Eine lernfertige Erklärung mit vollständiger Struktur und wichtigen Beispielen',
+        },
       },
       flashcards18: {
         title: '18 Lernkarten',

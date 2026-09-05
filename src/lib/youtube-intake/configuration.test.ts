@@ -26,7 +26,7 @@ describe('intake configuration', () => {
     expect(
       normalizeIntakeConfiguration({
         outputLocale: 'en',
-        summaryPreset: 'detailed',
+        summaryPreset: 'deep',
         flashcardPreset: 30,
         artifacts: ['transcript', 'summary', 'summary'],
         analysisContractVersion: 1,
@@ -35,5 +35,17 @@ describe('intake configuration', () => {
       artifacts: ['summary', 'transcript'],
       flashcardPreset: null,
     });
+  });
+
+  test('accepts only canonical summary presets for new intakes', () => {
+    expect(() =>
+      normalizeIntakeConfiguration({
+        outputLocale: 'en',
+        summaryPreset: 'detailed',
+        flashcardPreset: 18,
+        artifacts: ['summary'],
+        analysisContractVersion: 1,
+      }),
+    ).toThrow();
   });
 });

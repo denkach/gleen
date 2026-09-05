@@ -273,7 +273,9 @@ export function HistoryList({
                   {item.title}
                 </Link>
                 <p className="history-card__metadata">
-                  {[item.channel, item.language].filter(Boolean).join(' · ')}
+                  {[item.channel, item.language, item.summaryPresetLabel]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </p>
                 {item.analyzedAtLabel ? (
                   <time dateTime={item.analyzedAt}>{item.analyzedAtLabel}</time>
@@ -326,6 +328,9 @@ export function HistoryList({
                   </td>
                   <td className="history-row__details">
                     {item.language ? <span>{item.language}</span> : null}
+                    {item.summaryPresetLabel ? (
+                      <span>{item.summaryPresetLabel}</span>
+                    ) : null}
                     {item.analyzedAtLabel ? (
                       <time dateTime={item.analyzedAt}>
                         {item.analyzedAtLabel}

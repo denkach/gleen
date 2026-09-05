@@ -180,6 +180,11 @@ export function AnalysisProcessingScreen({
           copy={copy.processing}
           state={toAnalysisVisualState(snapshot)}
           submittedUrl={intake.canonicalUrl}
+          statusTitle={
+            ['partial', 'failed'].includes(snapshot.job.status)
+              ? copy.processing.errors.generationInterruptedTitle
+              : undefined
+          }
           isExiting={
             snapshot.job.status === 'complete' ||
             (snapshot.job.status === 'partial' && readyArtifacts.length > 0)

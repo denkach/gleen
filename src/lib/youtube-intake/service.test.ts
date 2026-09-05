@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { IntakeConfiguration } from './configuration';
-import { createDuplicateKey } from './fingerprint';
+import { createCompatibleDuplicateKeys } from './fingerprint';
 import type { IntakeErrorCode } from './providers';
 import type { AnalysisIntake, IntakeRepository } from './repository';
 import { createIntakeService, IntakeServiceError } from './service';
@@ -119,6 +119,34 @@ describe('createIntakeService', () => {
     );
     expect(dependencies.transcript.getNativeTranscript).not.toHaveBeenCalled();
     expect(dependencies.repository.insertReady).not.toHaveBeenCalled();
+  });
+
+  test('reuses a legacy detailed duplicate before requesting a paid transcript', async () => {
+    const dependencies = setup();
+    const deepConfiguration = {
+      ...configuration,
+      summaryPreset: 'deep' as const,
+    };
+    const deepInput = { ...validInput, configuration: deepConfiguration };
+    vi.mocked(dependencies.repository.findReusable)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(existing);
+
+    await expect(
+      createIntakeService(dependencies).submit(deepInput),
+    ).resolves.toEqual({ kind: 'duplicate', intake: existing });
+    expect(dependencies.repository.findReusable).toHaveBeenNthCalledWith(
+      1,
+      deepInput.userId,
+      createCompatibleDuplicateKeys('dQw4w9WgXcQ', deepConfiguration)[0],
+    );
+    expect(dependencies.repository.findReusable).toHaveBeenNthCalledWith(
+      2,
+      deepInput.userId,
+      createCompatibleDuplicateKeys('dQw4w9WgXcQ', deepConfiguration)[1],
+    );
+    expect(dependencies.transcript.getNativeTranscript).not.toHaveBeenCalled();
+    expect(dependencies.pipeline.createAndStart).not.toHaveBeenCalled();
   });
 
   test('validates providers and stores a transcript snapshot for a new intake', async () => {
@@ -245,15 +273,44 @@ describe('createIntakeService', () => {
         title: 'Fresh title',
         transcriptSegments: segments,
         configuration: existing.configuration,
-        duplicateKey: createDuplicateKey(
-          existing.youtubeVideoId,
-          existing.configuration,
-        ),
+        duplicateKey: existing.duplicateKey,
       }),
     );
     expect(dependencies.pipeline.createAndStart).toHaveBeenCalledWith(
       validInput.userId,
       '44444444-4444-4444-8444-444444444444',
+    );
+  });
+
+  test('preserves a migrated Deep source fingerprint when creating a re-analysis snapshot', async () => {
+    const dependencies = setup();
+    const migratedDeepSource: AnalysisIntake = {
+      ...existing,
+      configuration: {
+        ...existing.configuration,
+        summaryPreset: 'deep',
+      },
+      duplicateKey: createCompatibleDuplicateKeys(existing.youtubeVideoId, {
+        ...existing.configuration,
+        summaryPreset: 'deep',
+      })[1]!,
+    };
+    vi.mocked(dependencies.repository.findOwned).mockResolvedValue(
+      migratedDeepSource,
+    );
+
+    await createIntakeService(dependencies).reanalyze(
+      validInput.userId,
+      migratedDeepSource.id,
+    );
+
+    expect(dependencies.repository.createReanalysis).toHaveBeenCalledWith(
+      validInput.userId,
+      migratedDeepSource.id,
+      expect.objectContaining({
+        configuration: migratedDeepSource.configuration,
+        duplicateKey: migratedDeepSource.duplicateKey,
+      }),
     );
   });
 });

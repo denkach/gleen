@@ -4,7 +4,7 @@ import type { AnalysisSnapshot, ArtifactKind } from './domain';
 import { createDeterministicProvider } from './deterministic-provider';
 import type { AnalysisRepository } from './repository';
 import type { UsageLedger } from './usage-ledger';
-import { executeAnalysisPipeline } from './workflow';
+import { executeAnalysisPipeline, loadGeneratorContext } from './workflow';
 
 function harness(
   options: {
@@ -66,6 +66,7 @@ function harness(
   const repository = {
     findSnapshotByJobId: vi.fn(async () => snapshot()),
     recordEvent: vi.fn(async () => undefined),
+    recordSummaryGenerationMetric: vi.fn(async () => undefined),
     setJobState: vi.fn(async (_id, state) => {
       jobStatus = state.status;
     }),
@@ -88,6 +89,50 @@ function harness(
             details: 'Details',
             supportingQuote: 'Transcript',
             sourceOffsetMs: 0,
+          },
+        ],
+      },
+      gleen_summary_idea_map_v1: {
+        ideas: [
+          {
+            id: 'idea-transcript',
+            importance: 'high',
+            topic: 'Transcript topic',
+            claim: 'Transcript contains the central claim.',
+            evidence: ['Transcript'],
+            caveats: [],
+            relationships: [],
+            sourceOffsetsMs: [0],
+          },
+        ],
+      },
+      gleen_summary_compose_v3: {
+        schemaVersion: 3,
+        title: 'Title',
+        outcome: 'Outcome',
+        sections: [
+          {
+            title: 'Point',
+            summary: 'A concise thesis.',
+            details: 'Details explain the central claim with grounded context.',
+            supportingQuote: 'Transcript',
+            sourceOffsetMs: 0,
+            coveredIdeaIds: ['idea-transcript'],
+          },
+        ],
+      },
+      gleen_summary_repair_v3: {
+        schemaVersion: 3,
+        title: 'Title',
+        outcome: 'Outcome',
+        sections: [
+          {
+            title: 'Point',
+            summary: 'A concise thesis.',
+            details: 'Details explain the central claim with grounded context.',
+            supportingQuote: 'Transcript',
+            sourceOffsetMs: 0,
+            coveredIdeaIds: ['idea-transcript'],
           },
         ],
       },
@@ -121,6 +166,34 @@ const context = {
 };
 
 describe('analysis workflow orchestration', () => {
+  it('normalizes a stored legacy detailed preset before generator execution', async () => {
+    const client = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: async () => ({
+              data: {
+                output_locale: 'en',
+                summary_preset: 'detailed',
+                flashcard_preset: 18,
+                duration_seconds: 60,
+                transcript_language: 'en',
+                transcript_segments: [
+                  { text: 'Transcript', offsetMs: 0, durationMs: 1_000 },
+                ],
+              },
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    };
+
+    await expect(
+      loadGeneratorContext(client as never, 'analysis-id'),
+    ).resolves.toMatchObject({ summaryPreset: 'deep' });
+  });
+
   it('persists a non-destructively enriched transcript v2 artifact', async () => {
     const { repository, provider, ledger } = harness();
 
@@ -249,8 +322,139 @@ describe('analysis workflow orchestration', () => {
     });
 
     expect(repository.recordEvent).toHaveBeenCalledTimes(5);
+    expect(repository.recordSummaryGenerationMetric).toHaveBeenCalledTimes(1);
     expect(snapshot().job.status).toBe('complete');
     expect(ledger.settle).toHaveBeenCalledWith('job-id');
+  });
+
+  it('records safe two-pass metrics outside owner-visible product events before persisting the Summary', async () => {
+    const { repository, provider, ledger } = harness();
+
+    await executeAnalysisPipeline({
+      jobId: 'job-id',
+      repository,
+      provider,
+      ledger,
+      context: { ...context, durationSeconds: 1_200 },
+    });
+
+    expect(repository.recordSummaryGenerationMetric).toHaveBeenCalledWith({
+      jobId: 'job-id',
+      status: 'completed',
+      attempt: 1,
+      errorCode: null,
+      route: 'two-pass',
+      repairCount: 0,
+      findingCounts: {},
+      passes: [
+        {
+          name: 'gleen_summary_idea_map_v1',
+          requestId: 'deterministic:gleen_summary_idea_map_v1',
+          model: 'deterministic',
+          usage: null,
+          latencyMs: expect.any(Number),
+        },
+        {
+          name: 'gleen_summary_compose_v3',
+          requestId: 'deterministic:gleen_summary_compose_v3',
+          model: 'deterministic',
+          usage: null,
+          latencyMs: expect.any(Number),
+        },
+      ],
+    });
+    expect(
+      vi
+        .mocked(repository.recordEvent)
+        .mock.calls.some(([event]) =>
+          event.idempotencyKey.includes('summary:generation'),
+        ),
+    ).toBe(false);
+    expect(
+      JSON.stringify(
+        vi.mocked(repository.recordSummaryGenerationMetric).mock.calls,
+      ),
+    ).not.toMatch(/Transcript|central claim|Details explain|idea-transcript/);
+
+    const metricCall = vi.mocked(repository.recordSummaryGenerationMetric).mock
+      .invocationCallOrder[0];
+    const summarySaveCall = vi
+      .mocked(repository.saveArtifactReady)
+      .mock.invocationCallOrder.find(
+        (_, index) =>
+          vi.mocked(repository.saveArtifactReady).mock.calls[index]?.[0]
+            .kind === 'summary',
+      );
+    expect(metricCall).toBeLessThan(summarySaveCall!);
+  });
+
+  it('records failed server-only metrics when the only Summary repair remains invalid', async () => {
+    const { repository, ledger } = harness();
+    const invalidSummary = {
+      schemaVersion: 3,
+      title: 'Title',
+      outcome: 'Outcome',
+      sections: [
+        {
+          title: 'Point',
+          summary: 'Same short text.',
+          details: 'Same short text.',
+          supportingQuote: null,
+          sourceOffsetMs: null,
+        },
+      ],
+    } as const;
+    const provider = createDeterministicProvider({
+      gleen_summary_v3: invalidSummary,
+      gleen_summary_repair_v3: invalidSummary,
+      gleen_flashcards_v1: {
+        schemaVersion: 1,
+        cards: [{ front: 'Q', back: 'A' }],
+      },
+      gleen_timestamps_v1: {
+        schemaVersion: 1,
+        chapters: [{ offsetMs: 0, title: 'Start', description: 'Intro' }],
+      },
+    });
+
+    await executeAnalysisPipeline({
+      jobId: 'job-id',
+      repository,
+      provider,
+      ledger,
+      context,
+    });
+
+    expect(repository.recordSummaryGenerationMetric).toHaveBeenCalledWith({
+      jobId: 'job-id',
+      attempt: 1,
+      status: 'failed',
+      errorCode: 'invalid_provider_response',
+      route: 'one-pass',
+      repairCount: 1,
+      passes: [
+        expect.objectContaining({ name: 'gleen_summary_v3' }),
+        expect.objectContaining({ name: 'gleen_summary_repair_v3' }),
+      ],
+      findingCounts: { duplicate_section_text: 1 },
+    });
+    expect(
+      JSON.stringify(
+        vi.mocked(repository.recordSummaryGenerationMetric).mock.calls,
+      ),
+    ).not.toMatch(/Same short text|Transcript|idea-/i);
+    expect(repository.saveArtifactFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'summary',
+        errorCode: 'invalid_provider_response',
+      }),
+    );
+    expect(provider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_v3',
+      'gleen_summary_repair_v3',
+      'gleen_flashcards_v1',
+      'gleen_timestamps_v1',
+    ]);
   });
 
   it('keeps ready artifacts, marks partial, and settles its reservation', async () => {

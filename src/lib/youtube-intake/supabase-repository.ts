@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
+import { storedSummaryModeSchema } from '@/lib/summary-mode';
+
 import { artifactSchema } from './configuration';
+import { createCompatibleDuplicateKeys } from './fingerprint';
 import type {
   AnalysisIntake,
   IntakeRepository,
@@ -73,7 +76,7 @@ const intakeRowSchema = z.object({
   transcript_language: z.string().trim().min(1),
   transcript_segments: z.array(transcriptSegmentSchema),
   output_locale: z.enum(['uk', 'ru', 'en', 'es', 'de']),
-  summary_preset: z.enum(['balanced', 'detailed']).nullable(),
+  summary_preset: storedSummaryModeSchema.nullable(),
   flashcard_preset: z.union([z.literal(18), z.literal(30)]).nullable(),
   selected_artifacts: z.array(artifactSchema).min(1),
   analysis_contract_version: z.literal(1),
@@ -201,8 +204,14 @@ export function createSupabaseIntakeRepository(
         .single();
 
       if (result.error?.code === '23505') {
-        const winner = await findReusable(input.userId, input.duplicateKey);
-        if (winner) return { kind: 'recovered', intake: winner };
+        const compatibleKeys = createCompatibleDuplicateKeys(
+          input.youtubeVideoId,
+          input.configuration,
+        );
+        for (const duplicateKey of compatibleKeys) {
+          const winner = await findReusable(input.userId, duplicateKey);
+          if (winner) return { kind: 'recovered', intake: winner };
+        }
         throw new IntakeRepositoryError();
       }
       return { kind: 'inserted', intake: unwrapRequired(result) };

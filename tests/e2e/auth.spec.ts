@@ -20,7 +20,7 @@ test('opens account access from the landing-page sign-in action', async ({
   ).toBeVisible();
 });
 
-test('landing URL preserves the normalized analysis continuation in sign in next', async ({
+test('@localization landing URL preserves the normalized analysis continuation in sign in next', async ({
   page,
 }) => {
   await page.goto('/');
@@ -33,6 +33,49 @@ test('landing URL preserves the normalized analysis continuation in sign in next
     '/app?continuation=' +
       encodeURIComponent('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
   );
+});
+
+test('@localization landing reports an invalid Transform video URL accessibly', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/');
+
+  const input = page.getByLabel('YouTube URL');
+  await input.fill('not a youtube video');
+  await page.getByRole('button', { name: 'Transform video' }).click();
+
+  const alert = page.locator('#youtube-url-error');
+  await expect(alert).toBeVisible();
+  await expect(input).toHaveAttribute('aria-invalid', 'true');
+  await expect(input).toHaveAttribute('aria-describedby', 'youtube-url-error');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test('@localization routes the header and Free-plan Start Free links to sign up', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto('/');
+
+  const headerStartFree = page
+    .locator('.site-header')
+    .getByRole('link', { name: 'Start free', exact: true });
+  await expect(headerStartFree).toHaveAttribute('href', '/sign-up');
+  await headerStartFree.click();
+  await expect(page).toHaveURL(/\/sign-up$/);
+
+  await page.goto('/');
+  const pricingStartFree = page
+    .locator('#pricing')
+    .getByRole('link', { name: 'Start Free', exact: true });
+  await expect(pricingStartFree).toHaveAttribute('href', '/sign-up');
+  await pricingStartFree.click();
+  await expect(page).toHaveURL(/\/sign-up$/);
 });
 
 test('landing continuation survives switching from sign in to sign up', async ({

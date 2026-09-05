@@ -166,6 +166,7 @@ describe('normalizeResultWorkspace', () => {
       status: 'ready',
       data: {
         outcome: 'A grounded outcome.',
+        keyPoints: [{ text: 'A sourced point', sourceOffsetMs: 12_000 }],
         sections: [
           {
             title: 'A sourced point',

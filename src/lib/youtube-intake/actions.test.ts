@@ -75,7 +75,7 @@ function form(overrides: Record<string, string | string[]> = {}) {
   const values: Record<string, string | string[]> = {
     rawUrl: ' https://youtu.be/dQw4w9WgXcQ ',
     outputLocale: 'de',
-    summaryPreset: 'detailed',
+    summaryPreset: 'deep',
     flashcardPreset: '30',
     artifacts: ['transcript', 'flashcards'],
     ...overrides,
@@ -132,7 +132,7 @@ describe('intake server actions', () => {
       rawUrl: ' https://youtu.be/dQw4w9WgXcQ ',
       configuration: {
         outputLocale: 'de',
-        summaryPreset: 'detailed',
+        summaryPreset: 'deep',
         flashcardPreset: 30,
         artifacts: ['transcript', 'flashcards'],
         analysisContractVersion: 1,

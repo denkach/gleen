@@ -1,17 +1,23 @@
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 import { AppShell } from '@/components/app-shell/app-shell';
 import { NewAnalysisHome } from '@/components/app-shell/new-analysis-home';
 import { AnalysisHandoffFixture } from '@/components/app-shell/analysis-handoff-fixture';
+import { LanguagePreferences } from '@/components/settings/language-preferences';
 import { unavailableUsage } from '@/lib/app-shell';
 import { localeSchema } from '@/lib/i18n/locales';
 import { appMessages } from '@/lib/i18n/messages/app';
+import { settingsMessages } from '@/lib/i18n/messages/settings';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
+import { defaultOnboardingState } from '@/lib/onboarding/preferences';
+import { summaryModeSchema } from '@/lib/summary-mode';
 import {
   reanalyzeFixture,
+  setFixtureSummaryMode,
   submitDuplicateFixture,
   submitInvalidUrlFixture,
   submitProviderOutageFixture,
@@ -21,6 +27,7 @@ import {
   submitUsageLimitFixture,
   submitVideoUnavailableFixture,
 } from '@/lib/youtube-intake/development-fixture-actions';
+import { fixtureSummaryDefaultCookie } from '@/lib/youtube-intake/development-fixture-preferences';
 
 import { fixtureCases } from './fixture-cases';
 
@@ -50,6 +57,7 @@ type Props = Readonly<{
     journey?: 'complete' | 'partial' | 'recover' | 'reduced';
     analysis?: string;
     locale?: string;
+    view?: string;
   }>;
 }>;
 
@@ -69,7 +77,9 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
     journey,
     analysis,
     locale: localeInput,
+    view,
   } = await searchParams;
+  if (view !== undefined && view !== 'settings') notFound();
   const parsedLocale = localeSchema.safeParse(localeInput);
   const locale = parsedLocale.success
     ? parsedLocale.data
@@ -78,6 +88,9 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
     { continuation, intake, journey, analysis, locale: localeInput },
     locale,
   );
+  const storedSummaryMode = summaryModeSchema.safeParse(
+    (await cookies()).get(fixtureSummaryDefaultCookie)?.value,
+  ).data;
   const resolvedJourney = journey ?? (analysis ? 'recover' : undefined);
   if (
     intake &&
@@ -104,9 +117,19 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
       locale={locale}
       localeSwitcherCopy={materializeLocaleSwitcherCopy(sharedMessages[locale])}
       usage={unavailableUsage}
-      pathnameOverride="/app"
+      pathnameOverride={view === 'settings' ? '/app/settings/profile' : '/app'}
     >
-      {resolvedJourney ? (
+      {view === 'settings' ? (
+        <LanguagePreferences
+          interfaceLocale={locale}
+          outputLocale={defaultOnboardingState.outputLocale}
+          summaryMode={
+            storedSummaryMode ?? defaultOnboardingState.summaryPreset
+          }
+          copy={settingsMessages[locale]}
+          summaryModeAction={setFixtureSummaryMode}
+        />
+      ) : resolvedJourney ? (
         <AnalysisHandoffFixture
           copy={appMessages[locale]}
           journey={resolvedJourney}
@@ -121,6 +144,12 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
           resultPathPrefix="/app-shell-fixture/app/video"
           resultQuery={resultQuery}
           continuation={continuation ? { rawUrl: continuation } : undefined}
+          profileDefaults={{
+            outputLocale: defaultOnboardingState.outputLocale,
+            summaryPreset:
+              storedSummaryMode ?? defaultOnboardingState.summaryPreset,
+            flashcardPreset: defaultOnboardingState.flashcardPreset,
+          }}
         />
       )}
     </AppShell>

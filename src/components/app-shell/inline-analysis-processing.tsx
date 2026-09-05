@@ -328,6 +328,12 @@ export function InlineAnalysisProcessing({
       state={state}
       isExiting={isExiting}
       submittedUrl=""
+      statusTitle={
+        ownedSnapshot &&
+        ['partial', 'failed'].includes(ownedSnapshot.job.status)
+          ? copy.processing.errors.generationInterruptedTitle
+          : undefined
+      }
       errorMessage={
         retryError?.analysisId === analysisId
           ? copy.processing.errors.retryStart

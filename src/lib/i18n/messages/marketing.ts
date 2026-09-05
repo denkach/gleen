@@ -17,6 +17,9 @@ export const marketingMessages = defineMessages({
       signIn: 'Sign in',
       startFree: 'Start free',
       openMenu: 'Open menu',
+      menuTitle: 'Menu',
+      menuDescription: 'Navigate Gleen and access your account.',
+      closeMenu: 'Close menu',
     },
     hero: {
       eyebrow: 'One video / four useful outputs',
@@ -194,6 +197,10 @@ export const marketingMessages = defineMessages({
       signIn: 'Увійти',
       startFree: 'Почати безкоштовно',
       openMenu: 'Відкрити меню',
+      menuTitle: 'Меню',
+      menuDescription:
+        'Переглядайте Gleen і отримуйте доступ до свого облікового запису.',
+      closeMenu: 'Закрити меню',
     },
     hero: {
       eyebrow: 'Одне відео / чотири корисні результати',
@@ -372,6 +379,10 @@ export const marketingMessages = defineMessages({
       signIn: 'Войти',
       startFree: 'Начать бесплатно',
       openMenu: 'Открыть меню',
+      menuTitle: 'Меню',
+      menuDescription:
+        'Перемещайтесь по Gleen и получайте доступ к своему аккаунту.',
+      closeMenu: 'Закрыть меню',
     },
     hero: {
       eyebrow: 'Одно видео / четыре полезных результата',
@@ -550,6 +561,9 @@ export const marketingMessages = defineMessages({
       signIn: 'Iniciar sesión',
       startFree: 'Empezar gratis',
       openMenu: 'Abrir menú',
+      menuTitle: 'Menú',
+      menuDescription: 'Navega por Gleen y accede a tu cuenta.',
+      closeMenu: 'Cerrar menú',
     },
     hero: {
       eyebrow: 'Un vídeo / cuatro resultados útiles',
@@ -729,6 +743,9 @@ export const marketingMessages = defineMessages({
       signIn: 'Anmelden',
       startFree: 'Kostenlos starten',
       openMenu: 'Menü öffnen',
+      menuTitle: 'Menü',
+      menuDescription: 'Navigiere durch Gleen und greife auf dein Konto zu.',
+      closeMenu: 'Menü schließen',
     },
     hero: {
       eyebrow: 'Ein Video / vier nützliche Ergebnisse',

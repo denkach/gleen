@@ -15,7 +15,7 @@ export const historyMessages = defineMessages({
         processing: 'Processing',
         failed: 'Failed',
       },
-      presets: { balanced: 'Balanced', detailed: 'Detailed' },
+      presets: { compact: 'Compact', balanced: 'Balanced', deep: 'Deep' },
       dateUnavailable: 'Date unavailable',
     },
     page: {
@@ -205,7 +205,11 @@ export const historyMessages = defineMessages({
         processing: 'Обробляється',
         failed: 'Помилка',
       },
-      presets: { balanced: 'Збалансований', detailed: 'Докладний' },
+      presets: {
+        compact: 'Компактний',
+        balanced: 'Збалансований',
+        deep: 'Глибокий',
+      },
       dateUnavailable: 'Дата недоступна',
     },
     page: {
@@ -393,7 +397,11 @@ export const historyMessages = defineMessages({
         processing: 'Обрабатывается',
         failed: 'Ошибка',
       },
-      presets: { balanced: 'Сбалансированный', detailed: 'Подробный' },
+      presets: {
+        compact: 'Компактный',
+        balanced: 'Сбалансированный',
+        deep: 'Глубокий',
+      },
       dateUnavailable: 'Дата недоступна',
     },
     page: {
@@ -583,7 +591,11 @@ export const historyMessages = defineMessages({
         processing: 'Procesando',
         failed: 'Fallido',
       },
-      presets: { balanced: 'Equilibrado', detailed: 'Detallado' },
+      presets: {
+        compact: 'Compacto',
+        balanced: 'Equilibrado',
+        deep: 'Profundo',
+      },
       dateUnavailable: 'Fecha no disponible',
     },
     page: {
@@ -776,7 +788,11 @@ export const historyMessages = defineMessages({
         processing: 'In Bearbeitung',
         failed: 'Fehlgeschlagen',
       },
-      presets: { balanced: 'Ausgewogen', detailed: 'Detailliert' },
+      presets: {
+        compact: 'Kompakt',
+        balanced: 'Ausgewogen',
+        deep: 'Tiefgehend',
+      },
       dateUnavailable: 'Datum nicht verfügbar',
     },
     page: {

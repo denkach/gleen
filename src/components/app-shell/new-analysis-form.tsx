@@ -28,6 +28,7 @@ import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import { localeMetadata } from '@/lib/i18n/locales';
 import { appIntakeErrorMessage } from '@/lib/i18n/app-format';
 import type { AppMessages } from '@/lib/i18n/messages/app';
+import { summaryModeSchema, type SummaryMode } from '@/lib/summary-mode';
 import {
   supportedLocales,
   type OnboardingState,
@@ -112,9 +113,9 @@ export function NewAnalysisForm({
   const [outputLocale, setOutputLocale] = useState<
     OnboardingState['outputLocale']
   >(initialState.configuration.outputLocale);
-  const [summaryPreset, setSummaryPreset] = useState<
-    OnboardingState['summaryPreset']
-  >(initialState.configuration.summaryPreset);
+  const [summaryPreset, setSummaryPreset] = useState<SummaryMode>(
+    initialState.configuration.summaryPreset,
+  );
   const [flashcardPreset, setFlashcardPreset] = useState<18 | 30>(
     initialState.configuration.flashcardPreset,
   );
@@ -322,16 +323,15 @@ export function NewAnalysisForm({
                   value={summaryPreset}
                   onChange={(event) =>
                     setSummaryPreset(
-                      event.target.value as OnboardingState['summaryPreset'],
+                      summaryModeSchema.parse(event.target.value),
                     )
                   }
                 >
-                  <option value="balanced">
-                    {copy.newAnalysis.advanced.balanced}
-                  </option>
-                  <option value="detailed">
-                    {copy.newAnalysis.advanced.detailed}
-                  </option>
+                  {summaryModeSchema.options.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {copy.newAnalysis.advanced.summaryModes[mode].title}
+                    </option>
+                  ))}
                 </select>
               </label>
             ) : null}
@@ -415,9 +415,11 @@ export function NewAnalysisForm({
                 <div>
                   <dt>{copy.newAnalysis.artifacts.summary}</dt>
                   <dd>
-                    {state.duplicateConfiguration.summaryPreset === 'detailed'
-                      ? copy.newAnalysis.advanced.detailed
-                      : copy.newAnalysis.advanced.balanced}
+                    {
+                      copy.newAnalysis.advanced.summaryModes[
+                        state.duplicateConfiguration.summaryPreset
+                      ].title
+                    }
                   </dd>
                 </div>
               ) : null}

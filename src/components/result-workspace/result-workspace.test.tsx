@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 
+import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import { resultArtifactEditSchema } from '@/lib/result-workspace/edit-schemas';
 import { resultMessages } from '@/lib/i18n/messages/results';
 import type {
@@ -17,7 +18,11 @@ import type {
   ResultSaveState,
   ResultShareState,
 } from '@/lib/result-workspace/actions';
-import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
+import {
+  normalizeResultWorkspace,
+  type ResultWorkspaceModel,
+} from '@/lib/result-workspace/presentation';
+import { fixtureSavedIntake } from '@/lib/youtube-intake/development-fixtures';
 
 import { PlayerProvider } from './player-context';
 import type { VideoPlayerController } from './player-controller';
@@ -37,6 +42,10 @@ function deferred<T>() {
     resolve = next;
   });
   return { promise, resolve };
+}
+
+function enterSummaryEditing() {
+  fireEvent.click(screen.getByRole('button', { name: 'Edit summary' }));
 }
 
 function stubMobileResultViewport(initialMatches: boolean) {
@@ -1033,6 +1042,7 @@ describe('ResultWorkspace', () => {
     });
     expect(window.location.hash).toBe('#summary');
 
+    enterSummaryEditing();
     const summaryTitle = screen.getByRole('textbox', { name: 'Summary title' });
     fireEvent.touchStart(summaryTitle, {
       touches: [{ identifier: 3, clientX: 180, clientY: 100 }],
@@ -1132,6 +1142,7 @@ describe('ResultWorkspace', () => {
     });
     const view = render(revisionWorkspace(model, saveTitle, saveArtifact));
     await act(() => vi.advanceTimersByTimeAsync(0));
+    enterSummaryEditing();
     fireEvent.change(screen.getByRole('textbox', { name: 'Summary title' }), {
       target: { value: 'Dirty local Summary' },
     });
@@ -1718,10 +1729,18 @@ describe('ResultWorkspace', () => {
     const user = userEvent.setup();
     renderWorkspace();
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    const disclosure = screen.getByRole('button', {
+      name: /legacy text remains readable/i,
+      expanded: true,
+    });
+    expect(disclosure).toBeVisible();
+    const contentId = disclosure.getAttribute('aria-controls');
+    expect(contentId).not.toBeNull();
+    const content = document.getElementById(contentId!);
+    expect(content).not.toBeNull();
     expect(
-      screen.getByRole('button', {
-        name: /legacy text remains readable/i,
-        expanded: true,
+      within(content!).queryByText('Legacy text remains readable.', {
+        selector: 'p',
       }),
     ).toBeVisible();
     expect(screen.queryByRole('button', { name: '0:00' })).toBeNull();
@@ -1733,6 +1752,105 @@ describe('ResultWorkspace', () => {
     );
     await user.click(screen.getByRole('button', { name: '12:35' }));
     expect(controller.seekTo).toHaveBeenCalledWith(755_000);
+  });
+
+  it('keeps Summary editors out of reading mode', async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+
+    expect(screen.getByRole('button', { name: 'Edit summary' })).toBeVisible();
+    expect(screen.queryByRole('textbox', { name: 'Summary title' })).toBeNull();
+    expect(
+      screen.queryByRole('textbox', { name: 'Summary overview' }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('textbox', { name: 'Summary point 1' }),
+    ).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Edit summary' }));
+    expect(
+      screen
+        .getByRole('textbox', { name: 'Summary title' })
+        .closest('.result-summary-hero'),
+    ).not.toBeNull();
+    expect(
+      screen.getByRole('textbox', { name: 'Summary overview' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('textbox', { name: 'Summary point 1' }),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Done editing' }));
+    expect(screen.queryByRole('textbox', { name: 'Summary title' })).toBeNull();
+    expect(
+      screen.queryByRole('textbox', { name: 'Summary point 1' }),
+    ).toBeNull();
+  });
+
+  it('shows each Summary chapter as its title and complete main text only', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    renderWorkspace({
+      ...model,
+      tabs: {
+        ...model.tabs,
+        summary: {
+          status: 'ready',
+          data: {
+            schemaVersion: 3,
+            title: 'Complete Summary',
+            outcome: 'Complete outcome.',
+            overview: 'Complete outcome.',
+            sections: [
+              {
+                title: 'Chapter title',
+                summary: 'Short thesis.',
+                details:
+                  'Complete main information with every important argument and example.',
+                supportingQuote: 'A separate supporting quotation.',
+                sourceOffsetMs: 0,
+              },
+            ],
+            keyPoints: [{ text: 'Short thesis.', sourceOffsetMs: 0 }],
+          },
+        },
+      },
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+
+    const chapter = screen.getByRole('button', {
+      name: 'Chapter title',
+      expanded: true,
+    });
+    const contentId = chapter.getAttribute('aria-controls');
+    expect(contentId).not.toBeNull();
+    const content = document.getElementById(contentId!);
+    expect(content).not.toBeNull();
+    expect(within(content!).getAllByText(/.+/, { selector: 'p' })).toHaveLength(
+      1,
+    );
+    expect(
+      within(content!).getByText(
+        'Complete main information with every important argument and example.',
+        { selector: 'p' },
+      ),
+    ).toBeVisible();
+    expect(within(content!).queryByRole('blockquote')).toBeNull();
+    expect(screen.queryByText('Short thesis.')).toBeNull();
+
+    await user.click(
+      within(content!).getByRole('button', { name: 'Copy Chapter title' }),
+    );
+    expect(writeText).toHaveBeenCalledExactlyOnceWith(
+      'Complete main information with every important argument and example.',
+    );
   });
 
   it('matches the Summary hero, metrics, disclosure, copy, and grounded source interactions', async () => {
@@ -1753,10 +1871,11 @@ describe('ResultWorkspace', () => {
     const hero = document.querySelector('.result-summary-hero');
     const stats = document.querySelector('.result-summary-stats');
     expect(hero?.nextElementSibling).toBe(stats);
+    enterSummaryEditing();
     expect(
       screen
         .getByRole('textbox', { name: 'Summary title' })
-        .closest('.result-summary-content'),
+        .closest('.result-summary-hero'),
     ).not.toBeNull();
 
     const disclosure = screen.getByRole('button', {
@@ -2283,6 +2402,7 @@ describe('ResultWorkspace', () => {
     const user = userEvent.setup();
     const view = renderWorkspace();
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
     const title = screen.getByRole('textbox', { name: 'Summary title' });
     await user.clear(title);
     await user.type(title, 'Unsaved local summary');
@@ -2326,6 +2446,7 @@ describe('ResultWorkspace', () => {
       };
       const view = renderWorkspace(pendingModel);
       await user.click(screen.getByRole('tab', { name: 'Summary' }));
+      enterSummaryEditing();
       const title = screen.getByRole('textbox', { name: 'Summary title' });
       await user.clear(title);
       await user.type(title, 'Unsaved local summary');
@@ -2684,6 +2805,7 @@ describe('ResultWorkspace', () => {
     });
     renderWorkspaceWithActions({ saveArtifact });
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
 
     const overview = screen.getByRole('textbox', { name: 'Summary overview' });
     await user.clear(overview);
@@ -2712,7 +2834,7 @@ describe('ResultWorkspace', () => {
     expect(screen.getByText('Saved')).toBeVisible();
   });
 
-  it('autosaves normalized summary v3 without downgrade or section data loss', async () => {
+  it('autosaves and reloads normalized summary v3 with synchronized visible text', async () => {
     const user = userEvent.setup();
     const saveArtifact = vi.fn().mockResolvedValue({
       status: 'saved',
@@ -2745,8 +2867,9 @@ describe('ResultWorkspace', () => {
         },
       },
     };
-    renderWorkspaceWithActions({ saveArtifact, value });
+    const view = renderWorkspaceWithActions({ saveArtifact, value });
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
 
     fireEvent.change(
       screen.getByRole('textbox', { name: 'Summary overview' }),
@@ -2758,7 +2881,8 @@ describe('ResultWorkspace', () => {
     await act(() => new Promise((resolve) => setTimeout(resolve, 750)));
 
     const payload = saveArtifact.mock.calls.at(-1)?.[0];
-    expect(resultArtifactEditSchema.parse(payload)).toEqual({
+    const parsedPayload = resultArtifactEditSchema.parse(payload);
+    expect(parsedPayload).toEqual({
       analysisId: model.source.intakeId,
       expectedUpdatedAt: model.revisions.summary,
       kind: 'summary',
@@ -2770,13 +2894,112 @@ describe('ResultWorkspace', () => {
           {
             title: 'Stable section title',
             summary: 'Edited section summary',
-            details: 'Preserve these details.',
+            details: 'Edited section summary',
             supportingQuote: 'A prism separates light.',
             sourceOffsetMs: 0,
           },
         ],
       },
     });
+
+    if (parsedPayload.kind !== 'summary')
+      throw new Error('Expected a Summary edit payload');
+    const savedContent = parsedPayload.content;
+    if (savedContent.schemaVersion !== 3)
+      throw new Error('Expected a Summary v3 edit payload');
+    const reloadedAt = '2026-07-18T00:02:00.000Z';
+    const reloadedIntake = {
+      ...fixtureSavedIntake,
+      id: value.source.intakeId,
+      youtubeVideoId: value.source.youtubeVideoId,
+      title: value.source.title,
+      channelTitle: value.source.channelTitle,
+      durationSeconds: value.source.durationSeconds,
+      thumbnailUrl: value.source.thumbnailUrl,
+      transcriptSegments: [
+        {
+          text: 'A prism separates light.',
+          offsetMs: 0,
+          durationMs: 3_000,
+        },
+      ],
+      configuration: {
+        ...fixtureSavedIntake.configuration,
+        artifacts: ['summary'] as const,
+      },
+    };
+    const reloadedSnapshot: AnalysisSnapshot = {
+      job: {
+        id: 'job-summary-reload',
+        analysisId: reloadedIntake.id,
+        userId: reloadedIntake.userId,
+        workflowRunId: null,
+        status: 'complete',
+        stage: 'complete',
+        attempt: 1,
+        revision: 2,
+        errorCode: null,
+        startedAt: '2026-07-18T00:00:00.000Z',
+        completedAt: reloadedAt,
+        createdAt: '2026-07-18T00:00:00.000Z',
+        updatedAt: reloadedAt,
+      },
+      events: [],
+      artifacts: [
+        {
+          id: 'artifact-summary-reload',
+          analysisId: reloadedIntake.id,
+          userId: reloadedIntake.userId,
+          kind: 'summary',
+          status: 'ready',
+          schemaVersion: 3,
+          content: savedContent,
+          errorCode: null,
+          generatedAt: reloadedAt,
+          updatedAt: reloadedAt,
+        },
+      ],
+      usageReservation: {
+        id: 'reservation-summary-reload',
+        jobId: 'job-summary-reload',
+        userId: reloadedIntake.userId,
+        status: 'settled',
+        updatedAt: reloadedAt,
+      },
+    };
+    const reloadedModel = normalizeResultWorkspace(
+      reloadedIntake,
+      reloadedSnapshot,
+    );
+    expect(reloadedModel.tabs.summary).toMatchObject({
+      status: 'ready',
+      data: {
+        sections: [
+          {
+            summary: 'Edited section summary',
+            details: 'Edited section summary',
+          },
+        ],
+        keyPoints: [{ text: 'Edited section summary', sourceOffsetMs: 0 }],
+      },
+    });
+    view.unmount();
+    renderWorkspaceWithActions({
+      saveArtifact,
+      value: reloadedModel,
+    });
+    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+
+    expect(
+      screen.getByRole('button', { name: 'Stable section title' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByText('Edited section summary', { selector: 'p' }),
+    ).toBeVisible();
+    enterSummaryEditing();
+    expect(
+      screen.getByRole('textbox', { name: 'Summary point 1' }),
+    ).toHaveValue('Edited section summary');
   });
 
   it('keeps Summary autosave feedback visible while editing a non-first open section', async () => {
@@ -2784,6 +3007,7 @@ describe('ResultWorkspace', () => {
     const saveArtifact = vi.fn().mockResolvedValue({ status: 'error' });
     renderWorkspaceWithActions({ saveArtifact });
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
     await user.click(
       screen.getByRole('button', {
         name: /legacy text remains readable/i,
@@ -2855,6 +3079,7 @@ describe('ResultWorkspace', () => {
     });
     const view = renderWorkspaceWithActions({ saveArtifact });
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
     fireEvent.change(
       screen.getByRole('textbox', { name: 'Summary overview' }),
       { target: { value: 'Save after navigation' } },
@@ -2971,6 +3196,7 @@ describe('ResultWorkspace', () => {
     await user.clear(title);
     await user.type(title, 'Draft export title');
     await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    enterSummaryEditing();
     const overview = screen.getByRole('textbox', { name: 'Summary overview' });
     await user.clear(overview);
     await user.type(overview, 'Draft export overview');

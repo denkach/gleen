@@ -6,6 +6,11 @@ import type {
   ArtifactKind,
 } from './domain';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
+import type { SafeAnalysisErrorCode } from './provider';
+import type {
+  SummaryFindingCounts,
+  SummaryGenerationMetadata,
+} from './generators';
 
 export type AnalysisHistoryRow = Readonly<{
   id: string;
@@ -47,6 +52,17 @@ export type FailedArtifactWrite = Readonly<{
   errorCode: string;
 }>;
 
+export type SummaryGenerationMetric = Readonly<{
+  jobId: string;
+  attempt: number;
+  status: 'completed' | 'failed';
+  errorCode: SafeAnalysisErrorCode | null;
+  route: SummaryGenerationMetadata['route'];
+  repairCount: number;
+  passes: SummaryGenerationMetadata['passes'];
+  findingCounts: SummaryFindingCounts;
+}>;
+
 export type AnalysisRepository = Readonly<{
   createForAnalysis(
     userId: string,
@@ -67,6 +83,7 @@ export type AnalysisRepository = Readonly<{
   findSnapshotByJobId(jobId: string): Promise<AnalysisSnapshot>;
   attachWorkflowRun(jobId: string, runId: string): Promise<void>;
   recordEvent(input: NewAnalysisEvent): Promise<void>;
+  recordSummaryGenerationMetric(input: SummaryGenerationMetric): Promise<void>;
   setJobState(jobId: string, state: JobStateUpdate): Promise<void>;
   saveArtifactReady(input: ReadyArtifactWrite): Promise<void>;
   saveArtifactFailed(input: FailedArtifactWrite): Promise<void>;

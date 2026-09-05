@@ -47,6 +47,9 @@ describe('settings profile page', () => {
     expect(
       screen.getByLabelText('Future generated content language'),
     ).toHaveValue('es');
+    expect(screen.getByLabelText('Default summary mode')).toHaveValue(
+      'balanced',
+    );
   });
 
   it('keeps both forms disabled and shows a localized retry state when profile storage fails', async () => {
@@ -70,6 +73,9 @@ describe('settings profile page', () => {
     expect(
       screen.getByRole('button', { name: 'Save output language' }),
     ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Save summary mode' }),
+    ).toBeDisabled();
   });
 
   it('keeps first-time profiles editable with the successful default preferences', async () => {
@@ -82,5 +88,8 @@ describe('settings profile page', () => {
     expect(
       screen.getByRole('button', { name: 'Save output language' }),
     ).toBeEnabled();
+    expect(screen.getByLabelText('Default summary mode')).toHaveValue(
+      'balanced',
+    );
   });
 });

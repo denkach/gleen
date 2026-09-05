@@ -1,12 +1,16 @@
 import type { TranscriptSegment } from '@/lib/youtube-intake/providers';
+import { normalizeStoredSummaryMode } from '@/lib/summary-mode';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 import {
   generateFlashcards,
   generateSummary,
   generateTimestamps,
+  SummaryGenerationError,
   type GeneratorContext,
+  type SummaryGenerationMetadata,
 } from './generators';
+import type { AnalysisSnapshot } from './domain';
 import { ProviderError, type StructuredGenerationProvider } from './provider';
 import type { AnalysisRepository } from './repository';
 import { transcriptArtifactV2Schema } from './artifact-schemas';
@@ -57,6 +61,23 @@ async function recordStage(
   });
 }
 
+async function recordSummaryGeneration(
+  repository: AnalysisRepository,
+  snapshot: AnalysisSnapshot,
+  metadata: SummaryGenerationMetadata,
+) {
+  await repository.recordSummaryGenerationMetric({
+    jobId: snapshot.job.id,
+    attempt: snapshot.job.attempt,
+    status: 'completed',
+    errorCode: null,
+    route: metadata.route,
+    repairCount: metadata.repairCount,
+    passes: metadata.passes,
+    findingCounts: {},
+  });
+}
+
 export async function executeAnalysisPipeline({
   jobId,
   repository,
@@ -77,7 +98,6 @@ export async function executeAnalysisPipeline({
   }
 
   const generators = {
-    summary: generateSummary,
     flashcards: generateFlashcards,
     timestamps: generateTimestamps,
   } as const;
@@ -124,10 +144,19 @@ export async function executeAnalysisPipeline({
 
   for (const artifact of snapshot.artifacts) {
     if (artifact.status === 'ready' || artifact.kind === 'transcript') continue;
-    const generate = generators[artifact.kind];
-    if (!generate) continue;
     try {
-      const result = await generate(provider, context);
+      let result;
+      if (artifact.kind === 'summary') {
+        const summaryResult = await generateSummary(provider, context);
+        await recordSummaryGeneration(
+          repository,
+          snapshot,
+          summaryResult.metadata,
+        );
+        result = summaryResult;
+      } else {
+        result = await generators[artifact.kind](provider, context);
+      }
       await repository.saveArtifactReady({
         jobId,
         analysisId: snapshot.job.analysisId,
@@ -140,6 +169,21 @@ export async function executeAnalysisPipeline({
         error instanceof ProviderError
           ? error.code
           : 'invalid_provider_response';
+      if (
+        artifact.kind === 'summary' &&
+        error instanceof SummaryGenerationError
+      ) {
+        await repository.recordSummaryGenerationMetric({
+          jobId: snapshot.job.id,
+          attempt: snapshot.job.attempt,
+          status: 'failed',
+          errorCode,
+          route: error.metadata.route,
+          repairCount: error.metadata.repairCount,
+          passes: error.metadata.passes,
+          findingCounts: error.metadata.findingCounts,
+        });
+      }
       await repository.saveArtifactFailed({
         jobId,
         analysisId: snapshot.job.analysisId,
@@ -190,7 +234,7 @@ export async function executeAnalysisPipeline({
   }
 }
 
-async function loadGeneratorContext(
+export async function loadGeneratorContext(
   client: ReturnType<typeof createAdminSupabaseClient>,
   analysisId: string,
 ): Promise<GeneratorContext> {
@@ -205,7 +249,10 @@ async function loadGeneratorContext(
   return {
     outputLocale: data.output_locale as GeneratorContext['outputLocale'],
     transcriptLanguage: data.transcript_language as string,
-    summaryPreset: data.summary_preset as GeneratorContext['summaryPreset'],
+    summaryPreset:
+      data.summary_preset === null
+        ? null
+        : normalizeStoredSummaryMode(data.summary_preset),
     flashcardPreset:
       data.flashcard_preset as GeneratorContext['flashcardPreset'],
     durationSeconds: data.duration_seconds as number,

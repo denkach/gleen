@@ -421,6 +421,7 @@ test('persists title and summary artifact autosaves across reload', async ({
   await expect(page.getByText('Saved')).toBeVisible({ timeout: 3_000 });
 
   await page.getByRole('tab', { name: 'Summary' }).click();
+  await page.getByRole('button', { name: 'Edit summary' }).click();
   await page.getByLabel('Summary title').fill('Persisted fixture summary');
   await expect(
     page.locator('[data-artifact="summary"]').getByRole('status'),
@@ -431,6 +432,7 @@ test('persists title and summary artifact autosaves across reload', async ({
     'Edited fixture title',
   );
   await page.getByRole('tab', { name: 'Summary' }).click();
+  await page.getByRole('button', { name: 'Edit summary' }).click();
   await expect(page.getByLabel('Summary title')).toHaveValue(
     'Persisted fixture summary',
   );
@@ -552,9 +554,140 @@ test('isolates partial, corrupted, empty, and legacy fixture states', async ({
   await gotoFixture(page, '/app-shell-fixture/app/video/result-legacy');
   await page.getByRole('tab', { name: 'Summary' }).click();
   await expect(
+    page.getByRole('button', { name: 'Edit summary' }),
+  ).toBeVisible();
+  await expect(
     page.getByRole('textbox', { name: 'Summary point 1' }),
-  ).toHaveValue('Legacy point');
+  ).toHaveCount(0);
+  await expect(
+    page
+      .getByRole('tabpanel', { name: 'Summary' })
+      .locator('.result-summary-content > p'),
+  ).toHaveText('Legacy point');
   await expect(page.getByRole('button', { name: /\d+:\d+/ })).toHaveCount(0);
+});
+
+test('renders durable legacy Summary without repeated body prose', async ({
+  isMobile,
+  page,
+}) => {
+  await gotoFixture(page, '/app-shell-fixture/app/video/result-legacy');
+  const summaryDestination = isMobile
+    ? page
+        .locator('.result-mobile-navigation')
+        .getByRole('button', { name: 'Summary' })
+    : page.getByRole('tab', { name: 'Summary' });
+  await summaryDestination.click();
+
+  const summaryPanel = page.getByRole('tabpanel', { name: 'Summary' });
+  await expect(
+    summaryPanel.getByRole('textbox', { name: 'Summary point 1' }),
+  ).toHaveCount(0);
+  await expect(summaryPanel.locator('.result-summary-content > p')).toHaveText(
+    'Legacy point',
+  );
+  await summaryPanel.getByRole('button', { name: 'Edit summary' }).click();
+  await expect(
+    summaryPanel.getByRole('textbox', { name: 'Summary point 1' }),
+  ).toHaveValue('Legacy point');
+  await expect(
+    summaryPanel
+      .locator('.result-summary-hero')
+      .getByRole('textbox', { name: 'Summary title' }),
+  ).toBeVisible();
+});
+
+test('renders every long-form Summary chapter as one keyboard-accessible paragraph', async ({
+  page,
+}) => {
+  const scenarios = [
+    { name: 'desktop', width: 1440, height: 900, reducedMotion: false },
+    { name: 'mobile', width: 390, height: 844, reducedMotion: false },
+    {
+      name: 'reduced-motion mobile',
+      width: 390,
+      height: 844,
+      reducedMotion: true,
+    },
+  ] as const;
+
+  for (const scenario of scenarios) {
+    await page.goto('about:blank');
+    await page.setViewportSize({
+      width: scenario.width,
+      height: scenario.height,
+    });
+    await page.emulateMedia({
+      reducedMotion: scenario.reducedMotion ? 'reduce' : 'no-preference',
+    });
+    await gotoFixture(
+      page,
+      '/app-shell-fixture/app/video/result-den-25?visualCase=long#summary',
+    );
+
+    const panel = page.getByRole('tabpanel', { name: 'Summary' });
+    const disclosures = panel.locator('.result-summary-disclosure');
+    await expect(disclosures, `${scenario.name} chapter count`).toHaveCount(18);
+
+    const firstDisclosure = disclosures.first();
+    await firstDisclosure.scrollIntoViewIfNeeded();
+    await firstDisclosure.focus();
+    await expect(firstDisclosure).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(
+      firstDisclosure,
+      `${scenario.name} first chapter closes with Enter`,
+    ).toHaveAttribute('aria-expanded', 'false');
+    await page.keyboard.press('Space');
+    await expect(
+      firstDisclosure,
+      `${scenario.name} first chapter reopens with Space`,
+    ).toHaveAttribute('aria-expanded', 'true');
+
+    for (const [index, key] of [
+      [9, 'Enter'],
+      [17, 'Space'],
+    ] as const) {
+      const disclosure = disclosures.nth(index);
+      await disclosure.scrollIntoViewIfNeeded();
+      await disclosure.focus();
+      await expect(disclosure).toBeFocused();
+      await page.keyboard.press(key);
+      await expect(
+        disclosure,
+        `${scenario.name} chapter ${index + 1}`,
+      ).toHaveAttribute('aria-expanded', 'true');
+      const contentId = await disclosure.getAttribute('aria-controls');
+      expect(contentId).not.toBeNull();
+      const content = panel.locator(`[id="${contentId}"]`);
+      await expect(content.locator(':scope > p')).toHaveCount(1);
+      await expect(content.locator(':scope > blockquote')).toHaveCount(0);
+    }
+
+    const firstContentId = await disclosures
+      .first()
+      .getAttribute('aria-controls');
+    expect(firstContentId).not.toBeNull();
+    const firstContent = panel.locator(`[id="${firstContentId}"]`);
+    await firstContent
+      .getByRole('button', { name: 'Copy Begin with purpose' })
+      .click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as unknown as FixtureWindow).__fixtureClipboard,
+        ),
+      )
+      .toBe(
+        'Why purpose gives every later decision context. This complete chapter preserves its supporting explanation, practical implications, and important caveats.',
+      );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+      `${scenario.name} horizontal overflow`,
+    ).toBe(true);
+  }
 });
 
 test('@localization removes nonessential result motion for reduced-motion users', async ({

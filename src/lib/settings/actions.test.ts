@@ -23,7 +23,7 @@ vi.mock('@/lib/onboarding/supabase-storage', () => ({
 vi.mock('next/headers', () => ({ cookies: vi.fn(async () => cookieStore) }));
 
 import { setInterfaceLocale } from '@/lib/i18n/actions';
-import { setOutputLocale } from './actions';
+import { setOutputLocale, setSummaryMode } from './actions';
 
 describe('output locale persistence', () => {
   beforeEach(() => {
@@ -85,5 +85,58 @@ describe('output locale persistence', () => {
     });
 
     expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('saves a canonical account summary mode', async () => {
+    const formData = new FormData();
+    formData.set('summaryMode', 'deep');
+
+    await expect(setSummaryMode({ status: 'idle' }, formData)).resolves.toEqual(
+      {
+        status: 'success',
+        mode: 'deep',
+      },
+    );
+    expect(upsert).toHaveBeenCalledWith(
+      { user_id: 'user-1', summary_preset: 'deep' },
+      { onConflict: 'user_id' },
+    );
+  });
+
+  it('rejects legacy summary modes at the account write boundary', async () => {
+    const formData = new FormData();
+    formData.set('summaryMode', 'detailed');
+
+    await expect(setSummaryMode({ status: 'idle' }, formData)).resolves.toEqual(
+      {
+        status: 'error',
+        code: 'invalid_summary_mode',
+      },
+    );
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('maps summary mode authentication and storage failures to safe codes', async () => {
+    const formData = new FormData();
+    formData.set('summaryMode', 'compact');
+    getUser.mockResolvedValueOnce({ data: { user: null } });
+
+    await expect(setSummaryMode({ status: 'idle' }, formData)).resolves.toEqual(
+      { status: 'error', code: 'session_expired' },
+    );
+
+    getUser.mockResolvedValueOnce({ data: { user: { id: 'user-1' } } });
+    upsert.mockReturnValueOnce({
+      select: vi.fn(() => ({
+        single: vi.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'storage unavailable' },
+        }),
+      })),
+    });
+
+    await expect(setSummaryMode({ status: 'idle' }, formData)).resolves.toEqual(
+      { status: 'error', code: 'profile_update_failed' },
+    );
   });
 });

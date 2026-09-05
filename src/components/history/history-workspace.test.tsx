@@ -59,7 +59,7 @@ const historyItem: HistoryItem = {
   source: 'https://youtube.com/watch?v=video-1',
   language: 'English',
   outputLocale: 'en',
-  summaryPresetLabel: 'Detailed',
+  summaryPresetLabel: 'Deep',
   durationSeconds: 120,
   durationLabel: '2:00',
   analyzedAt: '2026-07-24T10:00:00.000Z',
@@ -183,7 +183,7 @@ describe('HistoryWorkspace URL state', () => {
     ).toHaveClass('history-duplicate-banner__actions');
     expect(
       screen.getByText(
-        'Open the saved English · Detailed version. No credits will be used.',
+        'Open the saved English · Deep version. No credits will be used.',
       ),
     ).toBeInTheDocument();
     const openSaved = screen.getByRole('link', { name: 'Open saved result' });
@@ -385,7 +385,7 @@ describe('HistoryWorkspace URL state', () => {
     expect(
       screen.getByText('Open the saved version. No credits will be used.'),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/Balanced|Detailed/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Balanced|Deep/u)).not.toBeInTheDocument();
   });
 
   it('renders the safe load error under the same approved page heading', () => {
@@ -670,7 +670,7 @@ describe('HistoryWorkspace URL state', () => {
       const targetCopy = historyMessages[locale];
       const targetItem: HistoryItem = {
         ...historyItem,
-        summaryPresetLabel: targetCopy.presentation.presets.detailed,
+        summaryPresetLabel: targetCopy.presentation.presets.deep,
         analyzedAtLabel: initialDate,
         status: { key: 'ready', label: initialStatus },
       };
@@ -773,7 +773,7 @@ describe('HistoryWorkspace URL state', () => {
         facets={{ languages: ['en'], sources: ['YouTube'] }}
         verifiedDuplicate={{
           ...historyItem,
-          summaryPresetLabel: 'Detailliert',
+          summaryPresetLabel: 'Tiefgehend',
         }}
         actions={actions}
       />,
@@ -785,7 +785,7 @@ describe('HistoryWorkspace URL state', () => {
     expect(
       screen.getByText('Du hast dieses Video bereits analysiert'),
     ).toBeInTheDocument();
-    expect(screen.getByText(/English · Detailliert/u)).toBeInTheDocument();
+    expect(screen.getByText(/English · Tiefgehend/u)).toBeInTheDocument();
 
     const search = screen.getByRole('searchbox', {
       name: 'Verlauf durchsuchen',

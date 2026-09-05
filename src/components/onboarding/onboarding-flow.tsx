@@ -16,6 +16,7 @@ import {
   onboardingErrorMessage,
   type OnboardingCopy,
 } from '@/lib/i18n/messages/onboarding';
+import { summaryModeSchema } from '@/lib/summary-mode';
 
 import { AuthStatus } from '../auth/auth-status';
 
@@ -102,22 +103,17 @@ export function OnboardingFlow({ initialState, copy }: OnboardingFlowProps) {
         ) : null}
         {step === 3 ? (
           <div className="preference-grid">
-            <SelectionCard
-              name="summaryPreset"
-              value="balanced"
-              selected={summaryPreset === 'balanced'}
-              title={copy.presets.summaryBalanced.title}
-              description={copy.presets.summaryBalanced.description}
-              onSelect={() => setSummaryPreset('balanced')}
-            />
-            <SelectionCard
-              name="summaryPreset"
-              value="detailed"
-              selected={summaryPreset === 'detailed'}
-              title={copy.presets.summaryDetailed.title}
-              description={copy.presets.summaryDetailed.description}
-              onSelect={() => setSummaryPreset('detailed')}
-            />
+            {summaryModeSchema.options.map((mode) => (
+              <SelectionCard
+                key={mode}
+                name="summaryPreset"
+                value={mode}
+                selected={summaryPreset === mode}
+                title={copy.presets.summaryModes[mode].title}
+                description={copy.presets.summaryModes[mode].description}
+                onSelect={() => setSummaryPreset(mode)}
+              />
+            ))}
             <SelectionCard
               name="flashcardPreset"
               value="18"

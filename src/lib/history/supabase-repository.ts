@@ -4,6 +4,7 @@ import {
   artifactKindSchema,
   jobStatusSchema,
 } from '@/lib/analysis-pipeline/domain';
+import { storedSummaryModeSchema } from '@/lib/summary-mode';
 import {
   encodeHistoryCursor,
   type HistoryCursor,
@@ -61,7 +62,7 @@ const historyViewRowSchema = z.object({
   thumbnail_url: z.string().nullable(),
   transcript_language: z.string().nullable(),
   output_locale: z.string(),
-  summary_preset: z.enum(['balanced', 'detailed']).nullable(),
+  summary_preset: storedSummaryModeSchema.nullable(),
   duration_seconds: z.number().int().nonnegative().nullable(),
   selected_artifacts: z.array(artifactKindSchema),
   ready_artifacts: z.array(artifactKindSchema),

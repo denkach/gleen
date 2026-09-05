@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 
 const {
   analysisProcessingFixtureScreen,
+  cookieGet,
   fixtureResultWorkspace,
   getRequestLocale,
   isUiPreviewEnabled,
@@ -10,6 +11,7 @@ const {
   push,
 } = vi.hoisted(() => ({
   analysisProcessingFixtureScreen: vi.fn(),
+  cookieGet: vi.fn(),
   fixtureResultWorkspace: vi.fn(),
   getRequestLocale: vi.fn(async () => 'en'),
   isUiPreviewEnabled: vi.fn(),
@@ -19,6 +21,9 @@ const {
   push: vi.fn(),
 }));
 
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(async () => ({ get: cookieGet })),
+}));
 vi.mock('next/navigation', () => ({
   notFound,
   usePathname: () => '/app',
@@ -46,6 +51,7 @@ import type { ResultWorkspaceModel } from '@/lib/result-workspace/presentation';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  cookieGet.mockReturnValue(undefined);
   getRequestLocale.mockResolvedValue('en');
 });
 

@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { createDuplicateKey } from './fingerprint';
+import {
+  createCompatibleDuplicateKeys,
+  createDuplicateKey,
+} from './fingerprint';
 
 const base = {
   outputLocale: 'en' as const,
@@ -29,7 +32,7 @@ describe('createDuplicateKey', () => {
     expect(createDuplicateKey('dQw4w9WgXcQ', transcriptOnly)).toBe(
       createDuplicateKey('dQw4w9WgXcQ', {
         ...transcriptOnly,
-        summaryPreset: 'detailed',
+        summaryPreset: 'deep',
         flashcardPreset: 30,
       }),
     );
@@ -37,7 +40,7 @@ describe('createDuplicateKey', () => {
 
   test('changes when a selected artifact or active preset changes', () => {
     expect(createDuplicateKey('dQw4w9WgXcQ', base)).not.toBe(
-      createDuplicateKey('dQw4w9WgXcQ', { ...base, summaryPreset: 'detailed' }),
+      createDuplicateKey('dQw4w9WgXcQ', { ...base, summaryPreset: 'deep' }),
     );
     expect(createDuplicateKey('dQw4w9WgXcQ', base)).not.toBe(
       createDuplicateKey('dQw4w9WgXcQ', {
@@ -45,6 +48,22 @@ describe('createDuplicateKey', () => {
         artifacts: ['flashcards'],
         summaryPreset: null,
         flashcardPreset: 18,
+      }),
+    );
+  });
+
+  test('looks up the canonical Deep fingerprint and its legacy detailed fingerprint', () => {
+    const keys = createCompatibleDuplicateKeys('dQw4w9WgXcQ', {
+      ...base,
+      summaryPreset: 'deep',
+    });
+
+    expect(keys).toHaveLength(2);
+    expect(new Set(keys).size).toBe(2);
+    expect(keys[0]).toBe(
+      createDuplicateKey('dQw4w9WgXcQ', {
+        ...base,
+        summaryPreset: 'deep',
       }),
     );
   });

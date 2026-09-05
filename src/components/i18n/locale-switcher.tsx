@@ -1,11 +1,12 @@
 'use client';
 
-import { useActionState, useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 
 import { LanguagePanel } from '@/components/i18n/language-panel';
-import { setInterfaceLocale, type LocaleActionState } from '@/lib/i18n/actions';
+import type { LocaleActionState } from '@/lib/i18n/actions';
+import { setInterfaceLocale } from '@/lib/i18n/browser-actions';
 import {
   readBrowserLocaleCookie,
   writeBrowserLocaleCookie,
@@ -13,7 +14,6 @@ import {
 import {
   localeMetadata,
   localeSchema,
-  supportedLocales,
   toBcp47,
   type Locale,
 } from '@/lib/i18n/locales';
@@ -42,11 +42,10 @@ export function LocaleSwitcher({
   copy,
   variant,
 }: LocaleSwitcherProps) {
-  const formId = useId();
   const router = useRouter();
-  const formRef = useRef<HTMLFormElement>(null);
-  const attemptRef = useRef<HTMLInputElement>(null);
-  const submitterRefs = useRef<Partial<Record<Locale, HTMLButtonElement>>>({});
+  const pendingCommitRef = useRef<
+    Readonly<{ attempt: number; locale: Locale }> | undefined
+  >(undefined);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const latestSelectionRef = useRef({ attempt: 0, locale });
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,30 +60,7 @@ export function LocaleSwitcher({
     useState<LocaleActionState | null>(null);
   const [exitingSuccess, setExitingSuccess] =
     useState<LocaleActionState | null>(null);
-  const [state, formAction] = useActionState(
-    async (previousState: LocaleActionState, formData: FormData) => {
-      const attempt = formData.get('localeAttempt');
-      const result = await setInterfaceLocale(previousState, formData);
-      const latestSelection = latestSelectionRef.current;
-      const isLatestAttempt = attempt === String(latestSelection.attempt);
-      const browserLocale = readBrowserLocaleCookie();
-
-      if (
-        isLatestAttempt &&
-        browserLocale !== null &&
-        browserLocale !== latestSelection.locale
-      ) {
-        latestSelectionRef.current = { attempt: 0, locale: browserLocale };
-        return previousState;
-      }
-
-      document.documentElement.lang = toBcp47(latestSelection.locale);
-      writeBrowserLocaleCookie(latestSelection.locale);
-
-      return isLatestAttempt ? result : previousState;
-    },
-    initialActionState,
-  );
+  const [state, setState] = useState<LocaleActionState>(initialActionState);
 
   useEffect(() => {
     function handleShortcut(event: KeyboardEvent) {
@@ -142,7 +118,6 @@ export function LocaleSwitcher({
     setExitingSuccess(null);
     const attempt = latestSelectionRef.current.attempt + 1;
     latestSelectionRef.current = { attempt, locale: parsed.data };
-    if (attemptRef.current) attemptRef.current.value = String(attempt);
     setOptimisticLocale({
       baseLocale: locale,
       hasLocalSelection: true,
@@ -150,10 +125,45 @@ export function LocaleSwitcher({
     });
     document.documentElement.lang = toBcp47(parsed.data);
     writeBrowserLocaleCookie(parsed.data);
-    router.refresh();
+    pendingCommitRef.current = { attempt, locale: parsed.data };
+  }
 
-    const submitter = submitterRefs.current[parsed.data];
-    if (submitter) formRef.current?.requestSubmit(submitter);
+  function commitPendingLocale() {
+    const pendingCommit = pendingCommitRef.current;
+    if (pendingCommit === undefined) return;
+
+    pendingCommitRef.current = undefined;
+    void synchronizeLocale(pendingCommit);
+  }
+
+  async function synchronizeLocale({
+    attempt,
+    locale: pendingLocale,
+  }: Readonly<{ attempt: number; locale: Locale }>) {
+    const formData = new FormData();
+    formData.set('localeAttempt', String(attempt));
+    formData.set('locale', pendingLocale);
+    const result = await setInterfaceLocale(state, formData);
+    const latestSelection = latestSelectionRef.current;
+    const isLatestAttempt = attempt === latestSelection.attempt;
+    const browserLocale = readBrowserLocaleCookie();
+
+    if (
+      isLatestAttempt &&
+      browserLocale !== null &&
+      browserLocale !== latestSelection.locale
+    ) {
+      latestSelectionRef.current = { attempt: 0, locale: browserLocale };
+      return;
+    }
+
+    document.documentElement.lang = toBcp47(latestSelection.locale);
+    writeBrowserLocaleCookie(latestSelection.locale);
+
+    if (isLatestAttempt) {
+      setState(result);
+      router.refresh();
+    }
   }
 
   let selectedLocale = optimisticLocale.selectedLocale;
@@ -233,43 +243,18 @@ export function LocaleSwitcher({
 
   return (
     <>
-      <form
-        action={formAction}
-        id={formId}
-        className="locale-switcher"
-        ref={formRef}
-      >
-        <input
-          defaultValue="0"
-          name="localeAttempt"
-          ref={attemptRef}
-          type="hidden"
-        />
+      <div className="locale-switcher">
         <LanguagePanel
           copy={copy}
           locale={selectedLocale}
+          onClosed={commitPendingLocale}
           onSelect={selectLocale}
           open={panelOpen}
           onOpenChange={setPanelOpen}
           trigger={trigger}
           variant={variant}
         />
-        {supportedLocales.map((candidate) => (
-          <button
-            aria-hidden="true"
-            hidden
-            key={candidate}
-            name="locale"
-            ref={(node) => {
-              if (node) submitterRefs.current[candidate] = node;
-              else delete submitterRefs.current[candidate];
-            }}
-            tabIndex={-1}
-            type="submit"
-            value={candidate}
-          />
-        ))}
-      </form>
+      </div>
       {feedback && typeof document !== 'undefined'
         ? createPortal(
             <div className="locale-language-feedback" data-variant={variant}>

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { ReferenceFacets } from '@/components/marketing/reference-facets';
 import { ReferenceHeaderBehavior } from '@/components/marketing/reference-header';
 import { LandingAnalysisForm } from '@/components/marketing/landing-analysis-form';
+import { MobileMarketingMenu } from '@/components/marketing/mobile-marketing-menu';
 import { ReferenceMotion } from '@/components/marketing/reference-motion';
 import {
   ReferenceFooter,
@@ -91,19 +92,14 @@ export default async function HomePage() {
             <a className="btn btn-ghost btn-sm desktop-only" href="/sign-in">
               <span>{copy.header.signIn}</span>
             </a>
-            <a className="btn btn-primary btn-sm" href="#product">
+            <a className="btn btn-primary btn-sm" href="/sign-up">
               <span>{copy.header.startFree}</span>
               <Arrow />
             </a>
-            <button
-              className="btn btn-icon btn-ghost mobile-only"
-              type="button"
-              aria-label={copy.header.openMenu}
-            >
-              <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 7h16M4 12h16M4 17h16" />
-              </svg>
-            </button>
+            <MobileMarketingMenu
+              navigation={content.navigation}
+              copy={copy.header}
+            />
           </div>
         </div>
       </header>

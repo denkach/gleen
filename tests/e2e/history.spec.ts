@@ -30,6 +30,19 @@ async function visibleTitles(page: import('@playwright/test').Page) {
 }
 
 test.describe('DEN-19 History durable behavior', () => {
+  test('shows the analysis Summary mode in desktop and mobile history', async ({
+    page,
+  }) => {
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await openHistory(page);
+      await expect(page.getByText(/Balanced/u).first()).toBeVisible();
+    }
+  });
+
   test('@localization durable applied query controls results and Back/Forward restores the complete view', async ({
     page,
   }) => {

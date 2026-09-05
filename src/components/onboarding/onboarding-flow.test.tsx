@@ -123,13 +123,50 @@ describe('three-step onboarding', () => {
     expect(
       screen.getByRole('heading', { name: 'Налаштування результатів' }),
     ).toBeVisible();
+    expect(screen.getByText('Компактний конспект')).toBeVisible();
     expect(screen.getByText('Збалансований конспект')).toBeVisible();
-    expect(screen.getByText('Докладний конспект')).toBeVisible();
+    expect(screen.getByText('Глибокий конспект')).toBeVisible();
     expect(screen.getByText('18 карток')).toBeVisible();
     expect(screen.getByText('30 карток')).toBeVisible();
     expect(
       screen.getByRole('button', { name: 'Завершити налаштування' }),
     ).toBeVisible();
+  });
+
+  it('renders exactly the three canonical summary modes', () => {
+    const { container } = render(
+      <OnboardingFlow
+        initialState={{ ...defaultOnboardingState, onboardingStep: 3 }}
+        copy={onboardingMessages.en}
+      />,
+    );
+
+    expect(
+      Array.from(
+        container.querySelectorAll<HTMLInputElement>(
+          'input[name="summaryPreset"]',
+        ),
+        (input) => input.value,
+      ),
+    ).toEqual(['compact', 'balanced', 'deep']);
+  });
+
+  it('submits Compact as a canonical onboarding default', async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <OnboardingFlow
+        initialState={{ ...defaultOnboardingState, onboardingStep: 3 }}
+        copy={onboardingMessages.en}
+      />,
+    );
+
+    await user.click(screen.getByRole('radio', { name: /Compact summary/ }));
+
+    expect(
+      container.querySelector<HTMLInputElement>(
+        'input[name="summaryPreset"][value="compact"]',
+      ),
+    ).toBeChecked();
   });
 
   it('keeps output locale unchanged when the interface locale changes', async () => {

@@ -15,30 +15,39 @@ import {
 } from '@/lib/i18n/messages/settings';
 import {
   setOutputLocale,
+  setSummaryMode,
   type OutputLocaleActionState,
+  type SummaryModeActionState,
 } from '@/lib/settings/actions';
+import { summaryModeSchema, type SummaryMode } from '@/lib/summary-mode';
 
 const interfaceInitialState: LocaleActionState = { status: 'idle' };
 const outputInitialState: OutputLocaleActionState = { status: 'idle' };
+const summaryInitialState: SummaryModeActionState = { status: 'idle' };
 
 type LanguagePreferencesProps = Readonly<{
   interfaceLocale: Locale;
   outputLocale: Locale;
+  summaryMode: SummaryMode;
   copy: SettingsCopy;
   unavailable?: boolean;
+  summaryModeAction?: typeof setSummaryMode;
 }>;
 
 export function LanguagePreferences({
   interfaceLocale: initialInterfaceLocale,
   outputLocale: initialOutputLocale,
+  summaryMode: initialSummaryMode,
   copy,
   unavailable = false,
+  summaryModeAction = setSummaryMode,
 }: LanguagePreferencesProps) {
   const router = useRouter();
   const [interfaceLocale, setInterfaceLocaleValue] = useState(
     initialInterfaceLocale,
   );
   const [outputLocale, setOutputLocaleValue] = useState(initialOutputLocale);
+  const [summaryMode, setSummaryModeValue] = useState(initialSummaryMode);
   const [outputRevision, setOutputRevision] = useState(0);
   const [interfaceState, interfaceAction, interfacePending] = useActionState(
     async (previousState: LocaleActionState, formData: FormData) => {
@@ -54,6 +63,11 @@ export function LanguagePreferences({
       return nextState;
     },
     outputInitialState,
+  );
+  const [summaryState, summaryAction, summaryPending] = useActionState(
+    async (previousState: SummaryModeActionState, formData: FormData) =>
+      summaryModeAction(previousState, formData),
+    summaryInitialState,
   );
 
   useEffect(() => {
@@ -136,8 +150,96 @@ export function LanguagePreferences({
           savedLabel={copy.language.saved}
           unavailable={unavailable}
         />
+        <SummaryModePreferenceForm
+          action={summaryAction}
+          copy={copy}
+          error={
+            summaryState.status === 'error'
+              ? settingsErrorMessage(copy, summaryState.code)
+              : null
+          }
+          onChange={setSummaryModeValue}
+          pending={summaryPending}
+          saved={
+            summaryState.status === 'success' &&
+            summaryState.mode === summaryMode
+          }
+          unavailable={unavailable}
+          value={summaryMode}
+        />
       </div>
     </section>
+  );
+}
+
+type SummaryModePreferenceFormProps = Readonly<{
+  action: (formData: FormData) => void;
+  copy: SettingsCopy;
+  error: string | null;
+  onChange(mode: SummaryMode): void;
+  pending: boolean;
+  saved: boolean;
+  unavailable: boolean;
+  value: SummaryMode;
+}>;
+
+function SummaryModePreferenceForm({
+  action,
+  copy,
+  error,
+  onChange,
+  pending,
+  saved,
+  unavailable,
+  value,
+}: SummaryModePreferenceFormProps) {
+  return (
+    <form
+      action={action}
+      className="settings-section"
+      onReset={(event) => event.preventDefault()}
+    >
+      <div className="settings-section-head">
+        <h2>{copy.summary.title}</h2>
+        <p>{copy.summary.description}</p>
+      </div>
+      <label className="language-preferences__field">
+        <span>{copy.summary.label}</span>
+        <select
+          aria-label={copy.summary.label}
+          disabled={unavailable || pending}
+          name="summaryMode"
+          onChange={(event) =>
+            onChange(summaryModeSchema.parse(event.target.value))
+          }
+          value={value}
+        >
+          {summaryModeSchema.options.map((mode) => (
+            <option key={mode} value={mode}>
+              {copy.summary.modes[mode].title}
+            </option>
+          ))}
+        </select>
+        <span>{copy.summary.modes[value].description}</span>
+      </label>
+      <div className="language-preferences__actions">
+        <button
+          className="ui-button"
+          data-variant="primary"
+          disabled={unavailable || pending}
+          type="submit"
+        >
+          {pending ? copy.language.saving : copy.summary.save}
+        </button>
+        <p
+          aria-live="polite"
+          className="language-preferences__status"
+          role={error ? 'alert' : 'status'}
+        >
+          {error ?? (saved ? copy.language.saved : '')}
+        </p>
+      </div>
+    </form>
   );
 }
 

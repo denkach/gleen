@@ -37,27 +37,43 @@ describe('resolveOwnedActiveAnalysis', () => {
     expect(findMostRecentOwnedActive).not.toHaveBeenCalled();
   });
 
-  test.each(['partial', 'complete'] as const)(
-    'rejects an explicitly owned %s analysis',
-    async (status) => {
-      const result = await resolveOwnedActiveAnalysis({
-        userId: 'owner',
-        requestedAnalysisId: 'explicit',
-        continuation: null,
-        intakeRepository: {
-          findOwned: vi.fn().mockResolvedValue(intake('explicit')),
-        },
-        analysisRepository: {
-          findOwnedSnapshot: vi
-            .fn()
-            .mockResolvedValue(snapshot('explicit', status)),
-          findMostRecentOwnedActive: vi.fn().mockResolvedValue(null),
-        },
-      });
+  test('rejects an explicitly owned complete analysis', async () => {
+    const result = await resolveOwnedActiveAnalysis({
+      userId: 'owner',
+      requestedAnalysisId: 'explicit',
+      continuation: null,
+      intakeRepository: {
+        findOwned: vi.fn().mockResolvedValue(intake('explicit')),
+      },
+      analysisRepository: {
+        findOwnedSnapshot: vi
+          .fn()
+          .mockResolvedValue(snapshot('explicit', 'complete')),
+        findMostRecentOwnedActive: vi.fn().mockResolvedValue(null),
+      },
+    });
 
-      expect(result.initialAnalysis).toBeNull();
-    },
-  );
+    expect(result.initialAnalysis).toBeNull();
+  });
+
+  test('restores an explicitly owned partial analysis after reload', async () => {
+    const result = await resolveOwnedActiveAnalysis({
+      userId: 'owner',
+      requestedAnalysisId: 'partial',
+      continuation: null,
+      intakeRepository: {
+        findOwned: vi.fn().mockResolvedValue(intake('partial')),
+      },
+      analysisRepository: {
+        findOwnedSnapshot: vi
+          .fn()
+          .mockResolvedValue(snapshot('partial', 'partial')),
+        findMostRecentOwnedActive: vi.fn(),
+      },
+    });
+
+    expect(result.initialAnalysis?.snapshot.job.status).toBe('partial');
+  });
 
   test('restores an explicitly owned failed analysis for retry', async () => {
     const result = await resolveOwnedActiveAnalysis({
