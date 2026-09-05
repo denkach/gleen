@@ -21,6 +21,13 @@ import {
 } from '@/lib/i18n/catalog';
 import { appMessages } from '@/lib/i18n/messages/app';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
+import { historyMessages } from '@/lib/i18n/messages/history';
+import { parseHistoryQuery } from '@/lib/history/query';
+import type { HistoryItem } from '@/lib/history/repository';
+import {
+  createSupabaseHistoryRepository,
+  type SupabaseHistoryClient,
+} from '@/lib/history/supabase-repository';
 
 function reportMissingTranslation(event: MissingTranslationEvent) {
   console.error(event);
@@ -52,6 +59,12 @@ export default async function AppPage({ searchParams }: AppPageProps) {
     'app',
     reportMissingTranslation,
   );
+  const historyCopy = selectMessages(
+    historyMessages,
+    locale,
+    'history',
+    reportMissingTranslation,
+  );
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -65,6 +78,9 @@ export default async function AppPage({ searchParams }: AppPageProps) {
   const continuation = parseAnalysisContinuation(params.continuation ?? null);
   let initialAnalysis;
   let resolvedContinuation = continuation;
+  let recentAnalyses:
+    | Readonly<{ kind: 'ready'; items: readonly HistoryItem[] }>
+    | Readonly<{ kind: 'unavailable' }> = { kind: 'ready', items: [] };
 
   if (user) {
     const intakeRepository = createSupabaseIntakeRepository(
@@ -82,6 +98,20 @@ export default async function AppPage({ searchParams }: AppPageProps) {
     });
     initialAnalysis = recovery.initialAnalysis ?? undefined;
     resolvedContinuation = recovery.continuation;
+    try {
+      const historyRepository = createSupabaseHistoryRepository(
+        supabase as unknown as SupabaseHistoryClient,
+        { locale, copy: historyCopy },
+      );
+      const page = await historyRepository.listOwned(
+        user.id,
+        parseHistoryQuery({}),
+        3,
+      );
+      recentAnalyses = { kind: 'ready', items: page.items };
+    } catch {
+      recentAnalyses = { kind: 'unavailable' };
+    }
   }
 
   return (
@@ -94,6 +124,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
       }}
       initialAnalysis={initialAnalysis ?? undefined}
       continuation={resolvedContinuation ?? undefined}
+      recentAnalyses={recentAnalyses}
     />
   );
 }

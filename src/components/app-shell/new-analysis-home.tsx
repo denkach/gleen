@@ -11,6 +11,11 @@ import type { ComponentProps } from 'react';
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 import type { AppMessages } from '@/lib/i18n/messages/app';
+import type { HistoryItem } from '@/lib/history/repository';
+
+export type RecentAnalysesState =
+  | Readonly<{ kind: 'ready'; items: readonly HistoryItem[] }>
+  | Readonly<{ kind: 'unavailable' }>;
 
 type ProfileDefaults = Pick<
   IntakeActionState['configuration'],
@@ -26,6 +31,7 @@ export function NewAnalysisHome({
   resultQuery,
   initialAnalysis,
   continuation,
+  recentAnalyses = { kind: 'ready', items: [] },
 }: Readonly<{
   copy: AppMessages;
   profileDefaults?: ProfileDefaults;
@@ -38,6 +44,7 @@ export function NewAnalysisHome({
     snapshot: AnalysisSnapshot;
   }>;
   continuation?: Readonly<{ rawUrl: string }>;
+  recentAnalyses?: RecentAnalysesState;
 }>) {
   const initialState = createInitialIntakeActionState(profileDefaults);
   return (
@@ -82,8 +89,12 @@ export function NewAnalysisHome({
             </Link>
           </header>
           <div className="panel-empty-state">
-            <strong>{copy.newAnalysis.recent.emptyTitle}</strong>
-            <p>{copy.newAnalysis.recent.emptyDescription}</p>
+            <strong>{recentAnalyses.kind}</strong>
+            <p>
+              {recentAnalyses.kind === 'ready'
+                ? recentAnalyses.items.length
+                : ''}
+            </p>
           </div>
         </section>
 

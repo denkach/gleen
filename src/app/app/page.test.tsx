@@ -6,6 +6,7 @@ const read = vi.fn();
 const findOwned = vi.fn();
 const findOwnedSnapshot = vi.fn();
 const findMostRecentOwnedActive = vi.fn();
+const listOwned = vi.fn();
 const { getRequestLocale } = vi.hoisted(() => ({
   getRequestLocale: vi.fn(async () => 'uk'),
 }));
@@ -32,6 +33,9 @@ vi.mock('@/lib/analysis-pipeline/supabase-repository', () => ({
     findMostRecentOwnedActive,
   }),
 }));
+vi.mock('@/lib/history/supabase-repository', () => ({
+  createSupabaseHistoryRepository: () => ({ listOwned }),
+}));
 
 vi.mock('@/components/app-shell/new-analysis-home', () => ({
   NewAnalysisHome: (props: {
@@ -39,6 +43,7 @@ vi.mock('@/components/app-shell/new-analysis-home', () => ({
     profileDefaults: { outputLocale: string };
     initialAnalysis?: { intake: { id: string } };
     continuation?: { rawUrl: string };
+    recentAnalyses: { kind: string; items?: readonly { id: string }[] };
   }) => (
     <div>
       <span data-testid="analysis">{props.initialAnalysis?.intake.id}</span>
@@ -46,6 +51,10 @@ vi.mock('@/components/app-shell/new-analysis-home', () => ({
       <span data-testid="localized-title">{props.copy.newAnalysis.title}</span>
       <span data-testid="output-locale">
         {props.profileDefaults.outputLocale}
+      </span>
+      <span data-testid="recent-state">
+        {props.recentAnalyses.kind}:
+        {props.recentAnalyses.items?.map((item) => item.id).join(',')}
       </span>
     </div>
   ),
@@ -71,6 +80,10 @@ describe('AppPage', () => {
     findOwned.mockResolvedValue(null);
     findOwnedSnapshot.mockResolvedValue(null);
     findMostRecentOwnedActive.mockResolvedValue(null);
+    listOwned.mockResolvedValue({
+      items: [{ id: 'analysis-1' }],
+      nextCursor: null,
+    });
   });
 
   test('loads authenticated profile defaults for the intake form', async () => {
@@ -80,6 +93,23 @@ describe('AppPage', () => {
       'Перетворіть відео на щось корисне.',
     );
     expect(screen.getByTestId('output-locale')).toHaveTextContent('es');
+    expect(screen.getByTestId('recent-state')).toHaveTextContent(
+      'ready:analysis-1',
+    );
+    expect(listOwned).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ sort: 'newest', cursor: null }),
+      3,
+    );
+  });
+
+  test('keeps the intake available when recent history cannot load', async () => {
+    listOwned.mockRejectedValue(new Error('history unavailable'));
+    render(await AppPage({ searchParams: Promise.resolve({}) }));
+    expect(screen.getByTestId('localized-title')).toBeVisible();
+    expect(screen.getByTestId('recent-state')).toHaveTextContent(
+      'unavailable:',
+    );
   });
 
   test('prefers an explicitly owned active analysis', async () => {
