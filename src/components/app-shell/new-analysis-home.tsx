@@ -11,11 +11,7 @@ import type { ComponentProps } from 'react';
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 import type { AppMessages } from '@/lib/i18n/messages/app';
-import type { HistoryItem } from '@/lib/history/repository';
-
-export type RecentAnalysesState =
-  | Readonly<{ kind: 'ready'; items: readonly HistoryItem[] }>
-  | Readonly<{ kind: 'unavailable' }>;
+import { RecentAnalyses, type RecentAnalysesState } from './recent-analyses';
 
 type ProfileDefaults = Pick<
   IntakeActionState['configuration'],
@@ -88,14 +84,10 @@ export function NewAnalysisHome({
               {copy.newAnalysis.recent.viewHistory}
             </Link>
           </header>
-          <div className="panel-empty-state">
-            <strong>{recentAnalyses.kind}</strong>
-            <p>
-              {recentAnalyses.kind === 'ready'
-                ? recentAnalyses.items.length
-                : ''}
-            </p>
-          </div>
+          <RecentAnalyses
+            state={recentAnalyses}
+            copy={copy.newAnalysis.recent}
+          />
         </section>
 
         <aside className="panel" aria-labelledby="monthly-metrics-title">
