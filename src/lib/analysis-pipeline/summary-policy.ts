@@ -10,6 +10,7 @@ export type SummaryPolicyInput = Readonly<{
 export type SummaryGenerationPolicy = Readonly<{
   route: 'one-pass' | 'two-pass';
   sectionRange: Readonly<{ min: number; max: number }>;
+  sectionRangeEnforcement: 'adaptive' | 'strict';
   signals: Readonly<{
     durationSeconds: number;
     wordCount: number;
@@ -51,6 +52,12 @@ export function selectSummaryPolicy(
     route:
       longForm || denseShortVideo || deepEscalation ? 'two-pass' : 'one-pass',
     sectionRange: sectionRangeForDuration(input.durationSeconds, input.mode),
+    sectionRangeEnforcement:
+      input.mode === 'deep' &&
+      input.durationSeconds >= 2_700 &&
+      input.durationSeconds < 5_400
+        ? 'strict'
+        : 'adaptive',
     signals: {
       durationSeconds: input.durationSeconds,
       wordCount,
