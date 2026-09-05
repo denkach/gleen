@@ -20,6 +20,9 @@ export type HistoryListActions = Readonly<{
   ): Promise<HistoryActionResult<Readonly<{ updatedAt: string }>>>;
   deleteHistoryItem(input: unknown): Promise<HistoryActionResult>;
   markHistoryItemOpened(input: unknown): Promise<HistoryActionResult>;
+  retryPartialHistoryAnalysis(
+    input: unknown,
+  ): Promise<HistoryActionResult<Readonly<{ attempt: number }>>>;
   loadMoreHistory(input: unknown): Promise<HistoryActionResult<HistoryPage>>;
 }>;
 
@@ -138,6 +141,7 @@ function ItemActions(props: ItemViewProps) {
       renameItem={props.actions.renameHistoryItem}
       deleteItem={props.actions.deleteHistoryItem}
       markOpened={props.actions.markHistoryItemOpened}
+      retryPartial={props.actions.retryPartialHistoryAnalysis}
       onChange={props.onChange}
       onDelete={props.onDelete}
       onAnnouncement={props.onAnnouncement}

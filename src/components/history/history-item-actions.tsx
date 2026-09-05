@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/dialog';
 import {
@@ -14,6 +14,7 @@ import {
 import type { HistoryActionResult } from '@/lib/history/actions';
 import type { HistoryMessages } from '@/lib/i18n/messages/history';
 import type { HistoryItem } from '@/lib/history/repository';
+import { HistoryActionIcon } from './history-action-icons';
 
 export type HistoryItemActionsProps = Readonly<{
   item: HistoryItem;
@@ -24,9 +25,13 @@ export type HistoryItemActionsProps = Readonly<{
   ): Promise<HistoryActionResult<Readonly<{ updatedAt: string }>>>;
   deleteItem(input: unknown): Promise<HistoryActionResult>;
   markOpened(input: unknown): Promise<HistoryActionResult>;
+  retryPartial(
+    input: unknown,
+  ): Promise<HistoryActionResult<Readonly<{ attempt: number }>>>;
   onChange(change: Partial<HistoryItem>): void;
   onDelete(): void;
   onAnnouncement(message: string): void;
+  navigateToAnalysis?(href: string): void;
   initialDialog?: 'rename' | 'delete' | null;
 }>;
 
@@ -44,9 +49,11 @@ export function HistoryItemActions({
   renameItem,
   deleteItem,
   markOpened,
+  retryPartial,
   onChange,
   onDelete,
   onAnnouncement,
+  navigateToAnalysis = (href) => window.location.assign(href),
   initialDialog = null,
 }: HistoryItemActionsProps) {
   const [optimisticFavorite, setOptimisticFavorite] = useState<boolean | null>(
@@ -60,6 +67,8 @@ export function HistoryItemActions({
   const [deleteOpen, setDeleteOpen] = useState(initialDialog === 'delete');
   const [deleteError, setDeleteError] = useState('');
   const [deletePending, setDeletePending] = useState(false);
+  const retryPendingRef = useRef(false);
+  const [retryPending, setRetryPending] = useState(false);
 
   const favorite = optimisticFavorite ?? item.favorite;
 
@@ -164,6 +173,27 @@ export function HistoryItemActions({
     void markOpened({ analysisId: item.id }).catch(() => undefined);
   }
 
+  async function retryMissingMaterials() {
+    if (retryPendingRef.current) return;
+    retryPendingRef.current = true;
+    setRetryPending(true);
+    try {
+      const result = await retryPartial({ analysisId: item.id });
+      if (!result.ok) {
+        const message = copy.actions.retry.failed;
+        onAnnouncement(message);
+        return;
+      }
+      onAnnouncement(copy.actions.retry.started);
+      navigateToAnalysis(`/app?analysis=${encodeURIComponent(item.id)}`);
+    } catch {
+      onAnnouncement(copy.actions.retry.failed);
+    } finally {
+      retryPendingRef.current = false;
+      setRetryPending(false);
+    }
+  }
+
   const openLabel =
     item.status.key === 'ready' || item.status.key === 'partial'
       ? copy.actions.open
@@ -201,15 +231,35 @@ export function HistoryItemActions({
         >
           <DropdownMenuItem asChild>
             <Link href={item.href} onClick={markItemOpened}>
+              <HistoryActionIcon name="open" />
               {openLabel}
             </Link>
           </DropdownMenuItem>
+          {item.status.key === 'partial' ? (
+            <DropdownMenuItem
+              disabled={retryPending}
+              onSelect={(event) => {
+                event.preventDefault();
+                void retryMissingMaterials();
+              }}
+            >
+              <HistoryActionIcon name="retry" />
+              {retryPending
+                ? copy.actions.retry.pending
+                : copy.actions.retry.action}
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={openRename}>
+            <HistoryActionIcon name="rename" />
             {copy.actions.rename.action}
           </DropdownMenuItem>
           {item.canExport ? (
             <DropdownMenuItem asChild>
-              <Link href={`${item.href}#export`}>{copy.actions.export}</Link>
+              <Link href={`${item.href}#export`}>
+                <HistoryActionIcon name="export" />
+                {copy.actions.export}
+              </Link>
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuSeparator />
@@ -217,6 +267,7 @@ export function HistoryItemActions({
             className="history-item-actions__delete"
             onSelect={openDelete}
           >
+            <HistoryActionIcon name="delete" />
             {copy.actions.delete.action}
           </DropdownMenuItem>
         </DropdownMenuContent>

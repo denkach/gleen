@@ -16,6 +16,7 @@ const {
   push,
   reanalyzeHistoryDuplicate,
   renameHistoryItem,
+  retryPartialHistoryAnalysis,
   toggleHistoryFavorite,
 } = vi.hoisted(() => ({
   createHistoryRepository: vi.fn(),
@@ -30,6 +31,7 @@ const {
   push: vi.fn(),
   reanalyzeHistoryDuplicate: vi.fn(),
   renameHistoryItem: vi.fn(),
+  retryPartialHistoryAnalysis: vi.fn(),
   toggleHistoryFavorite: vi.fn(),
 }));
 
@@ -60,6 +62,7 @@ vi.mock('@/lib/history/actions', () => ({
   markHistoryItemOpened,
   reanalyzeHistoryDuplicate,
   renameHistoryItem,
+  retryPartialHistoryAnalysis,
   toggleHistoryFavorite,
 }));
 
