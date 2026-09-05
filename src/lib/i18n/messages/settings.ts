@@ -18,6 +18,45 @@ export const settingsMessages = defineMessages({
       description:
         'Choose languages for Gleen and for new knowledge artifacts.',
     },
+    atlas: {
+      navigationLabel: 'Settings sections',
+      back: 'Back to Settings',
+      overviewTitle: 'Account Atlas',
+      overviewDescription:
+        'A clear view of your profile, defaults, languages, connections, security, and data.',
+      destinations: {
+        profile: {
+          title: 'Profile',
+          description: 'Your name, avatar, and verified email.',
+          unavailable: 'Profile details unavailable',
+        },
+        preferences: {
+          title: 'Preferences',
+          description: 'Defaults for summaries and study materials.',
+          unavailable: 'Preferences unavailable',
+        },
+        language: {
+          title: 'Language',
+          description: 'Independent interface and output languages.',
+          unavailable: 'Language settings unavailable',
+        },
+        integrations: {
+          title: 'Integrations',
+          description: 'Truthful export and connection capabilities.',
+          unavailable: 'Integration status unavailable',
+        },
+        security: {
+          title: 'Security',
+          description: 'Sign-in methods and account protection.',
+          unavailable: 'Security details unavailable',
+        },
+        data: {
+          title: 'Data',
+          description: 'Your history, exports, and account controls.',
+          unavailable: 'Data details unavailable',
+        },
+      },
+    },
     language: {
       title: 'Language preferences',
       interface: {
@@ -80,6 +119,45 @@ export const settingsMessages = defineMessages({
       title: 'Налаштування',
       description: 'Виберіть мови для Gleen і нових матеріалів.',
     },
+    atlas: {
+      navigationLabel: 'Розділи налаштувань',
+      back: 'Назад до налаштувань',
+      overviewTitle: 'Атлас акаунта',
+      overviewDescription:
+        'Чіткий огляд профілю, стандартів, мов, підключень, безпеки й даних.',
+      destinations: {
+        profile: {
+          title: 'Профіль',
+          description: 'Ваше ім’я, аватар і підтверджена пошта.',
+          unavailable: 'Дані профілю недоступні',
+        },
+        preferences: {
+          title: 'Уподобання',
+          description: 'Стандартні параметри конспектів і навчання.',
+          unavailable: 'Уподобання недоступні',
+        },
+        language: {
+          title: 'Мова',
+          description: 'Окремі мови інтерфейсу та результатів.',
+          unavailable: 'Мовні налаштування недоступні',
+        },
+        integrations: {
+          title: 'Інтеграції',
+          description: 'Реальні можливості експорту й підключень.',
+          unavailable: 'Статус інтеграцій недоступний',
+        },
+        security: {
+          title: 'Безпека',
+          description: 'Способи входу та захист акаунта.',
+          unavailable: 'Дані безпеки недоступні',
+        },
+        data: {
+          title: 'Дані',
+          description: 'Історія, експорт і керування акаунтом.',
+          unavailable: 'Дані акаунта недоступні',
+        },
+      },
+    },
     language: {
       title: 'Мовні налаштування',
       interface: {
@@ -141,6 +219,45 @@ export const settingsMessages = defineMessages({
       title: 'Настройки',
       description: 'Выберите языки для Gleen и новых материалов.',
     },
+    atlas: {
+      navigationLabel: 'Разделы настроек',
+      back: 'Назад к настройкам',
+      overviewTitle: 'Атлас аккаунта',
+      overviewDescription:
+        'Понятный обзор профиля, параметров, языков, подключений, безопасности и данных.',
+      destinations: {
+        profile: {
+          title: 'Профиль',
+          description: 'Ваше имя, аватар и подтверждённая почта.',
+          unavailable: 'Данные профиля недоступны',
+        },
+        preferences: {
+          title: 'Предпочтения',
+          description: 'Настройки по умолчанию для конспектов и обучения.',
+          unavailable: 'Предпочтения недоступны',
+        },
+        language: {
+          title: 'Язык',
+          description: 'Отдельные языки интерфейса и результатов.',
+          unavailable: 'Языковые настройки недоступны',
+        },
+        integrations: {
+          title: 'Интеграции',
+          description: 'Реальные возможности экспорта и подключений.',
+          unavailable: 'Статус интеграций недоступен',
+        },
+        security: {
+          title: 'Безопасность',
+          description: 'Способы входа и защита аккаунта.',
+          unavailable: 'Данные безопасности недоступны',
+        },
+        data: {
+          title: 'Данные',
+          description: 'История, экспорт и управление аккаунтом.',
+          unavailable: 'Данные аккаунта недоступны',
+        },
+      },
+    },
     language: {
       title: 'Языковые настройки',
       interface: {
@@ -201,6 +318,45 @@ export const settingsMessages = defineMessages({
       eyebrow: 'Tu cuenta',
       title: 'Ajustes',
       description: 'Elige idiomas para Gleen y para los nuevos materiales.',
+    },
+    atlas: {
+      navigationLabel: 'Secciones de ajustes',
+      back: 'Volver a Ajustes',
+      overviewTitle: 'Atlas de la cuenta',
+      overviewDescription:
+        'Una vista clara del perfil, valores predeterminados, idiomas, conexiones, seguridad y datos.',
+      destinations: {
+        profile: {
+          title: 'Perfil',
+          description: 'Tu nombre, avatar y correo verificado.',
+          unavailable: 'Datos del perfil no disponibles',
+        },
+        preferences: {
+          title: 'Preferencias',
+          description: 'Valores predeterminados para resúmenes y estudio.',
+          unavailable: 'Preferencias no disponibles',
+        },
+        language: {
+          title: 'Idioma',
+          description: 'Idiomas independientes para interfaz y resultados.',
+          unavailable: 'Ajustes de idioma no disponibles',
+        },
+        integrations: {
+          title: 'Integraciones',
+          description: 'Capacidades reales de exportación y conexión.',
+          unavailable: 'Estado de integraciones no disponible',
+        },
+        security: {
+          title: 'Seguridad',
+          description: 'Métodos de acceso y protección de la cuenta.',
+          unavailable: 'Datos de seguridad no disponibles',
+        },
+        data: {
+          title: 'Datos',
+          description: 'Historial, exportaciones y controles de cuenta.',
+          unavailable: 'Datos de la cuenta no disponibles',
+        },
+      },
     },
     language: {
       title: 'Preferencias de idioma',
@@ -264,6 +420,45 @@ export const settingsMessages = defineMessages({
       eyebrow: 'Dein Konto',
       title: 'Einstellungen',
       description: 'Wähle Sprachen für Gleen und neue Inhalte.',
+    },
+    atlas: {
+      navigationLabel: 'Einstellungsbereiche',
+      back: 'Zurück zu Einstellungen',
+      overviewTitle: 'Kontoatlas',
+      overviewDescription:
+        'Ein klarer Überblick über Profil, Standards, Sprachen, Verbindungen, Sicherheit und Daten.',
+      destinations: {
+        profile: {
+          title: 'Profil',
+          description: 'Dein Name, Avatar und bestätigte E-Mail-Adresse.',
+          unavailable: 'Profildaten nicht verfügbar',
+        },
+        preferences: {
+          title: 'Präferenzen',
+          description: 'Standards für Zusammenfassungen und Lernmaterial.',
+          unavailable: 'Präferenzen nicht verfügbar',
+        },
+        language: {
+          title: 'Sprache',
+          description: 'Getrennte Sprachen für Oberfläche und Ergebnisse.',
+          unavailable: 'Spracheinstellungen nicht verfügbar',
+        },
+        integrations: {
+          title: 'Integrationen',
+          description: 'Tatsächliche Export- und Verbindungsfunktionen.',
+          unavailable: 'Integrationsstatus nicht verfügbar',
+        },
+        security: {
+          title: 'Sicherheit',
+          description: 'Anmeldemethoden und Kontoschutz.',
+          unavailable: 'Sicherheitsdaten nicht verfügbar',
+        },
+        data: {
+          title: 'Daten',
+          description: 'Verlauf, Exporte und Kontosteuerung.',
+          unavailable: 'Kontodaten nicht verfügbar',
+        },
+      },
     },
     language: {
       title: 'Spracheinstellungen',
