@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 
 import { SettingsShell } from '@/components/settings/settings-shell';
-import { selectMessages, type MissingTranslationEvent } from '@/lib/i18n/catalog';
+import {
+  selectMessages,
+  type MissingTranslationEvent,
+} from '@/lib/i18n/catalog';
 import { settingsMessages } from '@/lib/i18n/messages/settings';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 

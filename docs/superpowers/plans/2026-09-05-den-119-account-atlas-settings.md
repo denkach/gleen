@@ -26,11 +26,13 @@
 ### Task 1: Update the isolated branch and preserve approved references
 
 **Files:**
+
 - Copy unchanged: `design/prototypes/gleen-account-pages-cb-v1/gleen-account-pages-cb-v1.html`
 - Copy unchanged: `design/prototypes/gleen-account-pages-cb-v1/gleen-account-pages-cb-v1/desktop-settings.png`
 - Copy unchanged: `design/prototypes/gleen-account-pages-cb-v1/gleen-account-pages-cb-v1/mobile-settings.png`
 
 **Interfaces:**
+
 - Consumes: reviewed `origin/main` containing DEN-118 compatibility.
 - Produces: a clean DEN-119 base and committed immutable visual references.
 
@@ -45,12 +47,14 @@
 ### Task 2: Define Settings navigation, view models, and five-locale copy
 
 **Files:**
+
 - Create: `src/lib/settings/account-atlas.ts`
 - Create: `src/lib/settings/account-atlas.test.ts`
 - Modify: `src/lib/i18n/messages/settings.ts`
 - Modify: `src/lib/i18n/messages/settings.test.ts`
 
 **Interfaces:**
+
 - Produces: `SettingsDestinationKey`, `settingsDestinations`, `SettingsDestinationSummary`, and `SettingsOverviewModel`.
 - Consumes: profile identity, onboarding preferences, and explicit capability summaries.
 
@@ -87,7 +91,11 @@ export const settingsDestinations = [
   { key: 'profile', href: '/app/settings/profile', icon: 'profile' },
   { key: 'preferences', href: '/app/settings/preferences', icon: 'sliders' },
   { key: 'language', href: '/app/settings/language', icon: 'language' },
-  { key: 'integrations', href: '/app/settings/integrations', icon: 'integration' },
+  {
+    key: 'integrations',
+    href: '/app/settings/integrations',
+    icon: 'integration',
+  },
   { key: 'security', href: '/app/settings/security', icon: 'shield' },
   { key: 'data', href: '/app/settings/data', icon: 'database' },
 ] as const;
@@ -106,6 +114,7 @@ Commit: `feat(DEN-119): define account atlas destinations`
 ### Task 3: Build the Settings route shell and overview
 
 **Files:**
+
 - Create: `src/app/app/settings/layout.tsx`
 - Create: `src/app/app/settings/layout.test.tsx`
 - Create: `src/app/app/settings/page.tsx`
@@ -117,6 +126,7 @@ Commit: `feat(DEN-119): define account atlas destinations`
 - Create: `src/components/settings/settings-icons.tsx`
 
 **Interfaces:**
+
 - Consumes: `settingsDestinations`, authenticated identity, onboarding defaults, and independent domain summaries.
 - Produces: Settings sub-navigation and `SettingsOverview` 3×2/list presentation.
 
@@ -163,6 +173,7 @@ Commit: `feat(DEN-119): add account atlas overview`
 ### Task 4: Separate Profile, Preferences, and Language destinations
 
 **Files:**
+
 - Create: `src/app/app/settings/preferences/page.tsx`
 - Create: `src/app/app/settings/preferences/page.test.tsx`
 - Create: `src/app/app/settings/language/page.tsx`
@@ -179,6 +190,7 @@ Commit: `feat(DEN-119): add account atlas overview`
 - Modify: `src/lib/settings/actions.test.ts`
 
 **Interfaces:**
+
 - Produces: `setDisplayName`, `setSummaryMode`, and `setFlashcardPreset` independent actions.
 - Consumes: Supabase authenticated user and onboarding repository partial updates.
 
@@ -228,6 +240,7 @@ Commit: `feat(DEN-119): add account preference destinations`
 ### Task 5: Add truthful Integrations, Security, and Data destinations
 
 **Files:**
+
 - Create: `src/app/app/settings/integrations/page.tsx`
 - Create: `src/app/app/settings/integrations/page.test.tsx`
 - Create: `src/app/app/settings/security/page.tsx`
@@ -240,6 +253,7 @@ Commit: `feat(DEN-119): add account preference destinations`
 - Create: `src/lib/settings/capabilities.test.ts`
 
 **Interfaces:**
+
 - Produces: typed `IntegrationCapability`, `SecurityCapability`, and `DataCapability` view models.
 - Consumes: authenticated identities and currently implemented export/history routes only.
 
@@ -280,11 +294,13 @@ Commit: `feat(DEN-119): add truthful account capabilities`
 ### Task 6: Match the approved Settings visuals and interactions
 
 **Files:**
+
 - Modify: `src/styles/app-shell-reference.css`
 - Modify: `src/styles/app-shell-reference.test.ts`
 - Modify Settings components from Tasks 3–5 only where stable classes are required.
 
 **Interfaces:**
+
 - Consumes: existing design tokens and approved desktop/mobile screenshots.
 - Produces: Settings-only grid, surfaces, controls, and interaction states.
 
@@ -295,9 +311,13 @@ colors, explicit hover/focus/pressed/disabled/pending selectors, tablet
 sub-navigation, 200% wrapping, and reduced-motion removal:
 
 ```ts
-expect(css).toMatch(/\.settings-atlas__grid\s*{[^}]*grid-template-columns:\s*repeat\(3,/);
+expect(css).toMatch(
+  /\.settings-atlas__grid\s*{[^}]*grid-template-columns:\s*repeat\(3,/,
+);
 expect(css).toMatch(/\.settings-destination-card:hover/);
-expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.settings/);
+expect(css).toMatch(
+  /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.settings/,
+);
 ```
 
 - [ ] **Step 2: Verify RED**
@@ -324,6 +344,7 @@ Commit: `style(DEN-119): match account atlas references`
 ### Task 7: Browser fixtures and full verification
 
 **Files:**
+
 - Create or modify: authenticated Settings fixture routes used by Playwright.
 - Create: `tests/e2e/settings-account-atlas.spec.ts`
 - Add visual snapshots only after comparison with approved references.

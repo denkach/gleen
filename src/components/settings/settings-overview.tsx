@@ -41,7 +41,10 @@ export function SettingsOverview({
                 <span>{destinationCopy.description}</span>
                 <small>{summary.text}</small>
               </span>
-              <span className="settings-destination-card__arrow" aria-hidden="true">
+              <span
+                className="settings-destination-card__arrow"
+                aria-hidden="true"
+              >
                 ↗
               </span>
             </Link>

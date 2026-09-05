@@ -10,7 +10,10 @@ const summaries: SettingsOverviewModel = {
   profile: { state: 'ready', text: 'Alex · Verified email' },
   preferences: { state: 'ready', text: 'Balanced · 18 cards' },
   language: { state: 'ready', text: 'English · Українська output' },
-  integrations: { state: 'unavailable', text: 'Integration status unavailable' },
+  integrations: {
+    state: 'unavailable',
+    text: 'Integration status unavailable',
+  },
   security: { state: 'ready', text: 'Email sign-in' },
   data: { state: 'ready', text: 'History and exports' },
 };
@@ -28,6 +31,8 @@ describe('SettingsOverview', () => {
     );
     expect(screen.getByText('Integration status unavailable')).toBeVisible();
     expect(screen.getByText('Balanced · 18 cards')).toBeVisible();
-    expect(container.querySelectorAll('.settings-destination-card button')).toHaveLength(0);
+    expect(
+      container.querySelectorAll('.settings-destination-card button'),
+    ).toHaveLength(0);
   });
 });

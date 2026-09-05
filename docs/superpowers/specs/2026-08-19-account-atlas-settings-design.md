@@ -33,15 +33,15 @@ Notifications settings, billing behavior, plan configuration, new export integra
 
 ## Routes and navigation
 
-| Route | Destination |
-| --- | --- |
-| `/app/settings` | Account Atlas overview |
-| `/app/settings/profile` | Profile |
-| `/app/settings/preferences` | Preferences |
-| `/app/settings/language` | Language |
-| `/app/settings/integrations` | Integrations |
-| `/app/settings/security` | Security |
-| `/app/settings/data` | Data and deletion |
+| Route                        | Destination            |
+| ---------------------------- | ---------------------- |
+| `/app/settings`              | Account Atlas overview |
+| `/app/settings/profile`      | Profile                |
+| `/app/settings/preferences`  | Preferences            |
+| `/app/settings/language`     | Language               |
+| `/app/settings/integrations` | Integrations           |
+| `/app/settings/security`     | Security               |
+| `/app/settings/data`         | Data and deletion      |
 
 Every route is server-authorized inside the existing authenticated application shell. Browser Back/Forward works normally. Desktop retains the application sidebar; destination pages add a compact settings sub-navigation or an explicit Back to Settings action following available width. Mobile retains the existing bottom application navigation and uses a clear page title and back affordance.
 
