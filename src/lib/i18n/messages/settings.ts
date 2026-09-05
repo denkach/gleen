@@ -3,6 +3,8 @@ import { defineMessages } from '../catalog';
 export type SettingsErrorCode =
   | 'invalid_locale'
   | 'invalid_summary_mode'
+  | 'invalid_display_name'
+  | 'invalid_flashcard_preset'
   | 'profile_update_failed'
   | 'session_expired';
 
@@ -17,6 +19,28 @@ export const settingsMessages = defineMessages({
       title: 'Settings',
       description:
         'Choose languages for Gleen and for new knowledge artifacts.',
+    },
+    profile: {
+      title: 'Profile',
+      description: 'Manage the identity shown across your Gleen account.',
+      nameForm: 'Display name',
+      displayName: 'Display name',
+      email: 'Email',
+      verified: 'Verified',
+      unverified: 'Not verified',
+      save: 'Save name',
+    },
+    preferences: {
+      title: 'Preferences',
+      description:
+        'Defaults for new analyses. You can still adjust each video.',
+      flashcards: {
+        title: 'Flashcard default',
+        description:
+          'Choose how many study cards new analyses create by default.',
+        label: 'Default flashcard count',
+        save: 'Save flashcard count',
+      },
     },
     atlas: {
       navigationLabel: 'Settings sections',
@@ -91,6 +115,8 @@ export const settingsMessages = defineMessages({
       loadError: 'We could not load your language preferences.',
       retry: 'Try again',
       errors: {
+        invalid_display_name: 'Enter a name between 1 and 100 characters.',
+        invalid_flashcard_preset: 'Choose an available flashcard count.',
         invalid_locale: 'Choose one of the available languages.',
         invalid_summary_mode: 'Choose one of the available summary modes.',
         profile_update_failed: 'We could not save this language. Try again.',
@@ -131,6 +157,27 @@ export const settingsMessages = defineMessages({
       eyebrow: 'Ваш обліковий запис',
       title: 'Налаштування',
       description: 'Виберіть мови для Gleen і нових матеріалів.',
+    },
+    profile: {
+      title: 'Профіль',
+      description: 'Керуйте ім’ям, яке відображається у вашому акаунті Gleen.',
+      nameForm: 'Відображуване ім’я',
+      displayName: 'Відображуване ім’я',
+      email: 'Електронна пошта',
+      verified: 'Підтверджено',
+      unverified: 'Не підтверджено',
+      save: 'Зберегти ім’я',
+    },
+    preferences: {
+      title: 'Уподобання',
+      description:
+        'Стандартні параметри нових аналізів. Для кожного відео їх можна змінити.',
+      flashcards: {
+        title: 'Картки за замовчуванням',
+        description: 'Виберіть кількість навчальних карток для нових аналізів.',
+        label: 'Кількість карток за замовчуванням',
+        save: 'Зберегти кількість карток',
+      },
     },
     atlas: {
       navigationLabel: 'Розділи налаштувань',
@@ -204,6 +251,8 @@ export const settingsMessages = defineMessages({
       loadError: 'Не вдалося завантажити мовні налаштування.',
       retry: 'Спробувати ще раз',
       errors: {
+        invalid_display_name: 'Введіть ім’я довжиною від 1 до 100 символів.',
+        invalid_flashcard_preset: 'Виберіть доступну кількість карток.',
         invalid_locale: 'Виберіть одну з доступних мов.',
         invalid_summary_mode: 'Виберіть один із доступних режимів конспекту.',
         profile_update_failed: 'Не вдалося зберегти мову. Спробуйте ще раз.',
@@ -244,6 +293,28 @@ export const settingsMessages = defineMessages({
       eyebrow: 'Ваш аккаунт',
       title: 'Настройки',
       description: 'Выберите языки для Gleen и новых материалов.',
+    },
+    profile: {
+      title: 'Профиль',
+      description:
+        'Управляйте именем, которое отображается в вашем аккаунте Gleen.',
+      nameForm: 'Отображаемое имя',
+      displayName: 'Отображаемое имя',
+      email: 'Электронная почта',
+      verified: 'Подтверждена',
+      unverified: 'Не подтверждена',
+      save: 'Сохранить имя',
+    },
+    preferences: {
+      title: 'Предпочтения',
+      description:
+        'Параметры новых анализов по умолчанию. Для каждого видео их можно изменить.',
+      flashcards: {
+        title: 'Карточки по умолчанию',
+        description: 'Выберите количество учебных карточек для новых анализов.',
+        label: 'Количество карточек по умолчанию',
+        save: 'Сохранить количество карточек',
+      },
     },
     atlas: {
       navigationLabel: 'Разделы настроек',
@@ -317,6 +388,8 @@ export const settingsMessages = defineMessages({
       loadError: 'Не удалось загрузить языковые настройки.',
       retry: 'Попробовать снова',
       errors: {
+        invalid_display_name: 'Введите имя длиной от 1 до 100 символов.',
+        invalid_flashcard_preset: 'Выберите доступное количество карточек.',
         invalid_locale: 'Выберите один из доступных языков.',
         invalid_summary_mode: 'Выберите один из доступных режимов конспекта.',
         profile_update_failed: 'Не удалось сохранить язык. Попробуйте ещё раз.',
@@ -357,6 +430,27 @@ export const settingsMessages = defineMessages({
       eyebrow: 'Tu cuenta',
       title: 'Ajustes',
       description: 'Elige idiomas para Gleen y para los nuevos materiales.',
+    },
+    profile: {
+      title: 'Perfil',
+      description: 'Gestiona el nombre que aparece en tu cuenta de Gleen.',
+      nameForm: 'Nombre visible',
+      displayName: 'Nombre visible',
+      email: 'Correo electrónico',
+      verified: 'Verificado',
+      unverified: 'Sin verificar',
+      save: 'Guardar nombre',
+    },
+    preferences: {
+      title: 'Preferencias',
+      description:
+        'Valores predeterminados para nuevos análisis. Puedes ajustarlos en cada vídeo.',
+      flashcards: {
+        title: 'Tarjetas predeterminadas',
+        description: 'Elige cuántas tarjetas crearán los nuevos análisis.',
+        label: 'Número predeterminado de tarjetas',
+        save: 'Guardar número de tarjetas',
+      },
     },
     atlas: {
       navigationLabel: 'Secciones de ajustes',
@@ -431,6 +525,9 @@ export const settingsMessages = defineMessages({
       loadError: 'No hemos podido cargar tus preferencias de idioma.',
       retry: 'Intentarlo de nuevo',
       errors: {
+        invalid_display_name:
+          'Introduce un nombre de entre 1 y 100 caracteres.',
+        invalid_flashcard_preset: 'Elige una cantidad de tarjetas disponible.',
         invalid_locale: 'Elige uno de los idiomas disponibles.',
         invalid_summary_mode: 'Elige uno de los modos de resumen disponibles.',
         profile_update_failed:
@@ -472,6 +569,29 @@ export const settingsMessages = defineMessages({
       eyebrow: 'Dein Konto',
       title: 'Einstellungen',
       description: 'Wähle Sprachen für Gleen und neue Inhalte.',
+    },
+    profile: {
+      title: 'Profil',
+      description:
+        'Verwalte den Namen, der in deinem Gleen-Konto angezeigt wird.',
+      nameForm: 'Anzeigename',
+      displayName: 'Anzeigename',
+      email: 'E-Mail',
+      verified: 'Bestätigt',
+      unverified: 'Nicht bestätigt',
+      save: 'Namen speichern',
+    },
+    preferences: {
+      title: 'Präferenzen',
+      description:
+        'Standards für neue Analysen. Du kannst jedes Video separat anpassen.',
+      flashcards: {
+        title: 'Standard-Lernkarten',
+        description:
+          'Wähle die Standardanzahl der Lernkarten für neue Analysen.',
+        label: 'Standardanzahl der Lernkarten',
+        save: 'Lernkartenanzahl speichern',
+      },
     },
     atlas: {
       navigationLabel: 'Einstellungsbereiche',
@@ -546,6 +666,8 @@ export const settingsMessages = defineMessages({
       loadError: 'Deine Spracheinstellungen konnten nicht geladen werden.',
       retry: 'Erneut versuchen',
       errors: {
+        invalid_display_name: 'Gib einen Namen mit 1 bis 100 Zeichen ein.',
+        invalid_flashcard_preset: 'Wähle eine verfügbare Lernkartenanzahl.',
         invalid_locale: 'Wähle eine der verfügbaren Sprachen.',
         invalid_summary_mode:
           'Wähle einen der verfügbaren Zusammenfassungsmodi.',

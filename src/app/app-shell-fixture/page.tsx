@@ -5,6 +5,7 @@ import { AppShell } from '@/components/app-shell/app-shell';
 import { NewAnalysisHome } from '@/components/app-shell/new-analysis-home';
 import { AnalysisHandoffFixture } from '@/components/app-shell/analysis-handoff-fixture';
 import { LanguagePreferences } from '@/components/settings/language-preferences';
+import { PreferencesSettings } from '@/components/settings/preferences-settings';
 import { unavailableUsage } from '@/lib/app-shell';
 import { localeSchema } from '@/lib/i18n/locales';
 import { appMessages } from '@/lib/i18n/messages/app';
@@ -17,7 +18,6 @@ import { defaultOnboardingState } from '@/lib/onboarding/preferences';
 import { summaryModeSchema } from '@/lib/summary-mode';
 import {
   reanalyzeFixture,
-  setFixtureSummaryMode,
   submitDuplicateFixture,
   submitInvalidUrlFixture,
   submitProviderOutageFixture,
@@ -120,15 +120,20 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
       pathnameOverride={view === 'settings' ? '/app/settings/profile' : '/app'}
     >
       {view === 'settings' ? (
-        <LanguagePreferences
-          interfaceLocale={locale}
-          outputLocale={defaultOnboardingState.outputLocale}
-          summaryMode={
-            storedSummaryMode ?? defaultOnboardingState.summaryPreset
-          }
-          copy={settingsMessages[locale]}
-          summaryModeAction={setFixtureSummaryMode}
-        />
+        <>
+          <LanguagePreferences
+            interfaceLocale={locale}
+            outputLocale={defaultOnboardingState.outputLocale}
+            copy={settingsMessages[locale]}
+          />
+          <PreferencesSettings
+            copy={settingsMessages[locale]}
+            flashcardPreset={defaultOnboardingState.flashcardPreset}
+            summaryMode={
+              storedSummaryMode ?? defaultOnboardingState.summaryPreset
+            }
+          />
+        </>
       ) : resolvedJourney ? (
         <AnalysisHandoffFixture
           copy={appMessages[locale]}

@@ -1,95 +1,39 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getRequestLocale, getUser, read } = vi.hoisted(() => ({
+const { getUser } = vi.hoisted(() => ({ getUser: vi.fn() }));
+vi.mock('@/lib/i18n/request-locale', () => ({
   getRequestLocale: vi.fn(async () => 'en'),
-  getUser: vi.fn(),
-  read: vi.fn(),
 }));
-
-vi.mock('@/lib/i18n/request-locale', () => ({ getRequestLocale }));
-vi.mock('next/navigation', () => ({
-  redirect: vi.fn(),
-  useRouter: () => ({ refresh: vi.fn() }),
-}));
+vi.mock('next/navigation', () => ({ redirect: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({
-  createServerSupabaseClient: vi.fn(async () => ({
-    auth: { getUser },
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: read })) })),
-    })),
-  })),
+  createServerSupabaseClient: vi.fn(async () => ({ auth: { getUser } })),
 }));
 
 import SettingsProfilePage from './page';
 
 describe('settings profile page', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
-    read.mockResolvedValue({
+    getUser.mockResolvedValue({
       data: {
-        interface_locale: 'de',
-        output_locale: 'es',
-        summary_preset: 'balanced',
-        flashcard_preset: 18,
-        onboarding_step: 3,
-        onboarding_completed_at: '2026-08-01T00:00:00.000Z',
+        user: {
+          id: 'user-1',
+          email: 'ada@example.com',
+          email_confirmed_at: '2026-01-01',
+          user_metadata: { full_name: 'Ada Lovelace' },
+        },
       },
-      error: null,
     });
   });
 
-  it('passes separately persisted interface and output locales to language preferences', async () => {
+  it('renders the authenticated profile identity only', async () => {
     render(await SettingsProfilePage());
-
-    expect(screen.getByLabelText('Gleen controls language')).toHaveValue('de');
-    expect(
-      screen.getByLabelText('Future generated content language'),
-    ).toHaveValue('es');
-    expect(screen.getByLabelText('Default summary mode')).toHaveValue(
-      'balanced',
-    );
-  });
-
-  it('keeps both forms disabled and shows a localized retry state when profile storage fails', async () => {
-    read.mockResolvedValue({
-      data: null,
-      error: { message: 'storage unavailable' },
-    });
-
-    render(await SettingsProfilePage());
-
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'We could not load your language preferences.',
-    );
-    expect(screen.getByRole('link', { name: 'Try again' })).toHaveAttribute(
-      'href',
-      '/app/settings/profile',
+    expect(screen.getByRole('heading', { name: 'Profile' })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Display name' })).toHaveValue(
+      'Ada Lovelace',
     );
     expect(
-      screen.getByRole('button', { name: 'Save interface language' }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole('button', { name: 'Save output language' }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole('button', { name: 'Save summary mode' }),
-    ).toBeDisabled();
-  });
-
-  it('keeps first-time profiles editable with the successful default preferences', async () => {
-    read.mockResolvedValue({ data: null, error: null });
-
-    render(await SettingsProfilePage());
-
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Gleen controls language')).toHaveValue('en');
-    expect(
-      screen.getByRole('button', { name: 'Save output language' }),
-    ).toBeEnabled();
-    expect(screen.getByLabelText('Default summary mode')).toHaveValue(
-      'balanced',
-    );
+      screen.queryByLabelText('Gleen controls language'),
+    ).not.toBeInTheDocument();
   });
 });

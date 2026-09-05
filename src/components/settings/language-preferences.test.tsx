@@ -2,16 +2,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { refresh, setInterfaceLocale, setOutputLocale, setSummaryMode } =
-  vi.hoisted(() => ({
-    refresh: vi.fn(),
-    setInterfaceLocale: vi.fn(),
-    setOutputLocale: vi.fn(),
-    setSummaryMode: vi.fn(),
-  }));
+const { refresh, setInterfaceLocale, setOutputLocale } = vi.hoisted(() => ({
+  refresh: vi.fn(),
+  setInterfaceLocale: vi.fn(),
+  setOutputLocale: vi.fn(),
+}));
 
 vi.mock('@/lib/i18n/actions', () => ({ setInterfaceLocale }));
-vi.mock('@/lib/settings/actions', () => ({ setOutputLocale, setSummaryMode }));
+vi.mock('@/lib/settings/actions', () => ({ setOutputLocale }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
 
 import { settingsMessages } from '@/lib/i18n/messages/settings';
@@ -30,7 +28,6 @@ describe('language preferences', () => {
       <LanguagePreferences
         interfaceLocale="en"
         outputLocale="uk"
-        summaryMode="balanced"
         copy={settingsMessages.en}
       />,
     );
@@ -56,7 +53,6 @@ describe('language preferences', () => {
       <LanguagePreferences
         interfaceLocale="de"
         outputLocale="uk"
-        summaryMode="balanced"
         copy={settingsMessages.en}
       />,
     );
@@ -88,7 +84,6 @@ describe('language preferences', () => {
       <LanguagePreferences
         interfaceLocale="en"
         outputLocale="uk"
-        summaryMode="balanced"
         copy={settingsMessages.en}
       />,
     );
@@ -125,14 +120,13 @@ describe('language preferences', () => {
       <LanguagePreferences
         interfaceLocale="en"
         outputLocale="uk"
-        summaryMode="balanced"
         copy={settingsMessages.en}
       />,
     );
 
     await user.tab();
     expect(screen.getByLabelText('Gleen controls language')).toHaveFocus();
-    expect(screen.getAllByRole('option')).toHaveLength(13);
+    expect(screen.getAllByRole('option')).toHaveLength(10);
     expect(screen.getAllByRole('option', { name: 'English' })).toHaveLength(2);
 
     await user.tab();
@@ -153,39 +147,16 @@ describe('language preferences', () => {
     expect(screen.getByLabelText('Gleen controls language')).toHaveValue('en');
   });
 
-  it('saves Compact as the canonical account summary default', async () => {
-    const user = userEvent.setup();
-    setSummaryMode.mockResolvedValue({ status: 'success', mode: 'compact' });
+  it('contains language controls only', () => {
     render(
       <LanguagePreferences
         interfaceLocale="en"
         outputLocale="uk"
-        summaryMode="balanced"
         copy={settingsMessages.en}
       />,
     );
-
-    await user.selectOptions(
-      screen.getByLabelText('Default summary mode'),
-      'compact',
-    );
     expect(
-      screen.getByText(
-        'The shortest useful version with the main conclusions and important caveats.',
-      ),
-    ).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Save summary mode' }));
-
-    await waitFor(() =>
-      expect(setSummaryMode).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.any(FormData),
-      ),
-    );
-    const formData = setSummaryMode.mock.calls[0]?.[1] as FormData;
-    expect(formData.get('summaryMode')).toBe('compact');
-    expect(screen.getByLabelText('Default summary mode')).toHaveValue(
-      'compact',
-    );
+      screen.queryByLabelText('Default summary mode'),
+    ).not.toBeInTheDocument();
   });
 });

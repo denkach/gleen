@@ -1,8 +1,35 @@
 'use server';
 
 import { localeSchema, type Locale } from '@/lib/i18n/locales';
+import { flashcardPresetSchema } from '@/lib/onboarding/preferences';
+import { saveOnboardingStep } from '@/lib/onboarding/repository';
+import { createSupabaseOnboardingStorage } from '@/lib/onboarding/supabase-storage';
 import { summaryModeSchema, type SummaryMode } from '@/lib/summary-mode';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { z } from 'zod';
+
+const displayNameSchema = z.string().trim().min(1).max(100);
+
+export type DisplayNameActionState =
+  | Readonly<{ status: 'idle' }>
+  | Readonly<{ status: 'success'; value: string }>
+  | Readonly<{
+      status: 'error';
+      code:
+        'invalid_display_name' | 'profile_update_failed' | 'session_expired';
+      value: string;
+    }>;
+
+export type FlashcardPresetActionState =
+  | Readonly<{ status: 'idle' }>
+  | Readonly<{ status: 'success'; count: 18 | 30 }>
+  | Readonly<{
+      status: 'error';
+      code:
+        | 'invalid_flashcard_preset'
+        | 'profile_update_failed'
+        | 'session_expired';
+    }>;
 
 export type OutputLocaleActionState =
   | Readonly<{ status: 'idle' }>
@@ -20,6 +47,58 @@ export type SummaryModeActionState =
       code:
         'invalid_summary_mode' | 'profile_update_failed' | 'session_expired';
     }>;
+
+export async function setDisplayName(
+  _previousState: DisplayNameActionState,
+  formData: FormData,
+): Promise<DisplayNameActionState> {
+  const submitted = String(formData.get('displayName') ?? '');
+  const parsed = displayNameSchema.safeParse(submitted);
+  if (!parsed.success) {
+    return { status: 'error', code: 'invalid_display_name', value: submitted };
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { status: 'error', code: 'session_expired', value: submitted };
+  }
+  const { error } = await supabase.auth.updateUser({
+    data: { full_name: parsed.data },
+  });
+  return error
+    ? { status: 'error', code: 'profile_update_failed', value: submitted }
+    : { status: 'success', value: parsed.data };
+}
+
+export async function setFlashcardPreset(
+  _previousState: FlashcardPresetActionState,
+  formData: FormData,
+): Promise<FlashcardPresetActionState> {
+  const parsed = flashcardPresetSchema.safeParse(
+    Number(formData.get('flashcardPreset')),
+  );
+  if (!parsed.success) {
+    return { status: 'error', code: 'invalid_flashcard_preset' };
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { status: 'error', code: 'session_expired' };
+
+  const result = await saveOnboardingStep(
+    createSupabaseOnboardingStorage(supabase),
+    user.id,
+    { flashcardPreset: parsed.data },
+  );
+  return result.ok
+    ? { status: 'success', count: parsed.data }
+    : { status: 'error', code: 'profile_update_failed' };
+}
 
 export async function setOutputLocale(
   _previousState: OutputLocaleActionState,
@@ -63,16 +142,12 @@ export async function setSummaryMode(
   } = await supabase.auth.getUser();
   if (!user) return { status: 'error', code: 'session_expired' };
 
-  const { error } = await supabase
-    .from('profiles')
-    .upsert(
-      { user_id: user.id, summary_preset: parsed.data },
-      { onConflict: 'user_id' },
-    )
-    .select('summary_preset')
-    .single();
-
-  return error
-    ? { status: 'error', code: 'profile_update_failed' }
-    : { status: 'success', mode: parsed.data };
+  const result = await saveOnboardingStep(
+    createSupabaseOnboardingStorage(supabase),
+    user.id,
+    { summaryPreset: parsed.data },
+  );
+  return result.ok
+    ? { status: 'success', mode: parsed.data }
+    : { status: 'error', code: 'profile_update_failed' };
 }

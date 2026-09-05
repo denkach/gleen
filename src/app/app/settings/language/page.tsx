@@ -1,14 +1,16 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
-import { ProfileSettings } from '@/components/settings/profile-settings';
-import { deriveAppIdentity } from '@/lib/app-shell';
+import { LanguagePreferences } from '@/components/settings/language-preferences';
 import {
   selectMessages,
   type MissingTranslationEvent,
 } from '@/lib/i18n/catalog';
 import { settingsMessages } from '@/lib/i18n/messages/settings';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
+import { defaultOnboardingState } from '@/lib/onboarding/preferences';
+import { getOnboardingState } from '@/lib/onboarding/repository';
+import { createSupabaseOnboardingStorage } from '@/lib/onboarding/supabase-storage';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 function reportMissingTranslation(event: MissingTranslationEvent) {
@@ -25,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: copy.metadata.title, description: copy.metadata.description };
 }
 
-export default async function SettingsProfilePage() {
+export default async function SettingsLanguagePage() {
   const locale = await getRequestLocale();
   const copy = selectMessages(
     settingsMessages,
@@ -38,14 +40,17 @@ export default async function SettingsProfilePage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/session-expired');
-  const identity = deriveAppIdentity(user);
+  const result = await getOnboardingState(
+    createSupabaseOnboardingStorage(supabase),
+    user.id,
+  );
+  const preferences = result.ok ? result.data : defaultOnboardingState;
   return (
-    <ProfileSettings
+    <LanguagePreferences
       copy={copy}
-      displayName={identity.displayName}
-      email={identity.email}
-      emailVerified={Boolean(user.email_confirmed_at)}
-      initials={identity.initials}
+      interfaceLocale={preferences.interfaceLocale}
+      outputLocale={preferences.outputLocale}
+      unavailable={!result.ok}
     />
   );
 }
