@@ -135,6 +135,7 @@ function shouldReportStructuralRange(
   const { min, max } = input.policy.sectionRange;
 
   if (sectionCount < min) {
+    if (input.policy.sectionRangeEnforcement === 'strict') return true;
     const distinctIdeaCount = new Set(input.ideaMap.ideas.map(({ id }) => id))
       .size;
     return distinctIdeaCount >= min;

@@ -10,6 +10,7 @@ import { requiresRepair, validateComposedSummary } from './summary-quality';
 const policy: SummaryGenerationPolicy = {
   route: 'two-pass',
   sectionRange: { min: 8, max: 12 },
+  sectionRangeEnforcement: 'adaptive',
   signals: {
     durationSeconds: 1_200,
     wordCount: 4_000,
@@ -281,6 +282,64 @@ describe('validateComposedSummary', () => {
       validateComposedSummary({ ideaMap, summary: coveredSummary, policy }).map(
         ({ code }) => code,
       ),
+    ).not.toContain('structural_range');
+  });
+
+  it.each([12, 13])(
+    'rejects %i sections for a strict 14-section floor even when the idea map is smaller',
+    (sectionCount) => {
+      const strictPolicy: SummaryGenerationPolicy = {
+        ...policy,
+        sectionRange: { min: 14, max: 18 },
+        sectionRangeEnforcement: 'strict',
+      };
+      const candidate: ComposedSummary = {
+        ...summary,
+        sections: Array.from({ length: sectionCount }, (_, index) =>
+          section(
+            index % 2 === 0 ? 'idea-critical' : 'idea-secondary',
+            index,
+          ),
+        ),
+      };
+
+      expect(
+        validateComposedSummary({
+          ideaMap,
+          summary: candidate,
+          policy: strictPolicy,
+        }),
+      ).toContainEqual({
+        code: 'structural_range',
+        sectionIndexes: Array.from({ length: sectionCount }, (_, index) =>
+          index,
+        ),
+      });
+    },
+  );
+
+  it('accepts the strict lower boundary when all other quality checks pass', () => {
+    const strictPolicy: SummaryGenerationPolicy = {
+      ...policy,
+      sectionRange: { min: 14, max: 18 },
+      sectionRangeEnforcement: 'strict',
+    };
+    const candidate: ComposedSummary = {
+      ...summary,
+      sections: Array.from({ length: 14 }, (_, index) =>
+        section(
+          index % 2 === 0 ? 'idea-critical' : 'idea-secondary',
+          index,
+        ),
+      ),
+    };
+
+    expect(
+      validateComposedSummary({
+        ideaMap,
+        summary: candidate,
+        policy: strictPolicy,
+      }).map(({ code }) => code),
     ).not.toContain('structural_range');
   });
 
