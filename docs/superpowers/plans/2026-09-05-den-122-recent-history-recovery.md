@@ -24,11 +24,13 @@
 ### Task 1: Add the Recent Analyses server read boundary
 
 **Files:**
+
 - Modify: `src/app/app/page.tsx`
 - Modify: `src/app/app/page.test.tsx`
 - Modify: `src/components/app-shell/new-analysis-home.tsx`
 
 **Interfaces:**
+
 - Produces: `RecentAnalysesState = { kind: 'ready'; items: readonly HistoryItem[] } | { kind: 'unavailable' }`.
 - Consumes: `HistoryRepository.listOwned(userId, query, 3)` and History locale presentation.
 
@@ -44,7 +46,9 @@ expect(listOwned).toHaveBeenCalledWith(
   expect.objectContaining({ sort: 'newest', cursor: null }),
   3,
 );
-expect(screen.getByTestId('recent-state')).toHaveTextContent('ready:analysis-1');
+expect(screen.getByTestId('recent-state')).toHaveTextContent(
+  'ready:analysis-1',
+);
 ```
 
 Add an unauthenticated assertion that no History query runs and the state is a
@@ -94,6 +98,7 @@ Commit: `fix(DEN-122): load persisted recent analyses`
 ### Task 2: Render ready, empty, and unavailable recent states
 
 **Files:**
+
 - Create: `src/components/app-shell/recent-analyses.tsx`
 - Create: `src/components/app-shell/recent-analyses.test.tsx`
 - Modify: `src/components/app-shell/new-analysis-home.tsx`
@@ -102,6 +107,7 @@ Commit: `fix(DEN-122): load persisted recent analyses`
 - Test: `src/lib/i18n/messages/app.test.ts`
 
 **Interfaces:**
+
 - Consumes: `RecentAnalysesState` and safe `HistoryItem` presentation fields.
 - Produces: `RecentAnalyses({ state, copy })`.
 
@@ -113,9 +119,16 @@ the current copy. For unavailable, assert a distinct localized message and the
 History link remain:
 
 ```tsx
-render(<RecentAnalyses state={{ kind: 'ready', items: [partialItem] }} copy={copy} />);
-expect(screen.getByRole('link', { name: partialItem.title }))
-  .toHaveAttribute('href', '/app/video/analysis-1');
+render(
+  <RecentAnalyses
+    state={{ kind: 'ready', items: [partialItem] }}
+    copy={copy}
+  />,
+);
+expect(screen.getByRole('link', { name: partialItem.title })).toHaveAttribute(
+  'href',
+  '/app/video/analysis-1',
+);
 expect(screen.getByText(partialItem.status.label)).toBeVisible();
 ```
 
@@ -149,12 +162,14 @@ Commit: `feat(DEN-122): render recent analysis history`
 ### Task 3: Polish New Analysis controls without global changes
 
 **Files:**
+
 - Modify: `src/components/app-shell/new-analysis-form.tsx`
 - Modify: `src/components/app-shell/new-analysis-form.test.tsx`
 - Modify: `src/styles/app-shell-reference.css`
 - Modify: `src/styles/app-shell-reference.test.ts`
 
 **Interfaces:**
+
 - Consumes: existing `btn`, `advanced-link`, duplicate, recovery, and panel selectors.
 - Produces: New Analysis-scoped hover, focus, pressed, disabled, and reduced-motion contracts.
 
@@ -167,7 +182,9 @@ instead of unstyled bare buttons:
 ```ts
 expect(css).toMatch(/\.analysis-hero \.btn:not\(:disabled\):hover/);
 expect(css).toMatch(/\.recent-analysis-row:hover/);
-expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.analysis-hero \.btn/);
+expect(css).toMatch(
+  /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.analysis-hero \.btn/,
+);
 ```
 
 - [ ] **Step 2: Verify RED**
@@ -200,11 +217,13 @@ Commit: `style(DEN-122): refine new analysis interactions`
 ### Task 4: Add an authenticated partial retry action
 
 **Files:**
+
 - Modify: `src/lib/history/actions.ts`
 - Modify: `src/lib/history/actions.test.ts`
 - Modify: `src/app/app/history/page.tsx`
 
 **Interfaces:**
+
 - Produces: `retryPartialHistoryAnalysis(input: unknown): Promise<HistoryActionResult<{ attempt: number }>>`.
 - Consumes: the existing `retryAnalysis(FormData)` boundary, whose repository `prepareRetry` verifies ownership and eligibility.
 
@@ -246,6 +265,7 @@ Commit: `feat(DEN-122): retry partial history artifacts`
 ### Task 5: Refine the History menu and wire retry
 
 **Files:**
+
 - Create: `src/components/history/history-action-icons.tsx`
 - Create: `src/components/history/history-action-icons.test.tsx`
 - Modify: `src/components/history/history-item-actions.tsx`
@@ -258,6 +278,7 @@ Commit: `feat(DEN-122): retry partial history artifacts`
 - Modify: `src/styles/history-reference.test.ts`
 
 **Interfaces:**
+
 - Consumes: `retryPartialHistoryAnalysis` through the existing action prop chain.
 - Produces: pending-safe retry interaction and scoped menu presentation.
 
@@ -309,6 +330,7 @@ Commit: `feat(DEN-122): refine history recovery menu`
 ### Task 6: Browser fixture and full verification
 
 **Files:**
+
 - Modify: `src/components/app-shell/fixture-history.tsx`
 - Modify: `tests/e2e/intake.spec.ts`
 - Modify: `tests/e2e/history.spec.ts`
