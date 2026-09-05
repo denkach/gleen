@@ -45,12 +45,27 @@ describe('selectSummaryPolicy', () => {
   );
 
   it.each([2700, 2883, 5399])(
-    'uses 14–18 sections for a Deep video at %s seconds',
+    'strictly enforces 14–18 sections for a Deep video at %s seconds',
     (durationSeconds) => {
       expect(
-        selectSummaryPolicy(input({ durationSeconds, mode: 'deep' }))
-          .sectionRange,
-      ).toEqual({ min: 14, max: 18 });
+        selectSummaryPolicy(input({ durationSeconds, mode: 'deep' })),
+      ).toMatchObject({
+        sectionRange: { min: 14, max: 18 },
+        sectionRangeEnforcement: 'strict',
+      });
+    },
+  );
+
+  it.each([
+    [2699, 'deep'],
+    [2883, 'balanced'],
+    [5400, 'deep'],
+  ] as const)(
+    'keeps the lower range adaptive at %s seconds in %s mode',
+    (durationSeconds, mode) => {
+      expect(
+        selectSummaryPolicy(input({ durationSeconds, mode })),
+      ).toMatchObject({ sectionRangeEnforcement: 'adaptive' });
     },
   );
 
@@ -93,6 +108,7 @@ describe('selectSummaryPolicy', () => {
     ).toEqual({
       route: 'one-pass',
       sectionRange: { min: 4, max: 8 },
+      sectionRangeEnforcement: 'adaptive',
       signals: { durationSeconds: 42, wordCount: 3, segmentCount: 2 },
     });
   });
