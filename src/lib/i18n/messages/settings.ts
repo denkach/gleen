@@ -42,6 +42,36 @@ export const settingsMessages = defineMessages({
         save: 'Save flashcard count',
       },
     },
+    capabilities: {
+      integrations: {
+        title: 'Integrations',
+        description: 'Export options are shown exactly as they work today.',
+        unavailable:
+          'Direct connection is not available yet. Export from a completed result.',
+      },
+      security: {
+        title: 'Security',
+        description: 'Your current sign-in method and safe recovery options.',
+        method: 'Sign-in method',
+        recovery: 'Password recovery',
+        recoveryDetail:
+          'Use the verified recovery flow to reset your password.',
+        recoveryAction: 'Open recovery',
+      },
+      data: {
+        title: 'Data',
+        description:
+          'Open your history and understand the available account controls.',
+        history: 'Analysis history',
+        historyDetail: 'Review and manage your saved analyses.',
+        historyAction: 'Open history',
+        export: 'Exports',
+        exportDetail: 'Exports are available inside each completed result.',
+        deletion: 'Account deletion',
+        deletionDetail:
+          'Not available until a verified deletion flow is implemented.',
+      },
+    },
     atlas: {
       navigationLabel: 'Settings sections',
       back: 'Back to Settings',
@@ -177,6 +207,37 @@ export const settingsMessages = defineMessages({
         description: 'Виберіть кількість навчальних карток для нових аналізів.',
         label: 'Кількість карток за замовчуванням',
         save: 'Зберегти кількість карток',
+      },
+    },
+    capabilities: {
+      integrations: {
+        title: 'Інтеграції',
+        description:
+          'Можливості експорту показано саме так, як вони працюють зараз.',
+        unavailable:
+          'Пряме підключення ще недоступне. Експортуйте з готового результату.',
+      },
+      security: {
+        title: 'Безпека',
+        description: 'Ваш спосіб входу та безпечне відновлення доступу.',
+        method: 'Спосіб входу',
+        recovery: 'Відновлення пароля',
+        recoveryDetail:
+          'Скористайтеся підтвердженим процесом відновлення пароля.',
+        recoveryAction: 'Відкрити відновлення',
+      },
+      data: {
+        title: 'Дані',
+        description:
+          'Переглядайте історію та доступні способи керування акаунтом.',
+        history: 'Історія аналізів',
+        historyDetail: 'Переглядайте збережені аналізи й керуйте ними.',
+        historyAction: 'Відкрити історію',
+        export: 'Експорт',
+        exportDetail: 'Експорт доступний у кожному готовому результаті.',
+        deletion: 'Видалення акаунта',
+        deletionDetail:
+          'Недоступне до впровадження перевіреного процесу видалення.',
       },
     },
     atlas: {
@@ -316,6 +377,37 @@ export const settingsMessages = defineMessages({
         save: 'Сохранить количество карточек',
       },
     },
+    capabilities: {
+      integrations: {
+        title: 'Интеграции',
+        description:
+          'Возможности экспорта показаны именно так, как работают сейчас.',
+        unavailable:
+          'Прямое подключение пока недоступно. Используйте экспорт в готовом результате.',
+      },
+      security: {
+        title: 'Безопасность',
+        description: 'Ваш способ входа и безопасное восстановление доступа.',
+        method: 'Способ входа',
+        recovery: 'Восстановление пароля',
+        recoveryDetail:
+          'Используйте подтверждённый процесс восстановления пароля.',
+        recoveryAction: 'Открыть восстановление',
+      },
+      data: {
+        title: 'Данные',
+        description:
+          'Открывайте историю и управляйте доступными функциями аккаунта.',
+        history: 'История анализов',
+        historyDetail: 'Просматривайте сохранённые анализы и управляйте ими.',
+        historyAction: 'Открыть историю',
+        export: 'Экспорт',
+        exportDetail: 'Экспорт доступен внутри каждого готового результата.',
+        deletion: 'Удаление аккаунта',
+        deletionDetail:
+          'Недоступно до реализации безопасного подтверждённого удаления.',
+      },
+    },
     atlas: {
       navigationLabel: 'Разделы настроек',
       back: 'Назад к настройкам',
@@ -450,6 +542,37 @@ export const settingsMessages = defineMessages({
         description: 'Elige cuántas tarjetas crearán los nuevos análisis.',
         label: 'Número predeterminado de tarjetas',
         save: 'Guardar número de tarjetas',
+      },
+    },
+    capabilities: {
+      integrations: {
+        title: 'Integraciones',
+        description:
+          'Las opciones de exportación se muestran tal como funcionan hoy.',
+        unavailable:
+          'La conexión directa aún no está disponible. Exporta desde un resultado completo.',
+      },
+      security: {
+        title: 'Seguridad',
+        description: 'Tu método de acceso y opciones seguras de recuperación.',
+        method: 'Método de acceso',
+        recovery: 'Recuperación de contraseña',
+        recoveryDetail:
+          'Usa el proceso verificado para restablecer tu contraseña.',
+        recoveryAction: 'Abrir recuperación',
+      },
+      data: {
+        title: 'Datos',
+        description: 'Abre tu historial y consulta los controles disponibles.',
+        history: 'Historial de análisis',
+        historyDetail: 'Consulta y gestiona tus análisis guardados.',
+        historyAction: 'Abrir historial',
+        export: 'Exportaciones',
+        exportDetail:
+          'Las exportaciones están disponibles en cada resultado completo.',
+        deletion: 'Eliminar cuenta',
+        deletionDetail:
+          'No disponible hasta implementar un proceso de eliminación verificado.',
       },
     },
     atlas: {
@@ -591,6 +714,38 @@ export const settingsMessages = defineMessages({
           'Wähle die Standardanzahl der Lernkarten für neue Analysen.',
         label: 'Standardanzahl der Lernkarten',
         save: 'Lernkartenanzahl speichern',
+      },
+    },
+    capabilities: {
+      integrations: {
+        title: 'Integrationen',
+        description:
+          'Exportmöglichkeiten werden genau so gezeigt, wie sie heute funktionieren.',
+        unavailable:
+          'Eine direkte Verbindung ist noch nicht verfügbar. Exportiere aus einem fertigen Ergebnis.',
+      },
+      security: {
+        title: 'Sicherheit',
+        description:
+          'Deine Anmeldemethode und sichere Wiederherstellungsoptionen.',
+        method: 'Anmeldemethode',
+        recovery: 'Passwortwiederherstellung',
+        recoveryDetail:
+          'Nutze den bestätigten Ablauf, um dein Passwort zurückzusetzen.',
+        recoveryAction: 'Wiederherstellung öffnen',
+      },
+      data: {
+        title: 'Daten',
+        description:
+          'Öffne deinen Verlauf und sieh verfügbare Kontofunktionen.',
+        history: 'Analyseverlauf',
+        historyDetail: 'Gespeicherte Analysen ansehen und verwalten.',
+        historyAction: 'Verlauf öffnen',
+        export: 'Exporte',
+        exportDetail: 'Exporte sind in jedem fertigen Ergebnis verfügbar.',
+        deletion: 'Konto löschen',
+        deletionDetail:
+          'Nicht verfügbar, bis ein verifizierter Löschablauf implementiert ist.',
       },
     },
     atlas: {
