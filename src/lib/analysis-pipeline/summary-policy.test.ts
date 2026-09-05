@@ -44,6 +44,16 @@ describe('selectSummaryPolicy', () => {
     },
   );
 
+  it.each([2700, 2883, 5399])(
+    'uses 14–18 sections for a Deep video at %s seconds',
+    (durationSeconds) => {
+      expect(
+        selectSummaryPolicy(input({ durationSeconds, mode: 'deep' }))
+          .sectionRange,
+      ).toEqual({ min: 14, max: 18 });
+    },
+  );
+
   it('may escalate a dense 19:59 transcript without weakening the 20-minute rule', () => {
     expect(
       selectSummaryPolicy(input({ durationSeconds: 1199, wordCount: 12_000 }))

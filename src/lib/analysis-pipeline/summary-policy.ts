@@ -19,9 +19,11 @@ export type SummaryGenerationPolicy = Readonly<{
 
 function sectionRangeForDuration(
   durationSeconds: number,
+  mode: SummaryMode,
 ): Readonly<{ min: number; max: number }> {
   if (durationSeconds < 1_200) return { min: 4, max: 8 };
   if (durationSeconds < 2_700) return { min: 8, max: 12 };
+  if (mode === 'deep' && durationSeconds < 5_400) return { min: 14, max: 18 };
   if (durationSeconds < 5_400) return { min: 10, max: 16 };
   return { min: 14, max: 20 };
 }
@@ -48,7 +50,7 @@ export function selectSummaryPolicy(
   return {
     route:
       longForm || denseShortVideo || deepEscalation ? 'two-pass' : 'one-pass',
-    sectionRange: sectionRangeForDuration(input.durationSeconds),
+    sectionRange: sectionRangeForDuration(input.durationSeconds, input.mode),
     signals: {
       durationSeconds: input.durationSeconds,
       wordCount,
