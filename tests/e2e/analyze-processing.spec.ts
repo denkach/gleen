@@ -60,7 +60,7 @@ const den16IdleGeometry = [
     input: { x: 41, y: 263.4375, width: 308, height: 48 },
     button: { x: 41, y: 311.4375, width: 308, height: 48 },
     meta: { x: 33, y: 367.4375, width: 324, height: 30.5 },
-    dashboard: { x: 14, y: 446, width: 362, height: 616 },
+    dashboard: { x: 14, y: 446, width: 362, height: 464 },
   },
 ] as const;
 

@@ -16,6 +16,12 @@ async function authenticate(page: import('@playwright/test').Page) {
       url: origin,
       sameSite: 'Lax',
     },
+    {
+      name: 'gleen_locale',
+      value: 'en',
+      url: origin,
+      sameSite: 'Lax',
+    },
   ]);
 }
 

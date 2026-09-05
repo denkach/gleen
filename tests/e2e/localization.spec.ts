@@ -22,6 +22,7 @@ const localeCases = {
     resultTab: 'Übersicht',
     billingHeading: 'Abonnement',
     settingsHeading: 'Einstellungen',
+    settingsProfileHeading: 'Profil',
   },
   es: {
     bcp47: 'es-ES',
@@ -33,6 +34,7 @@ const localeCases = {
     resultTab: 'Vista general',
     billingHeading: 'Suscripción',
     settingsHeading: 'Ajustes',
+    settingsProfileHeading: 'Perfil',
   },
 } as const;
 
@@ -103,7 +105,10 @@ const panelLocales = [
   { code: 'de', bcp47: 'de-DE', nativeName: 'Deutsch', englishName: 'German' },
 ] as const;
 
-async function setLocaleCookie(page: Page, locale: keyof typeof localeCases) {
+async function setLocaleCookie(
+  page: Page,
+  locale: keyof typeof localeCases | 'en',
+) {
   await page.context().addCookies([
     {
       name: localeCookie,
@@ -139,12 +144,12 @@ function getLanguageRadio(page: Page, nativeName: string) {
   });
 }
 
-async function openLanguagePanel(page: Page) {
+async function openHydratedLanguagePanel(page: Page) {
   const dialog = page.getByRole('dialog');
 
   await expect(async () => {
     if (!(await dialog.isVisible())) {
-      await getAnyLocaleTrigger(page).click();
+      await page.keyboard.press('Control+K');
     }
     await expect(dialog).toBeVisible({ timeout: 3_000 });
   }).toPass({ timeout: 10_000 });
@@ -267,7 +272,10 @@ async function expectLocalizedScreen(
     ).toBeVisible();
   } else {
     await expect(
-      page.getByRole('heading', { level: 1, name: locale.settingsHeading }),
+      page.getByRole('heading', {
+        level: 1,
+        name: locale.settingsProfileHeading,
+      }),
     ).toBeVisible();
   }
 }
@@ -648,12 +656,16 @@ for (const [localeKey, locale] of Object.entries(localeCases) as Array<
       for (const screen of responsiveScreens) {
         if (screen.name === 'settings') {
           await addAuthenticatedFixtureCookie(page);
+          await setLocaleCookie(page, 'en');
         }
         let response = await page.goto(screen.route, {
           waitUntil: 'domcontentloaded',
         });
         if (screen.name === 'settings') {
-          await openLanguagePanel(page);
+          // The authenticated Settings route streams its destination subtree.
+          // Let that subtree hydrate before Radix makes the background inert.
+          await page.waitForLoadState('networkidle');
+          await openHydratedLanguagePanel(page);
           await getLanguageRadio(page, locale.nativeName).click();
           await expect(page.locator('html')).toHaveAttribute(
             'lang',
@@ -664,6 +676,12 @@ for (const [localeKey, locale] of Object.entries(localeCases) as Array<
           await expect(page.locator('[data-aria-hidden="true"]')).toHaveCount(
             0,
           );
+          await expect(
+            page.getByRole('heading', {
+              level: 1,
+              name: locale.settingsProfileHeading,
+            }),
+          ).toBeVisible();
           await clearGuestLocaleCookie(page);
           response = await page.reload({ waitUntil: 'domcontentloaded' });
         }
