@@ -182,6 +182,47 @@ test.describe('DEN-19 History durable behavior', () => {
     ).toHaveCount(0);
   });
 
+  test('offers the polished retry action only for a partial analysis', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto('/app-shell-fixture/history?visualCase=partial');
+      await waitForHistoryHydration(page);
+
+      const partialActions = page.getByRole('button', {
+        name: 'Actions for The Hidden Structure of Great Explanations',
+      });
+      await partialActions.click();
+      const retry = page.getByRole('menuitem', {
+        name: 'Retry missing materials',
+      });
+      await expect(retry).toBeVisible();
+      await expect(retry.locator('svg')).toHaveCount(1);
+      expect(
+        await page
+          .locator('.history-item-actions__menu')
+          .evaluate((element) =>
+            Number.parseFloat(getComputedStyle(element).animationDuration),
+          ),
+      ).toBeLessThanOrEqual(0.001);
+      await page.keyboard.press('Escape');
+      await expect(partialActions).toBeFocused();
+
+      const readyActions = page.getByRole('button', {
+        name: 'Actions for How to Learn Anything Faster — The Science of Effective Learning',
+      });
+      await readyActions.click();
+      await expect(
+        page.getByRole('menuitem', { name: 'Retry missing materials' }),
+      ).toHaveCount(0);
+    }
+  });
+
   test('durable Load more appends and grid remains disabled', async ({
     page,
   }) => {

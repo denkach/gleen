@@ -14,6 +14,7 @@ import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { defaultOnboardingState } from '@/lib/onboarding/preferences';
+import type { HistoryItem } from '@/lib/history/repository';
 import { summaryModeSchema } from '@/lib/summary-mode';
 import {
   reanalyzeFixture,
@@ -49,6 +50,33 @@ const fixtureIdentity = {
   email: 'test@example.com',
   initials: 'TU',
 } as const;
+
+const recentFixtureItems = [
+  {
+    id: '00000000-0000-4000-8000-000000000001',
+    sourceId: 'recent-fixture-1',
+    href: '/app-shell-fixture/app/video/result-den-25',
+    title: 'How to Learn Anything Faster',
+    channel: 'Signal Lab',
+    thumbnailUrl: null,
+    source: 'https://www.youtube.com/watch?v=recentfixture1',
+    language: 'English',
+    outputLocale: 'en',
+    summaryPresetLabel: 'Deep',
+    durationSeconds: 2_058,
+    durationLabel: '34:18',
+    analyzedAt: '2026-07-24T11:42:00.000Z',
+    analyzedAtLabel: 'Today · 11:42',
+    lastOpenedAt: null,
+    lastOpenedAtLabel: null,
+    status: { key: 'ready', label: 'Ready' },
+    favorite: false,
+    selectedArtifacts: ['summary', 'flashcards', 'timestamps'],
+    readyArtifacts: ['summary', 'flashcards', 'timestamps'],
+    canExport: true,
+    titleRevision: '2026-07-24T11:42:00.000Z',
+  },
+] as const satisfies readonly HistoryItem[];
 
 type Props = Readonly<{
   searchParams: Promise<{
@@ -150,6 +178,7 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
               storedSummaryMode ?? defaultOnboardingState.summaryPreset,
             flashcardPreset: defaultOnboardingState.flashcardPreset,
           }}
+          recentAnalyses={{ kind: 'ready', items: recentFixtureItems }}
         />
       )}
     </AppShell>
