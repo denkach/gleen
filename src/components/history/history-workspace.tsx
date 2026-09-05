@@ -42,6 +42,9 @@ export type HistoryWorkspaceActions = Readonly<{
     input: unknown,
   ): Promise<HistoryActionResult<Readonly<{ redirectTo: string }>>>;
   markHistoryItemOpened(input: unknown): Promise<HistoryActionResult>;
+  retryPartialHistoryAnalysis(
+    input: unknown,
+  ): Promise<HistoryActionResult<Readonly<{ attempt: number }>>>;
   loadMoreHistory(input: unknown): Promise<HistoryActionResult<HistoryPage>>;
 }>;
 

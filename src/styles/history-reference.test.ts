@@ -102,4 +102,15 @@ describe('DEN-19 History CSS contract', () => {
     expect(reducedMotion).toContain('transition: none');
     expect(reducedMotion).not.toContain('0.01ms');
   });
+
+  it('gives the scoped action menu icon rows, open state, and highlighted edges', () => {
+    expect(css).toMatch(
+      /\.history-item-actions__menu \.ui-dropdown-menu-item\s*{[^}]*min-height:\s*44px/,
+    );
+    expect(css).toMatch(/\.history-item-actions__trigger\[data-state='open'\]/);
+    expect(css).toMatch(
+      /\.history-item-actions__menu \.ui-dropdown-menu-item\[data-highlighted\]/,
+    );
+    expect(css).toMatch(/\.history-item-actions__icon\s*{[^}]*width:\s*18px/);
+  });
 });

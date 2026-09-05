@@ -104,6 +104,9 @@ function actions() {
       data: { updatedAt: '2026-07-24T12:00:00.000Z' },
     }),
     deleteHistoryItem: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+    retryPartialHistoryAnalysis: vi
+      .fn()
+      .mockResolvedValue({ ok: true, data: { attempt: 2 } }),
     markHistoryItemOpened: vi
       .fn()
       .mockResolvedValue({ ok: true, data: undefined }),

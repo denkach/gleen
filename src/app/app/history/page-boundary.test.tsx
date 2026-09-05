@@ -37,6 +37,7 @@ vi.mock('@/lib/history/actions', () => ({
   markHistoryItemOpened: vi.fn(),
   reanalyzeHistoryDuplicate: vi.fn(),
   renameHistoryItem: vi.fn(),
+  retryPartialHistoryAnalysis: vi.fn(),
   toggleHistoryFavorite: vi.fn(),
 }));
 

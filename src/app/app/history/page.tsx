@@ -15,6 +15,7 @@ import {
   markHistoryItemOpened,
   reanalyzeHistoryDuplicate,
   renameHistoryItem,
+  retryPartialHistoryAnalysis,
   toggleHistoryFavorite,
 } from '@/lib/history/actions';
 import { parseHistoryQuery } from '@/lib/history/query';
@@ -54,6 +55,7 @@ const historyActions = {
   reanalyzeHistoryDuplicate,
   markHistoryItemOpened,
   loadMoreHistory,
+  retryPartialHistoryAnalysis,
 };
 
 type HistoryPageProps = Readonly<{

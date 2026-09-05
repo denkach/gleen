@@ -94,6 +94,10 @@ export const appMessages = defineMessages({
         viewHistory: 'View history →',
         emptyTitle: 'No analyses yet',
         emptyDescription: 'Your completed analyses will appear here.',
+        unavailableTitle: 'Recent analyses are temporarily unavailable',
+        unavailableDescription:
+          'Your new analysis is still available. Open History to try again.',
+        thumbnailUnavailable: 'No thumbnail',
       },
       monthly: {
         title: 'This month',
@@ -339,6 +343,10 @@ export const appMessages = defineMessages({
         viewHistory: 'Переглянути історію →',
         emptyTitle: 'Аналізів ще немає',
         emptyDescription: 'Завершені аналізи з’являться тут.',
+        unavailableTitle: 'Останні аналізи тимчасово недоступні',
+        unavailableDescription:
+          'Новий аналіз доступний. Відкрийте історію, щоб спробувати ще раз.',
+        thumbnailUnavailable: 'Немає обкладинки',
       },
       monthly: {
         title: 'Цього місяця',
@@ -583,6 +591,10 @@ export const appMessages = defineMessages({
         viewHistory: 'Посмотреть историю →',
         emptyTitle: 'Анализов пока нет',
         emptyDescription: 'Завершённые анализы появятся здесь.',
+        unavailableTitle: 'Недавние анализы временно недоступны',
+        unavailableDescription:
+          'Новый анализ по-прежнему доступен. Откройте историю и попробуйте снова.',
+        thumbnailUnavailable: 'Нет обложки',
       },
       monthly: {
         title: 'В этом месяце',
@@ -831,6 +843,11 @@ export const appMessages = defineMessages({
         viewHistory: 'Ver historial →',
         emptyTitle: 'Todavía no hay análisis',
         emptyDescription: 'Tus análisis completados aparecerán aquí.',
+        unavailableTitle:
+          'Los análisis recientes no están disponibles temporalmente',
+        unavailableDescription:
+          'Puedes crear un nuevo análisis. Abre el historial para intentarlo de nuevo.',
+        thumbnailUnavailable: 'Sin miniatura',
       },
       monthly: {
         title: 'Este mes',
@@ -1086,6 +1103,10 @@ export const appMessages = defineMessages({
         emptyTitle: 'Noch keine Analysen',
         emptyDescription:
           'Deine abgeschlossenen Analysen werden hier angezeigt.',
+        unavailableTitle: 'Letzte Analysen sind vorübergehend nicht verfügbar',
+        unavailableDescription:
+          'Eine neue Analyse ist weiterhin möglich. Öffne den Verlauf und versuche es erneut.',
+        thumbnailUnavailable: 'Kein Vorschaubild',
       },
       monthly: {
         title: 'Dieser Monat',

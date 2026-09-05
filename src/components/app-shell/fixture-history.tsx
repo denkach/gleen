@@ -188,6 +188,9 @@ function fixtureActions(
     async deleteHistoryItem() {
       return { ok: true, data: undefined };
     },
+    async retryPartialHistoryAnalysis() {
+      return { ok: true, data: { attempt: 2 } };
+    },
     async reanalyzeHistoryDuplicate() {
       if (typeof window !== 'undefined') {
         const current = Number.parseInt(

@@ -36,6 +36,7 @@ const actions: HistoryWorkspaceProps['actions'] = {
   toggleHistoryFavorite: vi.fn(),
   renameHistoryItem: vi.fn(),
   deleteHistoryItem: vi.fn(),
+  retryPartialHistoryAnalysis: vi.fn(),
   reanalyzeHistoryDuplicate: vi.fn(),
   markHistoryItemOpened: vi.fn(),
   loadMoreHistory: vi.fn(),

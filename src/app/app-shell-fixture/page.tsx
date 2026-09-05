@@ -9,12 +9,14 @@ import { PreferencesSettings } from '@/components/settings/preferences-settings'
 import { unavailableUsage } from '@/lib/app-shell';
 import { localeSchema } from '@/lib/i18n/locales';
 import { appMessages } from '@/lib/i18n/messages/app';
+import { historyMessages } from '@/lib/i18n/messages/history';
 import { settingsMessages } from '@/lib/i18n/messages/settings';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { defaultOnboardingState } from '@/lib/onboarding/preferences';
+import type { HistoryItem } from '@/lib/history/repository';
 import { summaryModeSchema } from '@/lib/summary-mode';
 import {
   reanalyzeFixture,
@@ -49,6 +51,40 @@ const fixtureIdentity = {
   email: 'test@example.com',
   initials: 'TU',
 } as const;
+
+function recentFixtureItems(
+  locale: keyof typeof historyMessages,
+): readonly HistoryItem[] {
+  return [
+    {
+      id: '00000000-0000-4000-8000-000000000001',
+      sourceId: 'recent-fixture-1',
+      href: '/app-shell-fixture/app/video/result-den-25',
+      title: 'How to Learn Anything Faster',
+      channel: 'Signal Lab',
+      thumbnailUrl: null,
+      source: 'https://www.youtube.com/watch?v=recentfixture1',
+      language: 'English',
+      outputLocale: 'en',
+      summaryPresetLabel: 'Deep',
+      durationSeconds: 2_058,
+      durationLabel: '34:18',
+      analyzedAt: '2026-07-24T11:42:00.000Z',
+      analyzedAtLabel: 'Today · 11:42',
+      lastOpenedAt: null,
+      lastOpenedAtLabel: null,
+      status: {
+        key: 'ready',
+        label: historyMessages[locale].presentation.statuses.ready,
+      },
+      favorite: false,
+      selectedArtifacts: ['summary', 'flashcards', 'timestamps'],
+      readyArtifacts: ['summary', 'flashcards', 'timestamps'],
+      canExport: true,
+      titleRevision: '2026-07-24T11:42:00.000Z',
+    },
+  ];
+}
 
 type Props = Readonly<{
   searchParams: Promise<{
@@ -155,6 +191,7 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
               storedSummaryMode ?? defaultOnboardingState.summaryPreset,
             flashcardPreset: defaultOnboardingState.flashcardPreset,
           }}
+          recentAnalyses={{ kind: 'ready', items: recentFixtureItems(locale) }}
         />
       )}
     </AppShell>

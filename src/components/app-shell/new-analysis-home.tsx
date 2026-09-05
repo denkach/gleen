@@ -11,6 +11,7 @@ import type { ComponentProps } from 'react';
 import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 import type { AppMessages } from '@/lib/i18n/messages/app';
+import { RecentAnalyses, type RecentAnalysesState } from './recent-analyses';
 
 type ProfileDefaults = Pick<
   IntakeActionState['configuration'],
@@ -26,6 +27,7 @@ export function NewAnalysisHome({
   resultQuery,
   initialAnalysis,
   continuation,
+  recentAnalyses = { kind: 'ready', items: [] },
 }: Readonly<{
   copy: AppMessages;
   profileDefaults?: ProfileDefaults;
@@ -38,6 +40,7 @@ export function NewAnalysisHome({
     snapshot: AnalysisSnapshot;
   }>;
   continuation?: Readonly<{ rawUrl: string }>;
+  recentAnalyses?: RecentAnalysesState;
 }>) {
   const initialState = createInitialIntakeActionState(profileDefaults);
   return (
@@ -81,10 +84,10 @@ export function NewAnalysisHome({
               {copy.newAnalysis.recent.viewHistory}
             </Link>
           </header>
-          <div className="panel-empty-state">
-            <strong>{copy.newAnalysis.recent.emptyTitle}</strong>
-            <p>{copy.newAnalysis.recent.emptyDescription}</p>
-          </div>
+          <RecentAnalyses
+            state={recentAnalyses}
+            copy={copy.newAnalysis.recent}
+          />
         </section>
 
         <aside className="panel" aria-labelledby="monthly-metrics-title">

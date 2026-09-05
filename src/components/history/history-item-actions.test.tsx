@@ -7,6 +7,8 @@ import { historyMessages } from '@/lib/i18n/messages/history';
 
 import { HistoryItemActions } from './history-item-actions';
 
+const navigateToAnalysis = vi.fn();
+
 const item: HistoryItem = {
   id: '22222222-2222-4222-8222-222222222222',
   sourceId: 'video-1',
@@ -45,9 +47,11 @@ function setup(
     }),
     deleteItem: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
     markOpened: vi.fn().mockResolvedValue({ ok: true, data: undefined }),
+    retryPartial: vi.fn().mockResolvedValue({ ok: true, data: { attempt: 2 } }),
     onChange: vi.fn(),
     onDelete: vi.fn(),
     onAnnouncement: vi.fn(),
+    navigateToAnalysis,
     ...overrides,
   };
   render(<HistoryItemActions {...props} />);
@@ -62,6 +66,46 @@ async function openMenu(user: ReturnType<typeof userEvent.setup>) {
 
 describe('HistoryItemActions', () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it('offers one pending-safe retry only for partial analyses', async () => {
+    const user = userEvent.setup();
+    let resolveRetry:
+      ((value: { ok: true; data: { attempt: number } }) => void) | undefined;
+    const retryPartial = vi.fn(
+      () =>
+        new Promise<{ ok: true; data: { attempt: number } }>((resolve) => {
+          resolveRetry = resolve;
+        }),
+    );
+    const props = setup({
+      item: { ...item, status: { key: 'partial', label: 'Partial' } },
+      retryPartial,
+    });
+    await openMenu(user);
+    const retry = screen.getByRole('menuitem', {
+      name: 'Retry missing materials',
+    });
+    await user.click(retry);
+    await user.click(retry);
+    expect(retryPartial).toHaveBeenCalledOnce();
+    resolveRetry?.({ ok: true, data: { attempt: 2 } });
+    await vi.waitFor(() => {
+      expect(props.onAnnouncement).toHaveBeenCalledWith('Retry started.');
+    });
+    expect(navigateToAnalysis).toHaveBeenCalledWith(`/app?analysis=${item.id}`);
+  });
+
+  it.each(['ready', 'processing', 'failed'] as const)(
+    'does not offer retry for %s analyses',
+    async (key) => {
+      const user = userEvent.setup();
+      setup({ item: { ...item, status: { key, label: key } } });
+      await openMenu(user);
+      expect(
+        screen.queryByRole('menuitem', { name: 'Retry missing materials' }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it('optimistically favorites with a selected state and rolls back on failure', async () => {
     const user = userEvent.setup();

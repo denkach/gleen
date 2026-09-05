@@ -74,6 +74,31 @@ test('chooses artifacts, prevents double submit, and enters one processing hando
   expect(page.url()).not.toContain('/app/video/');
 });
 
+test('restores recent analyses after a New analysis reload', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/app-shell-fixture?intake=ready');
+    const recent = page.getByRole('link', {
+      name: 'How to Learn Anything Faster',
+    });
+    await expect(recent).toBeVisible();
+    await expect(recent).toHaveAttribute(
+      'href',
+      '/app-shell-fixture/app/video/result-den-25',
+    );
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(recent).toBeVisible();
+    await noOverflow(page);
+  }
+});
+
 test('@localization persists output language and canonical summary mode through options and submission', async ({
   page,
 }) => {

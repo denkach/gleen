@@ -133,6 +133,12 @@ export const historyMessages = defineMessages({
       closeDialog: 'Close dialog',
       open: 'Open',
       continue: 'Continue',
+      retry: {
+        action: 'Retry missing materials',
+        pending: 'Retrying…',
+        started: 'Retry started.',
+        failed: 'We could not retry the missing materials. Try again.',
+      },
       rename: {
         action: 'Rename',
         title: 'Rename saved analysis',
@@ -327,6 +333,12 @@ export const historyMessages = defineMessages({
       closeDialog: 'Закрити діалог',
       open: 'Відкрити',
       continue: 'Продовжити',
+      retry: {
+        action: 'Повторити відсутні матеріали',
+        pending: 'Повторюємо…',
+        started: 'Повтор запущено.',
+        failed: 'Не вдалося повторити створення матеріалів. Спробуйте ще раз.',
+      },
       rename: {
         action: 'Перейменувати',
         title: 'Перейменувати збережений аналіз',
@@ -521,6 +533,12 @@ export const historyMessages = defineMessages({
       closeDialog: 'Закрыть диалог',
       open: 'Открыть',
       continue: 'Продолжить',
+      retry: {
+        action: 'Повторить недостающие материалы',
+        pending: 'Повторяем…',
+        started: 'Повтор запущен.',
+        failed: 'Не удалось повторить создание материалов. Попробуйте снова.',
+      },
       rename: {
         action: 'Переименовать',
         title: 'Переименовать сохранённый анализ',
@@ -713,6 +731,12 @@ export const historyMessages = defineMessages({
       closeDialog: 'Cerrar diálogo',
       open: 'Abrir',
       continue: 'Continuar',
+      retry: {
+        action: 'Reintentar materiales pendientes',
+        pending: 'Reintentando…',
+        started: 'Reintento iniciado.',
+        failed: 'No pudimos reintentar los materiales pendientes.',
+      },
       rename: {
         action: 'Cambiar nombre',
         title: 'Cambiar nombre del análisis guardado',
@@ -913,6 +937,12 @@ export const historyMessages = defineMessages({
       closeDialog: 'Dialog schließen',
       open: 'Öffnen',
       continue: 'Fortsetzen',
+      retry: {
+        action: 'Fehlende Materialien erneut erstellen',
+        pending: 'Wird erneut versucht…',
+        started: 'Erneuter Versuch gestartet.',
+        failed: 'Fehlende Materialien konnten nicht erneut erstellt werden.',
+      },
       rename: {
         action: 'Umbenennen',
         title: 'Gespeicherte Analyse umbenennen',
