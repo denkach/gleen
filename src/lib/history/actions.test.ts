@@ -22,6 +22,7 @@ function dependencies() {
     markOpened: vi.fn(),
   };
   const reanalyze = vi.fn();
+  const retryPartialAnalysis = vi.fn();
   const revalidateHistory = vi.fn();
   const context = {
     userId,
@@ -29,6 +30,7 @@ function dependencies() {
     intake,
     userState,
     reanalyze,
+    retryPartialAnalysis,
   };
   const authenticate = vi.fn<() => Promise<typeof context | null>>(
     async () => context,
@@ -40,6 +42,7 @@ function dependencies() {
     intake,
     userState,
     reanalyze,
+    retryPartialAnalysis,
     revalidateHistory,
   };
 }
@@ -74,6 +77,9 @@ describe('History server actions', () => {
       actions.markHistoryItemOpened({ analysisId }),
     ).resolves.toMatchObject({ ok: false, code: 'unauthorized' });
     await expect(
+      actions.retryPartialHistoryAnalysis({ analysisId }),
+    ).resolves.toMatchObject({ ok: false, code: 'unauthorized' });
+    await expect(
       actions.loadMoreHistory({
         query: '',
         cursor: encodeHistoryCursor({
@@ -86,6 +92,40 @@ describe('History server actions', () => {
 
     expect(deps.intake.findOwned).not.toHaveBeenCalled();
     expect(deps.revalidateHistory).not.toHaveBeenCalled();
+  });
+
+  test('validates and forwards a partial retry once through the authenticated boundary', async () => {
+    const deps = dependencies();
+    deps.retryPartialAnalysis.mockResolvedValue({ ok: true, attempt: 3 });
+    const actions = createHistoryActions(deps);
+
+    await expect(
+      actions.retryPartialHistoryAnalysis({ analysisId: 'bad' }),
+    ).resolves.toEqual({ ok: false, code: 'invalid' });
+    await expect(
+      actions.retryPartialHistoryAnalysis({ analysisId }),
+    ).resolves.toEqual({ ok: true, data: { attempt: 3 } });
+    expect(deps.retryPartialAnalysis).toHaveBeenCalledOnce();
+    expect(deps.retryPartialAnalysis).toHaveBeenCalledWith(analysisId);
+    expect(deps.revalidateHistory).toHaveBeenCalledOnce();
+  });
+
+  test('maps rejected or ineligible partial retries to a generic failure', async () => {
+    const deps = dependencies();
+    deps.retryPartialAnalysis.mockResolvedValue({
+      ok: false,
+      error: 'retry_failed',
+    });
+    const actions = createHistoryActions(deps);
+    await expect(
+      actions.retryPartialHistoryAnalysis({ analysisId }),
+    ).resolves.toEqual({ ok: false, code: 'failed' });
+    deps.retryPartialAnalysis.mockRejectedValueOnce(
+      new Error('private details'),
+    );
+    await expect(
+      actions.retryPartialHistoryAnalysis({ analysisId }),
+    ).resolves.toEqual({ ok: false, code: 'failed' });
   });
 
   test('rejects invalid input before authentication', async () => {

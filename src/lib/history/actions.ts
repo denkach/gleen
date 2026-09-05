@@ -24,6 +24,7 @@ import {
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { IntakeActionState } from '@/lib/youtube-intake/action-state';
 import { reanalyzeIntake } from '@/lib/youtube-intake/actions';
+import { retryAnalysis } from '@/lib/analysis-pipeline/retry-actions';
 import type {
   AnalysisIntake,
   IntakeRepository,
@@ -50,6 +51,12 @@ type HistoryAuthenticatedContext = Readonly<{
   intake: Pick<IntakeRepository, 'findOwned'> & ResultTitleRepository;
   userState: Pick<ResultUserStateRepository, 'savePreference' | 'markOpened'>;
   reanalyze(sourceId: string): Promise<Readonly<{ redirectTo: string }>>;
+  retryPartialAnalysis(
+    analysisId: string,
+  ): Promise<
+    | Readonly<{ ok: true; attempt: number }>
+    | Readonly<{ ok: false; error: 'retry_failed' }>
+  >;
 }>;
 
 export type HistoryActionDependencies = Readonly<{
@@ -242,6 +249,26 @@ export function createHistoryActions(dependencies: HistoryActionDependencies) {
       }
     },
 
+    async retryPartialHistoryAnalysis(
+      input: unknown,
+    ): Promise<HistoryActionResult<Readonly<{ attempt: number }>>> {
+      const parsed = analysisIdentitySchema.safeParse(input);
+      if (!parsed.success) return failures.invalid;
+
+      const context = await authenticate();
+      if ('ok' in context) return context;
+      try {
+        const result = await context.retryPartialAnalysis(
+          parsed.data.analysisId,
+        );
+        return result.ok
+          ? success({ attempt: result.attempt })
+          : failures.failed;
+      } catch {
+        return failures.failed;
+      }
+    },
+
     async markHistoryItemOpened(input: unknown): Promise<HistoryActionResult> {
       const parsed = analysisIdentitySchema.safeParse(input);
       if (!parsed.success) return failures.invalid;
@@ -322,12 +349,23 @@ async function productionContext(): Promise<HistoryAuthenticatedContext | null> 
       }
       return { redirectTo: result.redirectTo };
     },
+    async retryPartialAnalysis(analysisId) {
+      const formData = new FormData();
+      formData.set('analysisId', analysisId);
+      const result = await retryAnalysis(formData);
+      return result.ok
+        ? { ok: true, attempt: result.attempt }
+        : { ok: false, error: 'retry_failed' };
+    },
   };
 }
 
 const productionActions = createHistoryActions({
   authenticate: productionContext,
-  revalidateHistory: () => revalidatePath('/app/history'),
+  revalidateHistory: () => {
+    revalidatePath('/app/history');
+    revalidatePath('/app');
+  },
 });
 
 export async function toggleHistoryFavorite(
@@ -370,4 +408,11 @@ export async function markHistoryItemOpened(
 ): Promise<HistoryActionResult> {
   'use server';
   return productionActions.markHistoryItemOpened(input);
+}
+
+export async function retryPartialHistoryAnalysis(
+  input: unknown,
+): Promise<HistoryActionResult<Readonly<{ attempt: number }>>> {
+  'use server';
+  return productionActions.retryPartialHistoryAnalysis(input);
 }
