@@ -76,6 +76,27 @@ function contextWithDuration(durationSeconds: number): GeneratorContext {
   return { ...context, durationSeconds, summaryPreset: 'balanced' };
 }
 
+function deepContextWithDuration(durationSeconds: number): GeneratorContext {
+  return { ...context, durationSeconds, summaryPreset: 'deep' };
+}
+
+function compositionWithSections(sectionCount: number) {
+  return {
+    ...validCompositionFixture,
+    sections: Array.from({ length: sectionCount }, (_, index) => ({
+      ...validCompositionFixture.sections[0],
+      title: `Chapter ${index + 1}`,
+      summary: `Distinct thesis for chapter ${index + 1}.`,
+      details: `Grounded evidence, context, and implications for distinct chapter ${index + 1}.`,
+      supportingQuote: null,
+      sourceOffsetMs: index % 2 === 0 ? 0 : 1_000,
+      coveredIdeaIds: [
+        index % 2 === 0 ? 'idea-critical' : 'idea-secondary',
+      ],
+    })),
+  };
+}
+
 describe('artifact generators', () => {
   it('passes locale and preset to focused summary generation', async () => {
     const provider = createDeterministicProvider({
@@ -238,6 +259,58 @@ describe('artifact generators', () => {
     );
     expect(provider.requests[1]?.system).toContain('all high-importance IDs');
     expect(provider.requests[1]?.input).toContain('"id":"idea-critical"');
+  });
+
+  it('repairs a 48-minute Deep composition below the strict floor', async () => {
+    const provider = createDeterministicProvider({
+      gleen_summary_idea_map_v1: ideaMapFixture,
+      gleen_summary_compose_v3: compositionWithSections(12),
+      gleen_summary_repair_v3: compositionWithSections(14),
+    });
+
+    const result = await generateSummary(
+      provider,
+      deepContextWithDuration(2_883),
+    );
+
+    expect(provider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_idea_map_v1',
+      'gleen_summary_compose_v3',
+      'gleen_summary_repair_v3',
+    ]);
+    expect(provider.requests[0]?.system).toContain('at least 14');
+    expect(provider.requests[1]?.system).toContain('mandatory');
+    expect(provider.requests[2]?.input).toContain('structural_range');
+    expect(result.value.sections).toHaveLength(14);
+  });
+
+  it('rejects a repaired 48-minute Deep composition that remains below the strict floor', async () => {
+    const provider = createDeterministicProvider({
+      gleen_summary_idea_map_v1: ideaMapFixture,
+      gleen_summary_compose_v3: compositionWithSections(12),
+      gleen_summary_repair_v3: compositionWithSections(13),
+    });
+
+    const error = await generateSummary(
+      provider,
+      deepContextWithDuration(2_883),
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(SummaryGenerationError);
+    expect(error).toMatchObject({
+      code: 'invalid_provider_response',
+      retryable: true,
+      metadata: {
+        route: 'two-pass',
+        repairCount: 1,
+        findingCounts: { structural_range: 1 },
+      },
+    });
+    expect(provider.requests.map(({ name }) => name)).toEqual([
+      'gleen_summary_idea_map_v1',
+      'gleen_summary_compose_v3',
+      'gleen_summary_repair_v3',
+    ]);
   });
 
   it.each([

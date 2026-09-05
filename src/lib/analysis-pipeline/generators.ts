@@ -124,6 +124,25 @@ function rangeLabel(policy: SummaryGenerationPolicy): string {
   return `${policy.sectionRange.min}–${policy.sectionRange.max}`;
 }
 
+function ideaMapInstructions(policy: SummaryGenerationPolicy): string {
+  return [
+    IDEA_MAP_SYSTEM_PROMPT,
+    policy.sectionRangeEnforcement === 'strict'
+      ? `Identify at least ${policy.sectionRange.min} distinct grounded chapter candidates by separating claims, evidence, examples, caveats, consequences, and practical conclusions when the transcript supports them. Do not invent or cosmetically split ideas.`
+      : null,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(' ');
+}
+
+function sectionRangeInstruction(policy: SummaryGenerationPolicy): string {
+  if (policy.sectionRangeEnforcement === 'strict') {
+    return `Write ${rangeLabel(policy)} complete sections for this video. This range is mandatory: preserve grounded distinctions without repeating, inventing, or cosmetically splitting ideas.`;
+  }
+
+  return `Write ${rangeLabel(policy)} complete sections for this video. This duration-based range is guidance and must not omit high-importance ideas, important caveats, or distinct conclusions.`;
+}
+
 function summaryInstructions(
   mode: SummaryMode,
   policy: SummaryGenerationPolicy,
@@ -131,7 +150,7 @@ function summaryInstructions(
   return [
     'Create only a faithful structured summary from the supplied transcript.',
     `Requested mode: ${mode}. ${MODE_INSTRUCTIONS[mode]}`,
-    `Write ${rangeLabel(policy)} complete sections for this video. This duration-based range is guidance and must not omit high-importance ideas, important caveats, or distinct conclusions.`,
+    sectionRangeInstruction(policy),
     'Return schemaVersion 3 with an outcome and one complete main paragraph per section.',
     'Keep each section summary as a short thesis and expand it in details without repeating the thesis or adjacent section details.',
     'Each section must include nullable supportingQuote and sourceOffsetMs fields with grounded offsets. Use a supportingQuote only when it appears in the transcript, and use the nearest supplied transcript segment offset; otherwise return null.',
@@ -146,7 +165,9 @@ function compositionInstructions(
     summaryInstructions(mode, policy),
     'Use both the transcript and idea map as evidence.',
     'Every section must list the idea-map IDs it covers in coveredIdeaIds, and all high-importance IDs must appear in coveredIdeaIds.',
-    'The requested section range is guidance: you must not omit high-importance ideas to satisfy it.',
+    policy.sectionRangeEnforcement === 'strict'
+      ? 'The mandatory section range must be met without omitting high-importance ideas or creating unsupported distinctions.'
+      : 'The requested section range is guidance: you must not omit high-importance ideas to satisfy it.',
     'If more than 20 high-importance clusters exist, combine semantically related clusters inside broader sections while retaining their claims, evidence, caveats, examples, and relationships in details.',
   ].join(' ');
 }
@@ -350,7 +371,7 @@ async function generateSummaryAttempt(
     provider,
     {
       name: 'gleen_summary_idea_map_v1',
-      system: IDEA_MAP_SYSTEM_PROMPT,
+      system: ideaMapInstructions(policy),
       input: `Requested mode: ${mode}\n${summaryInput(context)}`,
       jsonSchema: summaryIdeaMapJsonSchema,
       parse: (value) => summaryIdeaMapSchema.parse(value),
