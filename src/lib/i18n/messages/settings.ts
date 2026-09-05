@@ -24,6 +24,19 @@ export const settingsMessages = defineMessages({
       overviewTitle: 'Account Atlas',
       overviewDescription:
         'A clear view of your profile, defaults, languages, connections, security, and data.',
+      summaries: {
+        verifiedEmail: 'Verified email',
+        unverifiedEmail: 'Unverified email',
+        profile: (name: string, emailState: string) =>
+          `${name} · ${emailState}`,
+        preferences: (mode: string, cards: number) =>
+          `${mode} · ${cards} cards`,
+        language: (interfaceName: string, outputName: string) =>
+          `${interfaceName} · ${outputName} output`,
+        integrations: 'Exports available from results',
+        security: (method: string) => `${method} sign-in`,
+        data: 'History and exports',
+      },
       destinations: {
         profile: {
           title: 'Profile',
@@ -125,6 +138,19 @@ export const settingsMessages = defineMessages({
       overviewTitle: 'Атлас акаунта',
       overviewDescription:
         'Чіткий огляд профілю, стандартів, мов, підключень, безпеки й даних.',
+      summaries: {
+        verifiedEmail: 'Пошту підтверджено',
+        unverifiedEmail: 'Пошту не підтверджено',
+        profile: (name: string, emailState: string) =>
+          `${name} · ${emailState}`,
+        preferences: (mode: string, cards: number) =>
+          `${mode} · ${cards} карток`,
+        language: (interfaceName: string, outputName: string) =>
+          `${interfaceName} · результати: ${outputName}`,
+        integrations: 'Експорт доступний у результатах',
+        security: (method: string) => `Вхід: ${method}`,
+        data: 'Історія та експорт',
+      },
       destinations: {
         profile: {
           title: 'Профіль',
@@ -225,6 +251,19 @@ export const settingsMessages = defineMessages({
       overviewTitle: 'Атлас аккаунта',
       overviewDescription:
         'Понятный обзор профиля, параметров, языков, подключений, безопасности и данных.',
+      summaries: {
+        verifiedEmail: 'Почта подтверждена',
+        unverifiedEmail: 'Почта не подтверждена',
+        profile: (name: string, emailState: string) =>
+          `${name} · ${emailState}`,
+        preferences: (mode: string, cards: number) =>
+          `${mode} · ${cards} карточек`,
+        language: (interfaceName: string, outputName: string) =>
+          `${interfaceName} · результаты: ${outputName}`,
+        integrations: 'Экспорт доступен в результатах',
+        security: (method: string) => `Вход: ${method}`,
+        data: 'История и экспорт',
+      },
       destinations: {
         profile: {
           title: 'Профиль',
@@ -325,6 +364,19 @@ export const settingsMessages = defineMessages({
       overviewTitle: 'Atlas de la cuenta',
       overviewDescription:
         'Una vista clara del perfil, valores predeterminados, idiomas, conexiones, seguridad y datos.',
+      summaries: {
+        verifiedEmail: 'Correo verificado',
+        unverifiedEmail: 'Correo sin verificar',
+        profile: (name: string, emailState: string) =>
+          `${name} · ${emailState}`,
+        preferences: (mode: string, cards: number) =>
+          `${mode} · ${cards} tarjetas`,
+        language: (interfaceName: string, outputName: string) =>
+          `${interfaceName} · salida: ${outputName}`,
+        integrations: 'Exportaciones disponibles en los resultados',
+        security: (method: string) => `Acceso: ${method}`,
+        data: 'Historial y exportaciones',
+      },
       destinations: {
         profile: {
           title: 'Perfil',
@@ -427,6 +479,19 @@ export const settingsMessages = defineMessages({
       overviewTitle: 'Kontoatlas',
       overviewDescription:
         'Ein klarer Überblick über Profil, Standards, Sprachen, Verbindungen, Sicherheit und Daten.',
+      summaries: {
+        verifiedEmail: 'E-Mail bestätigt',
+        unverifiedEmail: 'E-Mail nicht bestätigt',
+        profile: (name: string, emailState: string) =>
+          `${name} · ${emailState}`,
+        preferences: (mode: string, cards: number) =>
+          `${mode} · ${cards} Karten`,
+        language: (interfaceName: string, outputName: string) =>
+          `${interfaceName} · Ausgabe: ${outputName}`,
+        integrations: 'Exporte in Ergebnissen verfügbar',
+        security: (method: string) => `Anmeldung: ${method}`,
+        data: 'Verlauf und Exporte',
+      },
       destinations: {
         profile: {
           title: 'Profil',

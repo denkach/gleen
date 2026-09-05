@@ -45,7 +45,7 @@ export const appNavigation: readonly AppNavigationItem[] = [
   },
   {
     id: 'settings',
-    href: '/app/settings/profile',
+    href: '/app/settings',
     icon: 'settings',
     match: 'prefix',
   },
@@ -84,10 +84,7 @@ export function isAppNavigationItemActive(
   pathname: string,
   item: AppNavigationItem,
 ): boolean {
-  const matchHref =
-    item.id === 'settings' ? item.href.replace(/\/[^/]+$/, '') : item.href;
-
   return item.match === 'exact'
-    ? pathname === matchHref
-    : pathname === matchHref || pathname.startsWith(`${matchHref}/`);
+    ? pathname === item.href
+    : pathname === item.href || pathname.startsWith(`${item.href}/`);
 }

@@ -35,7 +35,7 @@ describe('application shell model', () => {
       ['new', '/app'],
       ['history', '/app/history'],
       ['subscription', '/app/subscription'],
-      ['settings', '/app/settings/profile'],
+      ['settings', '/app/settings'],
     ]);
     expect(isAppNavigationItemActive('/app', appNavigation[0])).toBe(true);
     expect(isAppNavigationItemActive('/app/history', appNavigation[0])).toBe(
