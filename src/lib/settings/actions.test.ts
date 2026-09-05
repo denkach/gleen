@@ -4,6 +4,10 @@ const { getUser, upsert } = vi.hoisted(() => ({
   getUser: vi.fn(),
   upsert: vi.fn(),
 }));
+const { updateUser } = vi.hoisted(() => ({ updateUser: vi.fn() }));
+const { saveOnboardingStep } = vi.hoisted(() => ({
+  saveOnboardingStep: vi.fn(),
+}));
 const { upsertInterfaceLocale } = vi.hoisted(() => ({
   upsertInterfaceLocale: vi.fn(),
 }));
@@ -11,7 +15,7 @@ const { cookieStore } = vi.hoisted(() => ({ cookieStore: { set: vi.fn() } }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(async () => ({
-    auth: { getUser },
+    auth: { getUser, updateUser },
     from: vi.fn(() => ({
       upsert: (...args: unknown[]) => upsert(...args),
     })),
@@ -20,10 +24,16 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/onboarding/supabase-storage', () => ({
   createSupabaseOnboardingStorage: vi.fn(() => ({ upsertInterfaceLocale })),
 }));
+vi.mock('@/lib/onboarding/repository', () => ({ saveOnboardingStep }));
 vi.mock('next/headers', () => ({ cookies: vi.fn(async () => cookieStore) }));
 
 import { setInterfaceLocale } from '@/lib/i18n/actions';
-import { setOutputLocale, setSummaryMode } from './actions';
+import {
+  setDisplayName,
+  setFlashcardPreset,
+  setOutputLocale,
+  setSummaryMode,
+} from './actions';
 
 describe('output locale persistence', () => {
   beforeEach(() => {
@@ -38,6 +48,56 @@ describe('output locale persistence', () => {
         single: vi.fn().mockResolvedValue({ data: {}, error: null }),
       })),
     });
+    updateUser.mockResolvedValue({ data: {}, error: null });
+    saveOnboardingStep.mockResolvedValue({ ok: true, data: {} });
+  });
+
+  it('validates and saves a trimmed display name through auth metadata only', async () => {
+    const invalid = new FormData();
+    invalid.set('displayName', '   ');
+    await expect(setDisplayName({ status: 'idle' }, invalid)).resolves.toEqual({
+      status: 'error',
+      code: 'invalid_display_name',
+      value: '   ',
+    });
+
+    const tooLong = new FormData();
+    tooLong.set('displayName', 'x'.repeat(101));
+    await expect(
+      setDisplayName({ status: 'idle' }, tooLong),
+    ).resolves.toMatchObject({
+      status: 'error',
+      code: 'invalid_display_name',
+    });
+
+    const valid = new FormData();
+    valid.set('displayName', '  Ada Lovelace  ');
+    await expect(setDisplayName({ status: 'idle' }, valid)).resolves.toEqual({
+      status: 'success',
+      value: 'Ada Lovelace',
+    });
+    expect(updateUser).toHaveBeenCalledWith({
+      data: { full_name: 'Ada Lovelace' },
+    });
+  });
+
+  it('saves flashcard count without sending a summary default', async () => {
+    const formData = new FormData();
+    formData.set('flashcardPreset', '30');
+
+    await expect(
+      setFlashcardPreset({ status: 'idle' }, formData),
+    ).resolves.toEqual({ status: 'success', count: 30 });
+    expect(saveOnboardingStep).toHaveBeenCalledWith(
+      expect.any(Object),
+      'user-1',
+      { flashcardPreset: 30 },
+    );
+    expect(saveOnboardingStep).not.toHaveBeenCalledWith(
+      expect.any(Object),
+      'user-1',
+      expect.objectContaining({ summaryPreset: expect.anything() }),
+    );
   });
 
   it('writes exactly the selected output locale without changing interface locale', async () => {
@@ -97,9 +157,10 @@ describe('output locale persistence', () => {
         mode: 'deep',
       },
     );
-    expect(upsert).toHaveBeenCalledWith(
-      { user_id: 'user-1', summary_preset: 'deep' },
-      { onConflict: 'user_id' },
+    expect(saveOnboardingStep).toHaveBeenCalledWith(
+      expect.any(Object),
+      'user-1',
+      { summaryPreset: 'deep' },
     );
   });
 
@@ -126,14 +187,7 @@ describe('output locale persistence', () => {
     );
 
     getUser.mockResolvedValueOnce({ data: { user: { id: 'user-1' } } });
-    upsert.mockReturnValueOnce({
-      select: vi.fn(() => ({
-        single: vi.fn().mockResolvedValue({
-          data: null,
-          error: { message: 'storage unavailable' },
-        }),
-      })),
-    });
+    saveOnboardingStep.mockResolvedValueOnce({ ok: false, code: 'storage' });
 
     await expect(setSummaryMode({ status: 'idle' }, formData)).resolves.toEqual(
       { status: 'error', code: 'profile_update_failed' },

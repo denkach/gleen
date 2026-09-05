@@ -1,31 +1,18 @@
-import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-
-import { ProfileSettings } from '@/components/settings/profile-settings';
-import { deriveAppIdentity } from '@/lib/app-shell';
+import { CapabilitySettings } from '@/components/settings/capability-settings';
 import {
   selectMessages,
   type MissingTranslationEvent,
 } from '@/lib/i18n/catalog';
 import { settingsMessages } from '@/lib/i18n/messages/settings';
 import { getRequestLocale } from '@/lib/i18n/request-locale';
+import { buildIntegrationCapabilities } from '@/lib/settings/capabilities';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 function reportMissingTranslation(event: MissingTranslationEvent) {
   console.error(event);
 }
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getRequestLocale();
-  const copy = selectMessages(
-    settingsMessages,
-    locale,
-    'settings',
-    reportMissingTranslation,
-  );
-  return { title: copy.metadata.title, description: copy.metadata.description };
-}
-
-export default async function SettingsProfilePage() {
+export default async function SettingsIntegrationsPage() {
   const locale = await getRequestLocale();
   const copy = selectMessages(
     settingsMessages,
@@ -38,14 +25,22 @@ export default async function SettingsProfilePage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/session-expired');
-  const identity = deriveAppIdentity(user);
+  const names = {
+    notion: 'Notion',
+    obsidian: 'Obsidian',
+    notebooklm: 'NotebookLM',
+  } as const;
+  const items = buildIntegrationCapabilities().map((item) => ({
+    ...item,
+    title: names[item.key as keyof typeof names],
+    detail: copy.capabilities.integrations.unavailable,
+  }));
   return (
-    <ProfileSettings
-      copy={copy}
-      displayName={identity.displayName}
-      email={identity.email}
-      emailVerified={Boolean(user.email_confirmed_at)}
-      initials={identity.initials}
+    <CapabilitySettings
+      eyebrow={copy.page.eyebrow}
+      title={copy.capabilities.integrations.title}
+      description={copy.capabilities.integrations.description}
+      items={items}
     />
   );
 }

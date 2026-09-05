@@ -3,6 +3,8 @@ import { defineMessages } from '../catalog';
 export type SettingsErrorCode =
   | 'invalid_locale'
   | 'invalid_summary_mode'
+  | 'invalid_display_name'
+  | 'invalid_flashcard_preset'
   | 'profile_update_failed'
   | 'session_expired';
 
@@ -17,6 +19,110 @@ export const settingsMessages = defineMessages({
       title: 'Settings',
       description:
         'Choose languages for Gleen and for new knowledge artifacts.',
+    },
+    profile: {
+      title: 'Profile',
+      description: 'Manage the identity shown across your Gleen account.',
+      nameForm: 'Display name',
+      displayName: 'Display name',
+      email: 'Email',
+      verified: 'Verified',
+      unverified: 'Not verified',
+      save: 'Save name',
+    },
+    preferences: {
+      title: 'Preferences',
+      description:
+        'Defaults for new analyses. You can still adjust each video.',
+      flashcards: {
+        title: 'Flashcard default',
+        description:
+          'Choose how many study cards new analyses create by default.',
+        label: 'Default flashcard count',
+        save: 'Save flashcard count',
+      },
+    },
+    capabilities: {
+      integrations: {
+        title: 'Integrations',
+        description: 'Export options are shown exactly as they work today.',
+        unavailable:
+          'Direct connection is not available yet. Export from a completed result.',
+      },
+      security: {
+        title: 'Security',
+        description: 'Your current sign-in method and safe recovery options.',
+        method: 'Sign-in method',
+        recovery: 'Password recovery',
+        recoveryDetail:
+          'Use the verified recovery flow to reset your password.',
+        recoveryAction: 'Open recovery',
+      },
+      data: {
+        title: 'Data',
+        description:
+          'Open your history and understand the available account controls.',
+        history: 'Analysis history',
+        historyDetail: 'Review and manage your saved analyses.',
+        historyAction: 'Open history',
+        export: 'Exports',
+        exportDetail: 'Exports are available inside each completed result.',
+        deletion: 'Account deletion',
+        deletionDetail:
+          'Not available until a verified deletion flow is implemented.',
+      },
+    },
+    atlas: {
+      navigationLabel: 'Settings sections',
+      back: 'Back to Settings',
+      overviewTitle: 'Account Atlas',
+      overviewDescription:
+        'A clear view of your profile, defaults, languages, connections, security, and data.',
+      summaries: {
+        verifiedEmail: 'Verified email',
+        unverifiedEmail: 'Unverified email',
+        profile: (name: string, emailState: string) =>
+          `${name} · ${emailState}`,
+        preferences: (mode: string, cards: number) =>
+          `${mode} · ${cards} cards`,
+        language: (interfaceName: string, outputName: string) =>
+          `${interfaceName} · ${outputName} output`,
+        integrations: 'Exports available from results',
+        security: (method: string) => `${method} sign-in`,
+        data: 'History and exports',
+      },
+      destinations: {
+        profile: {
+          title: 'Profile',
+          description: 'Your name, avatar, and verified email.',
+          unavailable: 'Profile details unavailable',
+        },
+        preferences: {
+          title: 'Preferences',
+          description: 'Defaults for summaries and study materials.',
+          unavailable: 'Preferences unavailable',
+        },
+        language: {
+          title: 'Language',
+          description: 'Independent interface and output languages.',
+          unavailable: 'Language settings unavailable',
+        },
+        integrations: {
+          title: 'Integrations',
+          description: 'Truthful export and connection capabilities.',
+          unavailable: 'Integration status unavailable',
+        },
+        security: {
+          title: 'Security',
+          description: 'Sign-in methods and account protection.',
+          unavailable: 'Security details unavailable',
+        },
+        data: {
+          title: 'Data',
+          description: 'Your history, exports, and account controls.',
+          unavailable: 'Data details unavailable',
+        },
+      },
     },
     language: {
       title: 'Language preferences',
@@ -39,6 +145,8 @@ export const settingsMessages = defineMessages({
       loadError: 'We could not load your language preferences.',
       retry: 'Try again',
       errors: {
+        invalid_display_name: 'Enter a name between 1 and 100 characters.',
+        invalid_flashcard_preset: 'Choose an available flashcard count.',
         invalid_locale: 'Choose one of the available languages.',
         invalid_summary_mode: 'Choose one of the available summary modes.',
         profile_update_failed: 'We could not save this language. Try again.',
@@ -80,6 +188,110 @@ export const settingsMessages = defineMessages({
       title: 'Налаштування',
       description: 'Виберіть мови для Gleen і нових матеріалів.',
     },
+    profile: {
+      title: 'Профіль',
+      description: 'Керуйте ім’ям, яке відображається у вашому акаунті Gleen.',
+      nameForm: 'Відображуване ім’я',
+      displayName: 'Відображуване ім’я',
+      email: 'Електронна пошта',
+      verified: 'Підтверджено',
+      unverified: 'Не підтверджено',
+      save: 'Зберегти ім’я',
+    },
+    preferences: {
+      title: 'Уподобання',
+      description:
+        'Стандартні параметри нових аналізів. Для кожного відео їх можна змінити.',
+      flashcards: {
+        title: 'Картки за замовчуванням',
+        description: 'Виберіть кількість навчальних карток для нових аналізів.',
+        label: 'Кількість карток за замовчуванням',
+        save: 'Зберегти кількість карток',
+      },
+    },
+    capabilities: {
+      integrations: {
+        title: 'Інтеграції',
+        description:
+          'Можливості експорту показано саме так, як вони працюють зараз.',
+        unavailable:
+          'Пряме підключення ще недоступне. Експортуйте з готового результату.',
+      },
+      security: {
+        title: 'Безпека',
+        description: 'Ваш спосіб входу та безпечне відновлення доступу.',
+        method: 'Спосіб входу',
+        recovery: 'Відновлення пароля',
+        recoveryDetail:
+          'Скористайтеся підтвердженим процесом відновлення пароля.',
+        recoveryAction: 'Відкрити відновлення',
+      },
+      data: {
+        title: 'Дані',
+        description:
+          'Переглядайте історію та доступні способи керування акаунтом.',
+        history: 'Історія аналізів',
+        historyDetail: 'Переглядайте збережені аналізи й керуйте ними.',
+        historyAction: 'Відкрити історію',
+        export: 'Експорт',
+        exportDetail: 'Експорт доступний у кожному готовому результаті.',
+        deletion: 'Видалення акаунта',
+        deletionDetail:
+          'Недоступне до впровадження перевіреного процесу видалення.',
+      },
+    },
+    atlas: {
+      navigationLabel: 'Розділи налаштувань',
+      back: 'Назад до налаштувань',
+      overviewTitle: 'Атлас акаунта',
+      overviewDescription:
+        'Чіткий огляд профілю, стандартів, мов, підключень, безпеки й даних.',
+      summaries: {
+        verifiedEmail: 'Пошту підтверджено',
+        unverifiedEmail: 'Пошту не підтверджено',
+        profile: (name: string, emailState: string) =>
+          `${name} · ${emailState}`,
+        preferences: (mode: string, cards: number) =>
+          `${mode} · ${cards} карток`,
+        language: (interfaceName: string, outputName: string) =>
+          `${interfaceName} · результати: ${outputName}`,
+        integrations: 'Експорт доступний у результатах',
+        security: (method: string) => `Вхід: ${method}`,
+        data: 'Історія та експорт',
+      },
+      destinations: {
+        profile: {
+          title: 'Профіль',
+          description: 'Ваше ім’я, аватар і підтверджена пошта.',
+          unavailable: 'Дані профілю недоступні',
+        },
+        preferences: {
+          title: 'Уподобання',
+          description: 'Стандартні параметри конспектів і навчання.',
+          unavailable: 'Уподобання недоступні',
+        },
+        language: {
+          title: 'Мова',
+          description: 'Окремі мови інтерфейсу та результатів.',
+          unavailable: 'Мовні налаштування недоступні',
+        },
+        integrations: {
+          title: 'Інтеграції',
+          description: 'Реальні можливості експорту й підключень.',
+          unavailable: 'Статус інтеграцій недоступний',
+        },
+        security: {
+          title: 'Безпека',
+          description: 'Способи входу та захист акаунта.',
+          unavailable: 'Дані безпеки недоступні',
+        },
+        data: {
+          title: 'Дані',
+          description: 'Історія, експорт і керування акаунтом.',
+          unavailable: 'Дані акаунта недоступні',
+        },
+      },
+    },
     language: {
       title: 'Мовні налаштування',
       interface: {
@@ -100,6 +312,8 @@ export const settingsMessages = defineMessages({
       loadError: 'Не вдалося завантажити мовні налаштування.',
       retry: 'Спробувати ще раз',
       errors: {
+        invalid_display_name: 'Введіть ім’я довжиною від 1 до 100 символів.',
+        invalid_flashcard_preset: 'Виберіть доступну кількість карток.',
         invalid_locale: 'Виберіть одну з доступних мов.',
         invalid_summary_mode: 'Виберіть один із доступних режимів конспекту.',
         profile_update_failed: 'Не вдалося зберегти мову. Спробуйте ще раз.',
@@ -141,6 +355,111 @@ export const settingsMessages = defineMessages({
       title: 'Настройки',
       description: 'Выберите языки для Gleen и новых материалов.',
     },
+    profile: {
+      title: 'Профиль',
+      description:
+        'Управляйте именем, которое отображается в вашем аккаунте Gleen.',
+      nameForm: 'Отображаемое имя',
+      displayName: 'Отображаемое имя',
+      email: 'Электронная почта',
+      verified: 'Подтверждена',
+      unverified: 'Не подтверждена',
+      save: 'Сохранить имя',
+    },
+    preferences: {
+      title: 'Предпочтения',
+      description:
+        'Параметры новых анализов по умолчанию. Для каждого видео их можно изменить.',
+      flashcards: {
+        title: 'Карточки по умолчанию',
+        description: 'Выберите количество учебных карточек для новых анализов.',
+        label: 'Количество карточек по умолчанию',
+        save: 'Сохранить количество карточек',
+      },
+    },
+    capabilities: {
+      integrations: {
+        title: 'Интеграции',
+        description:
+          'Возможности экспорта показаны именно так, как работают сейчас.',
+        unavailable:
+          'Прямое подключение пока недоступно. Используйте экспорт в готовом результате.',
+      },
+      security: {
+        title: 'Безопасность',
+        description: 'Ваш способ входа и безопасное восстановление доступа.',
+        method: 'Способ входа',
+        recovery: 'Восстановление пароля',
+        recoveryDetail:
+          'Используйте подтверждённый процесс восстановления пароля.',
+        recoveryAction: 'Открыть восстановление',
+      },
+      data: {
+        title: 'Данные',
+        description:
+          'Открывайте историю и управляйте доступными функциями аккаунта.',
+        history: 'История анализов',
+        historyDetail: 'Просматривайте сохранённые анализы и управляйте ими.',
+        historyAction: 'Открыть историю',
+        export: 'Экспорт',
+        exportDetail: 'Экспорт доступен внутри каждого готового результата.',
+        deletion: 'Удаление аккаунта',
+        deletionDetail:
+          'Недоступно до реализации безопасного подтверждённого удаления.',
+      },
+    },
+    atlas: {
+      navigationLabel: 'Разделы настроек',
+      back: 'Назад к настройкам',
+      overviewTitle: 'Атлас аккаунта',
+      overviewDescription:
+        'Понятный обзор профиля, параметров, языков, подключений, безопасности и данных.',
+      summaries: {
+        verifiedEmail: 'Почта подтверждена',
+        unverifiedEmail: 'Почта не подтверждена',
+        profile: (name: string, emailState: string) =>
+          `${name} · ${emailState}`,
+        preferences: (mode: string, cards: number) =>
+          `${mode} · ${cards} карточек`,
+        language: (interfaceName: string, outputName: string) =>
+          `${interfaceName} · результаты: ${outputName}`,
+        integrations: 'Экспорт доступен в результатах',
+        security: (method: string) => `Вход: ${method}`,
+        data: 'История и экспорт',
+      },
+      destinations: {
+        profile: {
+          title: 'Профиль',
+          description: 'Ваше имя, аватар и подтверждённая почта.',
+          unavailable: 'Данные профиля недоступны',
+        },
+        preferences: {
+          title: 'Предпочтения',
+          description: 'Настройки по умолчанию для конспектов и обучения.',
+          unavailable: 'Предпочтения недоступны',
+        },
+        language: {
+          title: 'Язык',
+          description: 'Отдельные языки интерфейса и результатов.',
+          unavailable: 'Языковые настройки недоступны',
+        },
+        integrations: {
+          title: 'Интеграции',
+          description: 'Реальные возможности экспорта и подключений.',
+          unavailable: 'Статус интеграций недоступен',
+        },
+        security: {
+          title: 'Безопасность',
+          description: 'Способы входа и защита аккаунта.',
+          unavailable: 'Данные безопасности недоступны',
+        },
+        data: {
+          title: 'Данные',
+          description: 'История, экспорт и управление аккаунтом.',
+          unavailable: 'Данные аккаунта недоступны',
+        },
+      },
+    },
     language: {
       title: 'Языковые настройки',
       interface: {
@@ -161,6 +480,8 @@ export const settingsMessages = defineMessages({
       loadError: 'Не удалось загрузить языковые настройки.',
       retry: 'Попробовать снова',
       errors: {
+        invalid_display_name: 'Введите имя длиной от 1 до 100 символов.',
+        invalid_flashcard_preset: 'Выберите доступное количество карточек.',
         invalid_locale: 'Выберите один из доступных языков.',
         invalid_summary_mode: 'Выберите один из доступных режимов конспекта.',
         profile_update_failed: 'Не удалось сохранить язык. Попробуйте ещё раз.',
@@ -202,6 +523,110 @@ export const settingsMessages = defineMessages({
       title: 'Ajustes',
       description: 'Elige idiomas para Gleen y para los nuevos materiales.',
     },
+    profile: {
+      title: 'Perfil',
+      description: 'Gestiona el nombre que aparece en tu cuenta de Gleen.',
+      nameForm: 'Nombre visible',
+      displayName: 'Nombre visible',
+      email: 'Correo electrónico',
+      verified: 'Verificado',
+      unverified: 'Sin verificar',
+      save: 'Guardar nombre',
+    },
+    preferences: {
+      title: 'Preferencias',
+      description:
+        'Valores predeterminados para nuevos análisis. Puedes ajustarlos en cada vídeo.',
+      flashcards: {
+        title: 'Tarjetas predeterminadas',
+        description: 'Elige cuántas tarjetas crearán los nuevos análisis.',
+        label: 'Número predeterminado de tarjetas',
+        save: 'Guardar número de tarjetas',
+      },
+    },
+    capabilities: {
+      integrations: {
+        title: 'Integraciones',
+        description:
+          'Las opciones de exportación se muestran tal como funcionan hoy.',
+        unavailable:
+          'La conexión directa aún no está disponible. Exporta desde un resultado completo.',
+      },
+      security: {
+        title: 'Seguridad',
+        description: 'Tu método de acceso y opciones seguras de recuperación.',
+        method: 'Método de acceso',
+        recovery: 'Recuperación de contraseña',
+        recoveryDetail:
+          'Usa el proceso verificado para restablecer tu contraseña.',
+        recoveryAction: 'Abrir recuperación',
+      },
+      data: {
+        title: 'Datos',
+        description: 'Abre tu historial y consulta los controles disponibles.',
+        history: 'Historial de análisis',
+        historyDetail: 'Consulta y gestiona tus análisis guardados.',
+        historyAction: 'Abrir historial',
+        export: 'Exportaciones',
+        exportDetail:
+          'Las exportaciones están disponibles en cada resultado completo.',
+        deletion: 'Eliminar cuenta',
+        deletionDetail:
+          'No disponible hasta implementar un proceso de eliminación verificado.',
+      },
+    },
+    atlas: {
+      navigationLabel: 'Secciones de ajustes',
+      back: 'Volver a Ajustes',
+      overviewTitle: 'Atlas de la cuenta',
+      overviewDescription:
+        'Una vista clara del perfil, valores predeterminados, idiomas, conexiones, seguridad y datos.',
+      summaries: {
+        verifiedEmail: 'Correo verificado',
+        unverifiedEmail: 'Correo sin verificar',
+        profile: (name: string, emailState: string) =>
+          `${name} · ${emailState}`,
+        preferences: (mode: string, cards: number) =>
+          `${mode} · ${cards} tarjetas`,
+        language: (interfaceName: string, outputName: string) =>
+          `${interfaceName} · salida: ${outputName}`,
+        integrations: 'Exportaciones disponibles en los resultados',
+        security: (method: string) => `Acceso: ${method}`,
+        data: 'Historial y exportaciones',
+      },
+      destinations: {
+        profile: {
+          title: 'Perfil',
+          description: 'Tu nombre, avatar y correo verificado.',
+          unavailable: 'Datos del perfil no disponibles',
+        },
+        preferences: {
+          title: 'Preferencias',
+          description: 'Valores predeterminados para resúmenes y estudio.',
+          unavailable: 'Preferencias no disponibles',
+        },
+        language: {
+          title: 'Idioma',
+          description: 'Idiomas independientes para interfaz y resultados.',
+          unavailable: 'Ajustes de idioma no disponibles',
+        },
+        integrations: {
+          title: 'Integraciones',
+          description: 'Capacidades reales de exportación y conexión.',
+          unavailable: 'Estado de integraciones no disponible',
+        },
+        security: {
+          title: 'Seguridad',
+          description: 'Métodos de acceso y protección de la cuenta.',
+          unavailable: 'Datos de seguridad no disponibles',
+        },
+        data: {
+          title: 'Datos',
+          description: 'Historial, exportaciones y controles de cuenta.',
+          unavailable: 'Datos de la cuenta no disponibles',
+        },
+      },
+    },
     language: {
       title: 'Preferencias de idioma',
       interface: {
@@ -223,6 +648,9 @@ export const settingsMessages = defineMessages({
       loadError: 'No hemos podido cargar tus preferencias de idioma.',
       retry: 'Intentarlo de nuevo',
       errors: {
+        invalid_display_name:
+          'Introduce un nombre de entre 1 y 100 caracteres.',
+        invalid_flashcard_preset: 'Elige una cantidad de tarjetas disponible.',
         invalid_locale: 'Elige uno de los idiomas disponibles.',
         invalid_summary_mode: 'Elige uno de los modos de resumen disponibles.',
         profile_update_failed:
@@ -265,6 +693,113 @@ export const settingsMessages = defineMessages({
       title: 'Einstellungen',
       description: 'Wähle Sprachen für Gleen und neue Inhalte.',
     },
+    profile: {
+      title: 'Profil',
+      description:
+        'Verwalte den Namen, der in deinem Gleen-Konto angezeigt wird.',
+      nameForm: 'Anzeigename',
+      displayName: 'Anzeigename',
+      email: 'E-Mail',
+      verified: 'Bestätigt',
+      unverified: 'Nicht bestätigt',
+      save: 'Namen speichern',
+    },
+    preferences: {
+      title: 'Präferenzen',
+      description:
+        'Standards für neue Analysen. Du kannst jedes Video separat anpassen.',
+      flashcards: {
+        title: 'Standard-Lernkarten',
+        description:
+          'Wähle die Standardanzahl der Lernkarten für neue Analysen.',
+        label: 'Standardanzahl der Lernkarten',
+        save: 'Lernkartenanzahl speichern',
+      },
+    },
+    capabilities: {
+      integrations: {
+        title: 'Integrationen',
+        description:
+          'Exportmöglichkeiten werden genau so gezeigt, wie sie heute funktionieren.',
+        unavailable:
+          'Eine direkte Verbindung ist noch nicht verfügbar. Exportiere aus einem fertigen Ergebnis.',
+      },
+      security: {
+        title: 'Sicherheit',
+        description:
+          'Deine Anmeldemethode und sichere Wiederherstellungsoptionen.',
+        method: 'Anmeldemethode',
+        recovery: 'Passwortwiederherstellung',
+        recoveryDetail:
+          'Nutze den bestätigten Ablauf, um dein Passwort zurückzusetzen.',
+        recoveryAction: 'Wiederherstellung öffnen',
+      },
+      data: {
+        title: 'Daten',
+        description:
+          'Öffne deinen Verlauf und sieh verfügbare Kontofunktionen.',
+        history: 'Analyseverlauf',
+        historyDetail: 'Gespeicherte Analysen ansehen und verwalten.',
+        historyAction: 'Verlauf öffnen',
+        export: 'Exporte',
+        exportDetail: 'Exporte sind in jedem fertigen Ergebnis verfügbar.',
+        deletion: 'Konto löschen',
+        deletionDetail:
+          'Nicht verfügbar, bis ein verifizierter Löschablauf implementiert ist.',
+      },
+    },
+    atlas: {
+      navigationLabel: 'Einstellungsbereiche',
+      back: 'Zurück zu Einstellungen',
+      overviewTitle: 'Kontoatlas',
+      overviewDescription:
+        'Ein klarer Überblick über Profil, Standards, Sprachen, Verbindungen, Sicherheit und Daten.',
+      summaries: {
+        verifiedEmail: 'E-Mail bestätigt',
+        unverifiedEmail: 'E-Mail nicht bestätigt',
+        profile: (name: string, emailState: string) =>
+          `${name} · ${emailState}`,
+        preferences: (mode: string, cards: number) =>
+          `${mode} · ${cards} Karten`,
+        language: (interfaceName: string, outputName: string) =>
+          `${interfaceName} · Ausgabe: ${outputName}`,
+        integrations: 'Exporte in Ergebnissen verfügbar',
+        security: (method: string) => `Anmeldung: ${method}`,
+        data: 'Verlauf und Exporte',
+      },
+      destinations: {
+        profile: {
+          title: 'Profil',
+          description: 'Dein Name, Avatar und bestätigte E-Mail-Adresse.',
+          unavailable: 'Profildaten nicht verfügbar',
+        },
+        preferences: {
+          title: 'Präferenzen',
+          description: 'Standards für Zusammenfassungen und Lernmaterial.',
+          unavailable: 'Präferenzen nicht verfügbar',
+        },
+        language: {
+          title: 'Sprache',
+          description: 'Getrennte Sprachen für Oberfläche und Ergebnisse.',
+          unavailable: 'Spracheinstellungen nicht verfügbar',
+        },
+        integrations: {
+          title: 'Integrationen',
+          description: 'Tatsächliche Export- und Verbindungsfunktionen.',
+          unavailable: 'Integrationsstatus nicht verfügbar',
+        },
+        security: {
+          title: 'Sicherheit',
+          description: 'Anmeldemethoden und Kontoschutz.',
+          unavailable: 'Sicherheitsdaten nicht verfügbar',
+        },
+        data: {
+          title: 'Daten',
+          description: 'Verlauf, Exporte und Kontosteuerung.',
+          unavailable: 'Kontodaten nicht verfügbar',
+        },
+      },
+    },
     language: {
       title: 'Spracheinstellungen',
       interface: {
@@ -286,6 +821,8 @@ export const settingsMessages = defineMessages({
       loadError: 'Deine Spracheinstellungen konnten nicht geladen werden.',
       retry: 'Erneut versuchen',
       errors: {
+        invalid_display_name: 'Gib einen Namen mit 1 bis 100 Zeichen ein.',
+        invalid_flashcard_preset: 'Wähle eine verfügbare Lernkartenanzahl.',
         invalid_locale: 'Wähle eine der verfügbaren Sprachen.',
         invalid_summary_mode:
           'Wähle einen der verfügbaren Zusammenfassungsmodi.',

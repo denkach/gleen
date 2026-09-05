@@ -27,3 +27,29 @@ describe('app shell locale switcher layout', () => {
     );
   });
 });
+
+describe('Account Atlas settings presentation', () => {
+  it('uses a responsive three-column atlas with complete control states', () => {
+    expect(styles).toMatch(
+      /\.settings-atlas__grid\s*\{[^}]*grid-template-columns:\s*repeat\(3,/,
+    );
+    expect(styles).toMatch(/\.settings-destination-card:hover/);
+    expect(styles).toMatch(/\.settings-destination-card:active/);
+    expect(styles).toMatch(/\.settings-destination-card:focus-visible/);
+    expect(styles).toMatch(
+      /\.settings-destination-card[^}]*min-height:\s*(?:44|1[0-9]{2})px/,
+    );
+    expect(styles).toMatch(
+      /\.settings-section :is\(button, select, input\):disabled/,
+    );
+    expect(styles).toMatch(
+      /@media \(max-width: 720px\)[\s\S]*\.settings-atlas__grid\s*\{[^}]*grid-template-columns:\s*1fr/,
+    );
+  });
+
+  it('removes non-essential settings movement for reduced motion', () => {
+    expect(styles).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.settings-destination-card/,
+    );
+  });
+});

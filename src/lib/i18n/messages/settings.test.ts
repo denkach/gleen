@@ -20,6 +20,23 @@ describe('settings messages', () => {
       expect(
         settingsMessages[locale].language.errors.invalid_summary_mode,
       ).toBeTruthy();
+      expect(settingsMessages[locale].atlas.navigationLabel).toBeTruthy();
+      expect(settingsMessages[locale].atlas.back).toBeTruthy();
+      expect(Object.keys(settingsMessages[locale].atlas.destinations)).toEqual([
+        'profile',
+        'preferences',
+        'language',
+        'integrations',
+        'security',
+        'data',
+      ]);
+      for (const destination of Object.values(
+        settingsMessages[locale].atlas.destinations,
+      )) {
+        expect(destination.title).toBeTruthy();
+        expect(destination.description).toBeTruthy();
+        expect(destination.unavailable).toBeTruthy();
+      }
     }
   });
 
