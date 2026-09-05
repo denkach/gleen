@@ -218,24 +218,92 @@ describe('OpenRouter structured provider', () => {
     });
   });
 
-  it.each([408, 429, 502, 503])(
-    'classifies HTTP %i as retryable',
+  it.each([408, 429, 500, 502, 503, 504, 524, 529])(
+    'retries transient HTTP %i once and returns the recovered result',
     async (status) => {
       const fetch = vi
         .fn()
-        .mockResolvedValue(response(status, { error: { message: 'raw' } }));
+        .mockResolvedValueOnce(
+          response(status, { error: { message: 'temporary' } }),
+        )
+        .mockResolvedValueOnce(
+          response(200, {
+            id: 'generation-id',
+            model: 'vendor/model',
+            choices: [{ message: { content: '{"title":"Recovered"}' } }],
+          }),
+        );
+      const sleep = vi.fn().mockResolvedValue(undefined);
       const provider = createOpenRouterProvider({
         apiKey: 'secret',
         model: 'vendor/model',
         fetch,
+        sleep,
       });
 
-      await expect(provider.generate(request)).rejects.toMatchObject({
-        code: 'provider_unavailable',
-        retryable: true,
+      await expect(provider.generate(request)).resolves.toMatchObject({
+        value: { title: 'Recovered' },
       });
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(sleep).toHaveBeenCalledTimes(1);
     },
   );
+
+  it('stops after one retry when a transient response persists', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(response(529, { error: { message: 'overloaded' } }));
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const provider = createOpenRouterProvider({
+      apiKey: 'secret',
+      model: 'vendor/model',
+      fetch,
+      sleep,
+    });
+
+    await expect(provider.generate(request)).rejects.toMatchObject({
+      code: 'provider_unavailable',
+      retryable: true,
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports only bounded diagnostics for rejected responses', async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      response(400, {
+        error: {
+          message: 'sensitive transcript fragment',
+          metadata: { apiKey: 'secret' },
+        },
+      }),
+    );
+    const onDiagnostic = vi.fn();
+    const provider = createOpenRouterProvider({
+      apiKey: 'secret',
+      model: 'vendor/model',
+      fetch,
+      onDiagnostic,
+    });
+
+    await expect(provider.generate(request)).rejects.toMatchObject({
+      code: 'provider_rejected',
+      retryable: false,
+    });
+    expect(onDiagnostic).toHaveBeenCalledWith({
+      event: 'analysis_provider_http_error',
+      provider: 'openrouter',
+      requestName: 'gleen_summary_v1',
+      httpStatus: 400,
+      errorCode: 'provider_rejected',
+      retryable: false,
+      attempt: 1,
+      willRetry: false,
+    });
+    expect(JSON.stringify(onDiagnostic.mock.calls)).not.toMatch(
+      /sensitive|secret/u,
+    );
+  });
 
   it('honors a numeric Retry-After header without exposing raw errors', async () => {
     const fetch = vi

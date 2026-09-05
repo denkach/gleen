@@ -13,9 +13,24 @@ type OpenRouterProviderOptions = Readonly<{
   model: string;
   fetch?: typeof globalThis.fetch;
   timeoutMs?: number;
+  sleep?: (delayMs: number) => Promise<void>;
+  onDiagnostic?: (diagnostic: OpenRouterHttpDiagnostic) => void;
 }>;
 
-const retryableStatuses = new Set([408, 429, 502, 503]);
+type OpenRouterHttpDiagnostic = Readonly<{
+  event: 'analysis_provider_http_error';
+  provider: 'openrouter';
+  requestName: string;
+  httpStatus: number;
+  errorCode: ProviderError['code'];
+  retryable: boolean;
+  attempt: number;
+  willRetry: boolean;
+}>;
+
+const retryableStatuses = new Set([408, 429, 500, 502, 503, 504, 524, 529]);
+const defaultRetryDelayMs = 250;
+const maxRetryDelayMs = 5_000;
 
 const rawTokenCountSchema = z.number().int().nonnegative().max(1_000_000_000);
 const rawCostSchema = z.number().nonnegative().max(1_000_000);
@@ -86,7 +101,21 @@ const rawUsageSchema = z
 
 function retryAfterMs(response: Response): number | undefined {
   const seconds = Number(response.headers.get('Retry-After'));
-  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : undefined;
+  return Number.isFinite(seconds) && seconds > 0
+    ? Math.min(seconds * 1000, maxRetryDelayMs)
+    : undefined;
+}
+
+function sleep(delayMs: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+}
+
+function reportDiagnostic(diagnostic: OpenRouterHttpDiagnostic) {
+  console.error(diagnostic);
+}
+
+function safeRequestName(value: string): string {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/u.test(value) ? value : 'unknown';
 }
 
 function responseError(response: Response): ProviderError {
@@ -141,49 +170,69 @@ export function createOpenRouterProvider(
   options: OpenRouterProviderOptions,
 ): StructuredGenerationProvider {
   const fetchImplementation = options.fetch ?? globalThis.fetch;
+  const sleepImplementation = options.sleep ?? sleep;
+  const diagnosticReporter = options.onDiagnostic ?? reportDiagnostic;
 
   return {
     async generate<T>(request: StructuredGenerationRequest<T>) {
       const startedAt = performance.now();
-      let response: Response;
-      try {
-        response = await fetchImplementation(
-          'https://openrouter.ai/api/v1/chat/completions',
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${options.apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            signal: AbortSignal.timeout(options.timeoutMs ?? 60_000),
-            body: JSON.stringify({
-              model: options.model,
-              messages: [
-                { role: 'system', content: request.system },
-                { role: 'user', content: request.input },
-              ],
-              response_format: {
-                type: 'json_schema',
-                json_schema: {
-                  name: request.name,
-                  strict: true,
-                  schema: request.jsonSchema,
+      let response: Response | undefined;
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        try {
+          response = await fetchImplementation(
+            'https://openrouter.ai/api/v1/chat/completions',
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${options.apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              signal: AbortSignal.timeout(options.timeoutMs ?? 60_000),
+              body: JSON.stringify({
+                model: options.model,
+                messages: [
+                  { role: 'system', content: request.system },
+                  { role: 'user', content: request.input },
+                ],
+                response_format: {
+                  type: 'json_schema',
+                  json_schema: {
+                    name: request.name,
+                    strict: true,
+                    schema: request.jsonSchema,
+                  },
                 },
-              },
-              provider: {
-                require_parameters: true,
-                data_collection: 'deny',
-                zdr: true,
-                allow_fallbacks: true,
-              },
-            }),
-          },
-        );
-      } catch {
-        throw new ProviderError('provider_unavailable', true);
+                provider: {
+                  require_parameters: true,
+                  data_collection: 'deny',
+                  zdr: true,
+                  allow_fallbacks: true,
+                },
+              }),
+            },
+          );
+        } catch {
+          throw new ProviderError('provider_unavailable', true);
+        }
+
+        if (response.ok) break;
+        const error = responseError(response);
+        const willRetry = error.retryable && attempt === 1;
+        diagnosticReporter({
+          event: 'analysis_provider_http_error',
+          provider: 'openrouter',
+          requestName: safeRequestName(request.name),
+          httpStatus: response.status,
+          errorCode: error.code,
+          retryable: error.retryable,
+          attempt,
+          willRetry,
+        });
+        if (!willRetry) throw error;
+        await sleepImplementation(error.retryAfterMs ?? defaultRetryDelayMs);
       }
 
-      if (!response.ok) throw responseError(response);
+      if (!response?.ok) throw new ProviderError('provider_unavailable', true);
 
       let result: ReturnType<typeof extractResponse>;
       try {
