@@ -39,9 +39,7 @@ describe('Account Atlas settings presentation', () => {
     expect(styles).toMatch(
       /\.settings-destination-card[^}]*min-height:\s*(?:44|1[0-9]{2})px/,
     );
-    expect(styles).toMatch(
-      /\.settings-section :is\(button, select, input\):disabled/,
-    );
+    expect(styles).toMatch(/\.settings-page \.ui-button:disabled/);
     expect(styles).toMatch(
       /@media \(max-width: 720px\)[\s\S]*\.settings-atlas__grid\s*\{[^}]*grid-template-columns:\s*1fr/,
     );

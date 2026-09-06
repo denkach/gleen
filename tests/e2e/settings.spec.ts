@@ -63,6 +63,41 @@ test('Account Atlas stays usable across desktop, tablet, mobile, and reduced mot
           Number.parseFloat(getComputedStyle(element).transitionDuration),
         ),
     ).toBeLessThanOrEqual(0.001);
+
+    const firstCard = atlas.getByRole('link').first();
+    const cardPresentation = await firstCard.evaluate((element) => {
+      const card = element.getBoundingClientRect();
+      const styles = getComputedStyle(element);
+      const icon = element
+        .querySelector('.settings-destination-card__icon')
+        ?.getBoundingClientRect();
+      const description = element.querySelector(
+        '.settings-destination-card__description',
+      );
+
+      return {
+        display: styles.display,
+        iconHeight: icon?.height,
+        iconWidth: icon?.width,
+        padding: styles.padding,
+        height: card.height,
+        descriptionDisplay: description
+          ? getComputedStyle(description).display
+          : 'missing',
+      };
+    });
+
+    expect(cardPresentation.display).toBe('block');
+    expect(cardPresentation.iconHeight).toBe(44);
+    expect(cardPresentation.iconWidth).toBe(44);
+    expect(cardPresentation.descriptionDisplay).not.toBe('none');
+    if (viewport.width <= 720) {
+      expect(cardPresentation.padding).toBe('18px');
+      expect(cardPresentation.height).toBeGreaterThanOrEqual(154);
+    } else {
+      expect(cardPresentation.padding).toBe('22px');
+      expect(cardPresentation.height).toBeGreaterThanOrEqual(190);
+    }
   }
 
   await page
@@ -75,4 +110,47 @@ test('Account Atlas stays usable across desktop, tablet, mobile, and reduced mot
   await expect(
     page.getByRole('link', { name: 'Back to Settings' }),
   ).toBeVisible();
+});
+
+test('every Settings destination uses the approved v4 panel composition', async ({
+  page,
+}) => {
+  await authenticate(page);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+
+  for (const destination of [
+    'profile',
+    'preferences',
+    'language',
+    'integrations',
+    'security',
+    'data',
+  ]) {
+    const response = await page.goto(`/app/settings/${destination}`, {
+      waitUntil: 'domcontentloaded',
+    });
+    expect(response?.ok()).toBe(true);
+    await expect(
+      page.getByRole('link', { name: 'Back to Settings' }),
+    ).toBeVisible();
+    await expect(page.locator('.settings-subnav')).toHaveCount(0);
+    await expect(page.locator('.settings-panel').first()).toBeVisible();
+
+    const panelPresentation = await page
+      .locator('.settings-panel')
+      .first()
+      .evaluate((element) => {
+        const styles = getComputedStyle(element);
+        const header = element.querySelector(
+          '.settings-panel__head',
+        ) as HTMLElement | null;
+        return {
+          borderRadius: styles.borderRadius,
+          headerPadding: header ? getComputedStyle(header).padding : 'missing',
+        };
+      });
+
+    expect(panelPresentation.borderRadius).toBe('16px');
+    expect(panelPresentation.headerPadding).toBe('22px 24px');
+  }
 });

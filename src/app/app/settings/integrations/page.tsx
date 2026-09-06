@@ -37,9 +37,10 @@ export default async function SettingsIntegrationsPage() {
   }));
   return (
     <CapabilitySettings
-      eyebrow={copy.page.eyebrow}
+      eyebrow={copy.page.title}
       title={copy.capabilities.integrations.title}
       description={copy.capabilities.integrations.description}
+      icon="integration"
       items={items}
     />
   );

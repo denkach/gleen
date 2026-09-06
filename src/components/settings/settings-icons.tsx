@@ -6,26 +6,27 @@ export function SettingsIcon({
   const paths = {
     profile: (
       <>
-        <circle cx="12" cy="8" r="3" />
-        <path d="M5.5 19c.8-3.4 3-5 6.5-5s5.7 1.6 6.5 5" />
+        <circle cx="12" cy="8" r="3.2" />
+        <path d="M5.5 19c.9-4 3-6 6.5-6s5.6 2 6.5 6" />
       </>
     ),
     sliders: (
       <>
-        <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
-        <circle cx="16" cy="7" r="2" />
-        <circle cx="8" cy="17" r="2" />
+        <path d="M4 7h8M16 7h4M4 17h4M12 17h8" />
+        <circle cx="14" cy="7" r="2" />
+        <circle cx="10" cy="17" r="2" />
       </>
     ),
     language: (
       <>
-        <circle cx="12" cy="12" r="8" />
-        <path d="M4 12h16M12 4c2 2.2 3 4.9 3 8s-1 5.8-3 8M12 4c-2 2.2-3 4.9-3 8s1 5.8 3 8" />
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M3.8 12h16.4M12 3.5c2.4 2.2 3.7 5 3.7 8.5s-1.3 6.3-3.7 8.5M12 3.5C9.6 5.7 8.3 8.5 8.3 12s1.3 6.3 3.7 8.5" />
       </>
     ),
     integration: (
       <>
-        <path d="M8 4v4H4M16 20v-4h4M5 8a8 8 0 0 1 13-2M19 16A8 8 0 0 1 6 18" />
+        <path d="m9.7 14.3 4.6-4.6" />
+        <path d="m7.1 16.9-1.2 1.2a3.5 3.5 0 0 1-5-5l3.6-3.6a3.5 3.5 0 0 1 5 0M16.9 7.1l1.2-1.2a3.5 3.5 0 0 1 5 5l-3.6 3.6a3.5 3.5 0 0 1-5 0" />
       </>
     ),
     shield: (
@@ -49,7 +50,7 @@ export function SettingsIcon({
       aria-hidden="true"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="1.7"
       strokeLinecap="round"
       strokeLinejoin="round"
     >

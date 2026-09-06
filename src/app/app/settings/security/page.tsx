@@ -43,9 +43,10 @@ export default async function SettingsSecurityPage() {
   );
   return (
     <CapabilitySettings
-      eyebrow={copy.page.eyebrow}
+      eyebrow={copy.page.title}
       title={copy.capabilities.security.title}
       description={copy.capabilities.security.description}
+      icon="shield"
       items={items}
     />
   );

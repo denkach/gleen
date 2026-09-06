@@ -9,6 +9,7 @@ describe('capability settings', () => {
         eyebrow="Account"
         title="Integrations"
         description="Exports"
+        icon="integration"
         items={[
           {
             key: 'notion',

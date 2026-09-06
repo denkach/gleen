@@ -36,19 +36,25 @@ export function SettingsOverview({
               href={destination.href}
               key={destination.key}
             >
-              <span className="settings-destination-card__icon">
-                <SettingsIcon name={destination.icon} />
+              <span className="settings-destination-card__top">
+                <span className="settings-destination-card__icon">
+                  <SettingsIcon name={destination.icon} />
+                </span>
+                <span
+                  className="settings-destination-card__arrow"
+                  aria-hidden="true"
+                >
+                  <svg viewBox="0 0 24 24">
+                    <path d="M8 16 16 8M9 8h7v7" />
+                  </svg>
+                </span>
               </span>
               <span className="settings-destination-card__copy">
                 <strong>{destinationCopy.title}</strong>
-                <span>{destinationCopy.description}</span>
+                <span className="settings-destination-card__description">
+                  {destinationCopy.description}
+                </span>
                 <small>{summary.text}</small>
-              </span>
-              <span
-                className="settings-destination-card__arrow"
-                aria-hidden="true"
-              >
-                ↗
               </span>
             </Link>
           );

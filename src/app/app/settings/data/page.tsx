@@ -44,9 +44,10 @@ export default async function SettingsDataPage() {
   });
   return (
     <CapabilitySettings
-      eyebrow={copy.page.eyebrow}
+      eyebrow={copy.page.title}
       title={labels.title}
       description={labels.description}
+      icon="database"
       items={items}
     />
   );

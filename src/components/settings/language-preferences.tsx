@@ -18,6 +18,8 @@ import {
   type OutputLocaleActionState,
 } from '@/lib/settings/actions';
 
+import { SettingsPanel, SettingsSaveIcon } from './settings-panel';
+
 const interfaceInitialState: LocaleActionState = { status: 'idle' };
 const outputInitialState: OutputLocaleActionState = { status: 'idle' };
 
@@ -68,17 +70,17 @@ export function LanguagePreferences({
 
   return (
     <section
-      className="language-preferences"
+      className="language-preferences settings-page"
       aria-labelledby="language-preferences-title"
     >
-      <div className="page-head language-preferences__head">
+      <div className="page-head settings-page-head language-preferences__head">
         <div>
-          <span className="eyebrow">{copy.page.eyebrow}</span>
-          <h1 id="language-preferences-title">{copy.page.title}</h1>
+          <span className="eyebrow">{copy.page.title}</span>
+          <h1 id="language-preferences-title">{copy.language.title}</h1>
           <p>{copy.page.description}</p>
         </div>
       </div>
-      <div className="settings-content">
+      <div className="settings-panel-stack">
         {unavailable ? (
           <div className="settings-load-error" role="alert">
             <p>{copy.language.loadError}</p>
@@ -175,48 +177,47 @@ function PreferenceForm({
   value,
 }: PreferenceFormProps) {
   return (
-    <form
-      action={action}
-      className="settings-section"
-      onReset={(event) => event.preventDefault()}
-    >
-      <div className="settings-section-head">
-        <h2>{title}</h2>
-        <p>{description}</p>
-      </div>
-      <label className="language-preferences__field">
-        <span>{label}</span>
-        <select
-          disabled={unavailable || pending}
-          key={revision}
-          name="locale"
-          onChange={(event) => onChange(event.target.value as Locale)}
-          value={value}
-        >
-          {supportedLocales.map((locale) => (
-            <option key={locale} value={locale}>
-              {localeMetadata[locale].nativeName}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="language-preferences__actions">
-        <button
-          className="ui-button"
-          data-variant="primary"
-          disabled={unavailable || pending}
-          type="submit"
-        >
-          {pending ? savingLabel : saveLabel}
-        </button>
-        <p
-          aria-live="polite"
-          className="language-preferences__status"
-          role={error ? 'alert' : 'status'}
-        >
-          {error ?? (saved ? savedLabel : '')}
-        </p>
-      </div>
-    </form>
+    <SettingsPanel description={description} icon="language" title={title}>
+      <form
+        action={action}
+        className="settings-form"
+        onReset={(event) => event.preventDefault()}
+      >
+        <label className="settings-field">
+          <span>{label}</span>
+          <select
+            disabled={unavailable || pending}
+            key={revision}
+            name="locale"
+            onChange={(event) => onChange(event.target.value as Locale)}
+            value={value}
+          >
+            {supportedLocales.map((locale) => (
+              <option key={locale} value={locale}>
+                {localeMetadata[locale].nativeName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="settings-form-actions">
+          <p
+            aria-live="polite"
+            className="language-preferences__status"
+            role={error ? 'alert' : 'status'}
+          >
+            {error ?? (saved ? savedLabel : '')}
+          </p>
+          <button
+            className="ui-button settings-primary-button"
+            data-variant="primary"
+            disabled={unavailable || pending}
+            type="submit"
+          >
+            <SettingsSaveIcon />
+            <span>{pending ? savingLabel : saveLabel}</span>
+          </button>
+        </div>
+      </form>
+    </SettingsPanel>
   );
 }

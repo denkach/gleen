@@ -15,6 +15,8 @@ import {
 import type { OnboardingState } from '@/lib/onboarding/preferences';
 import { summaryModeSchema, type SummaryMode } from '@/lib/summary-mode';
 
+import { SettingsPanel, SettingsSaveIcon } from './settings-panel';
+
 const summaryInitial: SummaryModeActionState = { status: 'idle' };
 const cardsInitial: FlashcardPresetActionState = { status: 'idle' };
 
@@ -62,101 +64,115 @@ export function PreferencesSettings({
 
   return (
     <section
-      className="preferences-settings"
+      className="preferences-settings settings-page"
       aria-labelledby="preferences-settings-title"
     >
-      <div className="page-head">
+      <div className="page-head settings-page-head">
         <div>
-          <span className="eyebrow">{copy.page.eyebrow}</span>
+          <span className="eyebrow">{copy.page.title}</span>
           <h1 id="preferences-settings-title">{copy.preferences.title}</h1>
           <p>{copy.preferences.description}</p>
         </div>
       </div>
-      <div className="settings-content">
-        <form
-          action={summaryAction}
-          className="settings-section"
-          aria-label={copy.summary.title}
+      <div className="settings-panel-stack">
+        <SettingsPanel
+          description={copy.summary.description}
+          icon="sliders"
+          title={copy.summary.title}
         >
-          <div className="settings-section-head">
-            <h2>{copy.summary.title}</h2>
-            <p>{copy.summary.description}</p>
-          </div>
-          <label className="language-preferences__field">
-            <span>{copy.summary.label}</span>
-            <select
-              aria-label={copy.summary.label}
-              disabled={unavailable || summaryPending}
-              name="summaryMode"
-              onChange={(event) =>
-                setMode(summaryModeSchema.parse(event.target.value))
-              }
-              value={mode}
-            >
-              {summaryModeSchema.options.map((option) => (
-                <option key={option} value={option}>
-                  {copy.summary.modes[option].title}
-                </option>
-              ))}
-            </select>
-            <span>{copy.summary.modes[mode].description}</span>
-          </label>
-          <div className="language-preferences__actions">
-            <button
-              className="ui-button"
-              data-variant="primary"
-              disabled={unavailable || summaryPending}
-              type="submit"
-            >
-              {summaryPending ? copy.language.saving : copy.summary.save}
-            </button>
-            <p aria-live="polite" role={summaryError ? 'alert' : 'status'}>
-              {summaryError ||
-                (summaryState.status === 'success' ? copy.language.saved : '')}
-            </p>
-          </div>
-        </form>
-        <form
-          action={cardsAction}
-          className="settings-section"
-          aria-label={copy.preferences.flashcards.title}
+          <form
+            action={summaryAction}
+            className="settings-form"
+            aria-label={copy.summary.title}
+          >
+            <label className="settings-field">
+              <span>{copy.summary.label}</span>
+              <select
+                aria-label={copy.summary.label}
+                disabled={unavailable || summaryPending}
+                name="summaryMode"
+                onChange={(event) =>
+                  setMode(summaryModeSchema.parse(event.target.value))
+                }
+                value={mode}
+              >
+                {summaryModeSchema.options.map((option) => (
+                  <option key={option} value={option}>
+                    {copy.summary.modes[option].title}
+                  </option>
+                ))}
+              </select>
+              <small className="settings-field__hint">
+                {copy.summary.modes[mode].description}
+              </small>
+            </label>
+            <div className="settings-form-actions">
+              <p aria-live="polite" role={summaryError ? 'alert' : 'status'}>
+                {summaryError ||
+                  (summaryState.status === 'success'
+                    ? copy.language.saved
+                    : '')}
+              </p>
+              <button
+                className="ui-button settings-primary-button"
+                data-variant="primary"
+                disabled={unavailable || summaryPending}
+                type="submit"
+              >
+                <SettingsSaveIcon />
+                <span>
+                  {summaryPending ? copy.language.saving : copy.summary.save}
+                </span>
+              </button>
+            </div>
+          </form>
+        </SettingsPanel>
+        <SettingsPanel
+          description={copy.preferences.flashcards.description}
+          icon="sliders"
+          title={copy.preferences.flashcards.title}
         >
-          <div className="settings-section-head">
-            <h2>{copy.preferences.flashcards.title}</h2>
-            <p>{copy.preferences.flashcards.description}</p>
-          </div>
-          <label className="language-preferences__field">
-            <span>{copy.preferences.flashcards.label}</span>
-            <select
-              aria-label={copy.preferences.flashcards.label}
-              disabled={unavailable || cardsPending}
-              name="flashcardPreset"
-              onChange={(event) =>
-                setCards(Number(event.target.value) as 18 | 30)
-              }
-              value={cards}
-            >
-              <option value={18}>18</option>
-              <option value={30}>30</option>
-            </select>
-          </label>
-          <div className="language-preferences__actions">
-            <button
-              className="ui-button"
-              data-variant="primary"
-              disabled={unavailable || cardsPending}
-              type="submit"
-            >
-              {cardsPending
-                ? copy.language.saving
-                : copy.preferences.flashcards.save}
-            </button>
-            <p aria-live="polite" role={cardsError ? 'alert' : 'status'}>
-              {cardsError ||
-                (cardsState.status === 'success' ? copy.language.saved : '')}
-            </p>
-          </div>
-        </form>
+          <form
+            action={cardsAction}
+            className="settings-form"
+            aria-label={copy.preferences.flashcards.title}
+          >
+            <label className="settings-field">
+              <span>{copy.preferences.flashcards.label}</span>
+              <select
+                aria-label={copy.preferences.flashcards.label}
+                disabled={unavailable || cardsPending}
+                name="flashcardPreset"
+                onChange={(event) =>
+                  setCards(Number(event.target.value) as 18 | 30)
+                }
+                value={cards}
+              >
+                <option value={18}>18</option>
+                <option value={30}>30</option>
+              </select>
+            </label>
+            <div className="settings-form-actions">
+              <p aria-live="polite" role={cardsError ? 'alert' : 'status'}>
+                {cardsError ||
+                  (cardsState.status === 'success' ? copy.language.saved : '')}
+              </p>
+              <button
+                className="ui-button settings-primary-button"
+                data-variant="primary"
+                disabled={unavailable || cardsPending}
+                type="submit"
+              >
+                <SettingsSaveIcon />
+                <span>
+                  {cardsPending
+                    ? copy.language.saving
+                    : copy.preferences.flashcards.save}
+                </span>
+              </button>
+            </div>
+          </form>
+        </SettingsPanel>
       </div>
     </section>
   );

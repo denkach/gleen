@@ -12,21 +12,18 @@ import { SettingsShell } from './settings-shell';
 describe('SettingsShell', () => {
   beforeEach(() => usePathname.mockReturnValue('/app/settings/profile'));
 
-  it('renders all destinations and marks the active route', () => {
+  it('keeps destination pages focused with a single route-aware back link', () => {
     render(
       <SettingsShell copy={settingsMessages.en}>
         <p>Profile content</p>
       </SettingsShell>,
     );
 
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link')).toHaveLength(1);
     expect(
-      screen.getByRole('navigation', { name: 'Settings sections' }),
-    ).toBeInTheDocument();
-    expect(screen.getAllByRole('link')).toHaveLength(7);
-    expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+      screen.getByRole('link', { name: 'Back to Settings' }),
+    ).toHaveAttribute('href', '/app/settings');
     expect(screen.getByText('Profile content')).toBeVisible();
   });
 
