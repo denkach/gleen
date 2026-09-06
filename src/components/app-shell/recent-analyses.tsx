@@ -13,7 +13,12 @@ type RecentCopy = AppMessages['newAnalysis']['recent'];
 export function RecentAnalyses({
   state,
   copy,
-}: Readonly<{ state: RecentAnalysesState; copy: RecentCopy }>) {
+  artifacts,
+}: Readonly<{
+  state: RecentAnalysesState;
+  copy: RecentCopy;
+  artifacts: AppMessages['newAnalysis']['artifacts'];
+}>) {
   if (state.kind === 'unavailable') {
     return (
       <div className="panel-empty-state recent-analyses-state" role="status">
@@ -33,9 +38,10 @@ export function RecentAnalyses({
   return (
     <div className="recent-analysis-list">
       {state.items.map((item) => (
-        <article
+        <Link
           className="recent-analysis-row"
           data-status={item.status.key}
+          href={item.href}
           key={item.id}
         >
           <div
@@ -49,20 +55,39 @@ export function RecentAnalyses({
             ) : (
               <span aria-hidden="true">◇</span>
             )}
+            {item.durationLabel ? (
+              <span className="recent-analysis-row__duration">
+                {item.durationLabel}
+              </span>
+            ) : null}
           </div>
           <div className="recent-analysis-row__body">
-            <Link href={item.href}>{item.title}</Link>
+            <strong>{item.title}</strong>
             <p>
               {[item.channel, item.analyzedAtLabel].filter(Boolean).join(' · ')}
             </p>
             <div className="recent-analysis-row__meta">
               {item.summaryPresetLabel ? (
-                <span>{item.summaryPresetLabel}</span>
+                <span>
+                  <i aria-hidden="true" />
+                  {item.summaryPresetLabel}
+                </span>
               ) : null}
-              <span data-status={item.status.key}>{item.status.label}</span>
+              {item.selectedArtifacts.map((artifact) => (
+                <span key={artifact}>
+                  <i aria-hidden="true" />
+                  {artifacts[artifact]}
+                </span>
+              ))}
             </div>
           </div>
-        </article>
+          <span
+            className="recent-analysis-row__status"
+            data-status={item.status.key}
+          >
+            {item.status.label}
+          </span>
+        </Link>
       ))}
     </div>
   );

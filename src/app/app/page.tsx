@@ -28,6 +28,17 @@ import {
   createSupabaseHistoryRepository,
   type SupabaseHistoryClient,
 } from '@/lib/history/supabase-repository';
+import type { BillingRepository, UsageQuery } from '@/lib/billing/repository';
+import {
+  createSupabaseBillingRepository,
+  type SupabaseBillingClient,
+} from '@/lib/billing/supabase-repository';
+import {
+  buildMonthlyUsageState,
+  monthlyUsageBounds,
+  type MonthlyUsageState,
+} from '@/lib/billing/monthly-usage';
+import type { UsageLedgerEntry } from '@/lib/billing/domain';
 
 function reportMissingTranslation(event: MissingTranslationEvent) {
   console.error(event);
@@ -50,6 +61,29 @@ export async function generateMetadata(): Promise<Metadata> {
 type AppPageProps = Readonly<{
   searchParams: Promise<{ analysis?: string; continuation?: string }>;
 }>;
+
+async function listUsagePeriod(
+  repository: Pick<BillingRepository, 'listOwnedUsage'>,
+  userId: string,
+  periodStart: string,
+  periodEnd: string,
+): Promise<readonly UsageLedgerEntry[]> {
+  const items: UsageLedgerEntry[] = [];
+  let cursor: UsageQuery['cursor'] = null;
+  do {
+    const page = await repository.listOwnedUsage(userId, {
+      cursor,
+      limit: 100,
+      search: '',
+      eventType: 'settlement',
+      periodStart,
+      periodEnd,
+    });
+    items.push(...page.items);
+    cursor = page.nextCursor;
+  } while (cursor !== null);
+  return items;
+}
 
 export default async function AppPage({ searchParams }: AppPageProps) {
   const locale = await getRequestLocale();
@@ -81,6 +115,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
   let recentAnalyses:
     | Readonly<{ kind: 'ready'; items: readonly HistoryItem[] }>
     | Readonly<{ kind: 'unavailable' }> = { kind: 'ready', items: [] };
+  let monthlyUsage: MonthlyUsageState = { kind: 'unavailable' };
 
   if (user) {
     const intakeRepository = createSupabaseIntakeRepository(
@@ -98,7 +133,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
     });
     initialAnalysis = recovery.initialAnalysis ?? undefined;
     resolvedContinuation = recovery.continuation;
-    try {
+    const loadRecentAnalyses = async () => {
       const historyRepository = createSupabaseHistoryRepository(
         supabase as unknown as SupabaseHistoryClient,
         { locale, copy: historyCopy },
@@ -108,10 +143,50 @@ export default async function AppPage({ searchParams }: AppPageProps) {
         parseHistoryQuery({}),
         3,
       );
-      recentAnalyses = { kind: 'ready', items: page.items };
-    } catch {
-      recentAnalyses = { kind: 'unavailable' };
-    }
+      return { kind: 'ready' as const, items: page.items };
+    };
+    const loadMonthlyUsage = async (): Promise<MonthlyUsageState> => {
+      const repository = createSupabaseBillingRepository(
+        supabase as unknown as SupabaseBillingClient,
+      );
+      const now = new Date().toISOString();
+      const bounds = monthlyUsageBounds(now);
+      const [snapshot, currentEntries, previousEntries] = await Promise.all([
+        repository.getOwnedSnapshot(user.id),
+        listUsagePeriod(
+          repository,
+          user.id,
+          bounds.currentStart,
+          bounds.currentEnd,
+        ),
+        listUsagePeriod(
+          repository,
+          user.id,
+          bounds.previousStart,
+          bounds.previousEnd,
+        ),
+      ]);
+      const canUpgrade = snapshot.availablePlans.some(
+        ({ plan }) =>
+          plan.purchasable &&
+          plan.analysisLimit > snapshot.currentPlan.analysisLimit,
+      );
+      return buildMonthlyUsageState({
+        locale,
+        copy: copy.newAnalysis.monthly,
+        now,
+        used: snapshot.usage.used + snapshot.usage.reserved,
+        limit: snapshot.usage.limit,
+        canUpgrade,
+        currentEntries,
+        previousEntries,
+      });
+    };
+
+    [recentAnalyses, monthlyUsage] = await Promise.all([
+      loadRecentAnalyses().catch(() => ({ kind: 'unavailable' as const })),
+      loadMonthlyUsage().catch(() => ({ kind: 'unavailable' as const })),
+    ]);
   }
 
   return (
@@ -125,6 +200,7 @@ export default async function AppPage({ searchParams }: AppPageProps) {
       initialAnalysis={initialAnalysis ?? undefined}
       continuation={resolvedContinuation ?? undefined}
       recentAnalyses={recentAnalyses}
+      monthlyUsage={monthlyUsage}
     />
   );
 }

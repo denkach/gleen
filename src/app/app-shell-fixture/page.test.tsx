@@ -198,7 +198,7 @@ it('renders the real app shell and New analysis home when preview is enabled', a
   expect(screen.getByText('Test User')).toBeInTheDocument();
   expect(screen.getByText('test@example.com')).toBeInTheDocument();
   expect(
-    screen.getByRole('link', { name: 'How to Learn Anything Faster' }),
+    screen.getByRole('link', { name: /How to Learn Anything Faster/u }),
   ).toHaveAttribute('href', '/app-shell-fixture/app/video/result-den-25');
   for (const link of screen.getAllByRole('link', { name: 'New analysis' })) {
     expect(link).toHaveAttribute('aria-current', 'page');

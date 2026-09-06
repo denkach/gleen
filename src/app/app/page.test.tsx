@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 const getUser = vi.fn();
 const read = vi.fn();
@@ -7,6 +7,8 @@ const findOwned = vi.fn();
 const findOwnedSnapshot = vi.fn();
 const findMostRecentOwnedActive = vi.fn();
 const listOwned = vi.fn();
+const getOwnedSnapshot = vi.fn();
+const listOwnedUsage = vi.fn();
 const { getRequestLocale } = vi.hoisted(() => ({
   getRequestLocale: vi.fn(async () => 'uk'),
 }));
@@ -36,6 +38,12 @@ vi.mock('@/lib/analysis-pipeline/supabase-repository', () => ({
 vi.mock('@/lib/history/supabase-repository', () => ({
   createSupabaseHistoryRepository: () => ({ listOwned }),
 }));
+vi.mock('@/lib/billing/supabase-repository', () => ({
+  createSupabaseBillingRepository: () => ({
+    getOwnedSnapshot,
+    listOwnedUsage,
+  }),
+}));
 
 vi.mock('@/components/app-shell/new-analysis-home', () => ({
   NewAnalysisHome: (props: {
@@ -44,6 +52,7 @@ vi.mock('@/components/app-shell/new-analysis-home', () => ({
     initialAnalysis?: { intake: { id: string } };
     continuation?: { rawUrl: string };
     recentAnalyses: { kind: string; items?: readonly { id: string }[] };
+    monthlyUsage: { kind: string; used?: number; limit?: number };
   }) => (
     <div>
       <span data-testid="analysis">{props.initialAnalysis?.intake.id}</span>
@@ -56,6 +65,10 @@ vi.mock('@/components/app-shell/new-analysis-home', () => ({
         {props.recentAnalyses.kind}:
         {props.recentAnalyses.items?.map((item) => item.id).join(',')}
       </span>
+      <span data-testid="monthly-state">
+        {props.monthlyUsage?.kind}:{props.monthlyUsage?.used}/
+        {props.monthlyUsage?.limit}
+      </span>
     </div>
   ),
 }));
@@ -65,6 +78,8 @@ import AppPage from './page';
 describe('AppPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-06T12:00:00.000Z'));
     getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
     read.mockResolvedValue({
       data: {
@@ -84,6 +99,40 @@ describe('AppPage', () => {
       items: [{ id: 'analysis-1' }],
       nextCursor: null,
     });
+    getOwnedSnapshot.mockResolvedValue({
+      currentPlan: { slug: 'starter', analysisLimit: 50 },
+      usage: { used: 21, reserved: 1, remaining: 28, limit: 50 },
+      availablePlans: [
+        {
+          plan: { slug: 'prism-pro', analysisLimit: 100, purchasable: true },
+        },
+      ],
+    });
+    listOwnedUsage
+      .mockResolvedValueOnce({
+        items: [
+          {
+            eventType: 'settlement',
+            quantity: -1,
+            occurredAt: '2026-09-05T10:00:00.000Z',
+          },
+        ],
+        nextCursor: null,
+      })
+      .mockResolvedValueOnce({
+        items: [
+          {
+            eventType: 'settlement',
+            quantity: -1,
+            occurredAt: '2026-08-05T10:00:00.000Z',
+          },
+        ],
+        nextCursor: null,
+      });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   test('loads authenticated profile defaults for the intake form', async () => {
@@ -96,10 +145,24 @@ describe('AppPage', () => {
     expect(screen.getByTestId('recent-state')).toHaveTextContent(
       'ready:analysis-1',
     );
+    expect(screen.getByTestId('monthly-state')).toHaveTextContent(
+      'ready:22/50',
+    );
     expect(listOwned).toHaveBeenCalledWith(
       'user-1',
       expect.objectContaining({ sort: 'newest', cursor: null }),
       3,
+    );
+  });
+
+  test('keeps recent analyses available when monthly usage cannot load', async () => {
+    getOwnedSnapshot.mockRejectedValue(new Error('billing unavailable'));
+    render(await AppPage({ searchParams: Promise.resolve({}) }));
+    expect(screen.getByTestId('recent-state')).toHaveTextContent(
+      'ready:analysis-1',
+    );
+    expect(screen.getByTestId('monthly-state')).toHaveTextContent(
+      'unavailable:/',
     );
   });
 

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
 import { appMessages } from '@/lib/i18n/messages/app';
 
@@ -58,6 +58,50 @@ describe('NewAnalysisHome', () => {
     expect(screen.queryByText(/18|62%|11|Prism/)).not.toBeInTheDocument();
   });
 
+  test('renders truthful monthly usage with an accessible interactive chart', () => {
+    render(
+      <NewAnalysisHome
+        copy={appMessages.en}
+        monthlyUsage={{
+          kind: 'ready',
+          used: 22,
+          limit: 50,
+          canUpgrade: true,
+          trend: { direction: 'up', value: '+12%', label: 'vs last month' },
+          points: [
+            {
+              key: '2026-09-05',
+              dateLabel: 'Sep 5',
+              count: 1,
+              countLabel: '1 analysis',
+            },
+            {
+              key: '2026-09-06',
+              dateLabel: 'Sep 6',
+              count: 3,
+              countLabel: '3 analyses',
+            },
+          ],
+        }}
+      />,
+    );
+
+    const monthly = screen.getByRole('complementary', {
+      name: 'This month',
+    });
+    expect(within(monthly).getByText('22')).toBeVisible();
+    expect(within(monthly).getByText('/ 50')).toBeVisible();
+    expect(
+      within(monthly).getByRole('button', { name: 'Sep 6: 3 analyses' }),
+    ).toBeVisible();
+    expect(
+      within(monthly).getByRole('link', { name: /Upgrade plan/u }),
+    ).toHaveAttribute('href', '/app/subscription');
+    expect(
+      within(monthly).queryByText(appMessages.en.newAnalysis.monthly.empty),
+    ).not.toBeInTheDocument();
+  });
+
   test('preserves the approved panel geometry and responsive stacking', () => {
     const css = fs.readFileSync(
       path.join(process.cwd(), 'src/styles/app-shell-reference.css'),
@@ -68,13 +112,16 @@ describe('NewAnalysisHome', () => {
       /\.analysis-hero\s*{(?=[^}]*padding:\s*48px 50px)(?=[^}]*min-height:\s*310px)(?=[^}]*border-radius:\s*24px)/,
     );
     expect(css).toMatch(
-      /\.dashboard-grid\s*{[^}]*grid-template-columns:\s*1\.45fr 0\.55fr[^}]*gap:\s*18px[^}]*margin-top:\s*18px/,
+      /\.dashboard-grid\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) 330px[^}]*gap:\s*18px[^}]*margin-top:\s*18px/,
     );
     expect(css).toMatch(
-      /\.panel-head\s*{(?=[^}]*min-height:\s*57px)(?=[^}]*padding:\s*0 20px)/,
+      /\.new-analysis-panel__head\s*{(?=[^}]*height:\s*64px)(?=[^}]*padding:\s*0 20px)/,
     );
     expect(css).toMatch(
-      /@media\s*\(max-width:\s*720px\)[\s\S]*?\.analysis-hero\s*{(?=[^}]*padding:\s*28px 18px)(?=[^}]*min-height:\s*340px)[^}]*}[\s\S]*?\.dashboard-grid\s*{[^}]*grid-template-columns:\s*1fr/,
+      /\.recent-analysis-row\s*{(?=[^}]*grid-template-columns:\s*116px minmax\(0,\s*1fr\) auto)(?=[^}]*padding:\s*14px 18px)/,
+    );
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*720px\)[\s\S]*?\.analysis-hero\s*{(?=[^}]*padding:\s*28px 18px)(?=[^}]*min-height:\s*340px)[^}]*}[\s\S]*?\.dashboard-grid\s*{[^}]*grid-template-columns:\s*1fr[\s\S]*?\.recent-analysis-row\s*{(?=[^}]*grid-template-columns:\s*88px minmax\(0,\s*1fr\))(?=[^}]*padding:\s*12px)/,
     );
     expect(css).toMatch(/\.app-beam-form\s*{[^}]*display:\s*flex/);
     expect(css).not.toMatch(/\.app-beam-form\s*{[^}]*flex-wrap:/);

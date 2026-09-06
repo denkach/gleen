@@ -102,6 +102,19 @@ export const appMessages = defineMessages({
       monthly: {
         title: 'This month',
         managePlan: 'Manage plan',
+        used: 'analyses used',
+        chartLabel: 'Daily analysis usage chart',
+        analysisCount: {
+          one: '{count} analysis',
+          few: '{count} analyses',
+          many: '{count} analyses',
+          other: '{count} analyses',
+        },
+        vsLastMonth: 'vs last month',
+        noComparison: 'No previous-month usage',
+        upgradePlan: 'Upgrade plan',
+        upgradeNote: 'Get more analyses and higher monthly limits.',
+        manageNote: 'Review your plan, usage, and billing details.',
         empty:
           'Usage and study metrics become available after your first analysis.',
       },
@@ -351,6 +364,19 @@ export const appMessages = defineMessages({
       monthly: {
         title: 'Цього місяця',
         managePlan: 'Керувати тарифом',
+        used: 'аналізів використано',
+        chartLabel: 'Графік щоденного використання аналізів',
+        analysisCount: {
+          one: '{count} аналіз',
+          few: '{count} аналізи',
+          many: '{count} аналізів',
+          other: '{count} аналізу',
+        },
+        vsLastMonth: 'порівняно з минулим місяцем',
+        noComparison: 'Немає даних за минулий місяць',
+        upgradePlan: 'Підвищити тариф',
+        upgradeNote: 'Отримайте більше аналізів і вищі місячні ліміти.',
+        manageNote: 'Перегляньте тариф, використання та оплату.',
         empty:
           'Дані про використання й навчання з’являться після першого аналізу.',
       },
@@ -599,6 +625,19 @@ export const appMessages = defineMessages({
       monthly: {
         title: 'В этом месяце',
         managePlan: 'Управлять тарифом',
+        used: 'анализов использовано',
+        chartLabel: 'График ежедневного использования анализов',
+        analysisCount: {
+          one: '{count} анализ',
+          few: '{count} анализа',
+          many: '{count} анализов',
+          other: '{count} анализа',
+        },
+        vsLastMonth: 'по сравнению с прошлым месяцем',
+        noComparison: 'Нет данных за прошлый месяц',
+        upgradePlan: 'Улучшить тариф',
+        upgradeNote: 'Получите больше анализов и увеличенный месячный лимит.',
+        manageNote: 'Просмотрите тариф, использование и оплату.',
         empty:
           'Данные об использовании и обучении появятся после первого анализа.',
       },
@@ -852,6 +891,19 @@ export const appMessages = defineMessages({
       monthly: {
         title: 'Este mes',
         managePlan: 'Gestionar plan',
+        used: 'análisis utilizados',
+        chartLabel: 'Gráfico de uso diario de análisis',
+        analysisCount: {
+          one: '{count} análisis',
+          few: '{count} análisis',
+          many: '{count} análisis',
+          other: '{count} análisis',
+        },
+        vsLastMonth: 'frente al mes pasado',
+        noComparison: 'Sin datos del mes pasado',
+        upgradePlan: 'Mejorar plan',
+        upgradeNote: 'Obtén más análisis y límites mensuales superiores.',
+        manageNote: 'Revisa tu plan, uso y detalles de facturación.',
         empty:
           'Las métricas de uso y estudio estarán disponibles después de tu primer análisis.',
       },
@@ -1111,6 +1163,19 @@ export const appMessages = defineMessages({
       monthly: {
         title: 'Dieser Monat',
         managePlan: 'Tarif verwalten',
+        used: 'Analysen verwendet',
+        chartLabel: 'Diagramm der täglichen Analysenutzung',
+        analysisCount: {
+          one: '{count} Analyse',
+          few: '{count} Analysen',
+          many: '{count} Analysen',
+          other: '{count} Analysen',
+        },
+        vsLastMonth: 'gegenüber dem Vormonat',
+        noComparison: 'Keine Daten aus dem Vormonat',
+        upgradePlan: 'Tarif upgraden',
+        upgradeNote: 'Erhalte mehr Analysen und höhere Monatslimits.',
+        manageNote: 'Prüfe Tarif, Nutzung und Rechnungsdetails.',
         empty:
           'Nutzungs- und Lernmetriken sind nach deiner ersten Analyse verfügbar.',
       },

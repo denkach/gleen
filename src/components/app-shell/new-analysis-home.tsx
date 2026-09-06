@@ -12,6 +12,8 @@ import type { AnalysisSnapshot } from '@/lib/analysis-pipeline/domain';
 import type { AnalysisIntake } from '@/lib/youtube-intake/repository';
 import type { AppMessages } from '@/lib/i18n/messages/app';
 import { RecentAnalyses, type RecentAnalysesState } from './recent-analyses';
+import { MonthlyUsageCard } from './monthly-usage-card';
+import type { MonthlyUsageState } from '@/lib/billing/monthly-usage';
 
 type ProfileDefaults = Pick<
   IntakeActionState['configuration'],
@@ -28,6 +30,7 @@ export function NewAnalysisHome({
   initialAnalysis,
   continuation,
   recentAnalyses = { kind: 'ready', items: [] },
+  monthlyUsage = { kind: 'unavailable' },
 }: Readonly<{
   copy: AppMessages;
   profileDefaults?: ProfileDefaults;
@@ -41,6 +44,7 @@ export function NewAnalysisHome({
   }>;
   continuation?: Readonly<{ rawUrl: string }>;
   recentAnalyses?: RecentAnalysesState;
+  monthlyUsage?: MonthlyUsageState;
 }>) {
   const initialState = createInitialIntakeActionState(profileDefaults);
   return (
@@ -77,8 +81,11 @@ export function NewAnalysisHome({
       </section>
 
       <div className="dashboard-grid">
-        <section className="panel" aria-labelledby="recent-analyses-title">
-          <header className="panel-head">
+        <section
+          className="panel new-analysis-panel recent-analyses-panel"
+          aria-labelledby="recent-analyses-title"
+        >
+          <header className="new-analysis-panel__head">
             <h2 id="recent-analyses-title">{copy.newAnalysis.recent.title}</h2>
             <Link href="/app/history">
               {copy.newAnalysis.recent.viewHistory}
@@ -87,20 +94,13 @@ export function NewAnalysisHome({
           <RecentAnalyses
             state={recentAnalyses}
             copy={copy.newAnalysis.recent}
+            artifacts={copy.newAnalysis.artifacts}
           />
         </section>
-
-        <aside className="panel" aria-labelledby="monthly-metrics-title">
-          <header className="panel-head">
-            <h2 id="monthly-metrics-title">{copy.newAnalysis.monthly.title}</h2>
-            <Link href="/app/subscription">
-              {copy.newAnalysis.monthly.managePlan}
-            </Link>
-          </header>
-          <div className="metric-stack">
-            <p>{copy.newAnalysis.monthly.empty}</p>
-          </div>
-        </aside>
+        <MonthlyUsageCard
+          copy={copy.newAnalysis.monthly}
+          state={monthlyUsage}
+        />
       </div>
     </>
   );

@@ -20,6 +20,7 @@ import { getRequestLocale } from '@/lib/i18n/request-locale';
 import { isUiPreviewEnabled } from '@/lib/ui-preview';
 import { defaultOnboardingState } from '@/lib/onboarding/preferences';
 import type { HistoryItem } from '@/lib/history/repository';
+import { buildMonthlyUsageState } from '@/lib/billing/monthly-usage';
 import { summaryModeSchema } from '@/lib/summary-mode';
 import {
   reanalyzeFixture,
@@ -59,35 +60,62 @@ const fixtureIdentity = {
 function recentFixtureItems(
   locale: keyof typeof historyMessages,
 ): readonly HistoryItem[] {
-  return [
-    {
-      id: '00000000-0000-4000-8000-000000000001',
-      sourceId: 'recent-fixture-1',
-      href: '/app-shell-fixture/app/video/result-den-25',
-      title: 'How to Learn Anything Faster',
-      channel: 'Signal Lab',
-      thumbnailUrl: null,
-      source: 'https://www.youtube.com/watch?v=recentfixture1',
-      language: 'English',
-      outputLocale: 'en',
-      summaryPresetLabel: 'Deep',
-      durationSeconds: 2_058,
-      durationLabel: '34:18',
-      analyzedAt: '2026-07-24T11:42:00.000Z',
-      analyzedAtLabel: 'Today · 11:42',
-      lastOpenedAt: null,
-      lastOpenedAtLabel: null,
-      status: {
-        key: 'ready',
-        label: historyMessages[locale].presentation.statuses.ready,
-      },
-      favorite: false,
-      selectedArtifacts: ['summary', 'flashcards', 'timestamps'],
-      readyArtifacts: ['summary', 'flashcards', 'timestamps'],
-      canExport: true,
-      titleRevision: '2026-07-24T11:42:00.000Z',
-    },
-  ];
+  const items = [
+    [
+      '00000000-0000-4000-8000-000000000001',
+      'How to Learn Anything Faster',
+      'Signal Lab',
+      '34:18',
+      'ready',
+    ],
+    [
+      '00000000-0000-4000-8000-000000000002',
+      'The Hidden Architecture of Great Decisions',
+      'Frame School',
+      '47:09',
+      'partial',
+    ],
+    [
+      '00000000-0000-4000-8000-000000000003',
+      'Build a Second Brain That Actually Works',
+      'Field Notes',
+      '28:41',
+      'processing',
+    ],
+  ] as const;
+  return items.map(
+    ([id, title, channel, durationLabel, status], index) =>
+      ({
+        id,
+        sourceId: `recent-fixture-${index + 1}`,
+        href: '/app-shell-fixture/app/video/result-den-25',
+        title,
+        channel,
+        thumbnailUrl: null,
+        source: 'https://www.youtube.com/watch?v=recentfixture1',
+        language: 'English',
+        outputLocale: 'en',
+        summaryPresetLabel: 'Deep',
+        durationSeconds: 2_058 + index * 429,
+        durationLabel,
+        analyzedAt: '2026-07-24T11:42:00.000Z',
+        analyzedAtLabel: 'Today · 11:42',
+        lastOpenedAt: null,
+        lastOpenedAtLabel: null,
+        status: {
+          key: status,
+          label: historyMessages[locale].presentation.statuses[status],
+        },
+        favorite: false,
+        selectedArtifacts: ['summary', 'flashcards', 'timestamps'],
+        readyArtifacts:
+          status === 'ready'
+            ? ['summary', 'flashcards', 'timestamps']
+            : ['summary'],
+        canExport: true,
+        titleRevision: '2026-07-24T11:42:00.000Z',
+      }) satisfies HistoryItem,
+  );
 }
 
 type Props = Readonly<{
@@ -200,6 +228,33 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
             flashcardPreset: defaultOnboardingState.flashcardPreset,
           }}
           recentAnalyses={{ kind: 'ready', items: recentFixtureItems(locale) }}
+          monthlyUsage={buildMonthlyUsageState({
+            locale,
+            copy: appMessages[locale].newAnalysis.monthly,
+            now: '2026-07-29T12:00:00.000Z',
+            used: 22,
+            limit: 50,
+            canUpgrade: true,
+            currentEntries: [
+              {
+                eventType: 'settlement',
+                quantity: -2,
+                occurredAt: '2026-07-28T10:00:00.000Z',
+              },
+              {
+                eventType: 'settlement',
+                quantity: -3,
+                occurredAt: '2026-07-29T10:00:00.000Z',
+              },
+            ],
+            previousEntries: [
+              {
+                eventType: 'settlement',
+                quantity: -4,
+                occurredAt: '2026-06-20T10:00:00.000Z',
+              },
+            ],
+          })}
         />
       )}
     </AppShell>

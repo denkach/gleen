@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { HistoryItem } from '@/lib/history/repository';
 import { appMessages } from '@/lib/i18n/messages/app';
@@ -33,21 +33,29 @@ describe('RecentAnalyses', () => {
   it('renders persisted item details and destination', () => {
     render(
       <RecentAnalyses
+        artifacts={appMessages.en.newAnalysis.artifacts}
         copy={appMessages.en.newAnalysis.recent}
         state={{ kind: 'ready', items: [item] }}
       />,
     );
     expect(
-      screen.getByRole('link', { name: 'Systems Thinking' }),
+      screen.getByRole('link', { name: /Systems Thinking/u }),
     ).toHaveAttribute('href', '/app/video/analysis-1');
     expect(screen.getByText(/Frame School/)).toBeVisible();
     expect(screen.getByText('Deep')).toBeVisible();
     expect(screen.getByText('Partially ready')).toBeVisible();
+    const destination = screen.getByRole('link', {
+      name: /Systems Thinking/u,
+    });
+    expect(within(destination).getByText('47:09')).toBeVisible();
+    expect(within(destination).getByText('Summary')).toBeVisible();
+    expect(within(destination).getByText('Flashcards')).toBeVisible();
   });
 
   it('keeps distinct empty and unavailable recovery states', () => {
     const { rerender } = render(
       <RecentAnalyses
+        artifacts={appMessages.en.newAnalysis.artifacts}
         copy={appMessages.en.newAnalysis.recent}
         state={{ kind: 'ready', items: [] }}
       />,
@@ -55,6 +63,7 @@ describe('RecentAnalyses', () => {
     expect(screen.getByText('No analyses yet')).toBeVisible();
     rerender(
       <RecentAnalyses
+        artifacts={appMessages.en.newAnalysis.artifacts}
         copy={appMessages.en.newAnalysis.recent}
         state={{ kind: 'unavailable' }}
       />,
