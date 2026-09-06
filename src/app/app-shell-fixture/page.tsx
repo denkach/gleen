@@ -91,7 +91,10 @@ function recentFixtureItems(
         href: '/app-shell-fixture/app/video/result-den-25',
         title,
         channel,
-        thumbnailUrl: null,
+        thumbnailUrl:
+          index === 0
+            ? 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg'
+            : null,
         source: 'https://www.youtube.com/watch?v=recentfixture1',
         language: 'English',
         outputLocale: 'en',
@@ -237,19 +240,19 @@ export default async function AppShellFixturePage({ searchParams }: Props) {
             canUpgrade: true,
             currentEntries: [
               {
-                eventType: 'settlement',
+                eventType: 'reservation',
                 quantity: -2,
                 occurredAt: '2026-07-28T10:00:00.000Z',
               },
               {
-                eventType: 'settlement',
+                eventType: 'reservation',
                 quantity: -3,
                 occurredAt: '2026-07-29T10:00:00.000Z',
               },
             ],
             previousEntries: [
               {
-                eventType: 'settlement',
+                eventType: 'reservation',
                 quantity: -4,
                 occurredAt: '2026-06-20T10:00:00.000Z',
               },

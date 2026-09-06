@@ -53,7 +53,7 @@ export function monthlyUsageBounds(now: string) {
 }
 
 function consumed(entry: MonthlyUsageEntry): number {
-  return entry.eventType === 'settlement' ? Math.max(0, -entry.quantity) : 0;
+  return entry.eventType === 'reservation' ? Math.max(0, -entry.quantity) : 0;
 }
 
 function dayKey(date: Date): string {

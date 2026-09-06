@@ -75,7 +75,7 @@ async function listUsagePeriod(
       cursor,
       limit: 100,
       search: '',
-      eventType: 'settlement',
+      eventType: 'reservation',
       periodStart,
       periodEnd,
     });

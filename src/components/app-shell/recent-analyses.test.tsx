@@ -44,6 +44,10 @@ describe('RecentAnalyses', () => {
     expect(screen.getByText(/Frame School/)).toBeVisible();
     expect(screen.getByText('Deep')).toBeVisible();
     expect(screen.getByText('Partially ready')).toBeVisible();
+    expect(screen.getByRole('presentation')).toHaveAttribute(
+      'src',
+      item.thumbnailUrl,
+    );
     const destination = screen.getByRole('link', {
       name: /Systems Thinking/u,
     });

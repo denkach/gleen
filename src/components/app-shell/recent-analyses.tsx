@@ -51,7 +51,13 @@ export function RecentAnalyses({
             }
           >
             {item.thumbnailUrl ? (
-              <Image alt="" fill sizes="112px" src={item.thumbnailUrl} />
+              <Image
+                alt=""
+                fill
+                sizes="112px"
+                src={item.thumbnailUrl}
+                unoptimized
+              />
             ) : (
               <span aria-hidden="true">◇</span>
             )}

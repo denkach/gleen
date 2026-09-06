@@ -15,10 +15,23 @@ test('durable recent analyses and monthly usage match the approved responsive la
     const recent = page.getByRole('region', { name: 'Recent analyses' });
     const monthly = page.getByRole('complementary', { name: 'This month' });
     await expect(recent.locator('.recent-analysis-row')).toHaveCount(3);
+    await expect(recent.locator('img').first()).toHaveAttribute(
+      'src',
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+    );
     await expect(monthly.locator('.monthly-usage-card__count')).toContainText(
       '22 / 50',
     );
     await expect(monthly.locator('.monthly-usage-chart__bar')).toHaveCount(14);
+    const emptyBarHeight = await monthly
+      .locator('.monthly-usage-chart__bar')
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().height);
+    const latestBarHeight = await monthly
+      .locator('.monthly-usage-chart__bar')
+      .last()
+      .evaluate((element) => element.getBoundingClientRect().height);
+    expect(latestBarHeight).toBeGreaterThan(emptyBarHeight);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

@@ -112,7 +112,7 @@ describe('AppPage', () => {
       .mockResolvedValueOnce({
         items: [
           {
-            eventType: 'settlement',
+            eventType: 'reservation',
             quantity: -1,
             occurredAt: '2026-09-05T10:00:00.000Z',
           },
@@ -122,7 +122,7 @@ describe('AppPage', () => {
       .mockResolvedValueOnce({
         items: [
           {
-            eventType: 'settlement',
+            eventType: 'reservation',
             quantity: -1,
             occurredAt: '2026-08-05T10:00:00.000Z',
           },
@@ -152,6 +152,10 @@ describe('AppPage', () => {
       'user-1',
       expect.objectContaining({ sort: 'newest', cursor: null }),
       3,
+    );
+    expect(listOwnedUsage).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ eventType: 'reservation' }),
     );
   });
 

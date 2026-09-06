@@ -22,21 +22,36 @@ describe('monthly usage presentation', () => {
       canUpgrade: true,
       currentEntries: [
         {
-          eventType: 'settlement',
+          eventType: 'reservation',
           quantity: -1,
           occurredAt: '2026-09-05T10:00:00.000Z',
         },
         {
-          eventType: 'settlement',
-          quantity: -2,
+          eventType: 'reservation',
+          quantity: -1,
+          occurredAt: '2026-09-06T09:00:00.000Z',
+        },
+        {
+          eventType: 'reservation',
+          quantity: -1,
           occurredAt: '2026-09-06T10:00:00.000Z',
+        },
+        {
+          eventType: 'settlement',
+          quantity: 0,
+          occurredAt: '2026-09-06T11:00:00.000Z',
         },
       ],
       previousEntries: [
         {
-          eventType: 'settlement',
-          quantity: -2,
+          eventType: 'reservation',
+          quantity: -1,
           occurredAt: '2026-08-05T10:00:00.000Z',
+        },
+        {
+          eventType: 'reservation',
+          quantity: -1,
+          occurredAt: '2026-08-06T10:00:00.000Z',
         },
       ],
     });
