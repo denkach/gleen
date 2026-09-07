@@ -284,6 +284,41 @@ test('keeps keyboard focus order and returns dialog focus', async ({
   await expect(advanced).toBeFocused();
 });
 
+test('durable output languages use distinct responsive cards', async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 1440, height: 900, columns: 5 },
+    { width: 980, height: 768, columns: 3 },
+    { width: 390, height: 844, columns: 2 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/app-shell-fixture?intake=ready');
+    await page.getByRole('button', { name: 'Advanced options' }).click();
+
+    const options = page.getByRole('dialog', { name: 'Advanced options' });
+    const languageList = options.locator('.language-list');
+    const languages = options.getByRole('radio');
+
+    await expect(languages).toHaveCount(5);
+    expect(
+      await languageList.evaluate(
+        (element) =>
+          getComputedStyle(element).gridTemplateColumns.split(' ').length,
+      ),
+    ).toBe(viewport.columns);
+
+    for (const language of await languages.all()) {
+      await expect(language).toHaveCSS('min-height', '70px');
+      const box = await language.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.width).toBeGreaterThan(0);
+    }
+    await noOverflow(page);
+    await page.keyboard.press('Escape');
+  }
+});
+
 for (const viewport of [
   { width: 1440, height: 900 },
   { width: 1024, height: 768 },
@@ -367,6 +402,10 @@ test('removes dialog and readiness motion while preserving content', async ({
       return [style.animationName, style.transitionDuration];
     }),
   ).toEqual(['none', '0s']);
+  await expect(options.getByRole('radio').first()).toHaveCSS(
+    'transition-duration',
+    '0s',
+  );
   await page.getByRole('button', { name: 'Done' }).click();
   await submit(page);
   await page.getByRole('link', { name: 'Open saved result' }).click();

@@ -1144,6 +1144,47 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+.analysis-options .language-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.analysis-options .language-option {
+  min-width: 0;
+  min-height: 70px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-micro) var(--ease-prism),
+    background var(--motion-micro) var(--ease-prism),
+    color var(--motion-micro) var(--ease-prism);
+}
+.analysis-options .language-option:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+.analysis-options .language-option.active {
+  border-color: var(--border-strong);
+  background: var(--surface-artifact-selected);
+  color: var(--text-primary);
+}
+.analysis-options .language-option .code {
+  color: var(--text-muted);
+  font: 9px var(--font-mono);
+}
+.analysis-options .language-option:focus-visible {
+  outline: 2px solid var(--artifact-timestamps);
+  outline-offset: 2px;
+}
 .artifact-options {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2050,6 +2091,9 @@
   .settings-form-grid {
     grid-template-columns: 1fr;
   }
+  .analysis-options .language-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -2227,6 +2271,9 @@
   .analysis-hero::after {
     top: 28%;
     opacity: 0.18;
+  }
+  .analysis-options .language-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .app-beam-form {
     display: grid;
@@ -2949,7 +2996,8 @@
   .monthly-usage-chart__bar,
   .monthly-usage-chart__tooltip,
   .monthly-usage-card__upgrade,
-  .monthly-usage-card__upgrade::after {
+  .monthly-usage-card__upgrade::after,
+  .analysis-options .language-option {
     transition: none !important;
     animation: none !important;
     transform: none !important;

@@ -121,7 +121,13 @@ describe('NewAnalysisHome', () => {
       /\.recent-analysis-row\s*{(?=[^}]*grid-template-columns:\s*116px minmax\(0,\s*1fr\) auto)(?=[^}]*padding:\s*14px 18px)/,
     );
     expect(css).toMatch(
-      /@media\s*\(max-width:\s*720px\)[\s\S]*?\.analysis-hero\s*{(?=[^}]*padding:\s*28px 18px)(?=[^}]*min-height:\s*340px)[^}]*}[\s\S]*?\.dashboard-grid\s*{[^}]*grid-template-columns:\s*1fr[\s\S]*?\.recent-analysis-row\s*{(?=[^}]*grid-template-columns:\s*88px minmax\(0,\s*1fr\))(?=[^}]*padding:\s*12px)/,
+      /\.analysis-options \.language-list\s*{(?=[^}]*display:\s*grid)(?=[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\))(?=[^}]*gap:\s*8px)/,
+    );
+    expect(css).toMatch(
+      /\.analysis-options \.language-option\s*{(?=[^}]*min-height:\s*70px)(?=[^}]*padding:\s*12px)(?=[^}]*flex-direction:\s*column)/,
+    );
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*720px\)[\s\S]*?\.analysis-hero\s*{(?=[^}]*padding:\s*28px 18px)(?=[^}]*min-height:\s*340px)[^}]*}[\s\S]*?\.analysis-options \.language-list\s*{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)[\s\S]*?\.dashboard-grid\s*{[^}]*grid-template-columns:\s*1fr[\s\S]*?\.recent-analysis-row\s*{(?=[^}]*grid-template-columns:\s*88px minmax\(0,\s*1fr\))(?=[^}]*padding:\s*12px)/,
     );
     expect(css).toMatch(/\.app-beam-form\s*{[^}]*display:\s*flex/);
     expect(css).not.toMatch(/\.app-beam-form\s*{[^}]*flex-wrap:/);
