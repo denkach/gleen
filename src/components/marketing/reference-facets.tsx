@@ -39,12 +39,18 @@ export function ReferenceFacets({ copy }: ReferenceFacetsProps) {
               <div className="facet-kicker">{copy.summary.kicker}</div>
               <h3 className="title-lg">{copy.summary.title}</h3>
               <p>{copy.summary.body}</p>
-              <a className="btn btn-ghost" href="#product">
+              <a className="btn btn-ghost" href="#example-summary">
                 <span>{copy.summary.cta}</span>
                 <FacetArrow />
               </a>
             </div>
-            <div className="facet-demo">
+            <div
+              className="facet-demo"
+              id="example-summary"
+              tabIndex={-1}
+              role="region"
+              aria-label={copy.summary.title}
+            >
               <div className="demo-window">
                 <div className="demo-topbar">
                   <WindowDots />
@@ -81,12 +87,18 @@ export function ReferenceFacets({ copy }: ReferenceFacetsProps) {
               <div className="facet-kicker">{copy.flashcards.kicker}</div>
               <h3 className="title-lg">{copy.flashcards.title}</h3>
               <p>{copy.flashcards.body}</p>
-              <a className="btn btn-ghost" href="#product">
+              <a className="btn btn-ghost" href="#example-flashcards">
                 <span>{copy.flashcards.cta}</span>
                 <FacetArrow />
               </a>
             </div>
-            <div className="facet-demo">
+            <div
+              className="facet-demo"
+              id="example-flashcards"
+              tabIndex={-1}
+              role="region"
+              aria-label={copy.flashcards.title}
+            >
               <div className="flashcard-stack">
                 <article className="flashcard">
                   <span className="card-meta">{copy.flashcards.demoMeta}</span>
@@ -106,12 +118,18 @@ export function ReferenceFacets({ copy }: ReferenceFacetsProps) {
               <div className="facet-kicker">{copy.timestamps.kicker}</div>
               <h3 className="title-lg">{copy.timestamps.title}</h3>
               <p>{copy.timestamps.body}</p>
-              <a className="btn btn-ghost" href="#product">
+              <a className="btn btn-ghost" href="#example-timestamps">
                 <span>{copy.timestamps.cta}</span>
                 <FacetArrow />
               </a>
             </div>
-            <div className="facet-demo">
+            <div
+              className="facet-demo"
+              id="example-timestamps"
+              tabIndex={-1}
+              role="region"
+              aria-label={copy.timestamps.title}
+            >
               <div className="demo-window">
                 <div className="demo-topbar">
                   <WindowDots />
@@ -152,12 +170,18 @@ export function ReferenceFacets({ copy }: ReferenceFacetsProps) {
               <div className="facet-kicker">{copy.export.kicker}</div>
               <h3 className="title-lg">{copy.export.title}</h3>
               <p>{copy.export.body}</p>
-              <a className="btn btn-ghost" href="#product">
+              <a className="btn btn-ghost" href="#example-export">
                 <span>{copy.export.cta}</span>
                 <FacetArrow />
               </a>
             </div>
-            <div className="facet-demo">
+            <div
+              className="facet-demo"
+              id="example-export"
+              tabIndex={-1}
+              role="region"
+              aria-label={copy.export.title}
+            >
               <div className="demo-window">
                 <div className="demo-topbar">
                   <WindowDots />

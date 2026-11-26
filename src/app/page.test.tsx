@@ -11,7 +11,11 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 vi.mock('@/lib/i18n/request-locale', () => ({
+  getRequestAccount: async () => ({ user: null }),
   getRequestLocale: () => Promise.resolve(requestLocale.value),
+}));
+vi.mock('@/data/pricing', () => ({
+  getPublicPlans: async () => [],
 }));
 vi.mock('@/components/i18n/locale-switcher', () => ({
   LocaleSwitcher: ({
@@ -78,7 +82,9 @@ describe('HomePage', () => {
         ),
       ).toBe(true);
       expect(
-        screen.getByRole('button', { name: new RegExp(nativeName) }),
+        within(screen.getByRole('banner')).getByRole('button', {
+          name: new RegExp(nativeName),
+        }),
       ).toBeVisible();
     },
   );

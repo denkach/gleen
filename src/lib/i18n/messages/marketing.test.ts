@@ -48,36 +48,8 @@ describe('marketingMessages', () => {
     expect(marketingMessages.de.hero.submit).toBe('Video umwandeln');
   });
 
-  it('keeps canonical plan names in localized pricing copy', () => {
-    expect(marketingMessages.ru.pricing.spectrum.name).toBe(
-      'Погрузитесь глубже',
-    );
-
-    for (const locale of supportedLocales) {
-      const pricing = marketingMessages[locale].pricing;
-
-      expect([
-        pricing.free.label,
-        pricing.prism.label,
-        pricing.spectrum.label,
-      ]).toEqual(['Free', 'Prism', 'Spectrum']);
-      expect([
-        pricing.free.cta,
-        pricing.prism.cta,
-        pricing.spectrum.cta,
-      ]).toEqual([
-        expect.stringContaining('Free'),
-        expect.stringContaining('Prism'),
-        expect.stringContaining('Spectrum'),
-      ]);
-    }
-  });
-
   it('uses native product register in the audited marketing journeys', () => {
     expect(marketingMessages.uk.workflow.signal.title).toBe('Опрацюйте відео');
-    expect(marketingMessages.uk.pricing.prism.description).toBe(
-      'Для студентів, дослідників і тих, хто навчається постійно.',
-    );
     expect(marketingMessages.uk.facets.export.body).toBe(
       'Оберіть призначення та збережіть структуру. Експортуйте в Notion, Obsidian, NotebookLM або чистий Markdown без зайвих кроків.',
     );
@@ -112,10 +84,6 @@ describe('marketingMessages', () => {
         },
       },
       pricing: {
-        prism: {
-          description:
-            'Для студентов, исследователей и тех, кто постоянно учится.',
-        },
         description:
           'Начните бесплатно, храните каждый результат в истории и обновляйте план, только когда вашему процессу нужно больше возможностей.',
       },

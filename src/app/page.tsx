@@ -1,3 +1,4 @@
+import { getPublicPlans } from '@/data/pricing';
 import type { Metadata } from 'next';
 
 import { ReferenceFacets } from '@/components/marketing/reference-facets';
@@ -18,7 +19,7 @@ import {
 import { marketingMessages } from '@/lib/i18n/messages/marketing';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
-import { getRequestLocale } from '@/lib/i18n/request-locale';
+import { getRequestAccount, getRequestLocale } from '@/lib/i18n/request-locale';
 
 const Arrow = () => (
   <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
@@ -59,7 +60,11 @@ export default async function HomePage() {
     'shared',
     reportMissingMarketingTranslation,
   );
-  const content = getMarketingContent(copy, locale);
+  const [plans, { user }] = await Promise.all([
+    getPublicPlans(),
+    getRequestAccount(),
+  ]);
+  const content = getMarketingContent(copy, Boolean(user));
 
   return (
     <div className="landing-reference">
@@ -253,9 +258,17 @@ export default async function HomePage() {
           </div>
         </section>
         <ReferenceFacets copy={copy.facets} />
-        <ReferencePricing content={content} copy={copy.pricing} />
+        <ReferencePricing
+          plans={plans}
+          signedIn={Boolean(user)}
+          locale={locale}
+          copy={copy.pricing}
+          startFree={copy.pricing.startFree}
+        />
       </main>
       <ReferenceFooter
+        locale={locale}
+        localeError={sharedCopy.localeSwitcher.errors.profileUpdateFailed}
         content={content}
         copy={copy.footer}
         homeLabel={copy.header.homeLabel}

@@ -1,37 +1,56 @@
+import { render, screen, within } from '@testing-library/react';
+import { createElement } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { pricingPlans } from './pricing';
+import { ReferencePricing } from '@/components/marketing/reference-pricing-footer';
+import { billingFixtureCatalog } from '@/lib/billing/fixtures';
+import { marketingMessages } from '@/lib/i18n/messages/marketing';
 
-describe('pricingPlans', () => {
-  it('keeps the three approved plans as visual configuration', () => {
-    expect(pricingPlans.map(({ label }) => label)).toEqual([
-      'Free',
-      'Prism',
-      'Spectrum',
-    ]);
-    expect(pricingPlans.every(({ cta, label }) => cta.includes(label))).toBe(
-      true,
+const copy = marketingMessages.en.pricing;
+describe('public billing catalog', () => {
+  it('renders catalog names and distinguishes monthly checkout from unavailable plans', () => {
+    render(
+      createElement(ReferencePricing, {
+        plans: billingFixtureCatalog,
+        copy,
+        locale: 'en',
+        signedIn: false,
+        startFree: copy.startFree,
+      }),
     );
-    expect(pricingPlans[0]!.ctaHref).toBe('/sign-up');
+    for (const { plan } of billingFixtureCatalog) {
+      const article = screen
+        .getByRole('heading', { name: plan.displayName })
+        .closest('article')!;
+      const card = within(article);
+      if (plan.slug === 'free')
+        expect(card.getByRole('link')).toHaveAttribute('href', '/sign-up');
+      else if (plan.purchasable) {
+        const href = new URL(
+          card.getByRole('link').getAttribute('href')!,
+          'https://gleen.example',
+        );
+        expect(href.pathname).toBe('/sign-in');
+        expect(href.searchParams.get('next')).toBe(
+          `/app/subscription/checkout?plan=${plan.slug}&interval=month`,
+        );
+      } else expect(card.queryByRole('link')).toBeNull();
+    }
   });
-
-  it('keeps prices as semantic minor amounts and ISO currencies', () => {
-    expect(
-      pricingPlans.map(({ amountMinor, currency }) => ({
-        amountMinor,
-        currency,
-      })),
-    ).toEqual([
-      { amountMinor: 0, currency: 'EUR' },
-      { amountMinor: 1200, currency: 'EUR' },
-      { amountMinor: 2900, currency: 'EUR' },
-    ]);
-    expect(pricingPlans.every((plan) => !('price' in plan))).toBe(true);
-  });
-
-  it('marks exactly one plan as recommended', () => {
-    expect(pricingPlans.filter(({ recommended }) => recommended)).toHaveLength(
-      1,
+  it('shows a recovery link without advertising stale prices during an outage', () => {
+    render(
+      createElement(ReferencePricing, {
+        plans: [],
+        copy,
+        locale: 'en',
+        signedIn: true,
+        startFree: copy.startFree,
+      }),
+    );
+    expect(screen.queryByRole('article')).toBeNull();
+    expect(screen.getByRole('link')).toHaveAttribute(
+      'href',
+      '/app/subscription',
     );
   });
 });

@@ -5,7 +5,13 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 vi.mock('@/lib/i18n/request-locale', () => ({
+  getRequestAccount: async () => ({ user: null }),
   getRequestLocale: () => Promise.resolve('en'),
+}));
+
+vi.mock('@/data/pricing', () => ({
+  getPublicPlans: async () =>
+    (await import('@/lib/billing/fixtures')).billingFixtureCatalog,
 }));
 
 import HomePage from './page';
@@ -77,13 +83,11 @@ describe('approved landing hero', () => {
 
   it('preserves the approved pricing and footer composition', async () => {
     render(await HomePage());
-    expect(document.querySelectorAll('#pricing .plan-card')).toHaveLength(3);
-    expect(
-      document.querySelectorAll('#pricing .plan-card.recommended'),
-    ).toHaveLength(1);
+    expect(document.querySelectorAll('#pricing .plan-card h3')).toHaveLength(4);
+    expect(screen.getByRole('heading', { name: 'Prism Pro' })).toBeVisible();
     expect(screen.getByRole('contentinfo')).toHaveTextContent(
       'AI-generated content should be checked against the original source.',
     );
-    expect(document.querySelectorAll('.footer-grid > div')).toHaveLength(4);
+    expect(document.querySelectorAll('.footer-grid > div')).toHaveLength(3);
   });
 });
