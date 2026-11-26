@@ -38,6 +38,7 @@ describe('authentication callback', () => {
     );
 
     expect(exchangeCodeForSession).toHaveBeenCalledWith('valid');
+    expect(response.headers.get('cache-control')).toContain('no-store');
     expect(response.headers.get('location')).toBe(
       'https://gleen.example/onboarding',
     );

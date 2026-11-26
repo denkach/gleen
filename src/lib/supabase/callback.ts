@@ -17,10 +17,13 @@ export function createCallbackSupabaseClient(
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet, headers) {
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
           });
+          for (const [name, value] of Object.entries(headers)) {
+            response.headers.set(name, value);
+          }
         },
       },
     },

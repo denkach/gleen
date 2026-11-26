@@ -11,7 +11,11 @@ export function safeInternalRedirect(
 
   try {
     const parsed = new URL(candidate, 'https://gleen.internal');
-    if (parsed.origin !== 'https://gleen.internal') return fallback;
+    if (
+      parsed.origin !== 'https://gleen.internal' ||
+      parsed.pathname.startsWith('//')
+    )
+      return fallback;
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
     return fallback;

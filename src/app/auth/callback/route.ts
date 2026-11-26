@@ -11,21 +11,16 @@ export async function GET(request: NextRequest) {
     ? '/reset-password'
     : safeInternalRedirect(url.searchParams.get('next'));
 
-  if (!code) {
-    return NextResponse.redirect(
-      new URL('/sign-in?error=callback', url.origin),
-    );
-  }
+  const destination = new URL(next, url.origin);
+  const failure = new URL('/sign-in?error=callback', url.origin);
+  if (next !== '/onboarding') failure.searchParams.set('next', next);
+  const response = NextResponse.redirect(code ? destination : failure);
+  response.headers.set('Cache-Control', 'private, no-store');
+  response.headers.set('Referrer-Policy', 'no-referrer');
+  if (!code) return response;
 
-  const response = NextResponse.redirect(new URL(next, url.origin));
   const supabase = createCallbackSupabaseClient(request, response);
   const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-  if (error) {
-    return NextResponse.redirect(
-      new URL('/sign-in?error=callback', url.origin),
-    );
-  }
-
+  if (error) response.headers.set('Location', failure.href);
   return response;
 }
