@@ -34,6 +34,20 @@ describe('LandingAnalysisForm', () => {
     );
   });
 
+  it('takes signed-in visitors directly to the workspace with their video', () => {
+    render(<LandingAnalysisForm copy={marketingMessages.en.hero} signedIn />);
+    const input = screen.getByLabelText('YouTube URL');
+    fireEvent.change(input, {
+      target: { value: 'https://youtu.be/dQw4w9WgXcQ' },
+    });
+    fireEvent.submit(input.closest('form')!);
+
+    expect(push).toHaveBeenCalledWith(
+      '/app?continuation=' +
+        encodeURIComponent('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+    );
+  });
+
   it('supports keyboard submission and reports an invalid YouTube URL', async () => {
     const user = userEvent.setup();
     render(<LandingAnalysisForm copy={marketingMessages.de.hero} />);

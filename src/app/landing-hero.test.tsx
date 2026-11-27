@@ -26,9 +26,9 @@ describe('approved landing hero', () => {
         name: 'Watch less.Understand more.',
       }),
     ).toBeVisible();
-    expect(screen.getByRole('textbox', { name: 'YouTube URL' })).toHaveValue(
-      'https://youtube.com/watch?v=knowledge',
-    );
+    const urlInput = screen.getByRole('textbox', { name: 'YouTube URL' });
+    expect(urlInput).toHaveValue('');
+    expect(urlInput).toHaveAttribute('placeholder', 'Paste a YouTube link');
     expect(
       document.querySelector('.hero > .hero-grid > .prism-stage .prism-wrap'),
     ).not.toBeNull();

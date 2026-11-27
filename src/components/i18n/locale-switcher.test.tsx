@@ -111,7 +111,7 @@ describe('LocaleSwitcher', () => {
     render(<LocaleSwitcher locale="en" copy={copy} variant="auth" />);
 
     await user.click(screen.getByRole('button', { name: /English/i }));
-    await user.click(screen.getByRole('radio', { name: 'Deutsch German' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Deutsch German' }));
 
     expect(screen.getByLabelText('Language: Deutsch')).toBeVisible();
     expect(

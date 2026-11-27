@@ -64,7 +64,11 @@ export default async function HomePage() {
     getPublicPlans(),
     getRequestAccount(),
   ]);
-  const content = getMarketingContent(copy, Boolean(user));
+  const signedIn = Boolean(user);
+  const content = getMarketingContent(copy, signedIn);
+  const primaryLink = signedIn
+    ? { href: '/app', label: copy.footer.openApp }
+    : { href: '/sign-up', label: copy.header.startFree };
 
   return (
     <div className="landing-reference">
@@ -94,14 +98,24 @@ export default async function HomePage() {
               copy={materializeLocaleSwitcherCopy(sharedCopy)}
               variant="landing"
             />
-            <a className="btn btn-ghost btn-sm desktop-only" href="/sign-in">
-              <span>{copy.header.signIn}</span>
-            </a>
-            <a className="btn btn-primary btn-sm" href="/sign-up">
-              <span>{copy.header.startFree}</span>
+            {!signedIn && (
+              <a className="btn btn-ghost btn-sm desktop-only" href="/sign-in">
+                <span>{copy.header.signIn}</span>
+              </a>
+            )}
+            <a className="btn btn-primary btn-sm" href={primaryLink.href}>
+              <span>{primaryLink.label}</span>
               <Arrow />
             </a>
             <MobileMarketingMenu
+              accountLinks={
+                signedIn
+                  ? [primaryLink]
+                  : [
+                      { href: '/sign-in', label: copy.header.signIn },
+                      primaryLink,
+                    ]
+              }
               navigation={content.navigation}
               copy={copy.header}
             />
@@ -120,7 +134,7 @@ export default async function HomePage() {
                 {copy.hero.titleEnd}
               </h1>
               <p className="body-lg">{copy.hero.description}</p>
-              <LandingAnalysisForm copy={copy.hero} />
+              <LandingAnalysisForm copy={copy.hero} signedIn={signedIn} />
               <div className="hero-caption">
                 <span className="ray" />
                 <span>{copy.hero.caption}</span>
@@ -260,7 +274,7 @@ export default async function HomePage() {
         <ReferenceFacets copy={copy.facets} />
         <ReferencePricing
           plans={plans}
-          signedIn={Boolean(user)}
+          signedIn={signedIn}
           locale={locale}
           copy={copy.pricing}
           startFree={copy.pricing.startFree}
