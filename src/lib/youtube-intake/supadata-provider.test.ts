@@ -40,6 +40,33 @@ describe('createSupadataProvider', () => {
     expect(requestInit.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it('rounds native caption offsets and durations to integer milliseconds', async () => {
+    const provider = createSupadataProvider(
+      'secret',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          lang: 'en',
+          content: [
+            {
+              text: 'First',
+              offset: 8151.999999999999,
+              duration: 3345.000000000001,
+            },
+            { text: 'Second', offset: 11497.000000000002, duration: 250 },
+          ],
+        }),
+      ),
+    );
+    await expect(provider.getNativeTranscript(canonicalUrl)).resolves.toEqual({
+      ok: true,
+      language: 'en',
+      segments: [
+        { text: 'First', offsetMs: 8152, durationMs: 3345 },
+        { text: 'Second', offsetMs: 11497, durationMs: 250 },
+      ],
+    });
+  });
+
   it.each([
     [206, 'transcript_unavailable'],
     [401, 'provider_configuration'],
