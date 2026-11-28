@@ -5,7 +5,13 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 vi.mock('@/lib/i18n/request-locale', () => ({
+  getRequestAccount: async () => ({ user: null }),
   getRequestLocale: () => Promise.resolve('en'),
+}));
+
+vi.mock('@/data/pricing', () => ({
+  getPublicPlans: async () =>
+    (await import('@/lib/billing/fixtures')).billingFixtureCatalog,
 }));
 
 import HomePage from './page';
@@ -20,9 +26,9 @@ describe('approved landing hero', () => {
         name: 'Watch less.Understand more.',
       }),
     ).toBeVisible();
-    expect(screen.getByRole('textbox', { name: 'YouTube URL' })).toHaveValue(
-      'https://youtube.com/watch?v=knowledge',
-    );
+    const urlInput = screen.getByRole('textbox', { name: 'YouTube URL' });
+    expect(urlInput).toHaveValue('');
+    expect(urlInput).toHaveAttribute('placeholder', 'Paste a YouTube link');
     expect(
       document.querySelector('.hero > .hero-grid > .prism-stage .prism-wrap'),
     ).not.toBeNull();
@@ -77,13 +83,11 @@ describe('approved landing hero', () => {
 
   it('preserves the approved pricing and footer composition', async () => {
     render(await HomePage());
-    expect(document.querySelectorAll('#pricing .plan-card')).toHaveLength(3);
-    expect(
-      document.querySelectorAll('#pricing .plan-card.recommended'),
-    ).toHaveLength(1);
+    expect(document.querySelectorAll('#pricing .plan-card h3')).toHaveLength(4);
+    expect(screen.getByRole('heading', { name: 'Prism Pro' })).toBeVisible();
     expect(screen.getByRole('contentinfo')).toHaveTextContent(
       'AI-generated content should be checked against the original source.',
     );
-    expect(document.querySelectorAll('.footer-grid > div')).toHaveLength(4);
+    expect(document.querySelectorAll('.footer-grid > div')).toHaveLength(3);
   });
 });

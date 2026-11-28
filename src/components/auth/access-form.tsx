@@ -26,13 +26,16 @@ type AccessFormProps = Readonly<{
   intent: 'sign-in' | 'sign-up';
   copy: AuthCopy;
   nextPath?: string;
+  callbackFailed?: boolean;
 }>;
 
 export function AccessForm({
   intent,
   copy,
   nextPath = '/onboarding',
+  callbackFailed = false,
 }: AccessFormProps) {
+  const [method, setMethod] = useState<'google' | 'email'>('email');
   const [mode, setMode] = useState<'link' | 'password'>('link');
   const passwordAction =
     intent === 'sign-in' ? signInWithPassword : signUpWithPassword;
@@ -44,10 +47,7 @@ export function AccessForm({
     signInWithGoogle,
     initialState,
   );
-  const state =
-    googleState.status === 'error' || googleState.redirectTo
-      ? googleState
-      : emailState;
+  const state = method === 'google' ? googleState : emailState;
 
   useEffect(() => {
     if (state.redirectTo) window.location.assign(state.redirectTo);
@@ -79,7 +79,7 @@ export function AccessForm({
           ? copy.access.signInDescription
           : copy.access.signUpDescription}
       </p>
-      <form action={googleFormAction}>
+      <form action={googleFormAction} onSubmit={() => setMethod('google')}>
         <input type="hidden" name="next" value={nextPath} />
         <button
           className="btn oauth-btn"
@@ -97,7 +97,11 @@ export function AccessForm({
         </button>
       </form>
       <div className="auth-divider">{copy.access.emailDivider}</div>
-      <form action={emailFormAction} noValidate>
+      <form
+        action={emailFormAction}
+        onSubmit={() => setMethod('email')}
+        noValidate
+      >
         <input type="hidden" name="intent" value={intent} />
         <input type="hidden" name="next" value={nextPath} />
         <div className="form-group">
@@ -132,6 +136,9 @@ export function AccessForm({
           <span aria-hidden="true">→</span>
         </button>
       </form>
+      {callbackFailed && state.status === 'idle' ? (
+        <AuthStatus tone="error">{copy.errors.auth_error}</AuthStatus>
+      ) : null}
       {statusMessage ? (
         <AuthStatus tone={state.status === 'error' ? 'error' : 'success'}>
           {statusMessage}
@@ -161,13 +168,6 @@ export function AccessForm({
         <Link href={alternatePath}>
           {isSignIn ? copy.access.createAccount : copy.access.signIn}
         </Link>
-      </p>
-      <p className="auth-footer">
-        {copy.access.termsPrefix}
-        <Link href="/terms">{copy.access.terms}</Link>
-        {copy.access.privacyConnector}
-        <Link href="/privacy">{copy.access.privacy}</Link>
-        {copy.access.sentenceEnd}
       </p>
     </>
   );

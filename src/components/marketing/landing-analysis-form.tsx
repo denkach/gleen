@@ -22,9 +22,13 @@ const LinkIcon = () => (
 
 type LandingAnalysisFormProps = Readonly<{
   copy: MarketingMessages['hero'];
+  signedIn?: boolean;
 }>;
 
-export function LandingAnalysisForm({ copy }: LandingAnalysisFormProps) {
+export function LandingAnalysisForm({
+  copy,
+  signedIn = false,
+}: LandingAnalysisFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string>();
 
@@ -40,7 +44,9 @@ export function LandingAnalysisForm({ copy }: LandingAnalysisFormProps) {
     }
 
     setError(undefined);
-    router.push(`/sign-in?next=${encodeURIComponent(nextPath)}`);
+    router.push(
+      signedIn ? nextPath : `/sign-in?next=${encodeURIComponent(nextPath)}`,
+    );
   }
 
   return (
@@ -60,7 +66,6 @@ export function LandingAnalysisForm({ copy }: LandingAnalysisFormProps) {
           name="youtubeUrl"
           type="url"
           placeholder={copy.placeholder}
-          defaultValue="https://youtube.com/watch?v=knowledge"
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? 'youtube-url-error' : undefined}
         />

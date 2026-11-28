@@ -1,62 +1,30 @@
-export type PricingPlan = Readonly<{
-  label: string;
-  name: string;
-  description: string;
-  amountMinor: number;
-  currency: string;
-  features: readonly string[];
-  cta: string;
-  ctaHref: '#product' | '/sign-up';
-  recommended: boolean;
-}>;
+import 'server-only';
 
-export const pricingPlans = Object.freeze([
-  {
-    label: 'Free',
-    name: 'Explore',
-    description: 'For trying Gleen on a few important videos.',
-    amountMinor: 0,
-    currency: 'EUR',
-    features: [
-      '3 video analyses',
-      'All four artifact types',
-      'Markdown export',
-      'Saved history',
-    ],
-    cta: 'Start Free',
-    ctaHref: '/sign-up',
-    recommended: false,
+import { unstable_cache } from 'next/cache';
+
+import { parseBillingCatalogRows } from '@/lib/billing/domain';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
+
+const loadPublicPlans = unstable_cache(
+  async () => {
+    const { data, error } = await createAdminSupabaseClient()
+      .from('billing_plan_catalog')
+      .select(
+        'slug,display_name,description,analysis_limit,features,display_order,is_default,is_purchasable,billing_interval,currency,unit_amount_minor,monthly_equivalent_minor,comparison_copy,savings_copy',
+      )
+      .abortSignal(AbortSignal.timeout(4000));
+    if (error) throw new Error('Billing catalog unavailable');
+    return parseBillingCatalogRows(data);
   },
-  {
-    label: 'Prism',
-    name: 'Build a habit',
-    description: 'For students, researchers, and continuous learners.',
-    amountMinor: 1200,
-    currency: 'EUR',
-    features: [
-      '25 video analyses',
-      'Longer videos',
-      'Notion and Obsidian export',
-      'Priority processing',
-    ],
-    cta: 'Choose Prism',
-    ctaHref: '#product',
-    recommended: true,
-  },
-  {
-    label: 'Spectrum',
-    name: 'Go deeper',
-    description: 'For intensive knowledge work and larger libraries.',
-    amountMinor: 2900,
-    currency: 'EUR',
-    features: [
-      '100 video analyses',
-      'Advanced exports',
-      'Highest processing priority',
-      'Extended history controls',
-    ],
-    cta: 'Choose Spectrum',
-    ctaHref: '#product',
-    recommended: false,
-  },
-] as const satisfies readonly PricingPlan[]);
+  ['landing-billing-catalog-v1'],
+  { revalidate: 60 },
+);
+
+export async function getPublicPlans() {
+  try {
+    return await loadPublicPlans();
+  } catch {
+    console.error({ event: 'marketing_billing_catalog_unavailable' });
+    return [];
+  }
+}

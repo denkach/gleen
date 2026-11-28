@@ -201,7 +201,7 @@ describe('account access and recovery routes', () => {
     }
   });
 
-  it('keeps legal and account-switch links in the approved access screens', async () => {
+  it('keeps account switching accessible without linking to unpublished policies', async () => {
     render(<AccessForm intent="sign-in" copy={authMessages.en} />);
 
     expect(
@@ -210,13 +210,12 @@ describe('account access and recovery routes', () => {
     expect(
       screen.getByRole('link', { name: 'Create an account' }),
     ).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute(
-      'href',
-      '/terms',
-    );
     expect(
-      screen.getByRole('link', { name: 'Privacy Policy' }),
-    ).toHaveAttribute('href', '/privacy');
+      screen.queryByRole('link', { name: 'Terms' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Privacy Policy' }),
+    ).not.toBeInTheDocument();
   });
 
   it.each([

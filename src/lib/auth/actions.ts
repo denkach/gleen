@@ -1,7 +1,9 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 
+import { trustedAppOrigin } from '@/lib/app-origin';
 import { validatePublicEnv } from '@/env';
 import {
   isAuthErrorCode,
@@ -31,11 +33,7 @@ type SupabaseAuthError = Readonly<{
 
 async function callbackUrl(next: string, recovery = false): Promise<string> {
   const env = validatePublicEnv(process.env);
-  const requestHeaders = await headers();
-  const host =
-    requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
-  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'https';
-  const origin = host ? `${protocol}://${host}` : env.NEXT_PUBLIC_APP_URL;
+  const origin = trustedAppOrigin(await headers(), env.NEXT_PUBLIC_APP_URL);
   const callback = new URL('/auth/callback', origin);
   callback.searchParams.set('next', next);
   if (recovery) callback.searchParams.set('type', 'recovery');
@@ -46,7 +44,6 @@ function errorState(error: SupabaseAuthError, email?: string): AuthActionState {
   console.error({
     event: 'auth_provider_error',
     code: error.code ?? 'unknown',
-    message: error.message,
   });
   const code = isAuthErrorCode(error.code) ? error.code : 'auth_error';
 
@@ -81,7 +78,7 @@ export async function signInWithGoogle(
   });
 
   if (error) return errorState(error);
-  return { status: 'success', redirectTo: data.url };
+  redirect(data.url);
 }
 
 export async function sendMagicLink(

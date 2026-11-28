@@ -62,6 +62,7 @@ describe('auth actions', () => {
   });
 
   it('keeps the OAuth callback on the current preview deployment', async () => {
+    vi.stubEnv('VERCEL_URL', 'gleen-staging-preview-team.vercel.app');
     requestHeaders.set(
       'x-forwarded-host',
       'gleen-staging-preview-team.vercel.app',
@@ -73,7 +74,9 @@ describe('auth actions', () => {
     });
     const { signInWithGoogle } = await import('./actions');
 
-    await signInWithGoogle({ status: 'idle' }, new FormData());
+    await expect(
+      signInWithGoogle({ status: 'idle' }, new FormData()),
+    ).rejects.toThrow('NEXT_REDIRECT');
 
     expect(auth.signInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
@@ -138,6 +141,7 @@ describe('auth actions', () => {
   it('uses an allowlisted callback for magic links', async () => {
     auth.signInWithOtp.mockResolvedValue({ data: {}, error: null });
     const { sendMagicLink } = await import('./actions');
+    requestHeaders.set('x-forwarded-host', 'unrecognized.example');
     const form = new FormData();
     form.set('email', 'alex@example.com');
     form.set('next', 'https://evil.example');

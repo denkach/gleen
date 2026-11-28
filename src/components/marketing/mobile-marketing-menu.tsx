@@ -12,6 +12,7 @@ import type { MarketingLink } from '@/data/marketing';
 import type { MarketingMessages } from '@/lib/i18n/messages/marketing';
 
 interface MobileMarketingMenuProps {
+  accountLinks: readonly MarketingLink[];
   navigation: readonly MarketingLink[];
   copy: MarketingMessages['header'];
 }
@@ -25,6 +26,7 @@ function MenuIcon() {
 }
 
 export function MobileMarketingMenu({
+  accountLinks,
   navigation,
   copy,
 }: MobileMarketingMenuProps) {
@@ -51,12 +53,11 @@ export function MobileMarketingMenu({
             </DialogClose>
           ))}
         </nav>
-        <DialogClose asChild>
-          <a href="/sign-in">{copy.signIn}</a>
-        </DialogClose>
-        <DialogClose asChild>
-          <a href="/sign-up">{copy.startFree}</a>
-        </DialogClose>
+        {accountLinks.map((link) => (
+          <DialogClose asChild key={link.href}>
+            <a href={link.href}>{link.label}</a>
+          </DialogClose>
+        ))}
       </DialogContent>
     </Dialog>
   );

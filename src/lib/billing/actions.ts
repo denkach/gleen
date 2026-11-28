@@ -5,6 +5,7 @@ import type Stripe from 'stripe';
 import { z } from 'zod';
 
 import { validatePublicEnv, validateStripePortalEnv } from '@/env';
+import { trustedAppOrigin as resolveBillingAppUrl } from '@/lib/app-origin';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -283,38 +284,11 @@ type BillingActionsDependencies = Readonly<{
   portalConfigurationId: string;
 }>;
 
+export { resolveBillingAppUrl };
+
 function fixedAppUrl(appUrl: string, pathname: string): string {
   const allowedOrigin = new URL(appUrl);
   return new URL(pathname, allowedOrigin.origin).toString();
-}
-
-export function resolveBillingAppUrl(
-  requestHeaders: Pick<Headers, 'get'>,
-  fallback: string,
-): string {
-  const host =
-    requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host');
-  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'https';
-  if (host === null) {
-    const requestOrigin = requestHeaders.get('origin');
-    if (requestOrigin !== null) {
-      try {
-        const origin = new URL(requestOrigin);
-        if (origin.protocol === 'https:' || origin.protocol === 'http:') {
-          return origin.origin;
-        }
-      } catch {
-        // Fall through to the configured application origin.
-      }
-    }
-    return new URL(fallback).origin;
-  }
-  try {
-    const origin = new URL(`${protocol}://${host}`).origin;
-    return origin;
-  } catch {
-    return new URL(fallback).origin;
-  }
 }
 
 function actionFailure(code: ActionErrorCode): ActionError {

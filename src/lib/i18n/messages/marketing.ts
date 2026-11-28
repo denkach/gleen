@@ -91,7 +91,7 @@ export const marketingMessages = defineMessages({
         kicker: 'Interactive flashcards',
         title: 'Turn insight into memory.',
         body: 'Study the video’s most important concepts in a focused deck. Flip, rate, edit, and jump directly to the source.',
-        cta: 'Open study mode',
+        cta: 'Preview flashcards',
         demoMeta: 'Card 04 / 18',
         demoQuestion:
           'What makes retrieval practice more effective than rereading?',
@@ -125,43 +125,7 @@ export const marketingMessages = defineMessages({
       title: 'Choose how much light you need.',
       description:
         'Start free, keep every result in history, and upgrade only when your workflow demands more capacity.',
-      period: '/ month',
-      free: {
-        label: 'Free',
-        name: 'Explore',
-        description: 'For trying Gleen on a few important videos.',
-        features: {
-          analyses: '3 video analyses',
-          artifacts: 'All four artifact types',
-          export: 'Markdown export',
-          history: 'Saved history',
-        },
-        cta: 'Start Free',
-      },
-      prism: {
-        label: 'Prism',
-        name: 'Build a habit',
-        description: 'For students, researchers, and continuous learners.',
-        features: {
-          analyses: '25 video analyses',
-          videos: 'Longer videos',
-          export: 'Notion and Obsidian export',
-          priority: 'Priority processing',
-        },
-        cta: 'Choose Prism',
-      },
-      spectrum: {
-        label: 'Spectrum',
-        name: 'Go deeper',
-        description: 'For intensive knowledge work and larger libraries.',
-        features: {
-          analyses: '100 video analyses',
-          export: 'Advanced exports',
-          priority: 'Highest processing priority',
-          history: 'Extended history controls',
-        },
-        cta: 'Choose Spectrum',
-      },
+      startFree: 'Start Free',
     },
     footer: {
       intro: 'One video enters. A spectrum of usable knowledge comes out.',
@@ -272,7 +236,7 @@ export const marketingMessages = defineMessages({
         kicker: 'Інтерактивні картки',
         title: 'Перетворіть розуміння на пам’ять.',
         body: 'Вивчайте найважливіші поняття відео в зосередженій колоді. Перевертайте, оцінюйте, редагуйте та переходьте прямо до джерела.',
-        cta: 'Відкрити режим навчання',
+        cta: 'Переглянути картки',
         demoMeta: 'Картка 04 / 18',
         demoQuestion:
           'Чому практика відтворення ефективніша за повторне читання?',
@@ -306,44 +270,7 @@ export const marketingMessages = defineMessages({
       title: 'Оберіть, скільки світла вам потрібно.',
       description:
         'Почніть безкоштовно, зберігайте кожен результат в історії та оновлюйте план лише тоді, коли вашому процесу потрібно більше можливостей.',
-      period: '/ місяць',
-      free: {
-        label: 'Free',
-        name: 'Спробуйте',
-        description: 'Щоб випробувати Gleen на кількох важливих відео.',
-        features: {
-          analyses: '3 аналізи відео',
-          artifacts: 'Усі чотири типи артефактів',
-          export: 'Експорт Markdown',
-          history: 'Збережена історія',
-        },
-        cta: 'Обрати Free',
-      },
-      prism: {
-        label: 'Prism',
-        name: 'Створіть звичку',
-        description:
-          'Для студентів, дослідників і тих, хто навчається постійно.',
-        features: {
-          analyses: '25 аналізів відео',
-          videos: 'Довші відео',
-          export: 'Експорт у Notion та Obsidian',
-          priority: 'Пріоритетна обробка',
-        },
-        cta: 'Обрати Prism',
-      },
-      spectrum: {
-        label: 'Spectrum',
-        name: 'Зануртеся глибше',
-        description: 'Для інтенсивної роботи зі знаннями та великих бібліотек.',
-        features: {
-          analyses: '100 аналізів відео',
-          export: 'Розширений експорт',
-          priority: 'Найвищий пріоритет обробки',
-          history: 'Розширене керування історією',
-        },
-        cta: 'Обрати Spectrum',
-      },
+      startFree: 'Обрати Free',
     },
     footer: {
       intro: 'Одне відео входить. Виходить спектр корисних знань.',
@@ -454,7 +381,7 @@ export const marketingMessages = defineMessages({
         kicker: 'Интерактивные карточки',
         title: 'Превратите понимание в память.',
         body: 'Изучайте важнейшие понятия видео в удобной колоде. Переворачивайте, оценивайте, редактируйте и переходите прямо к источнику.',
-        cta: 'Открыть режим обучения',
+        cta: 'Посмотреть карточки',
         demoMeta: 'Карточка 04 / 18',
         demoQuestion:
           'Почему практика воспроизведения эффективнее повторного чтения?',
@@ -488,44 +415,7 @@ export const marketingMessages = defineMessages({
       title: 'Выберите, сколько света вам нужно.',
       description:
         'Начните бесплатно, храните каждый результат в истории и обновляйте план, только когда вашему процессу нужно больше возможностей.',
-      period: '/ месяц',
-      free: {
-        label: 'Free',
-        name: 'Попробовать',
-        description: 'Чтобы попробовать Gleen на нескольких важных видео.',
-        features: {
-          analyses: '3 анализа видео',
-          artifacts: 'Все четыре типа артефактов',
-          export: 'Экспорт Markdown',
-          history: 'Сохранённая история',
-        },
-        cta: 'Выбрать Free',
-      },
-      prism: {
-        label: 'Prism',
-        name: 'Создайте привычку',
-        description:
-          'Для студентов, исследователей и тех, кто постоянно учится.',
-        features: {
-          analyses: '25 анализов видео',
-          videos: 'Более длинные видео',
-          export: 'Экспорт в Notion и Obsidian',
-          priority: 'Приоритетная обработка',
-        },
-        cta: 'Выбрать Prism',
-      },
-      spectrum: {
-        label: 'Spectrum',
-        name: 'Погрузитесь глубже',
-        description: 'Для интенсивной работы со знаниями и больших библиотек.',
-        features: {
-          analyses: '100 анализов видео',
-          export: 'Расширенный экспорт',
-          priority: 'Наивысший приоритет обработки',
-          history: 'Расширенное управление историей',
-        },
-        cta: 'Выбрать Spectrum',
-      },
+      startFree: 'Выбрать Free',
     },
     footer: {
       intro: 'Одно видео входит. Выходит спектр полезных знаний.',
@@ -635,7 +525,7 @@ export const marketingMessages = defineMessages({
         kicker: 'Tarjetas interactivas',
         title: 'Convierte la comprensión en memoria.',
         body: 'Estudia los conceptos más importantes del vídeo en una baraja bien estructurada. Da la vuelta a las tarjetas, valóralas, edítalas y salta directamente a la fuente.',
-        cta: 'Abrir modo de estudio',
+        cta: 'Ver las tarjetas',
         demoMeta: 'Tarjeta 04 / 18',
         demoQuestion:
           '¿Qué hace que la práctica de recuperación sea más efectiva que releer?',
@@ -669,45 +559,7 @@ export const marketingMessages = defineMessages({
       title: 'Elige cuánta luz necesitas.',
       description:
         'Empieza gratis, guarda cada resultado en el historial y mejora solo cuando tu flujo de trabajo necesite más capacidad.',
-      period: '/ mes',
-      free: {
-        label: 'Free',
-        name: 'Explorar',
-        description: 'Para probar Gleen con algunos vídeos importantes.',
-        features: {
-          analyses: '3 análisis de vídeo',
-          artifacts: 'Los cuatro tipos de artefactos',
-          export: 'Exportación Markdown',
-          history: 'Historial guardado',
-        },
-        cta: 'Elegir Free',
-      },
-      prism: {
-        label: 'Prism',
-        name: 'Crea un hábito',
-        description:
-          'Para estudiantes, investigadores y personas que aprenden continuamente.',
-        features: {
-          analyses: '25 análisis de vídeo',
-          videos: 'Vídeos más largos',
-          export: 'Exportación a Notion y Obsidian',
-          priority: 'Procesamiento prioritario',
-        },
-        cta: 'Elegir Prism',
-      },
-      spectrum: {
-        label: 'Spectrum',
-        name: 'Profundiza',
-        description:
-          'Para trabajo intensivo con conocimiento y bibliotecas más grandes.',
-        features: {
-          analyses: '100 análisis de vídeo',
-          export: 'Exportaciones avanzadas',
-          priority: 'Máxima prioridad de procesamiento',
-          history: 'Controles ampliados del historial',
-        },
-        cta: 'Elegir Spectrum',
-      },
+      startFree: 'Elegir Free',
     },
     footer: {
       intro: 'Entra un vídeo. Sale un espectro de conocimiento útil.',
@@ -817,7 +669,7 @@ export const marketingMessages = defineMessages({
         kicker: 'Interaktive Karteikarten',
         title: 'Mache aus Einsicht Erinnerung.',
         body: 'Lerne die wichtigsten Konzepte des Videos mit einem übersichtlichen Kartensatz. Drehe die Karten um, bewerte und bearbeite sie und springe direkt zur Quelle.',
-        cta: 'Lernmodus öffnen',
+        cta: 'Lernkarten ansehen',
         demoMeta: 'Karte 04 / 18',
         demoQuestion:
           'Warum ist Abruftraining wirksamer als wiederholtes Lesen?',
@@ -852,43 +704,7 @@ export const marketingMessages = defineMessages({
       title: 'Wähle, wie viel Licht du brauchst.',
       description:
         'Starte kostenlos, behalte jedes Ergebnis im Verlauf und wechsle erst, wenn dein Arbeitsablauf mehr Kapazität braucht.',
-      period: '/ Monat',
-      free: {
-        label: 'Free',
-        name: 'Entdecken',
-        description: 'Um Gleen mit einigen wichtigen Videos auszuprobieren.',
-        features: {
-          analyses: '3 Videoanalysen',
-          artifacts: 'Alle vier Artefaktarten',
-          export: 'Markdown-Export',
-          history: 'Gespeicherter Verlauf',
-        },
-        cta: 'Free wählen',
-      },
-      prism: {
-        label: 'Prism',
-        name: 'Gewohnheit aufbauen',
-        description: 'Für Studierende, Forschende und kontinuierlich Lernende.',
-        features: {
-          analyses: '25 Videoanalysen',
-          videos: 'Längere Videos',
-          export: 'Notion- und Obsidian-Export',
-          priority: 'Priorisierte Verarbeitung',
-        },
-        cta: 'Prism wählen',
-      },
-      spectrum: {
-        label: 'Spectrum',
-        name: 'Tiefer einsteigen',
-        description: 'Für intensive Wissensarbeit und größere Bibliotheken.',
-        features: {
-          analyses: '100 Videoanalysen',
-          export: 'Erweiterte Exporte',
-          priority: 'Höchste Verarbeitungspriorität',
-          history: 'Erweiterte Verlaufssteuerung',
-        },
-        cta: 'Spectrum wählen',
-      },
+      startFree: 'Free wählen',
     },
     footer: {
       intro:

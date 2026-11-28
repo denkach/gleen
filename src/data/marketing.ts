@@ -1,8 +1,4 @@
 import type { MarketingMessages } from '@/lib/i18n/messages/marketing';
-import { formatCurrency } from '@/lib/i18n/format';
-import type { Locale } from '@/lib/i18n/locales';
-
-import { pricingPlans } from './pricing';
 
 export type ArtifactId = 'summary' | 'flashcards' | 'timestamps' | 'export';
 
@@ -23,52 +19,17 @@ export type ArtifactFacet = Readonly<{
   cta: string;
 }>;
 
-export type FooterGroup = Readonly<{
-  title: string;
-  links: readonly MarketingLink[];
-}>;
-
-export type MarketingPricingCard = Readonly<{
-  label: string;
-  name: string;
-  description: string;
-  features: Readonly<Record<string, string>>;
-  cta: string;
-  price: string;
-  period: string;
-  recommended: boolean;
-  ctaHref: string;
-}>;
-
 export type MarketingContent = Readonly<{
   navigation: readonly MarketingLink[];
   workflow: readonly WorkflowStep[];
   facets: readonly ArtifactFacet[];
-  footerGroups: readonly FooterGroup[];
-  pricing: readonly MarketingPricingCard[];
+  footerLinks: readonly MarketingLink[];
 }>;
 
 export function getMarketingContent(
   copy: MarketingMessages,
-  locale: Locale,
+  signedIn: boolean,
 ): MarketingContent {
-  const pricing = [
-    copy.pricing.free,
-    copy.pricing.prism,
-    copy.pricing.spectrum,
-  ].map((card, index) => ({
-    ...card,
-    label: pricingPlans[index]!.label,
-    price: formatCurrency({
-      amountMinor: pricingPlans[index]!.amountMinor,
-      currency: pricingPlans[index]!.currency,
-      locale,
-    }),
-    period: copy.pricing.period,
-    recommended: pricingPlans[index]!.recommended,
-    ctaHref: pricingPlans[index]!.ctaHref,
-  }));
-
   return Object.freeze({
     navigation: [
       { label: copy.header.product, href: '#product' },
@@ -88,36 +49,14 @@ export function getMarketingContent(
       { id: 'timestamps', ...copy.facets.timestamps },
       { id: 'export', ...copy.facets.export },
     ],
-    footerGroups: [
+    footerLinks: [
+      { label: copy.footer.artifacts, href: '#facets' },
+      { label: copy.footer.howItWorks, href: '#how' },
+      { label: copy.footer.pricing, href: '#pricing' },
       {
-        title: copy.footer.product,
-        links: [
-          { label: copy.footer.artifacts, href: '#facets' },
-          { label: copy.footer.howItWorks, href: '#how' },
-          { label: copy.footer.pricing, href: '#pricing' },
-          { label: copy.footer.openApp, href: '#product' },
-        ],
-      },
-      {
-        title: copy.footer.company,
-        links: [
-          { label: copy.footer.privacy, href: '#product' },
-          { label: copy.footer.terms, href: '#product' },
-          { label: copy.footer.cookies, href: '#product' },
-          { label: copy.footer.contact, href: '#product' },
-        ],
-      },
-      {
-        title: copy.footer.language,
-        links: [
-          { label: 'English', href: '#product' },
-          { label: 'Українська', href: '#product' },
-          { label: 'Русский', href: '#product' },
-          { label: 'Español', href: '#product' },
-          { label: 'Deutsch', href: '#product' },
-        ],
+        label: copy.footer.openApp,
+        href: signedIn ? '/app' : '/sign-in?next=%2Fapp',
       },
     ],
-    pricing,
   });
 }

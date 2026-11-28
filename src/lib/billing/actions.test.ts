@@ -259,6 +259,10 @@ const nativeCustomCheckoutPayload = {
 
 describe('billing request origin', () => {
   it('keeps Stripe return URLs on the current Preview deployment', () => {
+    vi.stubEnv(
+      'VERCEL_URL',
+      'gleen-staging-preview-denisito-projects.vercel.app',
+    );
     const requestHeaders = new Headers({
       'x-forwarded-host': 'gleen-staging-preview-denisito-projects.vercel.app',
       'x-forwarded-proto': 'https',
@@ -270,6 +274,10 @@ describe('billing request origin', () => {
   });
 
   it('uses the Server Action origin when proxy host headers are absent', () => {
+    vi.stubEnv(
+      'VERCEL_BRANCH_URL',
+      'gleen-staging-denkach-denisito-projects.vercel.app',
+    );
     const requestHeaders = new Headers({
       origin: 'https://gleen-staging-denkach-denisito-projects.vercel.app',
     });

@@ -189,6 +189,16 @@ for (const viewport of authViewports) {
   });
 }
 
+test('shows a recoverable callback error and preserves the requested destination', async ({
+  page,
+}) => {
+  await page.goto('/auth/callback?next=%2Fapp%2Fhistory');
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(
+    page.locator('form').first().locator('[name="next"]'),
+  ).toHaveValue('/app/history');
+});
+
 test('switches between secure-link and password access', async ({ page }) => {
   await page.goto('/sign-in');
   await page.getByRole('button', { name: 'Use password instead' }).click();

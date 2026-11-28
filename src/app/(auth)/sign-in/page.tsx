@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 type SignInPageProps = Readonly<{
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }>;
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
@@ -44,10 +44,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     'shared',
     reportMissingTranslation,
   );
-  const nextPath = safeInternalRedirect(
-    (await searchParams).next,
-    '/onboarding',
-  );
+  const params = await searchParams;
+  const nextPath = safeInternalRedirect(params.next, '/onboarding');
 
   return (
     <AuthShell
@@ -57,7 +55,12 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       visualTitle={copy.visual.signInTitle}
       visualDescription={copy.visual.signInDescription}
     >
-      <AccessForm intent="sign-in" nextPath={nextPath} copy={copy} />
+      <AccessForm
+        intent="sign-in"
+        callbackFailed={params.error === 'callback'}
+        nextPath={nextPath}
+        copy={copy}
+      />
     </AuthShell>
   );
 }

@@ -13,7 +13,10 @@ export async function proxy(request: NextRequest) {
   );
 
   if (!redirectPath) return response;
-  return NextResponse.redirect(new URL(redirectPath, request.url));
+  const redirect = NextResponse.redirect(new URL(redirectPath, request.url));
+  for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+  redirect.headers.set('Cache-Control', 'private, no-store');
+  return redirect;
 }
 
 export const config = {
