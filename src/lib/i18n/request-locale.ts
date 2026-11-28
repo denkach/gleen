@@ -37,6 +37,14 @@ export function resolveInterfaceLocale({
   );
 }
 
+export const getRequestAccount = cache(async () => {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return { supabase, user };
+});
+
 export const getRequestLocale = cache(async (): Promise<Locale> => {
   const [cookieStore, requestHeaders] = await Promise.all([
     cookies(),
@@ -46,10 +54,7 @@ export const getRequestLocale = cache(async (): Promise<Locale> => {
   const cookieLocale = parseLocale(cookie);
   if (cookieLocale) return cookieLocale;
 
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getRequestAccount();
   const profile = user
     ? await readInterfaceLocale(
         createSupabaseOnboardingStorage(supabase),

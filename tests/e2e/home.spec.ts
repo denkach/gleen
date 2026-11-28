@@ -26,7 +26,15 @@ for (const viewport of viewports) {
     ).toBeVisible();
     await expect(page.locator('main > section')).toHaveCount(4);
     await expect(page.locator('.facet-panel')).toHaveCount(4);
-    await expect(page.locator('.plan-card')).toHaveCount(3);
+    await expect(page.locator('#pricing .plan-card h3')).toHaveText([
+      'Free',
+      'Starter',
+      'Prism Pro',
+      'Team',
+    ]);
+    await expect(
+      page.locator('#pricing .plan-card').last().getByRole('link'),
+    ).toHaveCount(0);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

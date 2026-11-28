@@ -1,3 +1,4 @@
+import { getPublicPlans } from '@/data/pricing';
 import type { Metadata } from 'next';
 
 import { ReferenceFacets } from '@/components/marketing/reference-facets';
@@ -18,7 +19,7 @@ import {
 import { marketingMessages } from '@/lib/i18n/messages/marketing';
 import { sharedMessages } from '@/lib/i18n/messages/shared';
 import { materializeLocaleSwitcherCopy } from '@/lib/i18n/locale-switcher-copy';
-import { getRequestLocale } from '@/lib/i18n/request-locale';
+import { getRequestAccount, getRequestLocale } from '@/lib/i18n/request-locale';
 
 const Arrow = () => (
   <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
@@ -59,7 +60,15 @@ export default async function HomePage() {
     'shared',
     reportMissingMarketingTranslation,
   );
-  const content = getMarketingContent(copy, locale);
+  const [plans, { user }] = await Promise.all([
+    getPublicPlans(),
+    getRequestAccount(),
+  ]);
+  const signedIn = Boolean(user);
+  const content = getMarketingContent(copy, signedIn);
+  const primaryLink = signedIn
+    ? { href: '/app', label: copy.footer.openApp }
+    : { href: '/sign-up', label: copy.header.startFree };
 
   return (
     <div className="landing-reference">
@@ -89,14 +98,24 @@ export default async function HomePage() {
               copy={materializeLocaleSwitcherCopy(sharedCopy)}
               variant="landing"
             />
-            <a className="btn btn-ghost btn-sm desktop-only" href="/sign-in">
-              <span>{copy.header.signIn}</span>
-            </a>
-            <a className="btn btn-primary btn-sm" href="/sign-up">
-              <span>{copy.header.startFree}</span>
+            {!signedIn && (
+              <a className="btn btn-ghost btn-sm desktop-only" href="/sign-in">
+                <span>{copy.header.signIn}</span>
+              </a>
+            )}
+            <a className="btn btn-primary btn-sm" href={primaryLink.href}>
+              <span>{primaryLink.label}</span>
               <Arrow />
             </a>
             <MobileMarketingMenu
+              accountLinks={
+                signedIn
+                  ? [primaryLink]
+                  : [
+                      { href: '/sign-in', label: copy.header.signIn },
+                      primaryLink,
+                    ]
+              }
               navigation={content.navigation}
               copy={copy.header}
             />
@@ -115,7 +134,7 @@ export default async function HomePage() {
                 {copy.hero.titleEnd}
               </h1>
               <p className="body-lg">{copy.hero.description}</p>
-              <LandingAnalysisForm copy={copy.hero} />
+              <LandingAnalysisForm copy={copy.hero} signedIn={signedIn} />
               <div className="hero-caption">
                 <span className="ray" />
                 <span>{copy.hero.caption}</span>
@@ -253,9 +272,17 @@ export default async function HomePage() {
           </div>
         </section>
         <ReferenceFacets copy={copy.facets} />
-        <ReferencePricing content={content} copy={copy.pricing} />
+        <ReferencePricing
+          plans={plans}
+          signedIn={signedIn}
+          locale={locale}
+          copy={copy.pricing}
+          startFree={copy.pricing.startFree}
+        />
       </main>
       <ReferenceFooter
+        locale={locale}
+        localeError={sharedCopy.localeSwitcher.errors.profileUpdateFailed}
         content={content}
         copy={copy.footer}
         homeLabel={copy.header.homeLabel}

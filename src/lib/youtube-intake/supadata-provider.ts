@@ -5,13 +5,20 @@ import type { TranscriptProvider, TranscriptResult } from './providers';
 const maxResponseBytes = 5 * 1024 * 1024;
 const supadataTranscriptUrl = 'https://api.supadata.ai/v1/transcript';
 
+// Native captions can contain fractional milliseconds from floating-point conversion.
+const milliseconds = z
+  .number()
+  .nonnegative()
+  .max(Number.MAX_SAFE_INTEGER)
+  .transform(Math.round);
+
 const transcriptResponseSchema = z.object({
   lang: z.string().min(1),
   content: z.array(
     z.object({
       text: z.string().min(1),
-      offset: z.number().int().nonnegative().safe(),
-      duration: z.number().int().positive().safe(),
+      offset: milliseconds,
+      duration: milliseconds.pipe(z.number().positive()),
     }),
   ),
 });

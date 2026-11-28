@@ -11,6 +11,11 @@ const navigation = [
   { label: 'Pricing', href: '#pricing' },
 ] as const;
 
+const accountLinks = [
+  { href: '/sign-in', label: marketingMessages.en.header.signIn },
+  { href: '/sign-up', label: marketingMessages.en.header.startFree },
+];
+
 describe('MobileMarketingMenu', () => {
   it('opens a localized navigation dialog with authentication destinations', async () => {
     const user = userEvent.setup();
@@ -18,6 +23,7 @@ describe('MobileMarketingMenu', () => {
     render(
       <MobileMarketingMenu
         navigation={navigation}
+        accountLinks={accountLinks}
         copy={marketingMessages.en.header}
       />,
     );
@@ -50,6 +56,7 @@ describe('MobileMarketingMenu', () => {
     render(
       <MobileMarketingMenu
         navigation={navigation}
+        accountLinks={accountLinks}
         copy={marketingMessages.en.header}
       />,
     );
@@ -70,6 +77,7 @@ describe('MobileMarketingMenu', () => {
     render(
       <MobileMarketingMenu
         navigation={navigation}
+        accountLinks={accountLinks}
         copy={marketingMessages.en.header}
       />,
     );
